@@ -1,0 +1,134 @@
+﻿@inherits ViewModelTemplate<ProductListViewModel>
+@using Dynamicweb.Rendering
+@using System.Globalization
+@using System.Web
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using System.Xml.Linq
+@using Dynamicweb.Environment;
+@using Dynamicweb.Core;
+
+@functions
+{
+
+    public XElement createElement(XElement parent, string elementName, string elementValue = null, Dictionary<string, string> attributes = null)
+    {
+        var element = new XElement(elementName);
+
+        if (parent != null)
+        {
+            parent.Add(element);
+        }
+
+        if (attributes != null)
+        {
+            foreach (var attr in attributes)
+            {
+                element.Add(new XAttribute(attr.Key, attr.Value));
+            }
+        }
+
+        if (elementValue != null)
+        {
+            element.Value = elementValue;
+        }
+
+        return element;
+    }
+
+    public string GenerateXml()
+    {
+        System.Xml.Linq.XDocument xdoc = new System.Xml.Linq.XDocument();
+        var rootElement = createElement(null, "AmazonEnvelope", null, null);
+
+        XNamespace schema = "http://www.w3.org/2001/XMLSchema-instance";
+        var xsiAttr = new XAttribute(XNamespace.Xmlns + "xsi", schema);
+        var noNaneSpaceAttr = new XAttribute(schema + "noNamespaceSchemaLocation", "amzn-envelope.xsd");
+        rootElement.Add(xsiAttr);
+        rootElement.Add(noNaneSpaceAttr);
+
+        xdoc.Add(rootElement);
+
+        var headerElement = createElement(rootElement, "Header");
+        createElement(headerElement, "DocumentVersion", "1.01");
+        createElement(rootElement, "MessageType", "ProductImage");
+
+        var messageCounter = 1;
+        foreach (var product in this.Model.Products)
+        {
+            var imageTypes = new Dictionary<string, MediaViewModel>();
+
+            if (product.DefaultImage != null)
+            {
+                imageTypes.Add("Main", product.DefaultImage);
+            }
+
+            var productImages = new List<MediaViewModel>();
+            if(product.Images != null)
+            {
+                productImages.AddRange(product.Images);
+            }
+
+            if(product.ImagePatternImages != null)
+            {
+                productImages.AddRange(product.ImagePatternImages);
+            }
+
+            if (productImages.Count > 0)
+            {
+                var imageCounter = 1;
+                foreach (var image in productImages.Take(8))
+                {
+                    imageTypes.Add(string.Format("PT{0}", imageCounter.ToString()), image);
+                    imageCounter++;
+                }
+            }
+
+            foreach(var image in imageTypes)
+            {
+                var messageElement = createElement(rootElement, "Message");
+                createElement(messageElement, "MessageID", messageCounter.ToString());
+                createElement(messageElement, "OperationType", "Update");
+
+                var productsRootElement = createElement(messageElement, "ProductImage");
+
+                ProcessProductXml(productsRootElement, product, image.Key, image.Value);
+                messageCounter++;
+            }
+
+        }
+
+        return xdoc.ToString();
+    }
+
+    private void ProcessProductXml(XElement productElement, ProductViewModel product, string imageType, MediaViewModel image)
+    {
+        createElement(productElement, "SKU", product.Number);
+        createElement(productElement, "ImageType", imageType);
+        createElement(productElement, "ImageLocation", HttpContext.Current.Request.Url.AbsoluteUri.Replace(HttpContext.Current.Request.Url.PathAndQuery, "") + image.Value);
+    }
+
+    public XElement createElement(string elementName, string elementValue, Dictionary<string, string> attributes = null)
+    {
+        var element = new XElement(elementName);
+        if (attributes != null)
+        {
+            foreach (var attr in attributes)
+            {
+                element.Add(new XAttribute(attr.Key, attr.Value));
+            }
+        }
+        if (elementValue != null)
+        {
+            element.Value = elementValue;
+        }
+
+        return element;
+    }
+}
+
+@{
+
+    var productContent = GenerateXml();
+}
+
+@productContent

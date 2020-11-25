@@ -1,0 +1,122 @@
+<!--@If Not Defined(Order.IsComplete)-->
+<div class="UnifaunServicePoints">
+	<div>
+		<input type="text" id="<!--@FieldPrefix-->PostalCode" value="<!--@Order.Customer.ZipCode.HtmlEncoded()-->" placeholder="ZIP Code"/>
+		<button type="button" id="<!--@FieldPrefix-->Search"><!--@Translate(Get_service_points, "Get service points")--></button>
+	</div>
+
+	<div class="unifaun-service-points" id="<!--@FieldPrefix-->service-points">
+		<div style="display: none" class="loading">Loading …</div>
+		<div style="display: none" class="service-points">
+			<div class="service-point" data-id="{{servicePointId}}">
+				<div style="float: left">
+					<input type="radio" name="{{fieldPrefix}}ServicePointId" value="{{servicePointId}}" id="{{fieldPrefix}}_{{servicePointId}}"/>
+				</div>
+				<div style="overflow: hidden">
+					<div class="name"><label for="{{fieldPrefix}}_{{servicePointId}}">{{name}}</label></div>
+					<span class="adr">
+						<span class="street-address">{{address1}}</span>
+						<span class="postal-code">{{zipcode}}</span>
+						<span class="city">{{city}}</span>
+					</span>
+				</div>
+			</div>
+		</div>
+        <!--  
+        <span class="street-address2">{{address2}}</span>
+        <span class="country-name">{{countryCode}}</span>
+        <span class="state">{{state}}</span>
+        <span class="contact">{{contact}}</span>
+        <span class="email">{{email}}</span>
+        <span class="phone">{{phone}}</span>
+        <span class="fax">{{fax}}</span>
+        <span class="sms">{{sms}}</span>
+    -->
+	</div>	
+
+		<script>(function() {
+window.addEventListener('load', function() {
+	var container = document.querySelector('#<!--@FieldPrefix-->service-points'),
+	loading = container.querySelector('.loading'),
+	list = container.querySelector('.service-points'),
+	template = list.innerHTML,
+	expandTemplate = function(template, values) {
+		// Expand {{...}} placeholders in template (see https://github.com/jquery/jquery-tmpl)
+		return template.replace(new RegExp('{{([^}]+?)(?:\\.(UrlEncoded))?}}', 'g'), function(match, key, encode) {
+			var value = values[key];
+			if (value) {
+				switch (encode) {
+				case 'UrlEncoded':
+					value = encodeURIComponent(value);
+					break;
+				}
+			}
+			return value ? value : match;
+		});
+	},
+
+	renderServicePoints = function(servicePoints) {
+		var i, servicePoint;
+		list.innerHTML = '';
+		if (!servicePoints || servicePoints.length == 0) {
+			list.innerHTML = 'No service points found';
+		} else {
+			for (i = 0; servicePoint = servicePoints[i]; i++) {
+				servicePoint.fieldPrefix = fieldPrefix;
+				servicePoint.servicePointId = servicePoint.id;
+				list.innerHTML += expandTemplate(template, servicePoint);
+			}
+		}
+	},
+
+	fieldPrefix = '<!--@FieldPrefix.JSEncoded()-->',
+	serviceUrl = '<!--@ServiceUrl-->',
+
+	running = false,
+
+	getServicePoints = function() {
+		var countryCode = '<!--@Order.Delivery.Country.Code-->';
+		var postalCode = document.querySelector('#<!--@FieldPrefix-->PostalCode').value;
+		var distributionService = ''; // Will be taken from settings (look list of all values in documentation)
+		
+		if (running) {
+			return;
+		}
+
+		if (!countryCode || !postalCode) {
+			return;
+		}
+
+		list.innerHTML = '';
+		running = true;
+		loading.style.display = '';
+		list.style.display = 'none';
+
+		var url = serviceUrl+ '&countryCode=' +encodeURIComponent(countryCode) + '&postalCode='+encodeURIComponent(postalCode) + '&distributionService=' + distributionService;
+
+		var request = new XMLHttpRequest();
+		request.onreadystatechange = function() {
+			 if (this.readyState == 4) {
+				 running = false;
+				 loading.style.display = 'none';
+				 list.style.display = '';
+				 if (this.status == 200)  {
+					 var data = JSON.parse(this.responseText);
+					 if (data) {
+						 renderServicePoints(data);
+					 }
+				 }
+			 }
+		};
+		request.open('GET', url, true);
+		request.send();
+	};
+
+	getServicePoints();
+
+	document.querySelector('#<!--@FieldPrefix-->Search').addEventListener('click', getServicePoints);
+	document.querySelector('#<!--@FieldPrefix-->PostalCode').addEventListener('change', getServicePoints);
+});
+		}())</script>
+</div>
+<!--@EndIf-->

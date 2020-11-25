@@ -1,0 +1,181 @@
+@using Dynamicweb.Rendering;
+@using Dynamicweb.Ecommerce.ProductCatalog;
+@using System.Collections.Generic;
+@using System.Text;
+@inherits ViewModelTemplate<ProductListViewModel>
+@functions
+{
+    public enum FieldType
+    {
+        System,
+        Standard,
+        Custom,
+        CategoryField
+    };
+
+    public class Field
+    {
+        public string ID { get; set; }
+        public FieldType FieldType { get; set; }
+        public string Label { get; set; }
+
+        public Field(string id, string label, FieldType type)
+        {
+            ID = id;
+            Label = label;
+            FieldType = type;
+        }
+    }
+
+    public List<Field> GetFields(ProductViewModel productViewModel)
+    {
+        var fields = new List<Field>();
+
+        if (FieldIsAvailable(productViewModel.Id)) { fields.Add(new Field("Id", "Id", FieldType.System)); }
+        if (FieldIsAvailable(productViewModel.VariantId)) { fields.Add(new Field("VariantId", "Variant id", FieldType.System)); }
+        if (FieldIsAvailable(productViewModel.LanguageId)) { fields.Add(new Field("LanguageId", "Language id", FieldType.System)); }
+        if (FieldIsAvailable(productViewModel.Name)) { fields.Add(new Field("Name", "Name", FieldType.Standard)); }
+        if (FieldIsAvailable(productViewModel.Number)) { fields.Add(new Field("Number", "Number", FieldType.Standard)); }
+        if (FieldIsAvailable(productViewModel.ShortDescription)) { fields.Add(new Field("ShortDescription", "Short description", FieldType.Standard)); }
+        if (FieldIsAvailable(productViewModel.LongDescription)) { fields.Add(new Field("LongDescription", "Long description", FieldType.Standard)); }
+        if (FieldIsAvailable(productViewModel.Price)) { fields.Add(new Field("Price", "Price", FieldType.Standard)); }
+        if (FieldIsAvailable(productViewModel.Created)) { fields.Add(new Field("Created", "Created", FieldType.System)); }
+        if (FieldIsAvailable(productViewModel.Updated)) { fields.Add(new Field("Updated", "Updated", FieldType.System)); }
+        if (FieldIsAvailable(productViewModel.Weight)) { fields.Add(new Field("Weight", "Weight", FieldType.System)); }
+        if (FieldIsAvailable(productViewModel.EAN)) { fields.Add(new Field("EAN", "EAN", FieldType.System)); }
+        if (FieldIsAvailable(productViewModel.Width)) { fields.Add(new Field("Width", "Width", FieldType.System)); }
+        if (FieldIsAvailable(productViewModel.StockLevel)) { fields.Add(new Field("StockLevel", "StockLevel", FieldType.System)); }
+        if (FieldIsAvailable(productViewModel.Height)) { fields.Add(new Field("Height", "Height", FieldType.System)); }
+        if (FieldIsAvailable(productViewModel.Depth)) { fields.Add(new Field("Depth", "Depth", FieldType.System)); }
+
+        return fields;
+    }
+
+    private bool FieldIsAvailable(object value)
+    {
+        if (value != null)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    //CSV
+    public string GenerateCsv()
+    {
+        var fields = GetFields(Model.Products.FirstOrDefault());
+
+        var allHeaders = new List<KeyValuePair<string, string>>();
+
+        var fieldsHeaders = fields.Select(x => new KeyValuePair<string, string>(x.ID, x.Label));
+        allHeaders.AddRange(fieldsHeaders);
+
+        var customHeaders = Model.Products.Where(x => x.ProductFields != null && x.ProductFields.Values.Any()).SelectMany(x => x.ProductFields.Values).
+            Select(y => new KeyValuePair<string, string>(y.SystemName, y.Name)).
+            GroupBy(customField => customField.Key).Select(customField => customField.FirstOrDefault());
+        allHeaders.AddRange(customHeaders);
+
+        var categoryHeaders = Model.Products.Where(x => x.ProductCategories != null && x.ProductCategories.Values.Any()).SelectMany(product => product.ProductCategories.Values).
+        SelectMany(category => category.Fields.Values.
+            Select(field => new KeyValuePair<string, string>(string.Format("{0} {1}", category.Id, field.SystemName), string.Format("{0} {1}", category.Name, field.Name)))).
+        GroupBy(categoryField => categoryField.Key).Select(categoryField => categoryField.FirstOrDefault());
+        allHeaders.AddRange(categoryHeaders);
+
+        var headerSystemNames = allHeaders.Select(x => x.Key).ToList();
+
+        StringBuilder contentBuilder = new System.Text.StringBuilder();
+
+        contentBuilder.Append(Encoding.UTF8.GetString(Encoding.UTF8.GetPreamble()));
+
+        var headerLine = string.Join(";", allHeaders.Select(x => String.Format("\"{0}\"", x.Value))).ToString();
+
+        contentBuilder.AppendLine(headerLine);
+
+
+        var productsOuput = new StringBuilder();
+        foreach (var product in Model.Products)
+        {
+            var values = new string[headerSystemNames.Count];
+            GetValues(fields, product, headerSystemNames, values);
+
+            productsOuput.AppendLine(string.Join(";", values.Select(x => String.Format("\"{0}\"", (x == null ? "" : x.Replace("\"", "'"))))));
+        }
+
+        contentBuilder.Append(productsOuput.ToString());
+
+        return contentBuilder.ToString();
+    }
+
+    public void GetValues(IEnumerable<Field> fields, ProductViewModel product, List<string> headers, string[] values)
+    {
+
+        foreach (var field in fields)
+        {
+            var value = "";
+            if (field.ID == "Price")
+            {
+                value = GetFieldValueFromModel("Price", product.Price);
+            }
+            else
+            {
+                value = GetFieldValueFromModel(field.ID, product);
+            }
+            InsertValue(headers, values, field.ID, value);
+        }
+
+        if (product.ProductFields != null)
+        {
+            foreach (var customField in product.ProductFields.Values)
+            {
+                var value = GetFieldValue(customField);
+                InsertValue(headers, values, customField.SystemName, value);
+            }
+        }
+
+        if (product.ProductCategories != null)
+        {
+            foreach (var category in product.ProductCategories.Values)
+            {
+                foreach (var categoryField in category.Fields.Values)
+                {
+                    var name = string.Format("{0} {1}", category.Id, categoryField.SystemName);
+
+                    var value = GetFieldValue(categoryField);
+                    InsertValue(headers, values, name, value);
+                }
+            }
+        }
+    }
+
+    public string GetFieldValueFromModel(string fieldName, object model)
+    {
+        var value = Dynamicweb.Core.Converter.ToString(model?.GetType()?.GetProperty(fieldName)?.GetValue(model, null));
+        return value;
+    }
+
+    public string GetFieldValue(FieldValueViewModel field)
+    {
+        var value = "";
+        if (field.Value != null && field.Value is List<FieldOptionValueViewModel>)
+        {
+            var options = (List<FieldOptionValueViewModel>)field.Value;
+            value = string.Join(",", options.Select(x => x.Value));
+        }
+        else
+        {
+            value = Dynamicweb.Core.Converter.ToString(field.Value);
+        }
+        return value;
+    }
+
+    public void InsertValue(List<string> headers, string[] values, string name, string value)
+    {
+        var index = headers.IndexOf(name);
+        if (index != -1)
+        {
+            values[index] = value;
+        }
+    }
+}
+@GenerateCsv()

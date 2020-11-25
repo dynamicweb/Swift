@@ -1,0 +1,78 @@
+@using Dynamicweb.Rendering
+@inherits RazorTemplateBase<RazorTemplateModel<Template>>
+
+<div id="ErrorBlock" style="width: 100%; color: red;"></div>
+
+<form id="paymentForm" method="POST" action="@GetString("AuthorizeNet.FormAction")">
+    <input type="hidden" name="dataValue" id="dataValue" />
+    <input type="hidden" name="dataDescriptor" id="dataDescriptor" />
+
+    <input type="text" name="cardNumber" id="cardNumber" placeholder="cardNumber" /> <br><br>
+    <input type="text" name="expMonth" id="expMonth" placeholder="expMonth" /> <br><br>
+    <input type="text" name="expYear" id="expYear" placeholder="expYear" /> <br><br>
+    <input type="text" name="cardCode" id="cardCode" placeholder="cardCode" /> <br><br>
+    <input type="text" name="zip" id="zip" placeholder="zip" /> <br><br>
+    <input type="text" name="fullName" id="fullName" placeholder="fullName" /> <br><br>
+
+
+    <button type="button" onclick="sendPaymentDataToAnet()">Pay</button>
+</form>
+
+<script type="text/javascript">
+    function sendPaymentDataToAnet() {
+        SetErrorText("");
+        var authData = {
+            clientKey: "@GetString("AuthorizeNet.PublicClientKey")",
+            apiLoginID: "@GetString("AuthorizeNet.ApiLoginId")",
+        };
+        var cardData = {
+            cardNumber: document.getElementById("cardNumber").value,
+            month: document.getElementById("expMonth").value,
+            year: document.getElementById("expYear").value,
+            cardCode: document.getElementById("cardCode").value,
+            zip: document.getElementById("zip").value,
+            fullName: document.getElementById("fullName").value,
+        };
+        var secureData = {
+            authData,
+            cardData,
+        };
+
+        Accept.dispatchData(secureData, responseHandler);
+    }
+
+    function SetErrorText(message) {
+        document.getElementById("ErrorBlock").innerHTML = message;
+    }
+
+    function responseHandler(response) {
+        if (response.messages.resultCode === "Error") {
+            var i = 0;
+            var message = "";
+            while (i < response.messages.message.length) {
+                message += response.messages.message[i].code + ": " + response.messages.message[i].text + "<br />";
+                i = i + 1;
+            }
+            SetErrorText(message);
+        } else {
+            paymentFormUpdate(response.opaqueData);
+        }
+    }
+
+    function paymentFormUpdate(opaqueData) {
+        document.getElementById("dataDescriptor").value = opaqueData.dataDescriptor;
+        document.getElementById("dataValue").value = opaqueData.dataValue;
+
+        // Security: blank out the sensitive data before submitting
+        document.getElementById("cardNumber").value = "";
+        document.getElementById("expMonth").value = "";
+        document.getElementById("expYear").value = "";
+        document.getElementById("cardCode").value = "";
+        document.getElementById("zip").value = "";
+        document.getElementById("fullName").value = "";
+
+        document.getElementById("paymentForm").submit();
+    }
+</script>
+
+<script type="text/javascript" src="@GetString("AuthorizeNet.JavaScriptUrl")" charset="utf-8"></script>

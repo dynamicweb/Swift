@@ -1,0 +1,640 @@
+﻿
+<script>
+	function updateCart() {
+		var form = document.getElementById('ordersubmit');
+		form.submit();
+
+		//Spinner
+		var opts = {
+		  lines: 9, // The number of lines to draw
+		  length: 0, // The length of each line
+		  width: 10, // The line thickness
+		  radius: 18, // The radius of the inner circle
+		  corners: 1, // Corner roundness (0..1)
+		  rotate: 0, // The rotation offset
+		  direction: 1, // 1: clockwise, -1: counterclockwise
+		  color: '#000', // #rgb or #rrggbb or array of colors
+		  speed: 1, // Rounds per second
+		  trail: 35, // Afterglow percentage
+		  shadow: false, // Whether to render a shadow
+		  hwaccel: false, // Whether to use hardware acceleration
+		  className: 'spinner', // The CSS class to assign to the spinner
+		  zIndex: 2e9, // The z-index (defaults to 2000000000)
+		  top: '50%', // Top position relative to parent
+		  left: '50%' // Left position relative to parent
+		};
+
+		var target = document.getElementById('orderlist');
+		var spinner = new Spinner(opts).spin(target);
+
+		document.getElementById('orderlistcontent').style.visibility = "hidden";
+	}
+
+	function showHideDelivery() {
+		var div = document.getElementById("deliveryInformation");
+		if (document.getElementById("enableDelivery").checked) {
+			document.getElementById("deliveryInformation").className = "show";
+		} else {
+			document.getElementById("deliveryInformation").className = "hidden";
+		}
+	}
+</script>
+
+<section>
+	<h2>Discount and cart cheat sheet.</h2>
+	<style>
+		table, tr, td, th {
+			border: 1px solid black;
+			padding: 2px;
+		}
+
+			th.center {
+				text-align: center;
+			}
+
+			td.right {
+				text-align: right;
+			}
+
+			tr.greyed td {
+				color: #747373;
+				min-width:30px;
+			}
+
+			tr.product, td.product {
+				background-color: #e1e1e1;
+			}
+
+			tr.discount, td.discount {
+				background-color: darkgrey;
+			}
+
+			td.ProductDiscountTrue {
+				background-color: #f5cfc1;
+				min-width:30px;
+			}
+
+			td.DiscountTrue {
+				background-color: lavender;
+			}
+
+			td.productFalse {
+				background-color: beige;
+			}
+			td.orderTotal {
+				background-color: yellow;
+			}
+			td.subTotal {
+				background-color: aquamarine;
+			}
+	</style>
+	<table border="1" style="width:100%;">
+		<thead>
+			<tr>
+				<th rowspan="2">Name</th>
+				<th rowspan="2">Qty</th>
+				<th colspan="3" class="center">Unit price</th>
+				<th colspan="3" class="center">Total price</th>
+			</tr>
+			<tr>
+				<!--Unit price-->
+				<th>Original</th>
+				<th>Discount</th>
+				<th>with discount</th>
+				<!--Total price-->
+				<th>Original</th>
+				<th>Discount</th>
+				<th>with discount</th>
+			</tr>
+		</thead>
+		@foreach (LoopItem orderline in GetLoop("OrderLines"))
+		{
+			string rowCssClass = "product";
+			string discountText = string.Empty;
+			string orderlineTypeName = string.Empty;
+			bool isDiscount = false;
+			bool hasDiscount = false;
+			Int32 orderlineType = orderline.GetInteger("Ecom:Order:OrderLine.Type");
+			var orderlineTypeEnum = (Dynamicweb.Ecommerce.Orders.OrderLineType)orderlineType;
+			orderlineTypeName = orderlineTypeEnum.ToString();
+
+			if (orderline.GetBoolean("Ecom:Order:OrderLine.IsDiscount"))
+			{
+				rowCssClass = "discount";
+				discountText = "DISCOUNT: ";
+				isDiscount = true;
+			}
+
+			if (!isDiscount)
+			{
+				if (orderline.GetDouble("Ecom:Order:OrderLine.UnitPrice.PriceWithVAT.Value") != orderline.GetDouble("Ecom:Product.Discount.Price.PriceWithVAT.Value"))
+				{
+					hasDiscount = true;
+				}
+				<tr>
+					<td colspan="8"></td>
+
+				</tr>
+			}
+			<tr class="@rowCssClass">
+				<td>
+					@{
+						if (isDiscount)
+						{
+							@discountText @orderline.GetString("Ecom:Order:OrderLine.ProductName")
+
+						}
+						else
+						{
+							@orderline.GetString("Ecom:Order:OrderLine.ProductName")<br /><small>@orderline.GetString("Ecom:Order:OrderLine.ProductNumber") - @orderline.GetString("Ecom:Order:OrderLine.ProductVariantText")</small>
+							foreach (LoopItem productDiscount in orderline.GetLoop("ProductDiscounts"))
+							{
+								<br /><small>
+									<strong>DISCOUNT:</strong>
+									"@productDiscount.GetString("Ecom:Product.Discount.Name")": @productDiscount.GetString("Ecom:Product.Discount.Amount.PriceWithVATFormatted")
+									@{
+										if (productDiscount.GetString("Ecom:Product.Discount.Type") == "PERCENT")
+										{
+											<text>(</text>@productDiscount.GetString("Ecom:Product.Discount.PercentWithVAT")<text>%)</text>
+										}
+									}
+								</small>
+							}
+						}
+						<br /><small>Orderline type: @orderlineTypeName <text>(</text>@orderlineType<text>)</text></small>
+					}
+				</td>
+				<td>@orderline.GetString("Ecom:Order:OrderLine.Quantity") </td>
+				<!--Unit price-->
+				<td class="right">@RenderPrices(orderline, "Ecom:Order:OrderLine.UnitPrice", false, true)</td>
+				<td class="right">@RenderPrices(orderline, "Ecom:Product.Discount.TotalAmount", isDiscount, hasDiscount)</td>
+				<td class="right">@RenderPrices(orderline, "Ecom:Product.Discount.Price", isDiscount, hasDiscount)</td>
+				<!--Total price-->
+				<td class="right @rowCssClass@isDiscount.ToString()">@RenderPrices(orderline, "Ecom:Order:OrderLine.Price", isDiscount, true)</td>
+				<td class="right @orderlineTypeName@isDiscount.ToString()">
+					@{
+						if (isDiscount)
+						{
+							@RenderPrices(orderline, "Ecom:Order:OrderLine.TotalPriceWithProductDiscounts", false, true)
+						}
+						else
+						{
+							@RenderIfNotDiscount((orderline.GetDouble("Ecom:Order:OrderLine.Price.PriceWithVAT.Value") - orderline.GetDouble("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.PriceWithVAT.Value")).ToString(), isDiscount, hasDiscount)
+						}
+					}
+				</td>
+				<td class="right @rowCssClass@isDiscount.ToString()">@RenderPrices(orderline, "Ecom:Order:OrderLine.TotalPriceWithProductDiscounts", isDiscount, true)</td>
+			</tr>
+			@*<tr>
+					<td colspan="8">
+						@{
+							if (hasDiscount)
+							{
+								@orderline.TemNOTplateTags()
+							}
+						}
+					</td>
+				</tr>*@
+		}
+		<tr>
+			<td colspan="5">Total of orignal price / Total product discounts / Total with all product discounts*<br /><small>*Price after product discounts, before order discounts, fees and taxes</small></td>
+			<td class="right productFalse">@RenderPrices("Ecom:Order.TotalPriceWithoutDiscountsFeesAndTaxes")</td>
+			<td class="right ProductDiscountTrue">@RenderPrices("Ecom:Order.TotalProductDiscount")</td>
+			<td class="right productFalse">
+				@RenderPrices("Ecom:Order.TotalPriceWithoutOrderDiscountsAndFees")
+			</td>
+		</tr>
+
+		<tr>
+			<td colspan="6">
+				Order discount total<br /><small>Sum of all order discounts (inclusive and exclusive)</small>
+			</td>
+			<td class="right DiscountTrue" colspan="2">@RenderPrices("Ecom:Order.TotalOrderDiscount")</td>
+		</tr>
+		<tr>
+			<td colspan="5">Sub totals<br /><small>Sum of all original prices, discounts and discounted price. Before fees and taxes</small></td>
+			<td class="right subTotal">@RenderPrices("Ecom:Order.TotalPriceWithoutDiscountsFeesAndTaxes")</td>
+			<td class="right subTotal">@RenderPrices("Ecom:Order.TotalDiscount")</td>
+			<td class="right subTotal">@RenderPrices("Ecom:Order.PriceWithoutFees")</td>
+		</tr>
+		<tr>
+			<td colspan="7">
+				Payment<br />
+				<small>@GetString("Ecom:Order.PaymentMethod")</small>
+			</td>
+			<td class="right">@RenderPrices("Ecom:Order.PaymentFee")</td>
+		</tr>
+		<tr>
+			<td colspan="7">
+				Shipping<br />
+				<small>@GetString("Ecom:Order.ShippingMethod")</small>
+			</td>
+			<td class="right">@RenderPrices("Ecom:Order.ShippingFee")</td>
+		</tr>
+
+		<tr>
+			<td colspan="5"><strong>Total (Ecom:Order.Price)</strong><br>This is the order.Price and what counts!</td>
+			<td class="right"></td>
+			<td class="right"></td>
+			<td class="right orderTotal">@RenderPrices("Ecom:Order.Price")</td>
+		</tr>
+	</table>
+
+	<h2>Legends</h2>
+	<table>
+		<tr>
+			<td class="product"></td>
+			<td>Product orderline</td>
+		</tr>
+		<tr>
+			<td class="discount"></td>
+			<td>Discount orderline</td>
+		</tr>
+		<tr>
+			<td class="ProductDiscountTrue"></td>
+			<td>Product discount price</td>
+		</tr>
+		<tr>
+			<td class="DiscountTrue"></td>
+			<td>Order discount price</td>
+		</tr>
+		<tr>
+			<td class="productFalse"></td>
+			<td>Product price - with or without discount</td>
+		</tr>
+		<tr>
+			<td class="subTotal"></td>
+			<td>Subtotals of product prices, discounts and product prices with discount - before any fees</td>
+		</tr>
+		<tr>
+			<td class="orderTotal"></td>
+			<td>Total order price with discounts, vat, taxes, fees and all.</td>
+		</tr>
+	</table>
+
+	@helper RenderPrices(LoopItem orderline, string name, bool isDiscount, bool hasDiscount)
+	{
+		if (!isDiscount && hasDiscount)
+		{
+			string PriceWithVATFormatted = name + ".PriceWithVATFormatted";
+			string VATPercentFormatted = name + ".VATPercentFormatted";
+			string VATFormatted = name + ".VATFormatted";
+			string PriceWithoutVATFormatted = name + ".PriceWithoutVATFormatted";
+
+			<div title="Tag: @name.*">
+				<strong title="@PriceWithVATFormatted">@orderline.GetString(PriceWithVATFormatted)</strong>
+				<br />
+				<small>VAT: <span title="@VATPercentFormatted">@orderline.GetString(VATPercentFormatted)</span> <span title="@VATFormatted">@orderline.GetString(VATFormatted)</span></small>
+				<br />
+				<small title="@PriceWithoutVATFormatted">@orderline.GetString(PriceWithoutVATFormatted)</small>
+			</div>
+		}
+	}
+
+	@helper RenderPrices(string name)
+	{
+		string PriceWithVATFormatted = name + ".PriceWithVATFormatted";
+		string VATPercentFormatted = name + ".VATPercentFormatted";
+		string VATFormatted = name + ".VATFormatted";
+		string PriceWithoutVATFormatted = name + ".PriceWithoutVATFormatted";
+
+		<div title="Tag: @name.*">
+			<strong title="@PriceWithVATFormatted">@GetString(PriceWithVATFormatted)</strong>
+			<br />
+			<small>VAT: <span title="@VATPercentFormatted">@GetString(VATPercentFormatted)</span> <span title="@VATFormatted">@GetString(VATFormatted)</span></small>
+			<br />
+			<small title="@PriceWithoutVATFormatted">@GetString(PriceWithoutVATFormatted)</small>
+		</div>
+	}
+
+	@functions {
+		string RenderIfNotDiscount(string value, bool isDiscount, bool hasDiscount)
+		{
+			if (!isDiscount && hasDiscount)
+			{
+				return value;
+			}
+			return string.Empty;
+		}
+	}
+
+</section>
+
+<section>
+	<form name="ordersubmit" id="ordersubmit" method="post" class="form-light form-horizontal">
+		<div id="voucherField">
+			<h2>@Translate("Voucher", "Voucher")</h2>
+			<div class="form-body">
+				<div class="input-group">
+					<input type="text" class="form-control" placeholder="@Translate("Enter voucher code", "Enter voucher code")" name="EcomOrderVoucherCode" id="EcomOrderVoucherCode" value="@GetString("Ecom:Order.Customer.VoucherCode")">
+					<span class="input-group-btn">
+						<button class="btn btn-two" style="margin-top: -4px !important" type="submit" onclick="updateCart();">@Translate("Apply voucher", "Apply voucher")</button>
+					</span>
+				</div>
+			</div>
+		</div>
+		@foreach (LoopItem errors in GetLoop("ValidationErrors"))
+		{
+			@errors.GetValue("HeaderStart")
+			<div class="row">
+				<div>
+					<h4>@Translate("Ooops!", "Ooops!")</h4>
+				</div>
+			</div>
+			@errors.GetValue("HeaderEnd")
+			<div class="row">
+				<div>
+					<div class="alert alert-danger" role="alert"><a href="javascript:document.getElementById('@errors.GetString("Ecom:Cart.ValidationError.FieldSystemName")').focus();"><b>@errors.GetString("Ecom:Cart.ValidationError.ErrorMessage")</b></a></div>
+				</div>
+			</div>
+		}
+		<div class="row">&nbsp;</div>
+
+		<div id="billingInformation">
+			<h2>@Translate("Billing address", "Billing address")</h2>
+			<div class="form-body">
+				<div>
+					<label class="control-label" for="EcomOrderCustomerCompany">@Translate("Company", "Company")</label>
+					<input type="text" style="width: 100%" class="form-control" name="EcomOrderCustomerCompany" id="EcomOrderCustomerCompany" value="@GetString("Ecom:Order.Customer.Company")" />
+				</div>
+				<div>
+					<label class="control-label" for="EcomOrderCustomerName">@Translate("Name", "Name")</label>
+					<input type="text" style="width: 100%" class="form-control" name="EcomOrderCustomerName" id="EcomOrderCustomerName" value="@GetString("Ecom:Order.Customer.Name")" />
+				</div>
+				<div>
+					<label class="control-label" for="EcomOrderCustomerPhone">@Translate("Phone", "Phone")</label>
+					<input type="text" style="width: 90px" class="form-control" name="EcomOrderCustomerPhone" id="EcomOrderCustomerPhone" value="@GetString("Ecom:Order.Customer.Phone")" />
+				</div>
+
+				<div>
+					<label class="control-label" for="EcomOrderCustomerEmail">@Translate("Email", "Email")</label>
+					<input type="email" style="width: 160px" class="form-control" name="EcomOrderCustomerEmail" id="EcomOrderCustomerEmail" value="@GetString("Ecom:Order.Customer.Email")" />
+				</div>
+				<div>
+					<label class="control-label" for="EcomOrderCustomerAddress">@Translate("Address", "Address")</label>
+					<input type="text" style="width: 100%" class="form-control" name="EcomOrderCustomerAddress" id="EcomOrderCustomerAddress" value="@GetString("Ecom:Order.Customer.Address")" />
+				</div>
+				<div>
+					<label class="control-label" for="EcomOrderCustomerZip">@Translate("Zip code", "Zip code")</label>
+					<input type="text" style="width: 90px" class="form-control" name="EcomOrderCustomerZip" id="EcomOrderCustomerZip" value="@GetString("Ecom:Order.Customer.Zip")" />
+				</div>
+				<div>
+					<label class="control-label" for="EcomOrderCustomerCity">@Translate("City", "City")</label>
+					<input type="text" style="width: 160px" class="form-control" name="EcomOrderCustomerCity" id="EcomOrderCustomerCity" value="@GetString("Ecom:Order.Customer.City")" />
+				</div>
+
+
+				<div>
+					<label class="control-label" for="EcomOrderCustomerCountry">@Translate("Country", "Country")</label>
+					<select name="EcomOrderCustomerCountry" id="EcomOrderCustomerCountry" class="form-control" onchange="updateCart();">
+						@foreach (LoopItem country in GetLoop("Countries"))
+						{
+							if (!string.IsNullOrWhiteSpace(country.GetString("Ecom:Country.IsCustomerCountryOrDefault")))
+							{
+								<option value="@country.GetString("Ecom:Country.Code2")" selected="selected">
+									@country.GetString("Ecom:Country.Name")
+								</option>
+							}
+							if (string.IsNullOrWhiteSpace(country.GetString("Ecom:Country.IsCustomerCountryOrDefault")))
+							{
+								<option value="@country.GetString("Ecom:Country.Code2")">
+									@country.GetString("Ecom:Country.Name")
+								</option>
+							}
+						}
+					</select>
+				</div>
+
+
+				<div>
+					@{
+						var checkstring = "checked";
+
+						if (!string.IsNullOrWhiteSpace("Ecom:Order.Delivery.Address"))
+						{
+							checkstring = "";
+						}
+						else
+						{
+							checkstring = "checked";
+						}
+					}
+
+					<label for="enableDelivery" class="">
+						<input type="checkbox" id="enableDelivery" onclick="showHideDelivery();" @checkstring /><i></i> @Translate("Alternative delivering address", "Alternative delivering address")</input>
+					</label>
+				</div>
+
+				<div>&nbsp;</div>
+			</div>
+
+		</div>
+
+		@{
+			var visibility = "";
+
+			if (string.IsNullOrWhiteSpace("Ecom:Order.Delivery.Address"))
+			{
+				visibility = "show";
+			}
+			else
+			{
+				visibility = "hidden";
+			}
+		}
+
+		<div class="@visibility" id="deliveryInformation">
+			<h2>@Translate("Delivery address", "Delivery address")</h2>
+
+			<div class="form-body">
+				<div>
+					<label class="control-label" for="EcomOrderDeliveryCompany">@Translate("Company", "Company")</label>
+					<input type="text" style="width: 100%" class="form-control" name="EcomOrderDeliveryCompany" id="EcomOrderDeliveryCompany" value="@GetString("Ecom:Order.Delivery.Company")" />
+				</div>
+				<div>
+					<label class="control-label" for="EcomOrderDeliveryName">@Translate("Name", "Name")</label>
+					<input type="text" style="width: 100%" class="form-control" name="EcomOrderDeliveryName" id="EcomOrderDeliveryName" value="@GetString("Ecom:Order.Delivery.Name")" />
+				</div>
+				<div>
+					<label class="control-label" for="EcomOrderDeliveryPhone">@Translate("Phone", "Phone")</label>
+					<input type="text" style="width: 90px" class="form-control" name="EcomOrderDeliveryPhone" id="EcomOrderDeliveryPhone" value="@GetString("Ecom:Order.Delivery.Phone")" />
+				</div>
+
+				<div>
+					<label class="control-label" for="EcomOrderDeliveryEmail">@Translate("Email", "Email")</label>
+					<input type="email" style="width: 160px" class="form-control" name="EcomOrderDeliveryEmail" id="EcomOrderDeliveryEmail" value="@GetString("Ecom:Order.Delivery.Email")" />
+				</div>
+				<div>
+					<label class="control-label" for="EcomOrderDeliveryAddress">@Translate("Address", "Address")</label>
+					<input type="text" style="width: 100%" class="form-control" name="EcomOrderDeliveryAddress" id="EcomOrderDeliveryAddress" value="@GetString("Ecom:Order.Delivery.Address")" />
+				</div>
+				<div>
+					<label class="control-label" for="EcomOrderDeliveryZip">@Translate("Zip code", "Zip code")</label>
+					<input type="text" style="width: 90px" class="form-control" name="EcomOrderDeliveryZip" id="EcomOrderDeliveryZip" value="@GetString("Ecom:Order.Delivery.Zip")" />
+				</div>
+				<div>
+					<label class="control-label" for="EcomOrderDeliveryCity">@Translate("City", "City")</label>
+					<input type="text" style="width: 160px" class="form-control" name="EcomOrderDeliveryCity" id="EcomOrderDeliveryCity" value="@GetString("Ecom:Order.Delivery.City")" />
+				</div>
+
+				<div>
+					<label class="control-label" for="EcomOrderDeliveryCountry">@Translate("Country", "Country")</label>
+					<select name="EcomOrderDeliveryCountry" id="EcomOrderDeliveryCountry" class="form-control" onchange="updateCart();">
+						@foreach (LoopItem country2 in GetLoop("Countries"))
+						{
+							if (!string.IsNullOrWhiteSpace(country2.GetString("Ecom:Country.IsDeliveryCountryOrDefault")))
+							{
+								<option value="@country2.GetString("Ecom:Country.Code2")" selected="selected">
+									@country2.GetString("Ecom:Country.Name")
+								</option>
+							}
+							if (string.IsNullOrWhiteSpace(country2.GetString("Ecom:Country.IsDeliveryCountryOrDefault")))
+							{
+								<option value="@country2.GetString("Ecom:Country.Code2")">
+									@country2.GetString("Ecom:Country.Name")
+								</option>
+							}
+						}
+					</select>
+				</div>
+				<div>&nbsp;</div>
+			</div>
+		</div>
+
+		<div id="shippingMethod">
+			<h2>@Translate("Shipping", "Shipping")</h2>
+			<div class="form-body">
+				@foreach (LoopItem shipping in GetLoop("Shippingmethods"))
+				{
+					<label for="EcomCartShippingmethodID_@shipping.GetString("Ecom:Cart.Shippingmethod.ID")">
+						@if (!string.IsNullOrWhiteSpace(shipping.GetString("Ecom:Cart.Shippingmethod.IsSelected")))
+						{
+							<input onclick="updateCart();" type="radio" name="EcomCartShippingmethodID" id="EcomCartShippingmethodID_@shipping.GetString("Ecom:Cart.Shippingmethod.ID")" value="@shipping.GetString("Ecom:Cart.Shippingmethod.ID")" checked="checked" /><text>&nbsp;</text>
+						}
+						@if (string.IsNullOrWhiteSpace(shipping.GetString("Ecom:Cart.Shippingmethod.IsSelected")))
+						{
+							<input onclick="updateCart();" type="radio" name="EcomCartShippingmethodID" id="EcomCartShippingmethodID_@shipping.GetString("Ecom:Cart.Shippingmethod.ID")" value="@shipping.GetString("Ecom:Cart.Shippingmethod.ID")" /><text>&nbsp;</text>
+						}
+						@shipping.GetString("Ecom:Cart.Shippingmethod.Icon")
+						@shipping.GetString("Ecom:Cart.Shippingmethod.Name")
+						@if (string.IsNullOrWhiteSpace(shipping.GetString("Ecom:Cart.ShippingMethod.Price.IsZero")))
+						{
+							shipping.GetString("Ecom:Cart.ShippingMethod.Price");
+						}
+					</label><br />
+				}
+			</div>
+		</div>
+
+		<div id="paymentMethod">
+			<h2>@Translate("Payment", "Payment")</h2>
+			<div class="form-body">
+				@foreach (LoopItem payment in GetLoop("Paymethods"))
+				{
+					<label for="EcomCartPaymethodID_@payment.GetString("Ecom:Cart.Paymethod.ID")">
+						@if (!string.IsNullOrWhiteSpace(payment.GetString("Ecom:Cart.Paymethod.IsSelected")))
+						{
+							<input onclick="updateCart();" type="radio" name="EcomCartPaymethodID" id="EcomCartPaymethodID_@payment.GetString("Ecom:Cart.Paymethod.ID")" value="@payment.GetString("Ecom:Cart.Paymethod.ID")" checked="checked" /><text>&nbsp;</text>
+						}
+						@if (string.IsNullOrWhiteSpace(payment.GetString("Ecom:Cart.Paymethod.IsSelected")))
+						{
+							<input onclick="updateCart();" type="radio" name="EcomCartPaymethodID" id="EcomCartPaymethodID_@payment.GetString("Ecom:Cart.Paymethod.ID")" value="@payment.GetString("Ecom:Cart.Paymethod.ID")" /><text>&nbsp;</text>
+						}
+						@payment.GetString("Ecom:Cart.Paymethod.Icon")
+						@payment.GetString("Ecom:Cart.Paymethod.Name")
+						@if (string.IsNullOrWhiteSpace(payment.GetString("Ecom:Cart.Paymethod.Price.IsZero")))
+						{
+							payment.GetString("Ecom:Cart.Paymethod.Price");
+						}
+					</label><br />
+				}
+			</div>
+		</div>
+
+		<div id="reviewOrder">
+			<h2>@Translate("Review Order", "Review Order")</h2>
+			<table class="table table-cart table-responsive" id="orderlist">
+				<tbody id="orderlistcontent">
+					@foreach (LoopItem orderline in GetLoop("OrderLines"))
+					{
+						var image = orderline.GetString("Ecom:Product.ImageLarge.Clean");
+
+						<tr>
+							<td colspan="4" class="dw-table-title">
+								<strong>
+									<a href="@orderline.GetString("Ecom:Order:OrderLine.ProductLink")">
+										@orderline.GetString("Ecom:Order:OrderLine.ProductName")
+									</a>
+								</strong>
+								<br />
+								<small>@orderline.GetString("Ecom:Order:OrderLine.ProductVariantText")</small>
+							</td>
+						</tr>
+						<tr>
+							<td class="text-center" colspan="2" style="border-right: 0">
+								@orderline.GetString("Ecom:Order:OrderLine.Quantity")
+								<!--
+								<input type="number" name="cant" value="Ecom:Order:OrderLine.Quantity" style="width:60px; text-align:center; margin-right:5px; height:34px;">
+								-->
+							</td>
+							<td class="text-left">
+								@if (!string.IsNullOrWhiteSpace(orderline.GetString("Ecom:Order:OrderLine.IsProduct")))
+								{
+									<a href="@orderline.GetString("Ecom:Order:OrderLine.IncrementLink")" onclick="updateCart();" title=""><i class="fa fa-plus"></i></a><text>&nbsp;</text>
+									<a href="@orderline.GetString("Ecom:Order:OrderLine.DecrementLink")" onclick="updateCart();" title=""><i class="fa fa-minus"></i></a><text>&nbsp;</text>
+									<a href="@orderline.GetString("Ecom:Order:OrderLine.DeleteLink")" onclick="updateCart();" title=""><i class="fa fa-trash-o"></i></a>
+								}
+							</td>
+							<td class="text-right">
+								@if (orderline.GetInteger("Ecom:Order:OrderLine.Points") > 0)
+								{
+									@orderline.GetDouble("Ecom:Order:OrderLine.Points");
+									<text> </text>@Translate("orderline_points", "points")
+								}
+								else
+								{
+									@orderline.GetString("Ecom:Order:OrderLine.TotalPrice")
+								}
+							</td>
+						</tr>
+
+						foreach (LoopItem bomitem in orderline.GetLoop("BOMItems"))
+						{
+							<tr>
+								<td class="text-center"><small>@bomitem.GetString("Ecom:Order:OrderLine.Quantity")</small></td>
+								<td colspan="2"><small><a href="@bomitem.GetString("Ecom:Order:OrderLine.ProductLink")">@bomitem.GetString("Ecom:Order:OrderLine.ProductName")</a></small></td>
+								<td class="text-right"><small>@bomitem.GetString("Ecom:Order:OrderLine.TotalPrice")</small></td>
+							</tr>
+						}
+					}
+					<tr>
+						<td class="text-center">
+							<i class="fa fa-credit-card"></i>
+						</td>
+						<td colspan="2">
+							@GetString("Ecom:Order.PaymentMethod")
+						</td>
+						<td class="text-right">@GetString("Ecom:Order.PaymentFee")</td>
+					</tr>
+					<tr>
+						<td class="text-center">
+							<i class="fa fa-truck"></i>
+						</td>
+						<td colspan="2">
+							@GetString("Ecom:Order.ShippingMethod")
+						</td>
+						<td class="text-right">@GetString("Ecom:Order.ShippingFee")</td>
+					</tr>
+					<tr>
+						<td colspan="3" style="border-right: 0"><strong>@Translate("Total", "Total")</strong></td>
+						<td class="text-right"><strong>@GetString("Ecom:Order.OrderLines.Total.PriceWithVAT")</strong></td>
+					</tr>
+				</tbody>
+			</table>
+
+			<button class="btn btn-dw-primary" type="submit" name="@GetString("CartV2.NextStepButtonName")" id="@GetString("CartV2.NextStepButtonName")">@Translate("Place order", "Place order")</button>
+
+			<label class="checkbox persistent"><input type="checkbox" id="EcomOrderCustomerAccepted" name="EcomOrderCustomerAccepted" value="1" /> @Translate("I accept the terms and conditions of this website.", "I accept the terms and conditions of this website.")</label>
+		</div>
+	</form>
+</section>

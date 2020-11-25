@@ -1,0 +1,110 @@
+@using System.Collections.Generic
+@using Dynamicweb.Rendering
+@inherits RazorTemplateBase<RazorTemplateModel<Template>>
+
+@{
+    var supportedLocales = new HashSet<string>(
+        new[] { "zh-CN", "zh-TW", "da-DK", "nl-NL", "en-US", "fi-FI", "fr-FR", "de-DE", "it-IT", "ja-JP", "ko-KR", "no-NO", "pl-PL", "pt-BR", "ru-RU", "es-ES", "sv-SE" },
+        StringComparer.OrdinalIgnoreCase
+    );
+    var currentLocale = GetGlobalValue("Global:Area.Culture.Name");
+    if (!supportedLocales.Contains(currentLocale))
+    {
+        currentLocale = "en-US";
+    }
+}
+
+<script src="@GetString("Adyen.JavaScriptUrl")"
+        integrity="sha384-yJSUmaii24aKOI7fvTEvOL4FDDS6V6TaNicpl82vIn5RK1ApcZM94gsejXdCqVfn"
+        crossorigin="anonymous"></script>
+
+<link rel="stylesheet" href="@GetString("Adyen.CssUrl")"
+      integrity="sha384-l5/gSrWMFWCKnEqoG1F21fvhDesLnZt/JlXjkA0FWp6E68Pc/9mxg+nPvvx+uB4G"
+      crossorigin="anonymous">
+
+<div id="output" style="width: 100%;"></div>
+<div id="dropin-container"></div>
+
+<script>
+    var configuration = {
+        baseUrl: '/Default.aspx?ID=@GetGlobalValue("Global:Page.ID")&CheckoutHandlerOrderID=@GetString("Ecom:Order.ID")&redirect=false',
+        onSubmit: function (state, dropin) {
+            dropin.setStatus('loading');
+            var request = createRequest("POST", this.baseUrl + '&Action=SelectMethod');
+            request.addEventListener("readystatechange", function () {
+                if (this.readyState === 4) {
+                    processResponse(this, dropin);
+                }
+            });
+
+            request.send(JSON.stringify(state.data));
+        },
+        onAdditionalDetails: function (state, dropin) {            
+            dropin.setStatus('loading');
+            var request = createRequest("POST", this.baseUrl + '&Action=GetAdditionalDetails');
+            request.addEventListener("readystatechange", function () {
+                if (this.readyState === 4) {
+                    processResponse(this, dropin);
+                }
+            });
+
+            request.send(JSON.stringify(state.data));
+        },
+        showPayButton: true,
+        locale: '@currentLocale',
+        environment: '@GetString("Adyen.Environment")',
+        originKey: '@GetString("Adyen.OriginKey")',
+        amount: {
+            currency: '@GetString("Adyen.Currency")',
+            value: @GetLong("Adyen.Price"),
+        },
+        showStoredPaymentMethods: false,
+        paymentMethodsResponse: @GetString("Adyen.PaymentMethodsResponse"),
+    };
+    var checkout = new AdyenCheckout(configuration);
+    var dropin = checkout.create('dropin').mount('#dropin-container');
+
+    function createRequest(method, url) {
+        var request = new XMLHttpRequest();
+        request.responseType = "json";
+        request.open(method, url, true);
+        request.setRequestHeader('Content-Type', 'application/json');
+
+        return request;
+    }
+
+    function processResponse(request, dropin) {
+        dropin.setStatus('ready');
+        
+        var response = request.response;
+        if (request.status !== 200 || !response) {
+            showError("Something went wrong.");
+            return;
+        }
+
+        if (response.redirectToReceipt) {
+            // show payment result and redirect to receipt
+            dropin.setStatus("success");
+            setTimeout(function () {
+                document.location = response.redirectToReceipt;
+            }, 1500);
+            return;
+        }
+
+        if (response.action) {
+            dropin.handleAction(response.action);
+        } else if (response.errorCode) {
+            showError(response.message);
+        } else {
+            showError("Something went wrong.");
+        }
+    }
+
+    function showError(message) {
+        if (message && message.length > 0) {
+            dropin.setStatus("error", { message: message });
+        } else {
+            dropin.setStatus("error");
+        }
+    }
+</script>

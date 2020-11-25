@@ -1,0 +1,315 @@
+﻿@using System.Web;
+@{
+    var commentsTotalCount = GetInteger("Comments.TotalCount");
+
+    var dwPageId = GetGlobalValue("Global:Page.ID");
+    var productId = GetValue("Ecom:Product.ID");
+    var langId = GetValue("Ecom:Product.LanguageID");
+
+    var spamScript = GetValue("Comment.SpamScript");
+
+    var pageViewUrl = string.Format("{0}#comments", GetGlobalValue("Global:Pageview.Url"));
+    var hiddenSubject = string.Format("Du har modtaget et svar på din kommentar på {0}...", pageViewUrl);
+    var accessUserName = GetGlobalValue("Global:Extranet.Name");
+    var accessUserEmail = GetGlobalValue("Global:Extranet.Email");
+
+    var addCommentHref = string.Format("{0}#writecomment", pageViewUrl);
+}
+
+<style type="text/css">
+    #commentform { margin: 15px 0 0 0; }
+    #commentform label { 
+        position: relative;
+        vertical-align: top;
+        display: inline;
+        width: 230px;
+        padding: 11px 10px 8px;
+        display: inline-block;
+        margin: 0 10px 0 0;
+        font-size: 12px;
+        font-weight: bold;
+        color: #fff;
+        text-shadow: 2px 1px 0 rgba(0,0,0,0.4);
+        background: rgb(72, 72, 72);
+    }
+    #commentform label .bg {
+        position: absolute;
+        top: 0;
+        right: -15px;
+        height: 38px;
+        width: 15px;
+        display: block;
+    }
+    #commentform input[type=text], #commentform textarea {
+        font: 14px/14px Arial, Helvetica, sans-serif;
+        background: #fff;
+        border: none;
+        border: 1px solid #d8d8d8;
+    }
+    #commentform input[type=text], #commentform select, #commentform option {
+        color: #666;
+        width: 350px;
+        margin: 0 5px 20px 0;
+        padding: 10px 7px;
+    }
+    #commentform textarea {
+        color: #666;
+        width: 350px !important;
+        padding: 5px 7px;
+    }
+    #commentform input[type=submit] {
+        margin: 15px 5px 0 275px;
+        cursor: pointer;
+        float: left;
+    }
+    #commentform label {
+        font-family: LeagueGothicRegular, "Arial Narrow",sans-serif;
+        font-size: 18px;
+        text-transform: uppercase;
+        background-color: rgb(39, 31, 23);
+        color: #eee;
+        font-weight: normal;
+        padding: 8px 14px 5px;
+    }
+
+    .profileimg {
+        float: left;
+        padding: 10px;
+        background-color: #EDEDED;
+        margin: 3px;
+        margin-right: 10px;
+        -webkit-border-radius: 5px;
+        -moz-border-radius: 5px;
+        -ms-border-radius: 5px;
+        border-radius: 3px;
+        width: 80px;
+        height: 80px;
+    }
+
+    .commentText { float: left; margin: 5px; padding: 0px; width: 70%; }
+
+    .reply { min-height: 50px; padding: 5px; border-left: 5px solid #c5c5c5; background-color: #f2f2f2; float: left; margin-bottom: 5px; width: 100%; }
+    .reply .profileimg { width: 50px; height: 50px; }
+    .reply .profileimg img { width: 50px; height: 50px; }
+
+    .silent { color: #c5c5c5; }
+    .silent a { color: #b9b9b9; }
+
+    .clear:before,
+    .clear:after {
+        content: "";
+        display: table;
+    }
+
+    .clear:after {
+        clear: both;
+    }
+
+    .clear {
+        zoom: 1; /* For IE 6/7 (trigger hasLayout) */
+    }
+</style>
+<div class="clear"></div>
+<a name="comments"></a>
+<p>&nbsp;</p>
+
+@if (commentsTotalCount > 0)
+{
+    <div class="heading">
+        <h3>
+            <i class="icon-comments"></i>
+            @if (commentsTotalCount == 1)
+            {
+                <text>1 kommentar</text>
+            }
+            else if (commentsTotalCount > 1)
+            {
+                @commentsTotalCount <text>kommentarer</text>
+            }
+        </h3>
+        <small><a href="@addCommentHref">Skriv kommentar</a></small>
+    </div>
+    <div class="clear"></div>
+    <small class="silent">Få dit profil billede på - upload på <a href="http://www.gravatar.com" rel="nofollow">Gravatar</a></small>
+    <br />
+    <div class="clear"></div>
+    foreach (LoopItem i in GetLoop("Comments"))
+    {
+        var id = string.Format("comment{0}", @i.GetString("ID"));
+        <a id="@id"></a>
+        var gravatarImgSrc = string.Format("http://www.gravatar.com/avatar/{0}?d=mm", @i.GetString("EmailMd5Hash"));
+        <div class="profileimg"><img src="@gravatarImgSrc" alt="" /></div>
+        <div class="commentText">
+
+            @{
+                var websiteUrl = i.GetString("Website");
+                var name = i.GetString("Name");
+            }
+            @if (string.IsNullOrWhiteSpace(websiteUrl))
+            {
+                <strong><i class="icon-user"></i> @name</strong>                
+            }
+            else
+            {
+                <a href="@websiteUrl"><strong><i class="icon-user"></i> @name</strong></a>
+            }
+
+            <small><span class="silent"><i class="icon-time"></i> @i.GetDate("CreatedDate").ToLongDateString() @i.GetDate("EditedDate").ToShortTimeString()</span></small><br />
+            @i.GetString("Text")
+            <br />
+            @{ 
+                var encodedName = HttpUtility.JavaScriptStringEncode(i.GetString("Name"));
+                var text = i.GetString("Text");
+                const int MaxStringLength = 50;
+                if (text.Length > MaxStringLength)
+                {
+                    text = text.Substring(0, MaxStringLength - 3);
+                    text = text.PadRight(MaxStringLength, '.');
+                }
+                var croppedAndEncoded = HttpUtility.JavaScriptStringEncode(text);                
+                var commentReplyHref = string.Format("javascript:comment_reply({0}, '{1}', '{2}');", @i.GetString("ID"), encodedName, croppedAndEncoded);                
+            }
+            <a href="@commentReplyHref" style="color:#c5c5c5;"><small>Skriv et svar</small></a><br />
+            @{ var replyCount = GetInteger("Comments.TotalCount"); }
+            @if (replyCount > 0)
+            {
+                <small>@i.GetInteger("ReplyCount") svar.</small><br />
+                foreach (LoopItem i2 in i.GetLoop("Replies"))
+                {
+                    var id2 = string.Format("comment{0}", @i2.GetString("ID"));
+                    <a id="@id2"></a>
+                    <div class="reply">
+                        @{ var gravatarImgSrc2 = string.Format("http://www.gravatar.com/avatar/{0}?d=mm", @i2.GetString("EmailMd5Hash")); }
+                        <div class="profileimg"><img src="@gravatarImgSrc2" alt="" /></div>
+                        <div class="commentText">                            
+                            
+                            @{
+                                var replyWebsiteUrl = i2.GetString("Website");
+                                var replyName = i2.GetString("Name");
+                            }
+                            @if (string.IsNullOrWhiteSpace(replyWebsiteUrl))
+                            {
+                                <strong><i class="icon-user"></i> @replyName</strong>                                
+                            }
+                            else
+                            {
+                                <a href="@replyWebsiteUrl"><strong><i class="icon-user"></i> @replyName</strong></a>
+                            }
+                            <small>
+                                <span style="color:#808080">
+                                    <i class="icon-time"></i> @i2.GetDate("CreatedDate").ToLongDateString() @i2.GetDate("EditedDate").ToShortTimeString()
+                                </span>
+                            </small><br />
+                            @i2.GetString("Text")
+                        </div>
+                        <div class="clear"></div>
+                    </div>
+                }
+            }
+        </div>
+        <div class="clear"></div>
+        <hr />
+    }
+}
+else if (commentsTotalCount == 0)
+{
+    <div class="heading">
+        <h3>Vær den første til at fortælle hvad du synes.</h3>
+        <small><a href="@addCommentHref">Skriv kommentar</a></small>
+    </div>
+
+    var profileImgHref = string.Format("http://www.gravatar.com/avatar/{0}?d=mm", GetString("EmailMd5Hash"));
+    
+    <div class="profileimg"><img src="@profileImgHref" alt="" /></div>
+    <div class="commentText">
+        <strong>@GetString("Name")</strong>
+        Din kommentar her....?<br />
+    </div>
+    <div class="clear"></div>
+}
+
+<script type="text/javascript">
+    function comment_validate() {
+        if (document.getElementById("Comment.Name").value.length < 1) {
+            alert("Angiv venligst dit navn.");
+            document.getElementById("Comment.Name").focus();
+            return false;
+        }
+        if (document.getElementById("Comment.Email").value.length < 1) {
+            alert("Angiv venligst din e-mail. Den bliver ikke publiceret!");
+            document.getElementById("Comment.Email").focus();
+            return false;
+        }
+        if (document.getElementById("Comment.Text").value.length < 1) {
+            alert("Skriv venligst din kommentar.");
+            document.getElementById("Comment.Text").focus();
+            return false;
+        }
+
+        document.getElementById("Comment.Command").value = "create";
+        document.getElementById("Comment.NotifySubject").value = "New B&B comment on '" + document.title + "' (from " + document.getElementById("Comment.Email").value + ")";
+
+        @spamScript;
+        return s(document.getElementById("commentform"));
+    }
+    function comment_reply(id, commentName, text) {
+        document.getElementById("Comment.ParentID").value = id;
+        document.getElementById("inReplyTo").innerHTML = "<div class='alert alert-success'>Som svar til <strong><i>" + commentName + "</i></strong> på '" + text + "'</strong>";
+        document.getElementById("Comment.Name").focus();
+        var href = location.href.replace("#comments", "");
+        if (href.indexOf("#writecomment") < 0) {
+            location = href + "#writecomment";
+        } else {
+            location = href;
+        }
+        document.getElementById("Comment.Name").focus();
+    }
+</script>
+
+<a name="writecomment"></a>
+<p>&nbsp;</p>
+<div class="heading"><h3 id="leavecomment">Hvad synes du? Hører gerne fra dig!</h3></div>
+<small id="inReplyTo"></small>
+<form method="post" action="/Admin/Public/404.aspx" id="commentform" onsubmit="return comment_validate()">
+    @GetValue("Comment.FormHidden")
+    <input type="hidden" name="Comment.Command" id="Comment.Command" value="" />
+    <!--Set active to false if you want to approve comments before publishing on the page-->
+    <input type="hidden" name="Comment.Active" value="true" />
+
+    <!-- page level comments params -->
+    @*<input type="hidden" name="Comment.ItemType" value="page" />
+        <input type="hidden" name="Comment.ItemID" value="@dwPageId" />*@
+    <!-- end of page level comments params -->
+    <!-- product catalog level comments params -->
+    <input type="hidden" name="Comment.ItemType" value="ecomProduct" />
+    <input type="hidden" name="Comment.ItemID" value="@productId" />
+    <input type="hidden" name="Comment.LangID" value="@langId" />
+    <!-- end product catalog level comments params -->
+
+    <input type="hidden" name="Comment.Continue" value="@pageViewUrl" />
+    <input type="hidden" name="Comment.ParentID" id="Comment.ParentID" value="0" />
+
+    <input type="hidden" name="Comment.Notify" value="true" />
+    <input type="hidden" name="Comment.NotifyTemplate" value="Comments/Notify.html" />
+    <input type="hidden" name="Comment.NotifySubject" id="Comment.NotifySubject" value="New Comment on B&B: " />
+    <input type="hidden" name="Comment.NotifySenderEmail" value="noreply@dynamicweb.dk" />
+    <input type="hidden" name="Comment.NotifySenderName" value="Website comment" />
+    <input type="hidden" name="Comment.NotifyEmail" value="info@dynamicweb.dk" />
+
+    <input type="hidden" name="Comment.Reply.Notify" value="true" />
+    <input type="hidden" name="Comment.Reply.NotifyTemplate" value="Comments/ReplyNotify.html" />
+    <input type="hidden" name="Comment.Reply.NotifySubject" value="@hiddenSubject" />
+    <input type="hidden" name="Comment.Reply.NotifySenderEmail" value="noreply@dynamicweb.dk" />
+    <input type="hidden" name="Comment.Reply.NotifySenderName" value="Webmaster" />
+
+    <label for="Comment.Name">Navn <small>(Krævet)</small></label>
+    <input type="text" name="Comment.Name" id="Comment.Name" value="@accessUserName" /><br />
+    <label for="Comment.Email">E-mail <small>(Krævet, bliver ikke publiceret)</small></label>
+    <input type="text" name="Comment.Email" id="Comment.Email" value="@accessUserEmail" /><br />
+    <label for="Comment.Website">Website</label>
+    <input type="text" name="Comment.Website" id="Comment.Website" value="" /><br />
+    <label for="Comment.Text">Kommentar <small>(Krævet)</small></label>
+    <textarea name="Comment.Text" id="Comment.Text" rows="10" cols="50"></textarea><br />
+
+    <input type="submit" value="Indsend kommentar..." />
+</form>

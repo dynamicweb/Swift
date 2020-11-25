@@ -1,0 +1,66 @@
+<script src="https://checkout.stripe.com/checkout.js"></script>
+<script type="text/javascript">
+
+    var handler = StripeCheckout.configure({
+        key: '<!--@Stripe.publishablekey-->',
+        image: '<!--@Stripe.image-->',
+        locale: '<!--@Stripe.language-->',
+        email: '<!--@Stripe.email-->',
+        allowRememberMe: true,
+        token: tokenCallback
+    });
+
+    function purchase(btn) {
+        btn.disabled = true;
+
+        // Open Checkout with further options
+        handler.open({
+            name: '<!--@Stripe.name-->',
+            description: '<!--@Stripe.description-->',
+            currency: '<!--@Stripe.currency-->',
+            amount: <!--@Stripe.amount-->
+            });
+
+        return false;
+    }
+
+    function tokenCallback(token) {
+        // Use the token to create the charge with a server-side script.
+        purchaseForm.stripeToken.value = token.id;
+        purchaseForm.stripeEmail.value = token.email;
+
+        purchaseForm.submit();
+    }
+
+    // Close Checkout on page navigation
+    var waitingCheckoutComplete = false;
+    window.addEventListener("beforeunload", function(e) {
+        if (waitingCheckoutComplete){
+            e.returnValue = "Please wait checkout completion";
+            return e.returnValue;
+        }
+      
+        waitingCheckoutComplete = true; // First time beforeunload fired when purchase form is submited
+        handler.close();
+    });
+
+</script>
+
+<!-- Payment Information -->
+<h2><!--@Translate(paymentinformation, "Payment Information")--></h2>
+<p>
+    <label><!--@Translate(orderid, "Order Id")-->: <b><!--@Ecom:Order.ID--></b></label> <br />
+    <label><!--@Translate(amount, "Amount")-->: <b><!--@Ecom:Order.Price.PriceWithVATFormatted--></b></label> <br />
+</p>
+
+<button id="customButton" onclick="return purchase(this);">Purchase</button>
+<form name="purchaseForm" id="purchaseForm" action="/Default.aspx?ID=<!--@Global:Page.ID-->" method="POST">
+    <input type="hidden" name="Action" id="Action" value="Approve" />
+    <input type="hidden" name="CheckoutHandlerOrderID" id="CheckoutHandlerOrderID" value="<!--@Ecom:Order.ID-->" />
+    <input type="hidden" name="CardTokenName" id="CardTokenName" value="<!--@Ecom:Order.SavedCardName-->" />
+    <input type="hidden" name="stripeToken" id="stripeToken" value="" />
+    <input type="hidden" name="stripeEmail" id="stripeEmail" value="" />
+    <!--@If Not Defined(Global:Extranet.UserName)-->
+        <input type="hidden" name="SavedCardCreate" id="SavedCardCreate" <!--@If Defined(SavedCardCreate)-->value="true"<!--@EndIf(SavedCardCreate)-->>
+    <!--@EndIf(Global:Extranet.UserName)-->
+</form>
