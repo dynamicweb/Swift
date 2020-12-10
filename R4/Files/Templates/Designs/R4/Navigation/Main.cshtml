@@ -1,1 +1,95 @@
-﻿
+﻿@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using Dynamicweb
+@using System.Web
+@using Dynamicweb.Frontend.Navigation
+@using Dynamicweb.Content
+@using System.IO
+
+@RenderFirstLevelNodes(Model.Nodes)
+
+
+@helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
+{
+    <nav class="nav flex-row main">
+        @foreach (var node in nodes)
+        {
+            var hasChildren = node.Nodes.Count() > 0;
+            bool hasManyChildren = false;
+            foreach (var subnode in node.Nodes)
+            {
+                if (subnode.Nodes.Any()) {
+                    hasManyChildren = true;
+                }
+            }
+
+            string submenuType = "auto";
+            string dropdownWrapperCss = "";
+
+            if (submenuType == "auto") {
+                submenuType = hasManyChildren ? "megamenu" : "dropdown";
+            }
+
+            dropdownWrapperCss = hasChildren && submenuType == "dropdown" ? "dropdown position-relative" : "";
+            dropdownWrapperCss = hasChildren && submenuType == "megamenu" ? "dropdown megamenu-item" : dropdownWrapperCss;
+            string dropdownAttributes = hasChildren ? "id=\"NavGroup" + node.PageId + "\" role=\"button\" data-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
+
+            <div class="nav-item @(node.IsActive ? "active" : "") @dropdownWrapperCss dw-navbar-button">
+                @if (node.IsClickable)
+                {
+                    <a class="nav-link text-dark @(node.IsActive ? "active" : "") @(hasChildren ? "dropdown-toggle" : "") d-flex align-items-center" href="@(hasChildren ? "#" : node.Link)" title="@node.Name" @dropdownAttributes>
+                        @RenderNavigationItem(node)
+                    </a>
+                } else {
+                    <span class="nav-link text-dark d-flex align-items-center" title="@node.Name" @dropdownAttributes>
+                        @RenderNavigationItem(node)
+                    </span>
+                }
+
+                @if (hasChildren)
+                {
+                    var navigationSettings = new NavigationSettings();
+                    navigationSettings.StartLevel = 3;
+                    navigationSettings.StopLevel = 4;
+                    navigationSettings.ExpandMode = ExpandMode.All;
+                    navigationSettings.RootPageId = node.PageId;
+
+                    if (submenuType == "megamenu") {
+                        <div class="dropdown-menu megamenu rounded-0 border-bottom pb-3 shadow" id="NavGroup@(node.PageId)">
+                            Megamenu
+                        </div>
+                    } else {
+                        <ul class="dropdown-menu" aria-labelledby="NavGroup@(node.PageId)">
+                            Dropdownmenu
+                        </ul>
+                    }  
+                }
+            </div>
+        }
+    </nav>
+}
+
+@helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node) { 
+    var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+    string pageType = page.ItemType;
+    string icon = page.Item["Icon"] != null ? page.Item["Icon"].ToString() : "";
+
+    if (pageType == "R4_Checkout") {
+        string totalProducts = "0";
+
+        <div class="mini-cart-counter">
+            <div class="mini-cart-counter-qty js-cart-qty">@totalProducts</div>
+        </div>
+    } 
+
+    <div class="d-flex flex-row align-items-center">
+        @if (!string.IsNullOrEmpty(icon) && !icon.Contains("none")) {
+            if (Path.GetExtension(icon).ToLower() == ".svg") {
+                <div class="icon-container">
+                     @System.IO.File.ReadAllText(HttpContext.Current.Server.MapPath(icon))   
+                </div>
+            }
+        } else {
+            <div>@node.Name</div>
+        }
+    </div>
+}
