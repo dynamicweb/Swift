@@ -1,0 +1,153 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using System.Web
+
+@{
+    string shortDateFormat = Pageview.Area.CultureInfo.DateTimeFormat.ShortDatePattern.Replace("M", "n").Replace("d", "j").Replace("yyyy", "Y");
+    string shortTimeFormat = Pageview.Area.CultureInfo.DateTimeFormat.ShortTimePattern.Replace("mm", "i").Replace("tt", "K");
+
+    @GetString("Form.FormStart") 
+    <div class="item-inner">
+        @GetString("Form.SystemFields")
+
+        @foreach (LoopItem field in GetLoop("Fields"))
+        {
+            string fieldType = field.GetString("Field.Type");
+            bool required = field.GetBoolean("Field.Required");
+            string systemName = field.GetString("Field.SystemName");
+            string value = field.GetString("Field.ValueFromAutoOrDefault");
+            string placeholder = Translate(field.GetString("Field.Placeholder"));
+            string label = Translate(field.GetString("Field.Name"));
+            string description = Translate(field.GetString("Field.Description"));
+            string control = field.GetString("Field.Control");
+
+            <div class="mb-3">
+                @switch (fieldType)
+                {
+                    case "TextInput":
+                    case "Email":
+                    case "Password":
+                    case "Tel":
+                    case "Number":
+                        <label for="@systemName" class="form-label">@label</label> 
+                        <input id="@systemName" class="form-control" type="@fieldType" name="@systemName" placeholder="@placeholder" value="@value" required="@required" />
+                        break;
+
+                    case "Week":
+                    case "Time":
+                    case "Color":
+                        // BUG: comes out as "TextInput"
+                        break;
+
+                    case "Month":
+                    case "Search":
+                    case "Url":
+                    case "Range":
+                        // Missing Component
+                        break;
+
+                    case "Textarea":
+                        <label for="@systemName" class="form-label">@label</label> 
+                        <textarea id="@systemName" class="form-control" type="@fieldType" name="@systemName" placeholder="@placeholder" required="@required">@value</textarea>
+                        break;
+
+                    case "Hidden":
+                        <input type="hidden" id="@systemName" name="@systemName" value="@value" />
+                        break;
+
+                    case "File":
+                        <label for="@systemName" class="form-label">@label</label> 
+                        <div class="form-file">
+                            <input type="file" class="form-file-input" id="@systemName" value="@value" required="@required">
+                            <label class="form-file-label" for="@systemName">
+                                <span class="form-file-text">@placeholder</span>
+                                <span class="form-file-button">@Translate("Browse")</span>
+                            </label>
+                        </div>
+                        break;
+
+                    case "Date":
+                        //Missing component
+                        break;
+
+                    case "Datetime":
+                    case "Datetime-Local":
+                        //Missing component
+                        break;
+
+                    case "CheckBox":
+                        string isChecked = value.ToLower() == "true" ? "checked" : ""; 
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="@systemName" required="@required" @isChecked>
+                            <label class="form-check-label" for="@systemName">@label</label>
+                        </div>
+                        break;
+
+                    case "Radio":
+                    case "CheckBoxList":
+                        string type = fieldType.ToLower() == "radio" ? "radio" : "checkbox";
+
+                        <label for="@systemName" class="form-label">@label</label> 
+                        foreach (LoopItem option in field.GetLoop("Options"))
+                        {
+                            string optionChecked = option.GetBoolean("Option.DefaultSelected") ? "checked" : "";
+                            string id = systemName + option.GetString("Option.ID");
+                            string optionValue = option.GetString("Option.Value");
+                            string optionText = Translate(option.GetString("Option.Text"));
+
+                            <div class="form-check">
+                                <input class="form-check-input" type="@type" id="@id" value="@optionValue" required="@required" @optionChecked>
+                                <label class="form-check-label" for="@systemName">@optionText</label>
+                            </div>
+                        }
+                        break;
+
+                    case "Select":
+                        <label for="@systemName" class="form-label">@label</label> 
+                        <select class="form-select">
+                            @foreach (var option in field.GetLoop("Options"))
+                            {
+                                string optionSelected = option.GetBoolean("Option.DefaultSelected") == true ? "selected" : "";
+                                string id = systemName + option.GetString("Option.ID");
+                                string optionValue = option.GetString("Option.Value");
+                                string optionText = Translate(option.GetString("Option.Text"));
+
+                                <option @optionSelected value="@optionValue" id="@id">@optionText</option>
+                            }
+                        </select>
+                        break;
+
+                    case "Submit":
+                        <button class="btn btn-primary" type="submit" onclick="Buttons.LockButton(event)" id="@systemName">@label</button>
+                        break;
+
+                    case "Reset":
+                        <button class="btn btn-secondary" type="reset" onclick="Buttons.LockButton(event)" id="@systemName">@label</button>
+                        break;
+                    case "Text":
+                        <div class="form-text">@control</div>
+                        break;
+
+                    case "Image":
+                        string imagePath = field.GetString("Field.Image");
+                        if (!string.IsNullOrEmpty(imagePath))
+                        {
+                            <label for="@systemName" class="form-label">@label</label> 
+                            <img src="@imagePath" />
+                        }
+                        break;
+
+                    case "PageShift":
+                         <label for="@systemName">@label</label><span class="formPageShift"></span>
+                        break;
+                }
+                @if (!string.IsNullOrEmpty(description)) {
+                    <div class="form-text">@description</div>
+                }
+            </div>
+        }
+    </div>
+    @GetString("Form.FormEnd")
+}
+
+
