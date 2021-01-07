@@ -1,0 +1,99 @@
+<!--@If Not Defined(Order.IsComplete)-->
+<div class="ServicePoints">
+    <div>
+        <input type="text" id="<!--@FieldPrefix-->StreetName" value="<!--@Order.Customer.Address.HtmlEncoded()-->" placeholder="Address" />
+        <input type="text" id="<!--@FieldPrefix-->ZipCode" value="<!--@Order.Customer.ZipCode.HtmlEncoded()-->" placeholder="ZIP Code" />
+        <button type="button" id="<!--@FieldPrefix-->Search"><!--@Translate(Get_service_points, "Get service points")--></button>
+    </div>
+
+    <div id="<!--@FieldPrefix-->service-points">
+        <div style="display: none" class="loading">Loading…</div>
+        <div style="display: none" class="service-points"></div>
+    </div>
+
+<script>
+(function () {
+    window.addEventListener('load', function () {
+        var container = document.querySelector('#<!--@FieldPrefix-->service-points'),
+            loading = container.querySelector('.loading'),
+            list = container.querySelector('.service-points'),
+            fieldPrefix = '<!--@FieldPrefix.JSEncoded()-->',
+            running = false,
+
+            createNewServicePoint = function (servicePoint) {
+                const markup = `
+                    <div class="service-point" data-id="${servicePoint.id}">
+                        <div class="radio">
+                            <input type="radio" name="${fieldPrefix}ServicePointId" value="${servicePoint.id}" id="${fieldPrefix}_${servicePoint.id}" />
+                            <label for="${fieldPrefix}_${servicePoint.id}" style="overflow: hidden">
+                                <div class="name"><b>${servicePoint.name}</b></div>
+                                <span class="adr">
+                                    <span class="street-address">${servicePoint.address}</span>
+                                    <span class="postal-code">${servicePoint.zipCode}</span>
+                                    <span class="city">${servicePoint.cityName}</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                `;
+            const newRadioButton = makeElement(markup);
+            return newRadioButton;
+        },
+
+        makeElement = function (markup) {
+            const fragment = document.createRange().createContextualFragment(markup);
+            const element = fragment.firstElementChild;
+            return element;
+        },
+
+        renderServicePoints = function (servicePoints) {
+            running = false;
+            loading.style.display = 'none';
+            list.innerHTML = '';
+            list.style.display = '';
+
+            if (!servicePoints || servicePoints.length == 0) {
+                list.innerHTML = 'No service points found';
+            } else {
+                servicePoints.forEach(servicePoint => {
+                    list.appendChild(createNewServicePoint(servicePoint));
+                });
+            }
+        },
+
+        getServicePoints = function () {
+            const shippingId = '<!--@ShippingId-->';
+            const languageId = '<!--@Order.LanguageId-->';
+            const countryCode = '<!--@Order.Delivery.Country.Code-->';
+            const zipCode = document.querySelector('#<!--@FieldPrefix-->ZipCode').value;
+            const streetName = document.querySelector('#<!--@FieldPrefix-->StreetName').value;
+
+            if (running) {
+                return;
+            }
+
+            if (!languageId || !zipCode || !countryCode || !zipCode) {
+                return;
+            }
+
+            running = true;
+            loading.style.display = '';
+            list.innerHTML = '';
+            list.style.display = 'none';
+
+            //var url = '/Admin/Public/eCom/StockLocationServicePoint.ashx?' + 'shippingId=' + encodeURIComponent(shippingId) + '&languageId=' + encodeURIComponent(languageId) + '&countryCode=' + encodeURIComponent(countryCode) + '&postalCode=' + encodeURIComponent(zipCode) + '&address=' + encodeURIComponent(streetName);
+            var url = '/dwapi/ecommerce/shippings/FindServicePoints?' + 'shippingId=' + encodeURIComponent(shippingId) + '&languageId=' + encodeURIComponent(languageId) + '&countryCode=' + encodeURIComponent(countryCode) + '&zipCode=' + encodeURIComponent(zipCode) + '&address=' + encodeURIComponent(streetName);
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => renderServicePoints(data));
+        };
+
+    getServicePoints();
+
+    document.querySelector('#<!--@FieldPrefix-->Search').addEventListener('click', getServicePoints);
+    document.querySelector('#<!--@FieldPrefix-->ZipCode').addEventListener('change', getServicePoints);
+});
+}())</script>
+</div>
+<!--@EndIf-->
