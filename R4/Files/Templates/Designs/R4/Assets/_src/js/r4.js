@@ -1,4 +1,4 @@
-// import bootstrap from 'bootstrap';
+import bootstrap from 'bootstrap';
 import { tns } from 'tiny-slider/src/tiny-slider';
 import "regenerator-runtime/runtime";
 
