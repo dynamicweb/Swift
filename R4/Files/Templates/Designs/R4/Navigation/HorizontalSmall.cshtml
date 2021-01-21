@@ -1,0 +1,116 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using Dynamicweb
+@using System.Web
+@using Dynamicweb.Frontend.Navigation
+@using Dynamicweb.Content
+@using System.IO
+
+@RenderFirstLevelNodes(Model.Nodes)
+
+
+@helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
+{
+    <nav class="nav small mx-n3">
+        @foreach (var node in nodes)
+        {
+            var hasChildren = node.Nodes.Count() > 0;
+            bool hasManyChildren = false;
+            foreach (var subnode in node.Nodes)
+            {
+                if (subnode.Nodes.Any()) {
+                    hasManyChildren = true;
+                }
+            }
+
+            string submenuType = "auto";
+            if (submenuType == "auto") {
+                submenuType = hasManyChildren ? "megamenu" : "dropdown";
+            }
+
+            string megamenuCss = hasChildren && submenuType == "megamenu" ? "has-megamenu" : "";
+            string dropdownAttributes = hasChildren ? "id=\"NavGroup" + node.PageId + "\" role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
+
+            <div class="nav-item small @(node.IsActive ? "active" : "") @megamenuCss">
+                @if (node.IsClickable)
+                {
+                    <a class="nav-link nav-link-clean text-dark @(node.IsActive ? "active" : "") @(hasChildren ? "dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" title="@node.Name" @dropdownAttributes>
+                        @RenderNavigationItem(node)
+                    </a>
+                } else {
+                    <span class="nav-link nav-link-clean text-dark" title="@node.Name" @dropdownAttributes>
+                        @RenderNavigationItem(node)
+                    </span>
+                }
+
+                @if (hasChildren)
+                {
+                    if (submenuType == "megamenu") {
+                        <div class="dropdown-menu megamenu rounded-0 border-bottom p-4" id="NavGroup@(node.PageId)">
+                            <div class="row">
+                                @foreach (var subnode in node.Nodes)
+                                {
+                                    <div class="col">
+                                        <a href="@subnode.Link" class="text-decoration-none text-reset">
+                                            <h5 class="text-uppercase font-size-sm border-bottom pb-2">@subnode.Name</h5>
+                                        </a>
+                                        @if (subnode.Nodes.Any())
+                                        {
+                                            foreach (var subsubnode in subnode.Nodes)
+                                            {
+                                                <a class="d-block w-100 text-nowrap py-2 font-size-sm text-decoration-none text-reset" href="@subsubnode.Link">@subsubnode.Name</a>
+                                            }
+                                        }
+                                        else 
+                                        {
+                                            <a class="d-block w-100 text-nowrap py-2 font-size-sm text-decoration-none text-reset" href="@subnode.Link">@subnode.Name</a>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    } else {
+                        <ul class="dropdown-menu" aria-labelledby="NavGroup@(node.PageId)">
+                            @foreach (var subnode in node.Nodes)
+                            {
+                                <li>
+                                    <a class="dropdown-item" href="@subnode.Link">@subnode.Name</a>
+                                </li>
+                            }
+                        </ul>
+                    }  
+                }
+            </div>
+        }
+    </nav>
+}
+
+@helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node) { 
+    var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+    string pageType = page.ItemType;
+    string icon = page.Item["Icon"] != null ? page.Item["Icon"].ToString() : "";
+    
+    <div class="d-inline-block">
+        <div class="d-flex flex-row align-items-center position-relative">
+            @if (!string.IsNullOrEmpty(icon) && !icon.Contains("none")) {
+                if (Path.GetExtension(icon).ToLower() == ".svg") {
+                    <div class="icon-container">
+                         @System.IO.File.ReadAllText(HttpContext.Current.Server.MapPath(icon))   
+                    </div>
+                }
+            } else {
+                <div>@node.Name</div>
+            }
+
+            @if (pageType == "R4_Checkout") {
+                string totalProducts = "0";
+
+                <div class="mini-cart-counter">
+                    <div class="mini-cart-counter-qty js-cart-qty">@totalProducts</div>
+                </div>
+            } 
+        </div>
+    </div>   
+}
+
+
+
