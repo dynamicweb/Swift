@@ -18,6 +18,9 @@
 	int totalImages = 0;
 	var selectedImageCategories = Model.Item.GetList("ImageAssets").SelectedValues;
 	var imageCategories = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName));
+	string mainSmallImage = "";
+	string mainLargeImage = "";
+	int imageCount = 0;
 
 	if (Model.Item.GetList("ImageAssets").SelectedValues.Count() > 0) {
 		foreach (AssetCategoryViewModel group in imageCategories) {
@@ -40,37 +43,75 @@
 	foreach (var image in product.ImagePatternImages) {
 		totalImages++;
 	}
+
+	string mainAspectRatio = Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "0" ? "ratio ratio-" + Model.Item.GetList("ImageAspectRatio").SelectedValue : "";
+	string mainFillCanvas = Model.Item.GetBoolean("KeepAspectRatio") ? "&fillcanvas=true" : "";
 }
 
 
 @* Get images from selected categories or get all images *@
 <div class="item">
 
-	@* Show the gallery on large screens *@
+	@* Show image + thumbs on large screens *@
 	<div class="d-none d-lg-block">
-		<div class="row g-4">
-			@if (Model.Item.GetList("ImageAssets").SelectedValues.Count() > 0) {
-				foreach (AssetCategoryViewModel group in imageCategories) {
-					foreach (MediaViewModel asset in group.Assets) {
-						if (asset.Value.ToLower().Contains(".jpeg") || asset.Value.ToLower().Contains(".jpg") || asset.Value.ToLower().Contains(".png") || asset.Value.ToLower().Contains(".gif")) {
-							<div class="col-lg-6">
-								@RenderImage(asset)
-							</div>
+		<div class="row">
+            <div class="col-2">
+                <div id="LargeScreenImages_@Model.ID">
+					@if (Model.Item.GetList("ImageAssets").SelectedValues.Count() > 0) {
+						foreach (AssetCategoryViewModel group in imageCategories) {
+							foreach (MediaViewModel asset in group.Assets) {
+								if (asset.Value.ToLower().Contains(".jpeg") || asset.Value.ToLower().Contains(".jpg") || asset.Value.ToLower().Contains(".png") || asset.Value.ToLower().Contains(".gif")) {
+									@RenderThumbnail(asset)
+
+									if (imageCount == 0) {
+										mainSmallImage = "/Admin/Public/GetImage.ashx?width=1200&crop=5" + mainFillCanvas + "&image=" + asset.Value;
+										mainLargeImage = "/Admin/Public/GetImage.ashx?width=1920&crop=5" + mainFillCanvas + "&image=" + asset.Value;
+									}
+									imageCount++;
+								}
+							}
+						}
+					} else {
+						foreach (AssetCategoryViewModel group in product.AssetCategories) {
+							foreach (MediaViewModel asset in group.Assets) {
+								if (asset.Value.ToLower().Contains(".jpeg") || asset.Value.ToLower().Contains(".jpg") || asset.Value.ToLower().Contains(".png") || asset.Value.ToLower().Contains(".gif")) {
+									@RenderThumbnail(asset)
+
+									if (imageCount == 0) {
+										mainSmallImage = "/Admin/Public/GetImage.ashx?width=1200&crop=5" + mainFillCanvas + "&image=" + asset.Value;
+										mainLargeImage = "/Admin/Public/GetImage.ashx?width=1920&crop=5" + mainFillCanvas + "&image=" + asset.Value;
+									}
+									imageCount++;
+								}
+							}
 						}
 					}
-				}
-			} else {
-				foreach (AssetCategoryViewModel group in product.AssetCategories) {
-					foreach (MediaViewModel asset in group.Assets) {
-						if (asset.Value.ToLower().Contains(".jpeg") || asset.Value.ToLower().Contains(".jpg") || asset.Value.ToLower().Contains(".png") || asset.Value.ToLower().Contains(".gif")) {
-							<div class="col-lg-6">
-								@RenderImage(asset)
-							</div>
-						}
-					}
-				}
-			}
+                </div>
+            </div>
+
+            <!-- Image slider images -->
+            <div class="col-10">
+                <div class="@mainAspectRatio" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
+                    <img src="@mainSmallImage" data-full-image="@mainLargeImage" id="MainImage_@Model.ID" class="img-fluid" style="object-fit: cover; cursor: pointer" alt="@product.Name" onclick="document.querySelector('#FullImage_@Model.ID').src = this.getAttribute('data-full-image')">
+                </div>
+            </div>
 		</div>
+
+		<!-- Tiny slider -->
+        <script type="module">
+            var slider = tns({
+            container: '#LargeScreenImages_@Model.ID',
+            items: 5,
+            gutter: 16,
+            axis: 'vertical',
+            mouseDrag: true,
+            touch: true,
+            arrowKeys: true,
+            nav: false,
+            loop: false,
+            controls: false,
+        });
+        </script>
 
 		<!-- Modal -->
 		<div class="modal fade" id="ImageModal_@Model.ID" tabindex="-1" aria-labelledby="@Translate("Full image")" aria-hidden="true">
@@ -129,11 +170,20 @@
 </div>
 
 
+@helper RenderThumbnail(MediaViewModel asset) { 
+	string smallImage = "/Admin/Public/GetImage.ashx?width=1200&crop=5&image=" + asset.Value;
+	string largeImage = "/Admin/Public/GetImage.ashx?width=1920&crop=5&image=" + asset.Value;
+
+	<div class="ratio ratio-1x1">
+		<img loading="lazy" src="@smallImage" data-full-image="@largeImage" alt="@asset.Name" style="object-fit: cover; cursor: pointer" onclick="document.querySelector('#MainImage_@Model.ID').src = this.getAttribute('data-full-image')">
+	</div>
+}
+
 @helper RenderImage(MediaViewModel asset) { 
 	string aspectRatio = Model.Item?.GetList("ImageAspectRatio")?.SelectedValue ?? "16x9";
 	string fillCanvas = Model.Item.GetBoolean("KeepAspectRatio") ? "&fillcanvas=true" : "";
-	string smallImage = "/Admin/Public/GetImage.ashx?width=1200&height=1200&crop=5" + fillCanvas + "&image=" + asset.Value;
-	string largeImage = "/Admin/Public/GetImage.ashx?width=1920&height=1920&crop=0&image=" + asset.Value;
+	string smallImage = "/Admin/Public/GetImage.ashx?width=1200&height=1200&crop=7" + fillCanvas + "&image=" + asset.Value;
+	string largeImage = "/Admin/Public/GetImage.ashx?width=1920&height=1920&crop=5&image=" + asset.Value;
 
 	<div class="ratio ratio-@aspectRatio btn" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
 		<img loading="lazy" src="@smallImage" data-full-image="@largeImage" alt="@asset.Name" style="object-fit: cover;" onclick="document.querySelector('#FullImage_@Model.ID').src = this.getAttribute('data-full-image')">
