@@ -2,7 +2,7 @@
  * HC Off-canvas Nav
  * ===================
  * Version: 6.1.1
- * Author: Some Web Media
+ * Author: Some Web Media & me
  * Author URL: https://github.com/somewebmedia/
  * Plugin URL: https://github.com/somewebmedia/hc-offcanvas-nav
  * Description: JavaScript library for creating off-canvas multi-level navigations
