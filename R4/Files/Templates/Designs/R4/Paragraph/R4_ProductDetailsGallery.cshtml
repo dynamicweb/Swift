@@ -1,0 +1,117 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Frontend
+@using System.Web
+
+@{ 
+	bool isVisualEditor = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(HttpContext.Current.Request.QueryString.Get("VisualEdit")) : false;
+
+	ProductViewModel product = new ProductViewModel();
+
+	if (System.Web.HttpContext.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)System.Web.HttpContext.Current.Items["ProductDetails"];
+	}
+
+	//Collect the images
+	var selectedImageCategories = Model.Item.GetList("ImageAssets").SelectedValues;
+	var imageCategories = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName));
+}
+
+
+@* Get images from selected categories or get all images *@
+<div class="item">
+
+	@* Show the gallery on large screens *@
+	<div class="d-none d-lg-block">
+		<div class="row g-4">
+			@if (Model.Item.GetList("ImageAssets").SelectedValues.Count() > 0) {
+				foreach (AssetCategoryViewModel group in imageCategories) {
+					foreach (MediaViewModel asset in group.Assets) {
+						if (asset.Value.ToLower().Contains(".jpeg") || asset.Value.ToLower().Contains(".jpg") || asset.Value.ToLower().Contains(".png") || asset.Value.ToLower().Contains(".gif")) {
+							<div class="col-lg-6">
+								@RenderImage(asset)
+							</div>
+						}
+					}
+				}
+			} else {
+				foreach (AssetCategoryViewModel group in product.AssetCategories) {
+					foreach (MediaViewModel asset in group.Assets) {
+						if (asset.Value.ToLower().Contains(".jpeg") || asset.Value.ToLower().Contains(".jpg") || asset.Value.ToLower().Contains(".png") || asset.Value.ToLower().Contains(".gif")) {
+							<div class="col-lg-6">
+								@RenderImage(asset)
+							</div>
+						}
+					}
+				}
+			}
+		</div>
+
+		<!-- Modal -->
+		<div class="modal fade" id="ImageModal_@Model.ID" tabindex="-1" aria-labelledby="@Translate("Full image")" aria-hidden="true">
+		  <div class="modal-dialog modal-xl">
+			<div class="modal-content">
+			  <div class="modal-header">
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
+			  </div>
+			  <div class="modal-body">
+				  <img src="" alt="" style="object-fit: cover;" id="FullImage_@Model.ID" class="w-100">
+			  </div>
+			</div>
+		  </div>
+		</div>
+	</div>
+	
+
+	@* Show the thumbs on small screens *@
+	<div class="d-block d-lg-none mini-product-image-slider">
+        <div id="SmallScreenImages_@Model.ID">
+			@if (Model.Item.GetList("ImageAssets").SelectedValues.Count() > 0) {
+				foreach (AssetCategoryViewModel group in imageCategories) {
+					foreach (MediaViewModel asset in group.Assets) {
+						if (asset.Value.ToLower().Contains(".jpeg") || asset.Value.ToLower().Contains(".jpg") || asset.Value.ToLower().Contains(".png") || asset.Value.ToLower().Contains(".gif")) {
+							@RenderImage(asset)
+						}
+					}
+				}
+			} else {
+				foreach (AssetCategoryViewModel group in product.AssetCategories) {
+					foreach (MediaViewModel asset in group.Assets) {
+						if (asset.Value.ToLower().Contains(".jpeg") || asset.Value.ToLower().Contains(".jpg") || asset.Value.ToLower().Contains(".png") || asset.Value.ToLower().Contains(".gif")) {
+							@RenderImage(asset)
+						}
+					}
+				}
+			}
+        </div>
+
+		<!-- Tiny slider -->
+        <script type="module">
+            var slider = tns({
+                container: '#SmallScreenImages_@Model.ID',
+                items: 1,
+                mode: 'carousel',
+                navPosition: 'bottom',
+                mouseDrag: true,
+                touch: true,
+                arrowKeys: true,
+                nav: true,
+                loop: false,
+                controls: false,
+            });
+        </script>
+    </div>
+</div>
+
+
+@helper RenderImage(MediaViewModel asset) { 
+	string aspectRatio = Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "0" ? "ratio ratio-" + Model.Item.GetList("ImageAspectRatio").SelectedValue : "";
+	string smallImage = "/Admin/Public/GetImage.ashx?width=1920&crop=5&image=" + asset.Value;
+	string largeImage = "/Admin/Public/GetImage.ashx?width=3840&crop=0&image=" + asset.Value;
+
+	<div class="@aspectRatio" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID" style="cursor: pointer">
+		<img loading="lazy" src="@smallImage" data-full-image="@largeImage" alt="@asset.Name" class="img-fluid" style="object-fit: cover;" onclick="document.querySelector('#FullImage_@Model.ID').src = this.getAttribute('data-full-image')">
+	</div>
+}
