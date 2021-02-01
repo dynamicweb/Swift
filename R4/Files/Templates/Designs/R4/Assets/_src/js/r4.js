@@ -1,9 +1,11 @@
-// import bootstrap from 'bootstrap';
+import bootstrap from 'bootstrap';
+import hcOffcanvasNav from 'hc-offcanvas-nav';
 import { tns } from 'tiny-slider/src/tiny-slider';
 import "regenerator-runtime/runtime";
 
+window.hcOffcanvasNav = hcOffcanvasNav;
 window.tns = tns;
-window.InitSliders = InitSliders;
+window.InitSliders = InitSliders;			  
 
 function InitSliders() {
     console.log('Sliders Ready');
