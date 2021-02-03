@@ -97,35 +97,5 @@ module.exports = [
                 })
             ]
         }
-    },
-    {
-        name: 'svg-sprite',
-        entry: { 
-            'r4': './R4/Files/Templates/Designs/R4/Assets/_src/js/r4.js',
-            'r4.min': './R4/Files/Templates/Designs/R4/Assets/_src/js/r4.js'
-        },
-        output : {
-            path: path.resolve(__dirname, 'R4','Files','Templates','Designs','R4','Assets','js'),
-        },
-        plugins: [
-            new SVGSpritemapPlugin('./R4/Files/Templates/Designs/R4/Assets/_src/icons/**/*.svg',{
-                output: {
-                    filename: '../icons/svg-sprite.svg',
-                    svg: {
-                        sizes: true
-                    },
-                },
-                sprite: {
-                    prefix: 'icon-',
-                },
-            }),
-        ],
-        module: {
-            rules: [
-                {
-                    test: /\.(svg)$/
-                }
-            ]
-        }
     }
 ]
