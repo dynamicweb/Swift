@@ -5,7 +5,6 @@ const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const isProduction = process.env.NODE_ENV === 'production';
 const mode = isProduction ? 'production' : 'development';
-const SVGSpritemapPlugin = require('svg-spritemap-webpack-plugin');
 const StylelintPlugin = require('stylelint-webpack-plugin');
 const autoprefixer = require('autoprefixer');
 const postcss = require('postcss');
