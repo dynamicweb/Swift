@@ -5,7 +5,6 @@ const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const isProduction = process.env.NODE_ENV === 'production';
 const mode = isProduction ? 'production' : 'development';
-const SVGSpritemapPlugin = require('svg-spritemap-webpack-plugin');
 const StylelintPlugin = require('stylelint-webpack-plugin');
 const autoprefixer = require('autoprefixer');
 const postcss = require('postcss');
@@ -95,36 +94,6 @@ module.exports = [
                 new OptimizeCssAssetsPlugin({
                     assetNameRegExp: /\.min\.css$/
                 })
-            ]
-        }
-    },
-    {
-        name: 'svg-sprite',
-        entry: { 
-            'r4': './R4/Files/Templates/Designs/R4/Assets/_src/js/r4.js',
-            'r4.min': './R4/Files/Templates/Designs/R4/Assets/_src/js/r4.js'
-        },
-        output : {
-            path: path.resolve(__dirname, 'R4','Files','Templates','Designs','R4','Assets','js'),
-        },
-        plugins: [
-            new SVGSpritemapPlugin('./R4/Files/Templates/Designs/R4/Assets/_src/icons/**/*.svg',{
-                output: {
-                    filename: '../icons/svg-sprite.svg',
-                    svg: {
-                        sizes: true
-                    },
-                },
-                sprite: {
-                    prefix: 'icon-',
-                },
-            }),
-        ],
-        module: {
-            rules: [
-                {
-                    test: /\.(svg)$/
-                }
             ]
         }
     }
