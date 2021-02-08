@@ -1,4 +1,4 @@
-﻿@inherits ViewModelTemplate<ProductListViewModel>
+@inherits ViewModelTemplate<ProductListViewModel>
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
 
@@ -11,6 +11,67 @@
     Dictionary<string, string> suggestions = new Dictionary<string, string>();
 }
 
+@functions{
+    string Hightlight(string input, string textToHighlight)
+    {
+        if (string.IsNullOrEmpty(textToHighlight))
+        {
+            return input;
+        }
+        input = fixHtmlEncoding(input.ToLower());
+        int replacementIndex = 0;
+        Dictionary<int, string> replacementValues = new Dictionary<int, string>();
+        foreach (string term in textToHighlight.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
+        {
+            int positionInInput = input.IndexOf(term, StringComparison.OrdinalIgnoreCase);
+            string originalInInput = term;
+            if (positionInInput >= 0)
+            {
+                originalInInput = input.Substring(positionInInput, term.Length);
+            }
+            input = input.Replace(originalInInput, "</$$$>{" + replacementIndex + "}<$$$>");
+            replacementValues.Add(replacementIndex, originalInInput);
+            replacementIndex++;
+        }
+
+        foreach (var replacement in replacementValues)
+        {
+            input = input.Replace("{" + replacement.Key + "}", replacement.Value);
+        }
+        return "<div><b>" + input.Replace("$$$", "b") + "</b></div>";
+    }
+
+    string fixHtmlEncoding(string input)
+    {
+        if (input.IndexOf("&") > 0)
+        {
+            if (input.IndexOf(" ", input.IndexOf("&")) > 0)
+            {
+                input = input.Replace(" ", "; ");
+            }
+            else
+            {
+                input += ";";
+                input = System.Web.HttpUtility.HtmlDecode(input);
+            }
+        }
+        return input;
+    }
+
+    string escape(string input)
+    {
+        return System.Web.HttpUtility.JavaScriptStringEncode(fixHtmlEncoding(input));
+    }
+
+    void AddSuggestion(string suggestion, string group, Dictionary<string, string> suggestions)
+    {
+        suggestion = suggestion.ToLower();
+        if (!suggestions.ContainsKey(suggestion))
+        {
+            suggestions.Add(suggestion, group);
+        }
+    }
+}
 
 @if (Model.SpellCheckerSuggestions != null && Model.SpellCheckerSuggestions.Any())
 {
@@ -35,11 +96,11 @@
     }
     if (validSuggestions.Count > 0)
     {
-        <h5 class="dropdown-header">Do you mean</h5>
+        <div class="dropdown-header">@Translate("Do you mean")</div>
         foreach (string suggestion in validSuggestions.Take(5))
         {
             AddSuggestion(suggestion, "Do you mean", suggestions);
-            <div class="dropdown-item" onclick="selectSuggestion(this);"><span class="icon"></span> @Hightlight(suggestion, searchTerm)</div>
+            <div class="dropdown-item" onclick="selectSuggestion(this);">@Hightlight(suggestion, searchTerm)</div>
         }
         <div class="dropdown-divider"></div>
     }
@@ -74,11 +135,13 @@
 
             if (validOptions.Count > 0)
             {
-                <h5 class="dropdown-header">@facetItem.Name</h5>
+                <div class="dropdown-header">@facetItem.Name</div>
                 foreach (var facetOption in validOptions)
                 {
                     AddSuggestion(facetOption.Label, facetItem.Name, suggestions);
-                    <div class="dropdown-item" onclick="selectSuggestion(this);" data-param="@queryParameter" data-paramvalue="@facetOption.Value"><span class="icon"></span> @Hightlight(facetOption.Label, searchTerm) <small class="text-muted font-weight-lighter float-right">@facetOption.Count</small></div>
+                    <div class="dropdown-item" onclick="selectSuggestion(this);" data-param="@queryParameter" data-paramvalue="@facetOption.Value"><@Hightlight(facetOption.Label, searchTerm)>
+						<div class="">@facetOption.Count</div>
+					</div>
                 }
                 <div class="dropdown-divider"></div>
             }
@@ -90,7 +153,7 @@
 @if (Model.Products.Count() > 0)
 {
     var validSuggestions = new List<ProductViewModel>();
-    string label = "Products";
+    string label = Translate("Products");
     if (Model.Group != null)
     {
         label = Model.Group.Name;
@@ -106,14 +169,13 @@
     }
     if (validSuggestions.Count > 0)
     {
-        <h5 class="dropdown-header">@label</h5>
+        <div class="dropdown-header">@label</div>
         foreach (var suggestion in validSuggestions)
         {
-            <div class="dropdown-item" onclick="selectSuggestion(this);">
-                <img src="/admin/public/getimage.ashx?width=32&height=32&format=webp&Crop=0&fillcanvas=true&quality=65&image=@System.Web.HttpUtility.HtmlEncode(suggestion.DefaultImage.Value)" class="rounded">
-                @Hightlight(suggestion.Name, searchTerm) <small class="text-muted font-weight-lighter">(@suggestion.Number)</small>
-                <small class="text-muted font-weight-lighter float-right">@suggestion.Price.PriceFormatted</small>
-            </div>
+            <div class="dropdown-item d-flex align-items-center text-wrap" onclick="selectSuggestion(this);">
+                <img src="/admin/public/getimage.ashx?width=56&height=56&format=webp&Crop=5&fillcanvas=true&quality=65&image=@System.Web.HttpUtility.HtmlEncode(suggestion.DefaultImage.Value)" class="me-3">
+                @Hightlight(suggestion.Name, searchTerm)
+			</div>
         }
         <div class="dropdown-divider"></div>
     }
@@ -124,76 +186,11 @@
 {
     if (Model.TotalProductsCount > 0)
     {
-        <div class="dropdown-item text-primary" onclick="selectSuggestion(this);"><i class="fas fa-search"></i> View all @Model.TotalProductsCount products for <strong>"<span class="suggestion">@searchTerm</span>"</strong></div>
+        <div class="dropdown-item" onclick="selectSuggestion(this);">@Translate("View all") @Model.TotalProductsCount @Translate("products for")<strong> @searchTerm <strong></div>
     }
     else
     {
-        <div class="dropdown-item text-primary" onclick="selectSuggestion(this);"><i class="fas fa-search"></i> We have no results for <strong>"<span class="suggestion">@searchTerm</span>"</strong>. Search anyway?</div>
+        <div class="dropdown-item" onclick="selectSuggestion(this);">@Translate("We have no results for")<strong>"@searchTerm <strong>. @Translate("Search anyway?")</div>
     }
 
-}
-
-<div class="dropdown-item-text"></div>
-
-
-@functions{
-    string Hightlight(string input, string textToHighlight)
-    {
-        if (string.IsNullOrEmpty(textToHighlight))
-        {
-            return input;
-        }
-        input = fixHtmlEncoding(input.ToLower());
-        int replacementIndex = 0;
-        Dictionary<int, string> replacementValues = new Dictionary<int, string>();
-        foreach (string term in textToHighlight.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
-        {
-            int positionInInput = input.IndexOf(term, StringComparison.OrdinalIgnoreCase);
-            string originalInInput = term;
-            if (positionInInput >= 0)
-            {
-                originalInInput = input.Substring(positionInInput, term.Length);
-            }
-            input = input.Replace(originalInInput, "</$$$>{" + replacementIndex + "}<$$$>");
-            replacementValues.Add(replacementIndex, originalInInput);
-            replacementIndex++;
-        }
-
-        foreach (var replacement in replacementValues)
-        {
-            input = input.Replace("{" + replacement.Key + "}", replacement.Value);
-        }
-        return "<span class=\"suggestion\"><b>" + input.Replace("$$$", "b") + "</b></span>";
-    }
-
-    string fixHtmlEncoding(string input)
-    {
-        if (input.IndexOf("&") > 0)
-        {
-            if (input.IndexOf(" ", input.IndexOf("&")) > 0)
-            {
-                input = input.Replace(" ", "; ");
-            }
-            else
-            {
-                input += ";";
-                input = System.Web.HttpUtility.HtmlDecode(input);
-            }
-        }
-        return input;
-    }
-
-    string escape(string input)
-    {
-        return System.Web.HttpUtility.JavaScriptStringEncode(fixHtmlEncoding(input));
-    }
-
-    void AddSuggestion(string suggestion, string group, Dictionary<string, string> suggestions)
-    {
-        suggestion = suggestion.ToLower();
-        if (!suggestions.ContainsKey(suggestion))
-        {
-            suggestions.Add(suggestion, group);
-        }
-    }
 }
