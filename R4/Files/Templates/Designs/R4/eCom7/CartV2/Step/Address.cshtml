@@ -1,0 +1,221 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb
+@using Dynamicweb.Extensibility
+@using Dynamicweb.Content
+@using Dynamicweb.Core
+@using Dynamicweb.Ecommerce.Orders
+@using Dynamicweb.Ecommerce.Orders.SalesDiscounts
+@using System
+@using System.Web
+@using System.IO
+
+@{
+	string iconPath = "/Files/Templates/Designs/R4/Assets/icons/FontAwesome/";
+	string pageId = GetGlobalValue("Global:Page.ID");
+}
+
+<!-- <form name="ordersubmit" id="ordersubmit" method="post" class="form-light form-horizontal">
+	<h1>Nicolai adress!</h1>
+	<h2>This step: @GetString("CartV2.CurrentStepButtonName")</h2>
+	<h2>Products in cart: @GetString("Ecom:Order.OrderLines.Count")</h2>
+	<button class="btn btn-primary" type="submit" name="@GetString("CartV2.NextStepButtonName")" id="@GetString("CartV2.NextStepButtonName")">Go to address</button>
+</form> -->
+
+<form name="ordersubmit" id="OrderSubmit" method="post" autocomplete="off">
+	@* {% block pageheader %} *@
+	@RenderPageHeader()
+
+	@GetString("CartV2.CurrentStepButtonName")
+	@GetString("CartV2.CheckoutButtonName")
+	@GetString("CartV2.NextStepButtonName")
+
+	@* {% block main %} *@
+	@RenderCartHeader()
+
+	@RenderCheckoutSteps()
+
+	@RenderCartItems()
+
+	@* {% block navigation %} *@
+	@RenderCheckoutNavigation(iconPath)
+</form>
+
+@TemplateTags()
+
+@helper RenderPageHeader() {
+	<div class="py-4 py-lg-5">
+        <h1 class="h3 fw-bold mb-0">Address</h1>
+        <p class="mb-0">Please fill in your address</p>
+    </div>
+}
+
+@helper RenderCheckoutNavigation(string iconPath) {
+
+	int currentStep = 1;
+    string nextButtonName = Translate("Next");
+
+    foreach (LoopItem step in GetLoop("StepButtons"))
+    {
+        if (step.GetBoolean("Step.Current"))
+        {
+            currentStep = step.GetInteger("Step.Number");
+        }
+
+        if (step.GetInteger("Step.Number") == currentStep + 1)
+        {
+			nextButtonName = Translate("Go to") + " " + step.GetString("Step.Name"); 
+        }
+    }
+
+    if (currentStep == GetLoop("StepButtons").Count - 1)
+    {
+        nextButtonName = Translate("Place order");
+    }
+
+ 	<div class="align-items-center d-grid d-lg-flex gap-2 justify-content-center justify-content-lg-end mt-5 mt-lg-5">
+
+		@if (currentStep == 1)
+        {
+			<button type="submit" name="@GetString("CartV2.PreviousStepButtonName")" id="@GetString("CartV2.PreviousStepButtonName")" class="btn btn-link link-secondary text-decoration-none text-uppercase me-lg-3 order-last order-lg-first">
+				<span class="icon-container me-1">
+					@System.IO.File.ReadAllText(HttpContext.Current.Server.MapPath(iconPath + "angle-left.svg"))
+				</span>
+				<span>@Translate("Continue shopping")</span>
+			</button>
+        }
+        else
+        {
+			<button type="submit" name="@GetString("CartV2.PreviousStepButtonName")" id="@GetString("CartV2.PreviousStepButtonName")" class="btn btn-link link-secondary text-decoration-none text-uppercase me-lg-3 order-last order-lg-first">
+				<span class="icon-container me-1">
+					@System.IO.File.ReadAllText(HttpContext.Current.Server.MapPath(iconPath + "angle-left.svg"))
+				</span>
+				<span>@Translate("Back")</span>
+			</button>
+        }
+
+		<button type="submit" name="@GetString("CartV2.NextStepButtonName")" id="@GetString("CartV2.NextStepButtonName")" class="btn btn-success btn-lg text-uppercase">
+			<span>@nextButtonName</span>
+			<span class="icon-container ms-1">
+				@System.IO.File.ReadAllText(HttpContext.Current.Server.MapPath(iconPath + "angle-right.svg"))
+			</span>
+		</button>
+	
+	</div>
+}
+
+@helper RenderCartHeader() {
+	<header class="border-bottom py-3 fw-bold d-none d-lg-block">
+		<div class="row">
+			<div class="col-8 text-muted">Product</div>
+			<div class="col 2 text-muted text-center">Quantity</div>
+			<div class="col-2 text-muted text-end">Total</div>
+		</div>
+	</header>
+}
+
+@helper RenderCartItems() {
+	<text>items</text>
+}
+
+@helper RenderCartItem() {
+	<article class="cart-item py-4 border-bottom">
+		<div class="row">
+			
+			<div class="cart-item__image col-3">
+				<a href="{{link}}" class="ratio ratio-1x1 d-block">
+					<img class="cart-item-img" src="{{image}}" style="object-fit: contain;" alt="{{name}}">
+				</a>
+			</div>
+
+			<div class="cart-item__content col-9">
+				<div class="row position-relative h-100 g-0">
+					<div class="col-12 col-lg-7 d-flex flex-column justify-content-between">
+						<h2 class="h5 mb-3 fw-bold">
+							<a href="{{link}}" class="text-dark text-decoration-none">{{name}}</a>
+						</h2>
+
+						<ul class="list-unstyled mb-4">
+							{% if productFields %}
+								{% for field in productFields %}
+								<li>
+									<span class="text-muted">
+										{{field.name}}:
+									</span>
+									<span class="fw-bold">
+										{{field.value}}
+									</span>
+								</li>
+								{% endfor %}
+							{% endif %}
+
+							<li class="d-lg-grid position-static position-lg-absolute top-0 end-0 text-lg-end">
+								<span class="small text-muted d-lg-none">
+									Price:
+								</span>
+								{% if priceBefore %} <span class="text-decoration-line-through text-muted">{{priceBefore}}</span>{% endif %}
+								<span class="fw-bold">
+									{{price}}
+								</span>
+							</li>
+						</ul>
+
+						<ul class="list-unstyled d-flex mb-0 position-absolute position-lg-static top-0 end-0">
+							<li>
+								<a href="#" class="text-uppercase p-2 p-lg-0 lh-1 d-block me-lg-3">
+									<span class="d-none d-lg-block">Move to favorites</span>
+									<span class="d-block d-lg-none">
+										{{ '/Rapido4Prototype/_src/_assets/_icons/FontAwesome/heart.svg' | svgContents('icon') | safe }}
+									</span>
+								</a>
+							</li>
+							<li>
+								<a href="#" class="text-uppercase p-2 p-lg-0 lh-1 d-block">
+									<span class="d-none d-lg-block">Remove</span>
+									<span class="d-block d-lg-none">
+										{{ '/Rapido4Prototype/_src/_assets/_icons/FontAwesome/trash-alt.svg' | svgContents('icon') | safe }}
+									</span>
+								</a>
+							</li>
+						</ul>
+
+					</div>
+					<div class="col-5 col-lg-2">
+						<label for="cartQuantity01" class="d-none d-lg-none text-muted mb-2">Quantity:</label>
+						<input type="number" class="form-control text-center" id="cartQuantity01" value="{{quantity}}" min="0">
+					</div>
+					<div class="col-7 col-lg-3 text-end d-flex flex-column justify-content-center justify-content-lg-end">
+						<span class="d-none d-lg-none text-muted mb-2">Total:</span>
+						<h6 class="h5 fw-bold m-0">{{price}}</h6>
+					</div>
+				</div>
+			</div>
+
+		</div>
+	</article>
+}
+
+@helper RenderCheckoutSteps()
+{
+    string stepNumber = "";
+
+	<ul class="nav nav-pills nav-justified bg-light flex-row mb-4 mb-lg-5">
+	
+        @foreach (LoopItem step in GetLoop("StepButtons"))
+        {
+            if (step.GetString("Step.Name").ToLower() != "checkout")
+            {
+                string isActive = step.GetBoolean("Step.Current") ? "active" : "";
+
+                if (GetLoop("StepButtons").Count > 2)
+                {
+                    stepNumber = step.GetString("Step.Number");
+                }
+
+				if (stepNumber != "1") {
+					<li class="nav-item"><a class="nav-link @isActive rounded-0 small p-lg-3" href="#">@Translate(step.GetString("Step.Name"))</a></li>
+				}
+            }
+        }
+	
+	</ul>    
+}
