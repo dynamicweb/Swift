@@ -10,22 +10,20 @@
 @using System.IO
 
 @{
-	string iconPath = "/Files/Templates/Designs/R4/Assets/icons/FontAwesome/";
+	string iconPath = "/Files/Templates/Designs/R4/Assets/icons/";
 	string pageId = GetGlobalValue("Global:Page.ID");
 }
 
-<form name="ordersubmit" id="OrderSubmit" method="post" autocomplete="off">
+@* @TemplateTags() *@
+<form name="ordersubmit" id="ordersubmit" method="post" autocomplete="off">
+	
 	@* {% block pageheader %} *@
 	@RenderPageHeader()
-
-	@GetString("CartV2.CurrentStepButtonName")
-	@GetString("CartV2.CheckoutButtonName")
-	@GetString("CartV2.NextStepButtonName")
 
 	@* {% block main %} *@
 	@RenderCartHeader()
 
-	@RenderCartItems()
+	@RenderCartOrderLines()
 
 	@* {% block navigation %} *@
 	@RenderCheckoutNavigation(iconPath)
@@ -34,200 +32,17 @@
 @helper RenderPageHeader() {
 	<div class="py-4 py-lg-5">
         <h1 class="h3 fw-bold mb-0">Shopping Cart</h1>
-        <p class="mb-0">You have <strong>@GetString("Ecom:Order.OrderLines.Count") items</strong> in your shopping cart</p>
+        <p class="mb-0">You have <span class="fw-bold">@GetString("Ecom:Order.OrderLines.Count") items</span> in your shopping cart</p>
     </div>
 }
 
-@helper RenderCheckoutNavigation(string iconPath) {
-
-	int currentStep = 1;
-    string nextButtonName = Translate("Next");
-
-    foreach (LoopItem step in GetLoop("StepButtons"))
-    {
-        if (step.GetBoolean("Step.Current"))
-        {
-            currentStep = step.GetInteger("Step.Number");
-        }
-
-        if (step.GetInteger("Step.Number") == currentStep + 1)
-        {
-			nextButtonName = Translate("Go to") + " " + step.GetString("Step.Name"); 
-        }
-    }
-
-    if (currentStep == GetLoop("StepButtons").Count - 1)
-    {
-        nextButtonName = Translate("Go to delivery");
-    }
-
- 	<div class="align-items-center d-grid d-lg-flex gap-2 justify-content-center justify-content-lg-end mt-5 mt-lg-5">
-
-		@if (currentStep == 1)
-        {
-			<button type="submit" name="@GetString("CartV2.PreviousStepButtonName")" id="@GetString("CartV2.PreviousStepButtonName")" class="btn btn-link link-secondary text-decoration-none text-uppercase me-lg-3 order-last order-lg-first">
-				<span class="icon-container me-1">
-					@System.IO.File.ReadAllText(HttpContext.Current.Server.MapPath(iconPath + "angle-left.svg"))
-				</span>
-				<span>@Translate("Continue shopping")</span>
-			</button>
-        }
-        else
-        {
-			<button type="submit" name="@GetString("CartV2.PreviousStepButtonName")" id="@GetString("CartV2.PreviousStepButtonName")" class="btn btn-link link-secondary text-decoration-none text-uppercase me-lg-3 order-last order-lg-first">
-				<span class="icon-container me-1">
-					@System.IO.File.ReadAllText(HttpContext.Current.Server.MapPath(iconPath + "angle-left.svg"))
-				</span>
-				<span>@Translate("Back")</span>
-			</button>
-        }
-
-		<button type="submit" name="@GetString("CartV2.NextStepButtonName")" id="@GetString("CartV2.NextStepButtonName")" class="btn btn-success btn-lg text-uppercase">
-			<span>@nextButtonName</span>
-			<span class="icon-container ms-1">
-				@System.IO.File.ReadAllText(HttpContext.Current.Server.MapPath(iconPath + "angle-right.svg"))
-			</span>
-		</button>
-	
-	</div>
-}
-
-@helper RenderCartHeader() {
-	<header class="border-bottom py-3 fw-bold d-none d-lg-block">
-		<div class="row">
-			<div class="col-8 text-muted">Product</div>
-			<div class="col 2 text-muted text-center">Quantity</div>
-			<div class="col-2 text-muted text-end">Total</div>
-		</div>
-	</header>
-}
-
-@helper RenderCheckoutSteps(){
-    string stepNumber = "";
-
-	<ul class="nav nav-pills nav-justified bg-light flex-row mb-4 mb-lg-5">
-	
-        @foreach (LoopItem step in GetLoop("StepButtons"))
-        {
-            if (step.GetString("Step.Name").ToLower() != "checkout")
-            {
-                string isActive = step.GetBoolean("Step.Current") ? "active" : "";
-
-                if (GetLoop("StepButtons").Count > 2)
-                {
-                    stepNumber = step.GetString("Step.Number");
-                }
-
-				if (stepNumber != "1") {
-					<li class="nav-item"><a class="nav-link @isActive rounded-0 small p-lg-3" href="#">@Translate(step.GetString("Step.Name"))</a></li>
-				}
-            }
-        }
-	
-	</ul>    
-}
-
-@helper RenderCartItems() {
-	@RenderCartItem()
-}
-
-@helper RenderCartItem() {
+@helper RenderCartOrderLines() {
 	foreach (LoopItem orderline in GetLoop("OrderLines")) {
-
-		string productName = orderline.GetString("Ecom:Order:OrderLine.ProductName") + " " + orderline.GetString("Ecom:Order:OrderLine.ProductVariantText");
-		string productLink = orderline.GetString("Ecom:Order:OrderLine.ProductDetailLink");
-		string productImage = "/Admin/Public/GetImage.ashx?width=" + 1920 + "&height=" + 845 + "&image=" + orderline.GetString("Ecom:Product.PrimaryImage") + "&Format=WebP&Quality=100";
-		string productRemoveFromBasketLink = orderline.GetString("Ecom:Order:OrderLine.DeleteLink");
-
-		string priceTotalPriceWithDiscounts = orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.PriceFormatted");
-		<article class="order-line py-4 border-bottom">
-			<div class="row">
-				
-				<div class="cart-item__image col-3">
-					<a href="@productLink" class="ratio ratio-1x1 d-block">
-						<img class="cart-item-img" src="@productImage" style="object-fit: contain;" alt="@productName">
-					</a>
-				</div>
-
-				<div class="cart-item__content col-9">
-					<div class="row position-relative h-100 g-0">
-						<div class="col-12 col-lg-7 d-flex flex-column justify-content-between">
-							<h2 class="h5 mb-3 fw-bold">
-								<a href="@productLink" class="text-dark text-decoration-none">
-									@productName
-								</a>
-							</h2>
-
-							@if(orderline.GetLoop("VariantGroups").Any()) {
-								<ul class="list-unstyled mb-4">
-
-								@foreach (LoopItem variantGroup in orderline.GetLoop("VariantGroups")) {
-									string label = variantGroup.GetString("Ecom:VariantGroup.Name");
-									string value = "";
-
-									foreach (LoopItem variantOption in variantGroup.GetLoop("VariantOptions")) {
-										if(variantOption.GetBoolean("Ecom:VariantOption.Selected")){
-											value = variantOption.GetString("Ecom:VariantOption.Name");
-										}
-									}
-
-									<li>
-										<span class="text-muted">
-											@label
-										</span>
-										<span class="fw-bold">
-											@value
-										</span>
-									</li>
-								}
-
-								</ul>
-							}
-
-							<ul class="list-unstyled mb-4">
-								<li class="d-lg-grid position-static position-lg-absolute top-0 end-0 text-lg-end">
-
-									<span class="small text-muted d-lg-none">
-										Price:
-									</span>
-
-									<span class="fw-bold">@priceTotalPriceWithDiscounts</span>
-								</li>
-							</ul>
-
-							<ul class="list-unstyled d-flex mb-0 position-absolute position-lg-static top-0 end-0">
-								<li>
-									<a href="#" class="text-uppercase p-2 p-lg-0 lh-1 d-block me-lg-3">
-										<span class="d-none d-lg-block">Move to favorites</span>
-										<span class="d-block d-lg-none">
-											{{ '/Rapido4Prototype/_src/_assets/_icons/FontAwesome/heart.svg' | svgContents('icon') | safe }}
-										</span>
-									</a>
-								</li>
-								<li>
-									<a href="@productRemoveFromBasketLink" class="text-uppercase p-2 p-lg-0 lh-1 d-block">
-										<span class="d-none d-lg-block">Remove</span>
-										<span class="d-block d-lg-none">
-											{{ '/Rapido4Prototype/_src/_assets/_icons/FontAwesome/trash-alt.svg' | svgContents('icon') | safe }}
-										</span>
-									</a>
-								</li>
-							</ul>
-
-						</div>
-						<div class="col-5 col-lg-2">
-							<label for="cartQuantity01" class="d-none d-lg-none text-muted mb-2">Quantity:</label>
-							<input type="number" class="form-control text-center" id="cartQuantity01" value="{{quantity}}" min="0">
-						</div>
-						<div class="col-7 col-lg-3 text-end d-flex flex-column justify-content-center justify-content-lg-end">
-							<span class="d-none d-lg-none text-muted mb-2">Total:</span>
-							<h6 class="h5 fw-bold m-0">@priceTotalPriceWithDiscounts</h6>
-						</div>
-					</div>
-				</div>
-
-			</div>
-		</article>
+		@RenderCartOrderLineItem(orderline)
 	}
 }
 
+@Include("Helpers/CartHeader.cshtml")
+@Include("Helpers/CheckoutNavigation.cshtml")
+@Include("Helpers/CheckoutSteps.cshtml")
+@Include("Helpers/CartOrderLineItem.cshtml")
