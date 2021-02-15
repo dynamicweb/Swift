@@ -1,0 +1,294 @@
+﻿@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+
+<script>
+    var capitalize = function (s) {
+        return s.charAt(0).toUpperCase() + s.substring(1);
+    },
+
+    useAddress = function (sender, type) {
+        var el = sender.options[sender.selectedIndex];
+        if (el) {
+            var i, attribute;
+            for (i = 0; attribute = el.attributes[i]; i++) {
+                if (attribute.name.indexOf('data-') == 0) {
+                    var key = capitalize(attribute.name.substring(5));
+                    var target = document.getElementById('EcomOrder' + type + key);
+                    if (target) {
+                        target.value = attribute.value;
+                    }
+                }
+            }
+        }
+    },
+	
+    updateCart = function(gotoStep) {
+		gotoStep = gotoStep || 'CartV2.GotoStep1';
+	
+		var form = document.getElementById('ordersubmit');
+		var field = document.createElement('input');
+		field.type = 'hidden';
+		field.name = gotoStep;
+		field.id = gotoStep;
+		//field.value = 'Update';
+		form.appendChild(field);
+		form.submit();
+	}	
+</script>
+
+@helper RenderAddress(string type)
+{
+var addresses = GetLoop("UserManagement:User.UserAddresses");
+
+if (addresses.Count > 0)
+{
+        <div class="form-group">
+            <label for="@(type)Address" class="col-sm-2 control-label">@Translate("Select_address", "Select Address")</label>
+            <div class="col-sm-10">
+                <select id="@(type)Address" class="form-control" onchange="useAddress(this, '@type')">
+                    <option selected="selected">@Translate("Select_address", "Select address")</option>
+                    @foreach (var address in addresses)
+                    {
+                        <option data-address='@address.GetValue("UserManagement:User.UserAddress.Address")'
+                                data-address2='@address.GetValue("UserManagement:User.UserAddress.Address2")'
+                                data-zip='@address.GetValue("UserManagement:User.UserAddress.Zip")'
+                                data-city='@address.GetValue("UserManagement:User.UserAddress.City")'
+                                data-state='@address.GetValue("UserManagement:User.UserAddress.State")'
+                                data-country='@address.GetValue("UserManagement:User.UserAddress.Country")'>
+                            @address.GetValue("UserManagement:User.UserAddress.Description")
+                        </option>
+                    }
+                </select>
+                <a href='Default.aspx?ID=@Pageview.Area.Item["UserManagementPageId"]&amp;ObjectID=@GetValue("Ecom:Order.Customer.AccessUserID")&amp;Action=ManageAddresses'>@Translate("Manage_addresses", "Manage addresses")</a>
+            </div>
+        </div>
+}
+
+    <div class="form-group">
+        <label for="EcomOrder@(type)Address" class="col-sm-2 control-label">@Translate("Address", "Address")</label>
+        <div class="col-sm-10">
+            <input class="form-control" type="text" name="EcomOrder@(type)Address" id="EcomOrder@(type)Address" value='@GetValue("Ecom:Order."+type+".Address")' />
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="EcomOrder@(type)Address2" class="col-sm-2 control-label">@Translate("Address_line_2", "Address Line 2")</label>
+        <div class="col-sm-10">
+            <input class="form-control" type="text" name="EcomOrder@(type)Address2" id="EcomOrder@(type)Address2" value='@GetValue("Ecom:Order."+type+".Address2")' />
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="EcomOrder@(type)Zip" class="col-sm-2 control-label">@Translate("Zipcode", "Zipcode")</label>
+        <div class="col-sm-10">
+            <input class="form-control" type="number" name="EcomOrder@(type)Zip" id="EcomOrder@(type)Zip" value='@GetValue("Ecom:Order."+type+".Zip")' />
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="EcomOrder@(type)City" class="col-sm-2 control-label">@Translate("City", "City")</label>
+        <div class="col-sm-10">
+            <input class="form-control" type="text" name="EcomOrder@(type)City" id="EcomOrder@(type)City" value='@GetValue("Ecom:Order."+type+".City")' />
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="EcomOrder@(type)Country" class="col-sm-2 control-label">@Translate("Country", "Country")</label>
+        <div class="col-sm-10">
+            <select class="form-control" name="EcomOrder@(type)Country" id="EcomOrder@(type)Country" onchange="updateCart()">
+                @foreach (var country in GetLoop("Countries"))
+                {
+					if(country.GetValue("Ecom:Country.Code2") == GetValue("Ecom:Order."+type+".Country.Code")){
+						<option selected='selected' value='@country.GetValue("Ecom:Country.Code2")'>
+							@country.GetValue("Ecom:Country.Name")
+						</option>
+					}
+					else{
+						<option value='@country.GetValue("Ecom:Country.Code2")'>
+							@country.GetValue("Ecom:Country.Name")
+						</option>
+					}
+                }
+            </select>
+        </div>
+    </div>
+}
+
+<form name="ordersubmit" id="ordersubmit" method="post" role="form">
+    <div class="form-horizontal" role="form">
+        @{
+            var errors = GetLoop("ValidationErrors");
+            if (errors.Count > 0)
+            {
+                <div class="alert alert-danger validation-errors">
+                    <p><strong>@Translate("Validation_errors", "Validation errors")</strong></p>
+                    <ul>
+                        @foreach (var error in errors)
+                        {
+                            <li>@error.GetValue("Ecom:Cart.ValidationError.FieldName"): @error.GetValue("Ecom:Cart.ValidationError.ErrorMessage")</li>
+                        }
+                    </ul>
+                </div>
+            }
+        }
+
+        <h3>@Translate("Costumer_information", "Customer Information")</h3>
+        <fieldset>
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <legend><h4>@Translate("Billing_address", "Billing Address")</h4></legend>
+
+                    <div class="form-group">
+                        <label for="EcomOrderCustomerName" class="col-sm-2 control-label">@Translate("Name", "Name")</label>
+                        <div class="col-sm-10">
+                            <input class="form-control" type="text" name="EcomOrderCustomerName" id="EcomOrderCustomerName" value='@GetValue("Ecom:Order.Customer.Name")' />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="EcomOrderCustomerEmail" class="col-sm-2 control-label">@Translate("Email", "E-mail")</label>
+                        <div class="col-sm-10">
+                            <input class="form-control" type="email" name="EcomOrderCustomerEmail" id="EcomOrderCustomerEmail" value='@GetValue("Ecom:Order.Customer.Email")' />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="EcomOrderCustomerPhone" class="col-sm-2 control-label">@Translate("Phone", "Phone")</label>
+                        <div class="col-sm-10">
+                            <input class="form-control" type="number" name="EcomOrderCustomerPhone" id="EcomOrderCustomerPhone" value='@GetValue("Ecom:Order.Customer.Phone")' />
+                        </div>
+                    </div>
+
+                    @RenderAddress("Customer")
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <legend><h4>@Translate("Delivery_address", "Delivery Address")</h4></legend>
+
+                    <div class="form-group">
+                        <label for="EcomOrderCustomerName" class="col-sm-2 control-label">@Translate("Name", "Name")</label>
+                        <div class="col-sm-10">
+                            <input class="form-control" type="text" name="EcomOrderDeliveryName" id="EcomOrderDeliveryName" value='@GetValue("Ecom:Order.Delivery.Name")' />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="EcomOrderCustomerEmail" class="col-sm-2 control-label">@Translate("Email", "E-mail")</label>
+                        <div class="col-sm-10">
+                            <input class="form-control" type="email" name="EcomOrderDeliveryEmail" id="EcomOrderDeliveryEmail" value='@GetValue("Ecom:Order.Delivery.Email")' />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="EcomOrderCustomerPhone" class="col-sm-2 control-label">@Translate("Phone", "Phone")</label>
+                        <div class="col-sm-10">
+                            <input class="form-control" type="number" name="EcomOrderDeliveryPhone" id="EcomOrderDeliveryPhone" value='@GetValue("Ecom:Order.Delivery.Phone")' />
+                        </div>
+                    </div>
+
+                    @RenderAddress("Delivery")
+                </div>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <legend><h4>@Translate("Payment_and_delivery", "Payment and Delivery")</h4></legend>
+
+                    @if (Loops.Contains("Paymethods"))
+                    {
+                        <h4>@Translate("Payment_methods", "Payment methods")</h4>
+                        <div>
+                            @foreach (var i in GetLoop("Paymethods"))
+                            {
+
+                                <div class="radio">
+                                    <label class="col-sm-10">
+                                        <input type="radio" name="EcomCartPaymethodID" id='EcomCartPaymethodID_@i.GetValue("Ecom:Cart.Paymethod.ID")' value='@i.GetValue("Ecom:Cart.Paymethod.ID")' checked='@i.GetBoolean("Ecom:Cart.Paymethod.IsSelected")' onchange='updateCart()' />
+                                        @i.GetValue("Ecom:Cart.Paymethod.Name")
+                                    </label>
+                                </div>
+                            }
+                        </div>
+						<div>
+							@GetString("Ecom:Cart.PaymentInlineForm") 
+						</div>
+                    }
+					@if (Loops.Contains("Shippingmethods"))
+                    {
+                        <h4>@Translate("Delivery_methods", "Delivery methods")</h4>
+                        <div>
+                            @foreach (var i in GetLoop("Shippingmethods"))
+                            {
+                                <div class="radio">
+                                    <label class="col-sm-10">
+                                        @if (i.GetBoolean("Ecom:Cart.Shippingmethod.IsSelected"))
+                                        {
+                                            <input type="radio" name="EcomCartShippingID" id='EcomCartShippingID_@i.GetValue("Ecom:Cart.Shipping.ID")' value='@i.GetValue("Ecom:Cart.Shipping.ID")' checked="checked" />
+                                            @i.GetValue("Ecom:Cart.Shippingmethod.Name")
+                                        }
+                                        else
+                                        {
+                                            <input type="radio" name="EcomCartShippingID" id='EcomCartShippingID_@i.GetValue("Ecom:Cart.Shipping.ID")' value='@i.GetValue("Ecom:Cart.Shipping.ID")' />
+                                            @i.GetValue("Ecom:Cart.Shippingmethod.Name")
+                                        }
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    }
+
+                </div>
+            </div>
+        </fieldset>
+		
+        @if (GetBoolean("Ecom:Cart.UseNewsletterSubscription"))
+        {
+            <fieldset>
+                <div class="panel panel-default">
+                    <div class="panel-body">
+                        <legend><h4>@Translate("Newsletter", "Newsletter")</h4></legend>
+
+
+                        <input class="form-control" type="hidden" name="EcomOrderSubscribeToNewsletter" />
+                        <div class="checkbox">
+
+
+                            <label for="EcomOrderSubscribeToNewsletter">
+                                <input type="checkbox" name="EcomOrderSubscribeToNewsletter" id="EcomOrderSubscribeToNewsletter" checked='@GetBoolean("Ecom:Order.Customer.NewsletterSubscribe")' />
+                                @Translate("Subscribe_to_newsletter", "Subscribe to newsletter")
+                            </label>
+                        </div>
+
+                    </div>
+                </div>
+            </fieldset>
+        }
+
+        <fieldset>
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <legend>
+                        @if (Pageview.Area.Item != null && Pageview.Area.Item.ContainsKey("TermsAndConditionsPageId"))
+                        {
+                            <h4><a href='Default.aspx?ID=@Pageview.Area.Item["TermsAndConditionsPageId"]'>@Translate("Terms_and_conditions", "Terms and Conditions")</a></h4>
+                        }
+                        else
+                        {
+                            <h4>@Translate("Terms_and_conditions", "Terms and Conditions")</h4>
+                        }
+                    </legend>
+
+                    <div class="checkbox">
+                        <label>
+                            <input type="checkbox" id="EcomOrderCustomerAccepted" name="EcomOrderCustomerAccepted" value="1" />
+                            @Translate("Accept_terms_and_conditions", "Accept terms and conditions")
+                        </label>
+                    </div>
+
+                </div>
+            </div>
+        </fieldset>
+
+        <div>
+            <button onclick="updateCart('CartV2.GotoStep0')" class="submitter btn btn-primary">@Translate("Back", "Back")</button>
+			<input type="hidden" name="@GetValue("CartV2.NextStepButtonName")" />
+            <button type="submit" class="submitter btn btn-primary btn-pay">@Translate("Create Order", "Create Order")</button>
+        </div>
+</form>
