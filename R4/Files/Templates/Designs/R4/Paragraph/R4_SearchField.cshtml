@@ -1,52 +1,39 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using System.Web
-@inherits ViewModelTemplate<ProductListViewModel>
 
 @{
-    string searchResultsPageId = !string.IsNullOrEmpty(Pageview.AreaSettings.GetString("ProductSearchResults")) ? Pageview.AreaSettings.GetString("ProductSearchResults") : "";
+	string searchResultsPageId = !string.IsNullOrEmpty(Model.Item.GetString("SearchResultsPage")) ? Model.Item.GetString("SearchResultsPage") : "";
+	string productListPage = !string.IsNullOrEmpty(Model.Item.GetString("ProductListPage")) ? Model.Item.GetString("ProductListPage") : "";
 
-    string searchTerm = string.Empty;
-    List<string> searchHistory = new List<string>();
-    if (HttpContext.Current.Session["_searchHistory"] != null)
-    {
-        searchHistory = (List<string>)HttpContext.Current.Session["_searchHistory"];
-    }
-    if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request["q"]))
-    {
-        searchTerm = Dynamicweb.Context.Current.Request["q"];
+	string searchTerm = string.Empty;
+	List<string> searchHistory = new List<string>();
+	if (HttpContext.Current.Session["_searchHistory"] != null)
+	{
+		searchHistory = (List<string>)HttpContext.Current.Session["_searchHistory"];
+	}
+	if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request["q"]))
+	{
+		searchTerm = Dynamicweb.Context.Current.Request["q"];
 
-        if (searchHistory.Contains(searchTerm))
-        {
-            searchHistory.Remove(searchTerm);
-        }
-        searchHistory.Add(searchTerm);
-        HttpContext.Current.Session.Add("_searchHistory", searchHistory);
-    }
-    string groupIdQueryParameter = string.Empty;
-    if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request["GroupID"]))
-    {
-        groupIdQueryParameter = "&GroupID=" + Dynamicweb.Context.Current.Request["GroupID"].Trim();
-    }
-
-    string currentPageLink = "Default.aspx?ID=" + searchResultsPageId + groupIdQueryParameter;
-
-    GroupInfoViewModel productgroup = null;
-    if (!string.IsNullOrEmpty(searchTerm) && Model.Products != null && Model.Products.Any())
-    {
-        //See if the first group of the first product happens to share name of the search term and redirect to that group
-        productgroup = Model.Products.FirstOrDefault().Groups.FirstOrDefault();
-        if (productgroup != null && productgroup.Name.Equals(searchTerm, StringComparison.OrdinalIgnoreCase))
-        {
-            string grouplink = "/Default.aspx?ID=" + searchResultsPageId + "&GroupID=" + productgroup.Id;
-            //HttpContext.Current.Response.Redirect(grouplink);
-        }
-    }
+		if (searchHistory.Contains(searchTerm))
+		{
+			searchHistory.Remove(searchTerm);
+		}
+		searchHistory.Add(searchTerm);
+		HttpContext.Current.Session.Add("_searchHistory", searchHistory);
+	}
+	string groupIdQueryParameter = string.Empty;
+	if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request["GroupID"]))
+	{
+		groupIdQueryParameter = "&GroupID=" + Dynamicweb.Context.Current.Request["GroupID"].Trim();
+	}
 }
 
 <div id="asyncFetchPlaceholder">
 
-    <script>
+	<script>
         var tabIndex = -1;
         var tabIndexOld = 0;
         function suggest(e, searchField) {
@@ -146,7 +133,7 @@
         }
 
         function preSelectSuggestion(elm) {
-            var suggestionElement = elm.getElementsByClassName("suggestion")[0];
+            var suggestionElement = elm.getElementsByClassName("js-suggestion")[0];
             document.getElementById("typeAhead").value = suggestionElement.innerText;
 
             var parm = document.getElementById("typeAheadParameter");
@@ -189,59 +176,63 @@
             };
         };
 
-    </script>
+	</script>
 
-		<div class="dropdown" id="typeAheadDropwdown">
-				<form method="get" action="@Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(searchResultsPageId)" id="suggestForm">
-					<input type="hidden" id="typeAheadParameter" />
-					<input class="input isFocus form-control" id="typeAhead" type="search" placeholder="@Translate("Search here...")" autocomplete="off" maxlength="255" name="q" tabindex="1" value="@searchTerm" data-original="@searchTerm">
-				</form>
-			<div class="dropdown-menu w-100 rounded-0" id="typeAheadMenu"></div>
-		</div>
+	<div class="dropdown" id="typeAheadDropwdown">
+		<form method="get" action="@Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(productListPage)" id="suggestForm">
+			<input type="hidden" id="typeAheadParameter" />
+			<input class="input isFocus form-control" id="typeAhead" type="search" placeholder="@Translate("Search here...")" autocomplete="off" maxlength="255" name="q" tabindex="1" value="@searchTerm" data-original="@searchTerm">
+		</form>
+		<div class="dropdown-menu w-100 rounded-0" id="typeAheadMenu"></div>
+	</div>
 
-    <script>
-        document.body.addEventListener('click', hidedd);
-        document.getElementById("typeAhead").addEventListener('focus', showdd);
-        document.getElementById("typeAhead").addEventListener('keyup', (e) => suggest(e, document.getElementById("typeAhead")))
-        document.getElementById("typeAhead").addEventListener('keydown', (e) => handleTab(e))
-    </script>
+	<script>
+		document.body.addEventListener('click', hidedd);
+		document.getElementById("typeAhead").addEventListener('focus', showdd);
+		document.getElementById("typeAhead").addEventListener('keyup', (e) => suggest(e, document.getElementById("typeAhead")))
+		document.getElementById("typeAhead").addEventListener('keydown', (e) => handleTab(e))
+	</script>
 
-    <script>
-        function goToPage(aTag) {
-            var pageTitle = aTag.getAttribute("title");
-            navigateToPage(aTag.href);
-            history.pushState(null, pageTitle, aTag.href);
-            if (pageTitle != null) {
-                document.title = pageTitle;
-            }
-            return false;
-        }
+	<script>
+		function goToPage(aTag) {
+			var pageTitle = aTag.getAttribute("title");
+			navigateToPage(aTag.href);
+			history.pushState(null, pageTitle, aTag.href);
+			if (pageTitle != null) {
+				document.title = pageTitle;
+			}
+			return false;
+		}
 
-        async function navigateToPage(href) {
-            var fetchHref = href;
-            if (href.indexOf("?") > 0) {
-                fetchHref += "&feed=true"
-            } else {
-                fetchHref += "?feed=true"
-            }
-            let response = await fetch(fetchHref);
+		async function navigateToPage(href) {
+			var fetchHref = href;
+			if (href.indexOf("?") > 0) {
+				fetchHref += "&feed=true"
+			} else {
+				fetchHref += "?feed=true"
+			}
+			let response = await fetch(fetchHref);
 
-            if (!response.ok) {
-                throw new Error('HTTP error! status: ${response.status}');
-            } else {
-                let html = await response.text().then(function (text) {
-                    return text;
-                });
+			if (!response.ok) {
+				throw new Error('HTTP error! status: ${response.status}');
+			} else {
+				let html = await response.text().then(function (text) {
+					return text;
+				});
 
-                document.getElementById("asyncFetchPlaceholder").outerHTML = html;
-            }
-            window.scrollTo(0, 0);
-        }
+				document.getElementById("asyncFetchPlaceholder").outerHTML = html;
+			}
+			window.scrollTo(0, 0);
+		}
 
-        window.onpopstate = function (event) {
-            alert("location: " + document.location.href + ", title: " + document.title + ", state: " + JSON.stringify(event.state));
-            navigateToPage(document.location.href);
-            //document.title = event.state.prevTitle;
-        }
-    </script>
+		window.onpopstate = function (event) {
+			alert("location: " + document.location.href + ", title: " + document.title + ", state: " + JSON.stringify(event.state));
+			navigateToPage(document.location.href);
+			//document.title = event.state.prevTitle;
+		}
+	</script>
 </div>
+
+
+
+
