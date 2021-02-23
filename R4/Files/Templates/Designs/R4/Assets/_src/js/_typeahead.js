@@ -77,8 +77,10 @@ const Typeahead = function() {
 	}
 
 	async function getSuggestions(searchField) {
-		var resultsPageId = searchField.closest(".js-suggest-form").getAttribute("data-search-results-page");
-		var searchUrl = "/Default.aspx?ID=" + resultsPageId + "&feed=true&redirect=false&eq=" + encodeURIComponent(searchField.value.toLowerCase());
+		var suggestionForm = searchField.closest(".js-suggest-form");
+		var resultsPageId = suggestionForm.getAttribute("data-search-results-page");
+		var layout = suggestionForm.getAttribute("data-search-layout");
+		var searchUrl = "/Default.aspx?ID=" + resultsPageId + "&feed=true&redirect=false&eq=" + encodeURIComponent(searchField.value.toLowerCase()) + "&SearchLayout=" + layout;
 		let response = await fetch(searchUrl);
 
 		if (!response.ok) {
@@ -89,16 +91,16 @@ const Typeahead = function() {
 				return text;
 			});
 
-			displaySuggestions(html);
+			displaySuggestions(html, suggestionForm);
 		}
 	}
 
-	function displaySuggestions(data) {
+	function displaySuggestions(data, suggestionForm) {
 		if (data.length > 5) {
 			document.querySelectorAll(".js-type-ahead-menu").forEach(function (menu) {
 				menu.innerHTML = data;
 			});
-			showdd();
+			showdd(suggestionForm);
 		}
 	}
 
@@ -145,15 +147,15 @@ const Typeahead = function() {
 		elm.closest(".js-type-ahead-dropdown").querySelector(".js-suggest-form").submit();
 	}
 
-	function showdd() {
-		document.querySelectorAll(".js-type-ahead-menu").forEach(function (dropdown) {
-			if (dropdown.innerHTML != "") {
-				dropdown.classList.add("show");
-			}
-		});
-		document.querySelectorAll(".js-type-ahead-dropdown").forEach(function (dropdown) {
-			dropdown.classList.add("show");
-		});
+	function showdd(suggestionForm) {
+		var placeholder = suggestionForm.closest(".js-async-fetch-placeholder");
+		var menu = placeholder.querySelector(".js-type-ahead-menu");
+		if (menu.innerHTML != "") {
+			menu.classList.add("show");
+		}
+
+		var dropdown = placeholder.querySelector(".js-type-ahead-dropdown");
+		dropdown.classList.add("show");
 	}
 	function hidedd() {
 		document.querySelectorAll(".js-type-ahead-dropdown").forEach(function (dropdown) {
@@ -181,7 +183,7 @@ const Typeahead = function() {
 
 	document.body.addEventListener('click', hidedd);
 	document.querySelectorAll(".js-type-ahead-field").forEach(function (field) {
-		field.addEventListener('focus', showdd);
+		field.addEventListener('focus', (e) => showdd(field.closest(".js-suggest-form")));
 		field.addEventListener('keyup', (e) => suggest(e, field))
 		field.addEventListener('keydown', (e) => handleTab(e));
 	});
