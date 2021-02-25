@@ -1,0 +1,200 @@
+@inherits ViewModelTemplate<ProductListViewModel>
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+    string searchTerm = string.Empty;
+    string layout = Dynamicweb.Context.Current.Request["SearchLayout"] != null ? Dynamicweb.Context.Current.Request["SearchLayout"].ToString() : "field";
+    string itemPadding = layout == "icon" ? "px-0" : "";
+
+
+    if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request["eq"]))
+    {
+        searchTerm = Dynamicweb.Context.Current.Request["eq"].Trim();
+    }
+    Dictionary<string, string> suggestions = new Dictionary<string, string>();
+}
+
+@functions{
+	string Highlight(string input, string textToHighlight)
+	{
+		if (string.IsNullOrEmpty(textToHighlight))
+		{
+			return input;
+		}
+		input = fixHtmlEncoding(input.ToLower());
+		int replacementIndex = 0;
+		Dictionary<int, string> replacementValues = new Dictionary<int, string>();
+		foreach (string term in textToHighlight.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
+		{
+			int positionInInput = input.IndexOf(term, StringComparison.OrdinalIgnoreCase);
+			string originalInInput = term;
+			if (positionInInput >= 0)
+			{
+				originalInInput = input.Substring(positionInInput, term.Length);
+			}
+			input = input.Replace(originalInInput, "</$$$>{" + replacementIndex + "}<$$$>");
+			replacementValues.Add(replacementIndex, originalInInput);
+			replacementIndex++;
+		}
+
+		foreach (var replacement in replacementValues)
+		{
+			input = input.Replace("{" + replacement.Key + "}", replacement.Value);
+		}
+		return "<span class=\"js-suggestion\" data-suggestion-value=\"\"><b>" + input.Replace("$$$", "b") + "</b></span>";
+	}
+
+	string fixHtmlEncoding(string input)
+	{
+		if (input.IndexOf("&") > 0)
+		{
+			if (input.IndexOf(" ", input.IndexOf("&")) > 0)
+			{
+				input = input.Replace(" ", "; ");
+			}
+			else
+			{
+				input += ";";
+				input = System.Web.HttpUtility.HtmlDecode(input);
+			}
+		}
+		return input;
+	}
+
+	string escape(string input)
+	{
+		return System.Web.HttpUtility.JavaScriptStringEncode(fixHtmlEncoding(input));
+	}
+
+	void AddSuggestion(string suggestion, string group, Dictionary<string, string> suggestions)
+	{
+		suggestion = suggestion.ToLower();
+		if (!suggestions.ContainsKey(suggestion))
+		{
+			suggestions.Add(suggestion, group);
+		}
+	}
+}
+
+@if (Model.SpellCheckerSuggestions != null && Model.SpellCheckerSuggestions.Any())
+{
+    //string suggestion = Model.SpellCheckerSuggestions.FirstOrDefault();
+    List<string> validSuggestions = new List<string>();
+    foreach (string suggestion in Model.SpellCheckerSuggestions)
+    {
+        if (!validSuggestions.Contains(suggestion))
+        {
+            validSuggestions.Add(suggestion);
+        }
+    }
+    if (validSuggestions.Count == 0)
+    {
+        foreach (string suggestion in Model.SpellCheckerSuggestions)
+        {
+            if (!validSuggestions.Contains(suggestion))
+            {
+                validSuggestions.Add(suggestion);
+            }
+        }
+    }
+    if (validSuggestions.Count > 0)
+    {
+        <div class="dropdown-header @itemPadding">@Translate("Do you mean")</div>
+        foreach (string suggestion in validSuggestions.Take(5))
+        {
+            AddSuggestion(suggestion, "Do you mean", suggestions);
+            <div class="dropdown-item @itemPadding" onclick="Typeahead.selectSuggestion(this);">@Highlight(suggestion, searchTerm)</div>
+        }
+        <div class="dropdown-divider"></div>
+    }
+}
+
+@if (Model.FacetGroups.Any())
+{
+    var maxSuggestions = 5;
+    foreach (var facetGroup in Model.FacetGroups)
+    {
+        foreach (var facetItem in facetGroup.Facets)
+        {
+            var facetOptionCount = facetItem.OptionCount;
+            var optionActiveCount = facetItem.OptionActiveCount;
+            var facetOptionResultTotalCount = facetItem.OptionResultTotalCount;
+            var queryParameter = facetItem.QueryParameter;
+            var template = facetItem.RenderType;
+
+            var maxValue = facetItem.MaximumFacetValue;
+            var minValue = facetItem.MinimumFacetValue;
+
+            List<FacetOptionViewModel> validOptions = new List<FacetOptionViewModel>();
+
+            foreach (var facetOption in facetItem.Options.OrderByDescending(option => option.Count))
+            {
+                //if (searchTerm != null && facetOption.Value.IndexOf(searchTerm, StringComparison.InvariantCultureIgnoreCase) >= 0 && validOptions.Count < maxSuggestions)
+                if (searchTerm != null && validOptions.Count < maxSuggestions)
+                {
+                    validOptions.Add(facetOption);
+                }
+            }
+
+            if (validOptions.Count > 0)
+            {
+                <div class="dropdown-header @itemPadding">@facetItem.Name</div>
+                foreach (var facetOption in validOptions)
+                {
+                    AddSuggestion(facetOption.Label, facetItem.Name, suggestions);
+                    <div class="dropdown-item @itemPadding" onclick="Typeahead.selectSuggestion(this);" data-param="@queryParameter" data-paramvalue="@facetOption.Value"><@Highlight(facetOption.Label, searchTerm)>
+						<div class="">@facetOption.Count</div>
+					</div>
+                }
+                <div class="dropdown-divider"></div>
+            }
+
+        }
+    }
+}
+
+@if (Model.Products.Count() > 0)
+{
+    var validSuggestions = new List<ProductViewModel>();
+    string label = Translate("Products");
+    if (Model.Group != null)
+    {
+        label = Model.Group.Name;
+    }
+
+    foreach (var product in Model.Products)
+    {
+        if (searchTerm != null && product.Name.IndexOf(searchTerm, StringComparison.InvariantCultureIgnoreCase) >= 0 || true)
+        {
+            AddSuggestion(product.Name, label, suggestions);
+            validSuggestions.Add(product);
+        }
+    }
+    if (validSuggestions.Count > 0)
+    {
+        <div class="dropdown-header @itemPadding">@label</div>
+        foreach (var suggestion in validSuggestions)
+        {
+            <div class="dropdown-item @itemPadding d-flex align-items-center text-wrap" onclick="Typeahead.selectSuggestion(this);" data-param="ProductId" data-paramvalue="@suggestion.Id">
+                <img src="/admin/public/getimage.ashx?width=56&height=56&format=webp&Crop=5&fillcanvas=true&quality=65&image=@System.Web.HttpUtility.HtmlEncode(suggestion.DefaultImage.Value)" class="me-3">
+                @Highlight(suggestion.Name, searchTerm)
+			</div>
+        }
+        <div class="dropdown-divider"></div>
+    }
+}
+
+
+@if (!string.IsNullOrEmpty(searchTerm))
+{
+    if (Model.TotalProductsCount > 0)
+    {
+        <div class="dropdown-item @itemPadding" onclick="Typeahead.selectSuggestion(this);">@Translate("View all") @Model.TotalProductsCount @Translate("products for")<strong>"<span class="js-suggestion">@searchTerm</span>"<strong></div>
+    }
+    else
+    {
+        <div class="dropdown-item @itemPadding" onclick="Typeahead.selectSuggestion(this);">@Translate("We have no results for")<strong>"<span class="js-suggestion">@searchTerm</span>"</strong></div>
+    }
+
+}

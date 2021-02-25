@@ -2,7 +2,7 @@ const Sliders = function() {
     
     return {
 
-        Init() {
+        init() {
             let sliders = document.querySelectorAll('.js-slider');
     
             for (var i = 0; i < sliders.length; ++i) {
