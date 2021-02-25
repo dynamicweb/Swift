@@ -1,9 +1,10 @@
+import "regenerator-runtime/runtime";
 import { Collapse, Dropdown } from 'bootstrap';
 import { tns } from 'tiny-slider/src/tiny-slider';
 import { Sliders } from './_sliders';
 import { Typeahead } from './_typeahead';
 import { hcOffcanvasNav } from 'hc-offcanvas-nav';
-import "regenerator-runtime/runtime";
+
 
 window.tns = tns;
 window.Sliders = Sliders;

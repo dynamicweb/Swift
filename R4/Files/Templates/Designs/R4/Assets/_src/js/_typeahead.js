@@ -9,12 +9,10 @@ const Typeahead = function() {
 				//handle dropdown navigation if present
 				document.querySelectorAll(".js-type-ahead-menu").forEach(function (menu) {
 					if (menu.classList.contains("show")) {
-						debounce(() => handleArrowNavigation(e.key, menu), 100)();
+						Typeahead.debounce(() => Typeahead.handleArrowNavigation(e.key, menu), 100)();
 						return;
 					}
 				});
-
-				console.log(tabIndex);
 			} else {
 				tabIndex = -1;
 				if (searchField.value.length > 0) {
@@ -24,9 +22,9 @@ const Typeahead = function() {
 						field.setAttribute("data-original", val)
 					});
 		
-					debounce(() => getSuggestions(searchField), 100)();
+					Typeahead.debounce(() => Typeahead.getSuggestions(searchField), 100)();
 				} else {
-					hidedd();
+					Typeahead.hideSearchResults();
 				}
 			}
 
@@ -38,7 +36,7 @@ const Typeahead = function() {
 					field.value = field.getAttribute("data-original");
 				});
 
-				hidedd();
+				Typeahead.hideSearchResults();
 				return;
 			}
 
@@ -51,7 +49,7 @@ const Typeahead = function() {
 			if (e.key === "Tab") {
 				//keep selection from dropdown navigation but do not submit search
 				e.preventDefault();
-				hidedd();
+				Typeahead.hideSearchResults();
 				return;
 			}
 		},
@@ -73,13 +71,13 @@ const Typeahead = function() {
 
 			menu.setAttribute("data-tabindex", tabIndex);
 			if (tabIndex > -1) {
-				elements[tabIndex].classList.add("focus");
+				elements[tabIndex].classList.add("active");
 				var suggestionElement = elements[tabIndex];
 
-				preSelectSuggestion(suggestionElement);
+				Typeahead.preSelectSuggestion(suggestionElement);
 
 				if (tabIndexOld != tabIndex && elements[tabIndexOld]) {
-					elements[tabIndexOld].classList.remove("focus");
+					elements[tabIndexOld].classList.remove("active");
 				}
 				tabIndexOld = tabIndex;
 			}
@@ -98,7 +96,7 @@ const Typeahead = function() {
 					return text;
 				});
 
-				displaySuggestions(html);
+				Typeahead.displaySuggestions(html);
 			}
 		},
 
@@ -107,7 +105,7 @@ const Typeahead = function() {
 				document.querySelectorAll(".js-type-ahead-menu").forEach(function(menu) {
 					menu.innerHTML = data;
 				});
-				showdd();
+				Typeahead.showSearchResults();
 			}
 		},
 
@@ -149,12 +147,12 @@ const Typeahead = function() {
 		},
 
 		selectSuggestion: function(elm) {
-			preSelectSuggestion(elm);
+			Typeahead.preSelectSuggestion(elm);
 
 			elm.closest(".js-type-ahead-dropdown").querySelector(".js-suggest-form").submit();
 		},
 
-		showdd: function() {
+		showSearchResults: function() {
 			document.querySelectorAll(".js-type-ahead-menu").forEach(function (dropdown) {
 				if (dropdown.innerHTML != "") {
 					dropdown.classList.add("show");
@@ -165,7 +163,7 @@ const Typeahead = function() {
 			});
 		},
 
-		hidedd: function() {
+		hideSearchResults: function() {
 			document.querySelectorAll(".js-type-ahead-dropdown").forEach(function (dropdown) {
 				dropdown.classList.remove("show");
 			});
@@ -190,7 +188,7 @@ const Typeahead = function() {
 
 		goToPage: function(aTag) {
 			var pageTitle = aTag.getAttribute("title");
-			navigateToPage(aTag.href);
+			Typeahead.navigateToPage(aTag.href);
 			history.pushState(null, pageTitle, aTag.href);
 			if (pageTitle != null) {
 				document.title = pageTitle;
@@ -222,11 +220,11 @@ const Typeahead = function() {
 		},
 
 		init: function(){
-			document.body.addEventListener('click', hidedd);
+			document.body.addEventListener('click', Typeahead.hideSearchResults);
 			document.querySelectorAll(".js-type-ahead-field").forEach(function (field) {
-				field.addEventListener('focus', showdd);
-				field.addEventListener('keyup', (e) => suggest(e, field))
-				field.addEventListener('keydown', (e) => handleTab(e));
+				field.addEventListener('focus', Typeahead.showSearchResults());
+				field.addEventListener('keyup', (e) => Typeahead.suggest(e, field))
+				field.addEventListener('keydown', (e) => Typeahead.handleTab(e));
 			});
 		}
 	}
