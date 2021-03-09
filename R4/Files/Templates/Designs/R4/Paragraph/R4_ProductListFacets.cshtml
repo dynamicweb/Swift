@@ -14,81 +14,171 @@
         productList = (ProductListViewModel)System.Web.HttpContext.Current.Items["ProductList"];
     }
 
+    string url = "/Default.aspx?ID=" + Model.PageID;
+    if (!url.Contains("LayoutTemplate")) {
+        url += url.Contains("?") ? "&LayoutTemplate=Designs/R4/R4_PageClean.cshtml" : "?LayoutTemplate=Designs/R4/R4_PageClean.cshtml";
+    }
+
+    string groupId = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("GroupID")) ? HttpContext.Current.Request.QueryString.Get("GroupID") : "";
+    if (groupId != "") {
+        url += url.Contains("?") ? "&GroupID=" + groupId : "";
+	}
+
     bool facetsFound = false;
 
     if (productList.FacetGroups != null) {
         facetsFound = productList.FacetGroups.Count() > 0 ? true : false;
     }
-
-    string url = HttpContext.Current.Request.RawUrl;
-    if (!url.Contains("LayoutTemplate")) {
-        url += url.Contains("?") ? "&LayoutTemplate=Designs/R4/R4_PageClean.cshtml" : "?LayoutTemplate=Designs/R4/R4_PageClean.cshtml";
-    }
-
-    string pageSize = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("PageSize")) ? HttpContext.Current.Request.QueryString.Get("PageSize") : "30";
-    string groupId = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("GroupID")) ? HttpContext.Current.Request.QueryString.Get("GroupID") : "";
 }
 
 @if (facetsFound) { 
-    <form method="post" action="@url" data-response-target-element="content">
-        <input type="hidden" name="PageSize" value="@pageSize" />
-        <input type="hidden" name="GroupID" value="@groupId" />
+    //Desktop
+    <div class="d-none d-lg-block">
+        <form method="post" action="@url" data-response-target-element="content" id="FacetsForm_Desktop">
+            @RenderForm(productList, "desktop")
+        </form>
+    </div>
 
-        @if (Model.Item.GetBoolean("EnableGroupNavigation")) {
-            var navigationSettings = new NavigationSettings();
-            navigationSettings.StartLevel = 1;
-            navigationSettings.StopLevel = 10;
-            navigationSettings.ExpandMode = ExpandMode.All;
-
-            <div class="card mb-3">
-                <div class="card-header bg-white">
-                    <div class="d-flex">
-                        <h6 class="card-title fw-bold m-0 flex-fill">@Translate("Navigation")</h6>
-                        <div class="my-auto collapse-chevron-icon" data-bs-toggle="collapse" data-bs-target="#ProductGroupNavigation" role="button" aria-expanded="true" aria-controls="ProductGroupNavigation"></div>
-                    </div>
-                </div>
-                <div class="collapse show" id="ProductGroupNavigation">
-                    <div class="card-body p-0 pe-3 pt-2 pb-3">
-                        @Navigation.RenderNavigation("Navigation/Vertical.cshtml", navigationSettings)
-                    </div>
-                </div>
+    //Mobile
+    <div class="d-block d-lg-none">
+        <button type="button" class="btn btn-primary w-100 d-flex" data-bs-toggle="modal" data-bs-target="#FacetsModal">
+            <div class="flex-fill text-start"> 
+                @Translate("Filters and sorting") 
             </div>
-        }
+            <div class="dw-icon-size-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M272 352h-24V16c0-8.8-7.2-16-16-16h-16c-8.8 0-16 7.2-16 16v336h-24c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h24v80c0 8.8 7.2 16 16 16h16c8.8 0 16-7.2 16-16v-80h24c8.8 0 16-7.2 16-16v-32c0-8.8-7.2-16-16-16zM112 96H88V16c0-8.8-7.2-16-16-16H56c-8.8 0-16 7.2-16 16v80H16c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h24v336c0 8.8 7.2 16 16 16h16c8.8 0 16-7.2 16-16V160h24c8.8 0 16-7.2 16-16v-32c0-8.8-7.2-16-16-16zm320 128h-24V16c0-8.8-7.2-16-16-16h-16c-8.8 0-16 7.2-16 16v208h-24c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h24v208c0 8.8 7.2 16 16 16h16c8.8 0 16-7.2 16-16V288h24c8.8 0 16-7.2 16-16v-32c0-8.8-7.2-16-16-16z"/></svg>
+            </div>
+        </button>
 
-        @foreach (FacetGroupViewModel facetGroup in productList.FacetGroups) {
-            foreach (FacetViewModel facet in facetGroup.Facets) {
-                if (facet.Options.Count() > 0) {
-                    <div class="card mb-3">
-                        <div class="card-header bg-white">
-                            <div class="d-flex">
-			                    <h6 class="card-title fw-bold m-0 flex-fill">@facet.Name</h6>
-                                <div class="my-auto collapse-chevron-icon" data-bs-toggle="collapse" data-bs-target="#FacetGroup_@facet.Name.Replace(" ", "")" role="button" aria-expanded="true" aria-controls="FacetGroup_@facet.Name.Replace(" ", "")"></div>
-		                    </div>
-                        </div>
-                        <div class="collapse show" id="FacetGroup_@facet.Name.Replace(" ", "")">
-                            <div class="card-body">
-			                    @foreach (FacetOptionViewModel facetOption in facet.Options) {
-                                    string renderType = facet.RenderType;
-
-                                    if (renderType == "Colors") {
-                                        @RenderColorOption(facet, facetOption)
-                                    } else {
-                                        @RenderCheckboxOption(facet, facetOption)
-                                    }
-                                }
-		                    </div>
-                        </div>
-	                </div>
-                }
-            }
-        }
-    </form>
+        <form method="post" action="@url" data-response-target-element="content">
+            <div class="modal" id="FacetsModal" tabindex="-1" aria-labelledby="FacetsModal" aria-hidden="false">
+              <div class="modal-dialog modal-fullscreen">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">@Translate("Filters and sorting")</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body px-0">
+                      @RenderForm(productList, "mobile")
+                  </div>
+                  <div class="modal-footer"> 
+                    <button type="button" class="btn btn-secondary" onclick="ProductList.ResetFacets(event)">@Translate("Clear filters")</button>
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">@Translate("Update list")</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </form>
+    </div>
 } else if (isVisualEditor) {
     <div class="alert alert-dark m-0" role="alert">
         <span><i class="fas fa-info-circle mr-3"></i></span> <span>@Translate("Facets: The facets selectors will be shown here, if any")</span>
     </div>
 }
 
+@helper RenderForm(ProductListViewModel productList, string deviceType) { 
+    string pageSize = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("PageSize")) ? HttpContext.Current.Request.QueryString.Get("PageSize") : "30";
+    string sortBySelection = HttpContext.Current.Request?.Form["SortBy"] ?? "name";
+	string sortNameSelectedAZ = sortBySelection.ToLower() == "name" ? "checked" : "";
+    string sortNameSelectedZA = sortBySelection.ToLower() == "-name" ? "checked" : "";
+	string sortPriceLowSelected = sortBySelection.ToLower() == "price" ? "checked" : "";
+    string sortPriceHighSelected = sortBySelection.ToLower() == "-price" ? "checked" : "";
+    string sortNew = sortBySelection.ToLower() == "created" ? "checked" : "";
+
+    <input type="hidden" name="PageSize" value="@pageSize" />
+
+    <div class="card mb-3 border-0">
+        <div class="card-header bg-white" data-bs-toggle="collapse" data-bs-target="#ProductSorting_@deviceType" role="button" aria-expanded="true" aria-controls="ProductSorting">
+            <div class="d-flex">
+                <h6 class="card-title fw-bold m-0 flex-fill">@Translate("Sort by")</h6>
+                <div class="my-auto collapse-chevron-icon"></div>
+            </div>
+        </div>
+        <div class="collapse hide" id="ProductSorting_@deviceType">
+            <div class="card-body">
+                    <div class="form-check">
+                    <input class="form-check-input" onchange="ProductList.Update(event)" type="radio" name="SortBy" value="name" id="SortByNameAZ_@deviceType" @sortNameSelectedAZ>
+                    <label class="form-check-label" for="SortByNameAZ_@deviceType">
+                        @Translate("Name (A-Z)") 
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" onchange="ProductList.Update(event)" type="radio" name="SortBy" value="-name" id="SortByNameZA_@deviceType" @sortNameSelectedZA>
+                    <label class="form-check-label" for="SortByNameZA_@deviceType">
+                        @Translate("Name (Z-A)") 
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" onchange="ProductList.Update(event)" type="radio" name="SortBy" value="created" id="SortByNew_@deviceType" @sortNew>
+                    <label class="form-check-label" for="SortByNew_@deviceType">
+                        @Translate("Newest") 
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" onchange="ProductList.Update(event)" type="radio" name="SortBy" value="price" id="SortByPriceLow_@deviceType" @sortPriceLowSelected>
+                    <label class="form-check-label" for="SortByPriceLow_@deviceType">
+                        @Translate("Lowest price")
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" onchange="ProductList.Update(event)" type="radio" name="SortBy" value="-price" id="SortByPriceHigh_@deviceType" @sortPriceHighSelected>
+                    <label class="form-check-label" for="SortByPriceHigh_@deviceType">
+                        @Translate("Highest price")
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    if (Model.Item.GetBoolean("EnableGroupNavigation")) {
+        var navigationSettings = new NavigationSettings();
+        navigationSettings.StartLevel = 1;
+        navigationSettings.StopLevel = 10;
+        navigationSettings.ExpandMode = ExpandMode.All;
+
+        <div class="card mb-3 border-0">
+            <div class="card-header bg-white" data-bs-toggle="collapse" data-bs-target="#ProductGroupNavigation_@deviceType" role="button" aria-expanded="true" aria-controls="ProductGroupNavigation_@deviceType">
+                <div class="d-flex">
+                    <h6 class="card-title fw-bold m-0 flex-fill">@Translate("Navigation")</h6>
+                    <div class="my-auto collapse-chevron-icon"></div>
+                </div>
+            </div>
+            <div class="collapse show" id="ProductGroupNavigation_@deviceType">
+                <div class="card-body p-0 pe-3 pt-2 pb-3">
+                    @Navigation.RenderNavigation("Navigation/Vertical.cshtml", navigationSettings)
+                </div>
+            </div>
+        </div>
+    }
+
+    foreach (FacetGroupViewModel facetGroup in productList.FacetGroups) {
+        foreach (FacetViewModel facet in facetGroup.Facets) {
+            if (facet.Options.Count() > 0) {
+                <div class="card mb-3 border-0">
+                    <div class="card-header bg-white" data-bs-toggle="collapse" data-bs-target="#FacetGroup_@facet.Name.Replace(" ", "")_@deviceType" role="button" aria-expanded="true" aria-controls="FacetGroup_@facet.Name.Replace(" ", "")_@deviceType">
+                        <div class="d-flex">
+			                <h6 class="card-title fw-bold m-0 flex-fill">@facet.Name</h6>
+                            <div class="my-auto collapse-chevron-icon"></div>
+		                </div>
+                    </div>
+                    <div class="collapse show" id="FacetGroup_@facet.Name.Replace(" ", "")_@deviceType">
+                        <div class="card-body">
+			                @foreach (FacetOptionViewModel facetOption in facet.Options) {
+                                string renderType = facet.RenderType;
+
+                                if (renderType == "Colors") {
+                                    @RenderColorOption(facet, facetOption)
+                                } else {
+                                    @RenderCheckboxOption(facet, facetOption)
+                                }
+                            }
+		                </div>
+                    </div>
+	            </div>
+            }
+        }
+    }
+}
 
 @helper RenderCheckboxOption(FacetViewModel facet, FacetOptionViewModel facetOption) { 
     string facetLabel = facetOption.Name;
