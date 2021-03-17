@@ -18,33 +18,87 @@
     string theme = Model.Item?.GetList("Theme")?.SelectedValue != "" ? Model.Item.GetList("Theme").SelectedValue.ToLower() : "";
 	theme = String.Concat(theme.Where(c => !Char.IsWhiteSpace(c)));
 	theme = theme.Replace("theme", "");
+
+	string url = HttpContext.Current.Request.RawUrl;
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=R4_PageClean.cshtml" : "?LayoutTemplate=R4_PageClean.cshtml";
+	}
+
+    string groupId = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("GroupID")) ? HttpContext.Current.Request.QueryString.Get("GroupID") : "";
 }
 
 @if (productList.TotalProductsCount > 0) { 
-    <div class="row g-3 mt-0">
-        @foreach (var product in productList.Products)
+	int pageSizeSetting = 30;
+	int pageSize = productList.PageSize;
+	pageSize += pageSizeSetting;
+
+	int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
+
+    <div class="row g-4 mt-n4 mb-5">
+        @foreach (ProductViewModel product in productList.Products)
 		{
-            string link = detailsPageLink + "&amp;ProductID=" + product.Id;
-            link += !string.IsNullOrEmpty(product.VariantId) ? "&amp;VariantID=" + product.VariantId : "";
+			string link = detailsPageLink + "&amp;ProductID=" + product.Id;
+			link += !string.IsNullOrEmpty(product.VariantId) ? "&amp;VariantID=" + product.VariantId : "";
 			string price = product?.Price?.PriceFormatted ?? "";
 			string image = product?.DefaultImage?.Value ?? "";
 
-            <div class="col-12 col-lg-6">
+			string ratio = Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "0" && Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "" ? Model.Item.GetList("ImageAspectRatio").SelectedValue : "";
+			string ratioCssClass = ratio != "" ? "ratio" : "";
+			string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
+			int ratioPercentage = Convert.ToInt32(ratio.Replace("%", ""));
+			string imageSize = ratio != "" ? "width=" + 960 + "&height=" + ratioPercentage * 960 / 100 : "width=960&height=960";
+
+			string imageBackgroundColor = Model?.Item?.GetString("ImageBackgroundColor") != "" ? "background-color: " + Model.Item.GetString("ImageBackgroundColor") : "";
+			string imagePadding = imageBackgroundColor != "" ? "p-3 p-lg-4" : "";
+
+            <div class="col-12 col-lg-6 pb-3 pb-lg-5">
                 <div class="theme theme-@theme">
-                    <a href="@link" name="ProductLink" class="text-reset position-relative">
-                        <img loading="lazy" src="/Admin/Public/GetImage.ashx?width=550&height=412&crop=5&fillcanvas=true&image=@image" class="img-fluid">
+                    <a href="@link" name="ProductLink" >
+                        <div class="@ratioCssClass mb-3" style="@(ratioVariable); @imageBackgroundColor">
+                            <img loading="lazy" src="/Admin/Public/GetImage.ashx?@imageSize&crop=5&fillcanvas=true&image=@image" style="object-fit: cover" class="w-100 h-100 @imagePadding">
+                        </div>
                     </a>
                     <div class="d-flex flex-column">
                         <a href="#" name="ProductLink" class="text-decoration-none flex-fill">
-					        <div class="mb-2">@product.Name @product.VariantId</div>
-					        <div class="mb-2">@product.Number</div>
+					        <h3 class="h6 mb-0">@product.Name @product.VariantId</h3>
+					        <small class="text-muted mb-2">@product.Number</small>
 				        </a>
-                        <div class="">@price</div>
+                        <div class="fw-bold">@price</div>
                     </div>
                 </div>
             </div>
         }
     </div>
+
+    <div class="row mb-3">
+        <div class="col text-center">
+			<div class="text-muted mb-3">@loadedProducts @Translate("out of") @productList.TotalProductsCount @Translate("products")</div>
+			@if (productList.PageCount != 1) {
+				<form method="post" action="@url" data-response-target-element="content" class="w-100 theme theme-@theme">
+					@foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+					{
+						foreach (FacetViewModel facetItem in facetGroup.Facets)
+						{
+							foreach (FacetOptionViewModel facetOption in facetItem.Options)
+							{
+								if (facetOption.Selected)
+								{
+									<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]" />
+								}
+							}
+						}
+					}
+
+					<input type="hidden" name="PageSize" value="@pageSize" />
+					<input type="hidden" name="GroupID" value="@groupId" />
+					<button class="btn btn-primary mb-3" type="button" onclick="ProductList.Update(event)">@Translate("Load more products")</button>
+				</form>
+			}
+			<button type="button" onclick="document.body.scrollTop = 0; document.documentElement.scrollTop = 0;" class="btn btn-clean mb-3">@Translate("Back to top") </button>
+        </div>
+    </div>
+
 } else if (isVisualEditor) {
     <div class="alert alert-dark m-0" role="alert">
         <span><i class="fas fa-info-circle mr-3"></i></span> <span>@Translate("Product list: The list will be shown here, if any")</span>

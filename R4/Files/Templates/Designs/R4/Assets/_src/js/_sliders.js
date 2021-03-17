@@ -2,7 +2,7 @@ const Sliders = function() {
     
     return {
 
-        Init() {
+        init() {
             let sliders = document.querySelectorAll('.js-slider');
     
             for (var i = 0; i < sliders.length; ++i) {
@@ -15,10 +15,10 @@ const Sliders = function() {
                 var itemsInSlider = 5;
     
                 if (parentColumnSize == 12) {
-                    itemsInSlider = 5;
+                    itemsInSlider = 4;
                 }
                 if (parentColumnSize == 10 || parentColumnSize == 9 || parentColumnSize == 8) {
-                    itemsInSlider = 4;
+                    itemsInSlider = 3;
                 }
                 if (parentColumnSize == 6) {
                     itemsInSlider = 2;
@@ -35,15 +35,17 @@ const Sliders = function() {
                 var slider = tns({
                     container: sliderContainer,
                     center: false,
-                    items: 1,
-                    gutter: 16,
+					items: 1,
+					gutter: 16,
+					edgePadding: 16,
                     loop: true,
                     arrowKeys: true,
                     lazyload: true,
-                    edgePadding: edgePadding,
-                    responsive: {
+					responsive: {
                         992: {
-                            items: itemsInSlider
+							items: itemsInSlider,
+							edgePadding: edgePadding,
+							gutter: 16,
                         }
                     },
                     mouseDrag: true,

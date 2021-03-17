@@ -5,31 +5,54 @@
 @using System.Web
 
 @{ 
-    bool isVisualEditor = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(HttpContext.Current.Request.QueryString.Get("VisualEdit")) : false;
+	bool isVisualEditor = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(HttpContext.Current.Request.QueryString.Get("VisualEdit")) : false;
 
-    ProductListViewModel productList = new ProductListViewModel();
+	ProductListViewModel productList = new ProductListViewModel();
 
-    if (System.Web.HttpContext.Current.Items.Contains("ProductList"))
-    {
-        productList = (ProductListViewModel)System.Web.HttpContext.Current.Items["ProductList"];
-    }
+	if (System.Web.HttpContext.Current.Items.Contains("ProductList"))
+	{
+		productList = (ProductListViewModel)System.Web.HttpContext.Current.Items["ProductList"];
+	}
 
-    bool facetsFound = false;
+	bool facetsFound = false;
 
-    if (productList.FacetGroups != null) {
-        facetsFound = productList.FacetGroups.Count() > 0 ? true : false;
-    }
+	if (productList.FacetGroups != null) {
+		foreach (FacetGroupViewModel facetGroup in productList.FacetGroups) {
+			foreach (FacetViewModel facet in facetGroup.Facets) {
+				if (facet.Options.Count() > 0) {
+                    facetsFound = true;
+				}
+			}
+		}
+	}
 
-    string url = HttpContext.Current.Request.RawUrl;
-    if (!url.Contains("LayoutTemplate")) {
-        url += url.Contains("?") ? "&LayoutTemplate=Designs/R4/R4_PageClean.cshtml" : "?LayoutTemplate=Designs/R4/R4_PageClean.cshtml";
-    }
+	string url = HttpContext.Current.Request.RawUrl;
+	if (!url.Contains("LayoutTemplate")) {
+		url += url.Contains("?") ? "&LayoutTemplate=Designs/R4/R4_PageClean.cshtml" : "?LayoutTemplate=Designs/R4/R4_PageClean.cshtml";
+	}
 
-    string pageSize = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("PageSize")) ? HttpContext.Current.Request.QueryString.Get("PageSize") : "30";
-    string groupId = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("GroupID")) ? HttpContext.Current.Request.QueryString.Get("GroupID") : "";
+	string pageSize = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("PageSize")) ? HttpContext.Current.Request.QueryString.Get("PageSize") : "30";
+	string groupId = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("GroupID")) ? HttpContext.Current.Request.QueryString.Get("GroupID") : "";
 }
 
 @if (facetsFound) { 
+    //Desktop
+    <div class="d-none d-lg-block">
+        <form method="post" action="@url" data-response-target-element="content" id="FacetsForm_Desktop">
+            @RenderForm(productList, "desktop")
+        </form>
+    </div> 
+
+    //Mobile
+    <div class="d-block d-lg-none">
+        <button type="button" class="btn btn-primary w-100 d-flex" data-bs-toggle="modal" data-bs-target="#FacetsModal">
+            <div class="flex-fill text-start"> 
+                @Translate("Filters and sorting") 
+            </div>
+            <div class="dw-icon-size-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M272 352h-24V16c0-8.8-7.2-16-16-16h-16c-8.8 0-16 7.2-16 16v336h-24c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h24v80c0 8.8 7.2 16 16 16h16c8.8 0 16-7.2 16-16v-80h24c8.8 0 16-7.2 16-16v-32c0-8.8-7.2-16-16-16zM112 96H88V16c0-8.8-7.2-16-16-16H56c-8.8 0-16 7.2-16 16v80H16c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h24v336c0 8.8 7.2 16 16 16h16c8.8 0 16-7.2 16-16V160h24c8.8 0 16-7.2 16-16v-32c0-8.8-7.2-16-16-16zm320 128h-24V16c0-8.8-7.2-16-16-16h-16c-8.8 0-16 7.2-16 16v208h-24c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h24v208c0 8.8 7.2 16 16 16h16c8.8 0 16-7.2 16-16V288h24c8.8 0 16-7.2 16-16v-32c0-8.8-7.2-16-16-16z"/></svg>
+            </div>
+        </button>
     <form method="post" action="@url" data-response-target-element="content">
         <input type="hidden" name="PageSize" value="@pageSize" />
         <input type="hidden" name="GroupID" value="@groupId" />
@@ -40,7 +63,7 @@
             navigationSettings.StopLevel = 10;
             navigationSettings.ExpandMode = ExpandMode.All;
 
-            <div class="card mb-3">
+            <div class="card mb-3 border-0">
                 <div class="card-header bg-white">
                     <div class="d-flex">
                         <h6 class="card-title fw-bold m-0 flex-fill">@Translate("Navigation")</h6>
@@ -58,7 +81,7 @@
         @foreach (FacetGroupViewModel facetGroup in productList.FacetGroups) {
             foreach (FacetViewModel facet in facetGroup.Facets) {
                 if (facet.Options.Count() > 0) {
-                    <div class="card mb-3">
+                    <div class="card mb-3 border-0">
                         <div class="card-header bg-white">
                             <div class="d-flex">
 			                    <h6 class="card-title fw-bold m-0 flex-fill">@facet.Name</h6>
@@ -83,10 +106,16 @@
             }
         }
     </form>
-} else if (isVisualEditor) {
-    <div class="alert alert-dark m-0" role="alert">
-        <span><i class="fas fa-info-circle mr-3"></i></span> <span>@Translate("Facets: The facets selectors will be shown here, if any")</span>
-    </div>
+} else {
+    if (!isVisualEditor) {
+        <div class="alert alert-dark m-0">
+            @Translate("No filters are available")
+        </div>
+	} else {
+         <div class="alert alert-dark m-0" role="alert">
+            <span><i class="fas fa-info-circle mr-3"></i></span> <span>@Translate("Facets: The facets selectors will be shown here, if any")</span>
+        </div>
+	}
 }
 
 
