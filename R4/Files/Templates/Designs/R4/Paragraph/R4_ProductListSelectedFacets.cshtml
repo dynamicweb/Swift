@@ -1,0 +1,137 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Frontend.Navigation
+@using System.Web
+
+@{ 
+    bool isVisualEditor = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(HttpContext.Current.Request.QueryString.Get("VisualEdit")) : false;
+
+    ProductListViewModel productList = new ProductListViewModel();
+
+    if (System.Web.HttpContext.Current.Items.Contains("ProductList"))
+    {
+        productList = (ProductListViewModel)System.Web.HttpContext.Current.Items["ProductList"];
+    }
+
+    bool facetsFound = false;
+
+    if (productList.FacetGroups != null) {
+        foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+        {
+            foreach (FacetViewModel facetItem in facetGroup.Facets)
+            {
+                foreach (FacetOptionViewModel facetOption in facetItem.Options)
+                {
+                    if (facetOption.Selected)
+                    {
+                        facetsFound = true;
+                    }
+                }
+            }
+        }
+    }
+
+    string url = "/Default.aspx?ID=" + Model.PageID;
+    if (!url.Contains("LayoutTemplate")) {
+        url += url.Contains("?") ? "&LayoutTemplate=Designs/R4/R4_PageClean.cshtml" : "?LayoutTemplate=Designs/R4/R4_PageClean.cshtml";
+    }
+
+    string groupId = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("GroupID")) ? HttpContext.Current.Request.QueryString.Get("GroupID") : "";
+    if (groupId != "") {
+        url += url.Contains("?") ? "&GroupID=" + groupId : "";
+	}
+}
+
+@if (facetsFound) {
+    int facetOptionsCount = 0;
+    string sortBySelection = HttpContext.Current.Request?.Form["SortBy"] ?? "name";
+
+    <form method="post" action="@url" data-response-target-element="content">
+        <input type="hidden" name="PageSize" value="9" />
+        <input type="hidden" name="SortBy" value="@sortBySelection" />
+
+        <div>
+            @foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+            {
+                foreach (FacetViewModel facetItem in facetGroup.Facets)
+                {
+                    string name = facetItem.Name.ToString();
+
+                    foreach (FacetOptionViewModel facetOption in facetItem.Options)
+                    {
+                        if (facetOption.Selected)
+                        {
+                            string renderType = facetItem.RenderType;
+
+                            if (renderType == "Colors") {
+                                @RenderColorOption(facetItem, facetOption, name)
+                            } else {
+                                @RenderCheckboxOption(facetItem, facetOption, name)
+                            }
+
+                            facetOptionsCount++;
+                        }
+                    }
+                }
+            }
+
+            @if (facetOptionsCount > 2){  
+                <button type="button" class="btn btn-clean btn-sm mb-2 me-sm-1 me-lg-2" onclick="ProductList.ResetFacets(event)"><i class="fas fa-undo-alt"></i> @Translate("Clear filters")</button>
+            }
+        </div>
+    </form>
+} else if (isVisualEditor) {
+    <div class="alert alert-dark m-0" role="alert">
+        <span><i class="fas fa-info-circle mr-3"></i></span> <span>@Translate("Facets: The facet selections will be shown here, if any")</span>
+    </div>
+}
+
+
+@helper RenderCheckboxOption(FacetViewModel facet, FacetOptionViewModel facetOption, string name) { 
+    string selected = facetOption.Selected ? "checked" : "";
+    string facetLabel = facetOption.Name;
+
+    if (facetLabel.ToLower() == "true")
+    {
+        facetLabel = Translate("Yes");
+    }
+
+    if (facetLabel.ToLower() == "false")
+    {
+        facetLabel = Translate("No");
+    }
+
+    <label for="Selected_@(Model.ID)_@facetOption.Value">
+        <input type="checkbox" class="invisible position-absolute" onclick="ProductList.Update(event)" id="Selected_@(Model.ID)_@facetOption.Value" name="@facet.QueryParameter" value="[@facetOption.Value]" title="@facetOption.Label" @selected />
+        <span class="btn btn-secondary btn-sm mb-2 me-sm-1 me-lg-2">
+            @(name): @facetOption.Name 
+            <span class="ms-2 dw-icon-size-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M207.6 256l107.72-107.72c6.23-6.23 6.23-16.34 0-22.58l-25.03-25.03c-6.23-6.23-16.34-6.23-22.58 0L160 208.4 52.28 100.68c-6.23-6.23-16.34-6.23-22.58 0L4.68 125.7c-6.23 6.23-6.23 16.34 0 22.58L112.4 256 4.68 363.72c-6.23 6.23-6.23 16.34 0 22.58l25.03 25.03c6.23 6.23 16.34 6.23 22.58 0L160 303.6l107.72 107.72c6.23 6.23 16.34 6.23 22.58 0l25.03-25.03c6.23-6.23 6.23-16.34 0-22.58L207.6 256z"/></svg>
+            </span>
+        </span>
+    </label>
+}
+
+@helper RenderColorOption(FacetViewModel facet, FacetOptionViewModel facetOption, string name) { 
+    string selected = facetOption.Selected ? "checked" : "";
+    string facetLabel = facetOption.Name;
+    string colorCode = facetOption.Value;
+
+    if (!facetOption.Value.Contains("#")) {
+        var variantOption = Dynamicweb.Ecommerce.Services.VariantOptions.GetVariantOption(facetOption.Value.ToString(), Dynamicweb.Ecommerce.Common.Context.LanguageID);
+        if (variantOption != null) {
+            colorCode = variantOption.LargeImage;
+        }
+    }
+
+    <label for="Selected_@(Model.ID)_@facetOption.Value.Replace("#", "")">
+        <input type="checkbox" class="invisible position-absolute @selected" onclick="ProductList.Update(event)" id="Selected_@(Model.ID)_@facetOption.Value.Replace("#", "")"  name="@facet.QueryParameter" value="[@facetOption.Value]" data-filter-value="@facetLabel" @selected title="@facetOption.Label" />
+        <span class="btn btn-secondary btn-sm mb-2 me-sm-1 me-lg-2" type="button">
+            <span>@(name):</span> <span class="colorbox-icon" style="background-color: @facetOption.Value"></span>
+            <span class="ms-2 dw-icon-size-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M207.6 256l107.72-107.72c6.23-6.23 6.23-16.34 0-22.58l-25.03-25.03c-6.23-6.23-16.34-6.23-22.58 0L160 208.4 52.28 100.68c-6.23-6.23-16.34-6.23-22.58 0L4.68 125.7c-6.23 6.23-6.23 16.34 0 22.58L112.4 256 4.68 363.72c-6.23 6.23-6.23 16.34 0 22.58l25.03 25.03c6.23 6.23 16.34 6.23 22.58 0L160 303.6l107.72 107.72c6.23 6.23 16.34 6.23 22.58 0l25.03-25.03c6.23-6.23 6.23-16.34 0-22.58L207.6 256z"/></svg>
+            </span>
+        </span>
+    </label>
+}

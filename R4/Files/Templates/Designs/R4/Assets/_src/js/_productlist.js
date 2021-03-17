@@ -27,15 +27,17 @@ const ProductList = function () {
 				body: formData
 			};
 			let response = await fetch(form.action, fetchOptions);
-		
+
+			console.log(formData);
+
 			if (response.ok) {
 				//Update URL
 				let url = window.location.origin + window.location.pathname;
 				const newParams = new URLSearchParams(formData);
-		
+
 				url += "?" + newParams.toString();
-				window.history.pushState({}, '', url);
-		
+				window.history.pushState({}, '', decodeURI(url));
+
 				//Success
 				ProductList.Success(response, responseTargetElement, addPreloaderTimer);
 			} else {
@@ -50,13 +52,24 @@ const ProductList = function () {
 			if (document.querySelector("#overlay")) {
 				document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
 			}
-		
+
 			//Replace content
 			let html = await response.text().then(function (text) {
 				return text;
 			});
 		
 			document.querySelector(responseTargetElement).innerHTML = html;
+
+			//Modal
+			if (screen.width < 768 && document.querySelector('#FacetsModal')) {
+				var facetsModal = new Modal(document.querySelector('#FacetsModal'), { backdrop: false });
+				facetsModal.show();
+
+				var backdrop = document.querySelector('.modal-backdrop');
+				if (backdrop) {
+					backdrop.parentElement.removeChild(backdrop);
+				}
+			}
 		},
 		
 		Error: function (e, responseTargetElement, addPreloaderTimer) {
