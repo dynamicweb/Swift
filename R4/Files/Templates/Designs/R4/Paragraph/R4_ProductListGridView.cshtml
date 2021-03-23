@@ -15,38 +15,138 @@
 
     string detailsPageLink = System.Web.HttpContext.Current.Items["DetailsPageLink"] != null ? System.Web.HttpContext.Current.Items["DetailsPageLink"].ToString() : "";
 
-    string theme = Model.Item?.GetList("Theme")?.SelectedValue != "" ? Model.Item.GetList("Theme").SelectedValue.ToLower() : "";
-	theme = String.Concat(theme.Where(c => !Char.IsWhiteSpace(c)));
-	theme = theme.Replace("theme", "");
+    string theme = "";
+	if (Model.Item?.GetList("Theme")?.SelectedValue != null) {
+		if (Model.Item.GetList("Theme").SelectedValue.ToLower() != "theme default")
+		{
+			theme = Model.Item.GetList("Theme").SelectedValue.ToLower();
+			theme = String.Concat(theme.Where(c => !Char.IsWhiteSpace(c)));
+			theme = theme.Replace("theme", "");
+			theme = "theme theme-" + theme;
+		}
+	}
+
+	string textPadding = theme != "" ? "px-2 px-lg-3 pb-2 pb-lg-3" : "";
+
+	string url = HttpContext.Current.Request.RawUrl;
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=R4_PageClean.cshtml" : "?LayoutTemplate=R4_PageClean.cshtml";
+	}
+
+    string groupId = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("GroupID")) ? HttpContext.Current.Request.QueryString.Get("GroupID") : "";
 }
 
 @if (productList.TotalProductsCount > 0) { 
-    <div class="row g-3 mt-0">
-        @foreach (var product in productList.Products)
-		{
-            string link = detailsPageLink + "&amp;ProductID=" + product.Id;
-            link += !string.IsNullOrEmpty(product.VariantId) ? "&amp;VariantID=" + product.VariantId : "";
-			string price = product?.Price?.PriceFormatted ?? "";
-			string image = product?.DefaultImage?.Value ?? "";
+	int pageSizeSetting = 30;
+	int pageSize = productList.PageSize;
+	pageSize += pageSizeSetting;
 
-            <div class="col-12 col-lg-6">
-                <div class="theme theme-@theme">
-                    <a href="@link" name="ProductLink" class="text-reset position-relative">
-                        <img loading="lazy" src="/Admin/Public/GetImage.ashx?width=550&height=412&crop=5&fillcanvas=true&image=@image" class="img-fluid">
+	int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
+
+    <div class="row g-4 mt-n4 mb-5">
+        @foreach (ProductViewModel product in productList.Products)
+		{
+			string link = detailsPageLink + "&amp;ProductID=" + product.Id;
+			link += !string.IsNullOrEmpty(product.VariantId) ? "&amp;VariantID=" + product.VariantId : "";
+			string price = product?.Price?.PriceFormatted ?? "";
+			string imagePath = product?.DefaultImage?.Value ?? "";
+
+			string ratio = Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "0" && Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "" ? Model.Item.GetList("ImageAspectRatio").SelectedValue : "";
+			string ratioCssClass = ratio != "" ? "ratio" : "";
+			string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
+			string imagePathXs       = "/Admin/Public/GetImage.ashx?width=" + 320 + "&image=" + imagePath + "&Format=WebP";
+			string imagePathS        = "/Admin/Public/GetImage.ashx?width=" + 640 + "&image=" + imagePath + "&Format=WebP";
+			string imagePathM        = "/Admin/Public/GetImage.ashx?width=" + 1280 + "&image=" + imagePath + "&Format=WebP";
+			string imagePathL        = "/Admin/Public/GetImage.ashx?width=" + 1920 + "&image=" + imagePath + "&Format=WebP";
+			string imagePathXl       = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + imagePath + "&Format=WebP";
+			string imagePathFallBack = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + imagePath + "&Format=PNG";
+
+			string imageTheme = "";
+			if (Model.Item?.GetList("ImageTheme")?.SelectedValue != null) {
+				if (Model.Item.GetList("ImageTheme").SelectedValue.ToLower() != "theme default")
+				{
+					imageTheme = Model.Item.GetList("ImageTheme").SelectedValue.ToLower();
+					imageTheme = String.Concat(imageTheme.Where(c => !Char.IsWhiteSpace(c)));
+					imageTheme = imageTheme.Replace("theme", "");
+					imageTheme = "theme theme-" + imageTheme;
+				}
+			}
+			
+			string imagePadding = imageTheme != "" || theme != "" ? "p-2 p-lg-3" : "";
+
+            <div class="col-12 col-lg-6 pb-3 pb-lg-5">
+                <div class="@theme">
+                    <a href="@link">
+                        <div class="@ratioCssClass @imageTheme mb-3" style="@(ratioVariable)">
+							<div class="d-flex align-items-center justify-content-center">
+								<img srcset="
+									@imagePathXs 320w,
+									@imagePathS 640w,
+									@imagePathM 1280w,
+									@imagePathL 1920w,
+									@imagePathXl 2560w"
+								sizes="(max-width: 2560px) 480px, 800px"
+								src="@imagePathFallBack"
+								height=""
+								width=""
+								loading="lazy"
+								class="mw-100 mh-100 @imagePadding"
+								alt="@product.Name">
+							</div>
+                        </div>
                     </a>
-                    <div class="d-flex flex-column">
-                        <a href="#" name="ProductLink" class="text-decoration-none flex-fill">
-					        <div class="mb-2">@product.Name @product.VariantId</div>
-					        <div class="mb-2">@product.Number</div>
+                    <div class="d-flex flex-column @textPadding">
+                        <a href="@link" class="text-decoration-none flex-fill">
+					        <h3 class="h6 mb-0">@product.Name @product.VariantId</h3>
+					        <small class="text-muted mb-2">@product.Number</small>
 				        </a>
-                        <div class="">@price</div>
+                        <div class="fw-bold">@price</div>
                     </div>
                 </div>
             </div>
         }
     </div>
-} else if (isVisualEditor) {
-    <div class="alert alert-dark m-0" role="alert">
-        <span><i class="fas fa-info-circle mr-3"></i></span> <span>@Translate("Product list: The list will be shown here, if any")</span>
+
+    <div class="row mb-3">
+        <div class="col text-center">
+			<div class="text-muted mb-3">@loadedProducts @Translate("out of") @productList.TotalProductsCount @Translate("products")</div>
+			@if (productList.PageCount != 1) {
+				<form method="post" action="@url" data-response-target-element="content" class="w-100">
+					@foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+					{
+						foreach (FacetViewModel facetItem in facetGroup.Facets)
+						{
+							foreach (FacetOptionViewModel facetOption in facetItem.Options)
+							{
+								if (facetOption.Selected)
+								{
+									<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]" />
+								}
+							}
+						}
+					}
+
+					<input type="hidden" name="PageSize" value="@pageSize" />
+					@if (productList?.Group?.Id != null) {
+						<input type="hidden" name="GroupId" value="@productList.Group.Id" />
+					}
+					<input type="hidden" name="RequestType" value="UpdateList" />
+					<button class="btn btn-primary mb-3" type="button" onclick="ProductList.Update(event)">@Translate("Load more products")</button>
+				</form>
+			}
+			<button type="button" onclick="document.body.scrollTop = 0; document.documentElement.scrollTop = 0;" class="btn btn-clean mb-3">@Translate("Back to top") </button>
+        </div>
     </div>
+
+} else {
+    if (!isVisualEditor) {
+        <div class="alert alert-dark m-0">
+            @Translate("We did not find anything matching your search result")
+        </div>
+	} else {
+        <div class="alert alert-dark m-0" role="alert">
+            <span><i class="fas fa-info-circle mr-3"></i></span> <span>@Translate("Product list: The list will be shown here, if any")</span>
+        </div>
+	}
 }

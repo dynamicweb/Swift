@@ -16,36 +16,21 @@
 
 	//Collect the images
 	var selectedImageCategories = Model.Item.GetList("ImageAssets").SelectedValues;
-	var imageCategories = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName));
-	string mainSmallImage = "";
-	string mainLargeImage = "";
-	string mainAspectRatio = Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "0" ? "ratio ratio-" + Model.Item.GetList("ImageAspectRatio").SelectedValue : "";
+	var images = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName)).SelectMany(x => x.Assets).Union(product.ImagePatternImages);
+	string ratio = Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "0" && Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "" ? Model.Item.GetList("ImageAspectRatio").SelectedValue : "";
+	string mainRatioCssClass = ratio != "" ? "ratio" : "";
+	string mainRatioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
+	string mainImagePath = "";
 
 	int totalImages = 0;
-	if (Model.Item.GetList("ImageAssets").SelectedValues.Count() > 0) {
-		foreach (AssetCategoryViewModel group in imageCategories) {
-			foreach (MediaViewModel asset in group.Assets) {
-				if (asset.Value.ToLower().Contains(".jpeg") || asset.Value.ToLower().Contains(".jpg") || asset.Value.ToLower().Contains(".png") || asset.Value.ToLower().Contains(".gif")) {
-					if (totalImages == 0) {
-						mainSmallImage = "/Admin/Public/GetImage.ashx?width=1200&crop=5&image=" + asset.Value;
-						mainLargeImage = "/Admin/Public/GetImage.ashx?width=1920&crop=5&image=" + asset.Value;
-					}
-					totalImages++;
-				} 
+	foreach (MediaViewModel asset in images) {
+		var assetName = asset.Value.ToLower(); 
+		if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
+			if (totalImages == 0) {
+				mainImagePath = asset.Value;
 			}
-		}
-	} else {
-		foreach (AssetCategoryViewModel group in product.AssetCategories) {
-			foreach (MediaViewModel asset in group.Assets) {
-				if (asset.Value.ToLower().Contains(".jpeg") || asset.Value.ToLower().Contains(".jpg") || asset.Value.ToLower().Contains(".png") || asset.Value.ToLower().Contains(".gif")) {
-					if (totalImages == 0) {
-						mainSmallImage = "/Admin/Public/GetImage.ashx?width=1200&crop=5&image=" + asset.Value;
-						mainLargeImage = "/Admin/Public/GetImage.ashx?width=1920&crop=5&image=" + asset.Value;
-					}
-					totalImages++;
-				}
-			}
-		}
+			totalImages++;
+		} 
 	}
 
 	string mainImageColClass = totalImages > 1 ? "col-10" : "col-12";
@@ -56,47 +41,52 @@
 <div class="item">
 	@if (totalImages != 0)
 	{
+		string imagePathXs       = "/Admin/Public/GetImage.ashx?width=" + 920 + "&image=" + mainImagePath + "&Format=WebP";
+		string imagePathS        = "/Admin/Public/GetImage.ashx?width=" + 1280 + "&image=" + mainImagePath + "&Format=WebP";
+		string imagePathM        = "/Admin/Public/GetImage.ashx?width=" + 1420 + "&image=" + mainImagePath + "&Format=WebP";
+		string imagePathL        = "/Admin/Public/GetImage.ashx?width=" + 1920 + "&image=" + mainImagePath + "&Format=WebP";
+		string imagePathXl       = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + mainImagePath + "&Format=WebP";
+		string imagePathFallBack = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + mainImagePath + "&Format=PNG";
+
 		@* Show image + thumbs on large screens *@
 		<div class="d-none d-lg-block">
-			<div class="row">
+			<div class="row g-3">
 				@if (totalImages > 1)
 				{
 					<div class="col-2">
 						<div id="LargeScreenImages_@Model.ID">
-							@if (Model.Item.GetList("ImageAssets").SelectedValues.Count() > 0)
-							{
-								foreach (AssetCategoryViewModel group in imageCategories)
-								{
-									foreach (MediaViewModel asset in group.Assets)
-									{
-										if (asset.Value.ToLower().Contains(".jpeg") || asset.Value.ToLower().Contains(".jpg") || asset.Value.ToLower().Contains(".png") || asset.Value.ToLower().Contains(".gif"))
-										{
-											@RenderThumbnail(asset)
-										}
-									}
-								}
-							}
-							else
-							{
-								foreach (AssetCategoryViewModel group in product.AssetCategories)
-								{
-									foreach (MediaViewModel asset in group.Assets)
-									{
-										if (asset.Value.ToLower().Contains(".jpeg") || asset.Value.ToLower().Contains(".jpg") || asset.Value.ToLower().Contains(".png") || asset.Value.ToLower().Contains(".gif"))
-										{
-											@RenderThumbnail(asset)
-										}
-									}
+							@foreach (MediaViewModel asset in images) {
+								var assetName = asset.Value.ToLower(); 
+								if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
+									@RenderThumbnail(asset)
 								}
 							}
 						</div>
 					</div>
 				}
 
-				<!-- Image slider images -->
+				<!-- Main image -->
 				<div class="@mainImageColClass">
-					<div class="@mainAspectRatio" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
-						<img src="@mainSmallImage" id="MainImage_@Model.ID" class="img-fluid" style="object-fit: cover; cursor: pointer" alt="@product.Name" onclick="document.querySelector('#FullImage_@Model.ID').src = this.src">
+					<div class="border p-4">
+						<div class="@mainRatioCssClass" style="@(mainRatioVariable);" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
+							<div class="d-flex align-items-center justify-content-center">
+								<img id="MainImage_@Model.ID" srcset="
+										@imagePathXs 320w,
+										@imagePathS 640w,
+										@imagePathM 1280w,
+										@imagePathL 1920w,
+										@imagePathXl 2560w"
+									sizes="(max-width: 2560px) 480px, 800px"
+									src="@imagePathFallBack"
+									height=""
+									width=""
+									loading="lazy"
+									class="mw-100 mh-100"
+									style="cursor: pointer"
+									alt="@product.Name"
+									onclick="document.querySelector('#FullImage_@Model.ID').src = this.src">
+							</div>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -105,27 +95,31 @@
 			<script type="module">
 				var slider = tns({
 				container: '#LargeScreenImages_@Model.ID',
-				items: 5,
-				gutter: 16,
+				items: 5.5,
+				gutter: 8,
 				axis: 'vertical',
-
-				arrowKeys: true,
+				arrowKeys: false,
 				nav: false,
 				loop: false,
-				controls: false
+				controls: false,
+				lazyload: true
 			});
 			</script>
 		</div>
 
 		<!-- Modal -->
 		<div class="modal fade" id="ImageModal_@Model.ID" tabindex="-1" aria-labelledby="@Translate("Full image")" aria-hidden="true">
-			<div class="modal-dialog modal-xl">
+			<div class="modal-dialog modal-fullscreen">
 			<div class="modal-content">
 				<div class="modal-header">
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
 				</div>
 				<div class="modal-body">
-					<img src="" alt="" style="object-fit: cover;" id="FullImage_@Model.ID" class="w-100">
+					<div class="ratio ratio-16x9">
+						<div class="d-flex align-items-center justify-content-center">
+							<img src="" alt="" id="FullImage_@Model.ID" class="mw-100 mh-100">
+						</div>
+					</div>
 				</div>
 			</div>
 			</div>
@@ -133,32 +127,12 @@
 
 
 		@* Show the thumbs on small screens *@
-		<div class="d-block d-lg-none mini-product-image-slider">
+		<div class="d-block d-lg-none">
 			<div id="SmallScreenImages_@Model.ID" class="">
-				@if (Model.Item.GetList("ImageAssets").SelectedValues.Count() > 0)
-				{
-					foreach (AssetCategoryViewModel group in imageCategories)
-					{
-						foreach (MediaViewModel asset in group.Assets)
-						{
-							if (asset.Value.ToLower().Contains(".jpeg") || asset.Value.ToLower().Contains(".jpg") || asset.Value.ToLower().Contains(".png") || asset.Value.ToLower().Contains(".gif"))
-							{
-								@RenderImage(asset)
-							}
-						}
-					}
-				}
-				else
-				{
-					foreach (AssetCategoryViewModel group in product.AssetCategories)
-					{
-						foreach (MediaViewModel asset in group.Assets)
-						{
-							if (asset.Value.ToLower().Contains(".jpeg") || asset.Value.ToLower().Contains(".jpg") || asset.Value.ToLower().Contains(".png") || asset.Value.ToLower().Contains(".gif"))
-							{
-								@RenderImage(asset)
-							}
-						}
+				@foreach (MediaViewModel asset in images) {
+					var assetName = asset.Value.ToLower(); 
+					if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
+						@RenderImage(asset)
 					}
 				}
 			</div>
@@ -167,7 +141,8 @@
 			<script type="module">
 				var slider = tns({
 					container: '#SmallScreenImages_@Model.ID',
-					items: 1,
+					items: 1.2,
+					gutter: 8,
 					mode: 'carousel',
 					navPosition: 'bottom',
 					mouseDrag: true,
@@ -175,6 +150,7 @@
 					arrowKeys: true,
 					nav: true,
 					loop: false,
+					rewind: false,
 					controls: false,
 				});
 			</script>
@@ -184,20 +160,64 @@
 
 
 @helper RenderThumbnail(MediaViewModel asset) { 
-	string smallImage = "/Admin/Public/GetImage.ashx?width=200&crop=5&image=" + asset.Value;
-	string largeImage = "/Admin/Public/GetImage.ashx?width=1920&crop=5&image=" + asset.Value;
+	string imagePath = asset.Value;
+	string imagePathXs       = "/Admin/Public/GetImage.ashx?width=" + 920 + "&image=" + imagePath + "&Format=WebP";
+	string imagePathS        = "/Admin/Public/GetImage.ashx?width=" + 1280 + "&image=" + imagePath + "&Format=WebP";
+	string imagePathM        = "/Admin/Public/GetImage.ashx?width=" + 1420 + "&image=" + imagePath + "&Format=WebP";
+	string imagePathL        = "/Admin/Public/GetImage.ashx?width=" + 1920 + "&image=" + imagePath + "&Format=WebP";
+	string imagePathXl       = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + imagePath + "&Format=WebP";
+	string imagePathFallBack = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + imagePath + "&Format=PNG";
 
-	<div class="ratio ratio-1x1">
-		<img loading="lazy" src="@smallImage" data-full-image="@largeImage" alt="@asset.Name" style="object-fit: cover; cursor: pointer" onclick="document.querySelector('#MainImage_@Model.ID').src = this.getAttribute('data-full-image')">
+	<div class="border ratio ratio-16x9">
+		<div class="d-flex align-items-center justify-content-center">
+			<img id="MainImage_@Model.ID" srcset="
+				@imagePathXs 320w,
+				@imagePathS 640w,
+				@imagePathM 1280w,
+				@imagePathL 1920w,
+				@imagePathXl 2560w"
+			sizes="(max-width: 2560px) 480px, 800px"
+			src="@imagePathFallBack"
+			height=""
+			width=""
+			class="mw-100 mh-100"
+			style="cursor: pointer"
+			alt="@asset.Name"
+			onclick="document.querySelector('#MainImage_@Model.ID').src = this.src">	
+		</div>
 	</div>
 }
 
-@helper RenderImage(MediaViewModel asset) { 
-	string aspectRatio = Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "0" ? "ratio ratio-" + Model.Item.GetList("ImageAspectRatio").SelectedValue : "";
-	string smallImage = "/Admin/Public/GetImage.ashx?width=1920&crop=7&image=" + asset.Value;
-	string largeImage = "/Admin/Public/GetImage.ashx?width=3840&crop=5&image=" + asset.Value;
+@helper RenderImage(MediaViewModel asset) {
+	string imagePath = asset.Value;
+	string imagePathXs       = "/Admin/Public/GetImage.ashx?width=" + 920 + "&image=" + imagePath + "&Format=WebP";
+	string imagePathS        = "/Admin/Public/GetImage.ashx?width=" + 1280 + "&image=" + imagePath + "&Format=WebP";
+	string imagePathM        = "/Admin/Public/GetImage.ashx?width=" + 1420 + "&image=" + imagePath + "&Format=WebP";
+	string imagePathL        = "/Admin/Public/GetImage.ashx?width=" + 1920 + "&image=" + imagePath + "&Format=WebP";
+	string imagePathXl       = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + imagePath + "&Format=WebP";
+	string imagePathFallBack = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + imagePath + "&Format=PNG";
 
-	<div class="@aspectRatio" style="cursor: pointer" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
-		<img loading="lazy" class="img-fluid" src="@smallImage" data-full-image="@largeImage" alt="@asset.Name" style="object-fit: cover;" onclick="document.querySelector('#FullImage_@Model.ID').src = this.getAttribute('data-full-image')">
+	string ratio = Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "0" && Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "" ? Model.Item.GetList("ImageAspectRatio").SelectedValue : "";
+	string ratioCssClass = ratio != "" ? "ratio" : "";
+	string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
+
+	<div class="@ratioCssClass" style="@(ratioVariable); cursor: pointer;" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
+		<div class="d-flex align-items-center justify-content-center">
+			<img id="MainImage_@Model.ID" srcset="
+				@imagePathXs 320w,
+				@imagePathS 640w,
+				@imagePathM 1280w,
+				@imagePathL 1920w,
+				@imagePathXl 2560w"
+			sizes="(max-width: 2560px) 480px, 800px"
+			src="@imagePathFallBack"
+			height=""
+			width=""
+			loading="lazy"
+			class="mw-100 mh-100"
+			style="cursor: pointer"
+			alt="@asset.Name"
+			onclick="document.querySelector('#FullImage_@Model.ID').src = this.src">	
+		</div>
 	</div>
 }
