@@ -1,5 +1,6 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
 @using System.Web
+@using System.IO
 
 @RenderNodes(Model.Nodes)
 
@@ -11,9 +12,22 @@
 			var hasChildren = node.Nodes.Count() > 0;
 			string groupId = !string.IsNullOrEmpty(node.GroupId) ? node.GroupId : node.PageId.ToString();
 
+            bool hideTexts = Model?.Parameters["HideTexts"] != null  ? Convert.ToBoolean(Model.Parameters["HideTexts"].ToString()) : false;
+            bool hideIcons = Model?.Parameters["HideIcons"] != null  ? Convert.ToBoolean(Model.Parameters["HideIcons"].ToString()) : false;
+
+            var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+            string icon = page.Item["Icon"] != null ? page.Item["Icon"].ToString() : "";
+
             <li class="nav-item">
                 <div class="d-flex align-items-center ">
-                    <a class="nav-link px-0 flex-fill" aria-current="page" href="@node.Link" title="@node.Name">@node.Name</a>
+                    <a class="nav-link px-0 flex-fill" aria-current="page" href="@node.Link" title="@node.Name">
+                        @if (!hideIcons) {
+                            @RenderIcon(icon) 
+						}
+                        @if (!hideTexts) {
+                            <span>@node.Name</span>
+                            }
+                    </a>
 
                     @if (hasChildren) {
 						string collapseCSS = node.InPath ? "" : "collapsed";
@@ -31,4 +45,16 @@
             </li>
         }
     </ul>
+}
+
+@helper RenderIcon(string icon) { 
+    if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none")) {
+        string iconPath = HttpContext.Current.Server.MapPath(icon);
+
+        if (File.Exists(iconPath)) {
+            <span class="icon-container me-1">
+                @System.IO.File.ReadAllText(iconPath)   
+            </span>
+	    }
+    }
 }
