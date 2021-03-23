@@ -38,7 +38,7 @@ const Cart = function () {
 		
 			var totalQuantity = html != undefined ? html : 0;
 			document.querySelectorAll(".js-cart-qty").forEach(function (el) {
-				el.innerHTML = totalQuantity;
+				el.innerHTML = totalQuantity.trim();
 			})
 		},
 
