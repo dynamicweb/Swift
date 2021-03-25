@@ -32,22 +32,49 @@
 		url += url.Contains("?") ? "&LayoutTemplate=Designs/R4/R4_PageClean.cshtml" : "?LayoutTemplate=Designs/R4/R4_PageClean.cshtml";
 	}
 
+	//If products is added through the selector
+	ProductListViewModel productsToRelateTo = Model.Item.GetValue("ProductsToRelateTo") as ProductListViewModel;
+	IList<string> relateFromProductIds = new List<string>{};
+
+	if (productsToRelateTo != null) {
+		foreach (var fromProduct in productsToRelateTo.Products)
+		{
+			relateFromProductIds.Add(fromProduct.Id);
+		}
+	}
+
 	string groupId = productViewModelFound ? product.PrimaryOrDefaultGroup.Id : "";
-	string relationType = Model?.Item?.GetList("RelationType") != null ? Model.Item.GetList("RelationType").SelectedName : "trending";
+	string productId = string.Join(",", relateFromProductIds);
+	string relationType = Model?.Item?.GetList("RelationType") != null ? Model.Item.GetList("RelationType").SelectedValue : "trending";
+	string relationTypeName = Model?.Item?.GetList("RelationType") != null ? Model.Item.GetList("RelationType").SelectedName : "Trending";
 }
 
 <div class="@theme mx-n4 w-100">
+	<div class="p-3 p-md-4">
+		<h2 class="display-4">@Translate(relationTypeName)</h2>
+	</div>
+
 	<form method="post" action="@url" data-response-target-element="RelatedProducts_@Model.ID" data-update-url="false" class="w-100 js-product-list">
 		@if (groupId != "") {
 			<input type="hidden" name="GroupId" value="@groupId" />
 		}
-		<input type="hidden" name="PageSize" value="10" />
 
 		@if (relationType == "trending") {
+			if (!string.IsNullOrEmpty(productId)) {
+				<input type="hidden" name="MainProductId" value="[@productId]" /> 
+			}	
 			<input type="hidden" name="SortBy" value="OrderCountGrowth" /> 
 		}
 		@if (relationType == "most-sold") {
+			if (!string.IsNullOrEmpty(productId)) {
+				<input type="hidden" name="MainProductId" value="[@productId]" /> 
+			}
 			<input type="hidden" name="SortBy" value="OrderCount" /> 
+		}
+		@if (relationType == "frequently") {
+			productId = productViewModelFound ? product.Id : string.Join(",", relateFromProductIds);
+
+			<input type="hidden" name="BoughtWithProductIds" value="[@productId]" /> 
 		}
 
 		<div id="RelatedProducts_@Model.ID"></div>
