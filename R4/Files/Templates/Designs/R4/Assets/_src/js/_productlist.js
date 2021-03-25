@@ -1,9 +1,15 @@
 const ProductList = function () {
 
 	return {
+		init: function () {
+			//Auto initialize
+			document.querySelectorAll(".js-product-list").forEach(function (el) {
+				ProductList.Update(el);
+			});
+		},
 		
 		Update: async function (e) {
-			var clickedButton = e.currentTarget;
+			var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
 			var form = clickedButton.closest("form");
 			var responseTargetElement = "#" + form.getAttribute("data-response-target-element");
 		
@@ -32,9 +38,16 @@ const ProductList = function () {
 				//Update URL
 				let url = window.location.origin + window.location.pathname;
 				const newParams = new URLSearchParams(formData);
+				let updateUrl = "true";
 
-				url += "?" + newParams.toString();
-				window.history.pushState({}, '', decodeURI(url));
+				if (form.getAttribute("data-update-url") != undefined) {
+					updateUrl = form.getAttribute("data-update-url"); 
+				}
+
+				if (updateUrl != "false") {
+					url += "?" + newParams.toString();
+					window.history.pushState({}, '', decodeURI(url));
+				}
 
 				//Success
 				ProductList.Success(response, responseTargetElement, addPreloaderTimer, formData);
@@ -55,8 +68,10 @@ const ProductList = function () {
 			let html = await response.text().then(function (text) {
 				return text;
 			});
-		
+
 			document.querySelector(responseTargetElement).innerHTML = html;
+
+			Sliders.init();
 
 			//Modal
 			var requestType = formData.get("RequestType");
@@ -90,7 +105,6 @@ const ProductList = function () {
 		
 			ProductList.Update(e);
 		}
-
 	}
 
 }();

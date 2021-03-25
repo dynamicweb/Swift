@@ -1,0 +1,77 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using System.Web
+
+@{
+	bool isVisualEditor = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(HttpContext.Current.Request.QueryString.Get("VisualEdit")) : false;
+
+	bool productViewModelFound = false;
+	ProductViewModel product = new ProductViewModel();
+
+	if (System.Web.HttpContext.Current.Items.Contains("ProductDetails"))
+	{
+		productViewModelFound = true;
+		product = (ProductViewModel)System.Web.HttpContext.Current.Items["ProductDetails"];
+	}
+
+	string theme = "";
+	if (Model.Item?.GetList("Theme")?.SelectedValue != null) {
+		if (Model.Item.GetList("Theme").SelectedValue.ToLower() != "theme default")
+		{
+			theme = Model.Item.GetList("Theme").SelectedValue.ToLower();
+			theme = String.Concat(theme.Where(c => !Char.IsWhiteSpace(c)));
+			theme = theme.Replace("theme", "");
+			theme = "theme theme-" + theme;
+		}
+	}
+
+	string pageId = Model?.Item?.GetString("ProductSliderServicePage") != null ? Model.Item.GetString("ProductSliderServicePage") : "";
+	string url = "/Default.aspx?ID=" + pageId;
+	if (!url.Contains("LayoutTemplate")) {
+		url += url.Contains("?") ? "&LayoutTemplate=Designs/R4/R4_PageClean.cshtml" : "?LayoutTemplate=Designs/R4/R4_PageClean.cshtml";
+	}
+
+	//If products is added through the selector
+	ProductListViewModel productsToRelateTo = Model.Item.GetValue("ProductsToRelateTo") as ProductListViewModel;
+	IList<string> relateFromProductIds = new List<string>{};
+	IList<string> relateFromGroupIds = new List<string>{};
+
+	if (productsToRelateTo != null) {
+		foreach (var fromProduct in productsToRelateTo.Products)
+		{
+			relateFromProductIds.Add(fromProduct.Id);
+			relateFromGroupIds.Add(fromProduct.PrimaryOrDefaultGroup.Id);
+		}
+	}
+
+	string groupIds = productViewModelFound ? product.PrimaryOrDefaultGroup.Id : string.Join(",", relateFromGroupIds);
+	string productIds = productViewModelFound ? product.Id : string.Join(",", relateFromProductIds);
+	string relationType = Model?.Item?.GetList("RelationType") != null ? Model.Item.GetList("RelationType").SelectedValue : "trending";
+	string relationTypeName = Model?.Item?.GetList("RelationType") != null ? Model.Item.GetList("RelationType").SelectedName : "Trending";
+}
+
+<div class="@theme mx-n4 w-100">
+	<form method="post" action="@url" data-response-target-element="RelatedProducts_@Model.ID" data-update-url="false" class="w-100 js-product-list">
+		@if (!Model.Item.GetBoolean("HideTitle")) { 
+			<input type="hidden" name="HeadingTitle" value="@relationTypeName" />
+		}
+
+		@if (groupIds != "") {
+			<input type="hidden" name="GroupId" value="@groupIds" />
+		}
+
+		@if (relationType == "trending") {
+			<input type="hidden" name="SortBy" value="OrderCountGrowth" /> 
+		}
+		@if (relationType == "most-sold") {
+			<input type="hidden" name="SortBy" value="OrderCount" /> 
+		}
+		@if (relationType == "frequently") {
+			<input type="hidden" name="BoughtWithProductIds" value="[@productIds]" /> 
+		}
+
+		<div id="RelatedProducts_@Model.ID"></div>
+	</form>
+</div>
+
