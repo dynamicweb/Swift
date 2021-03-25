@@ -18,7 +18,7 @@ window.Typeahead = Typeahead;
 
 
 document.addEventListener('DOMContentLoaded', function (event) {
- 
+	ProductList.init();
     Sliders.init();
 	Typeahead.init();
 });
