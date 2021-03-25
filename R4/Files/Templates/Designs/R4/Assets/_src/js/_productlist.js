@@ -28,8 +28,6 @@ const ProductList = function () {
 			};
 			let response = await fetch(form.action, fetchOptions);
 
-			console.log(formData);
-
 			if (response.ok) {
 				//Update URL
 				let url = window.location.origin + window.location.pathname;
@@ -39,13 +37,13 @@ const ProductList = function () {
 				window.history.pushState({}, '', decodeURI(url));
 
 				//Success
-				ProductList.Success(response, responseTargetElement, addPreloaderTimer);
+				ProductList.Success(response, responseTargetElement, addPreloaderTimer, formData);
 			} else {
 				ProductList.Error(response, responseTargetElement, addPreloaderTimer);
 			}
 		},
 		
-		Success: async function (response, responseTargetElement, addPreloaderTimer) {
+		Success: async function (response, responseTargetElement, addPreloaderTimer, formData) {
 			clearTimeout(addPreloaderTimer);
 		
 			//Remove preloader
@@ -61,7 +59,9 @@ const ProductList = function () {
 			document.querySelector(responseTargetElement).innerHTML = html;
 
 			//Modal
-			if (screen.width < 768 && document.querySelector('#FacetsModal')) {
+			var requestType = formData.get("RequestType");
+
+			if (screen.width < 768 && document.querySelector('#FacetsModal') && requestType != "UpdateList") {
 				var facetsModal = new Modal(document.querySelector('#FacetsModal'), { backdrop: false });
 				facetsModal.show();
 
