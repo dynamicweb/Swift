@@ -26,3 +26,23 @@ document.addEventListener('DOMContentLoaded', function (event) {
 window.onpopstate = function (event) {
 	Typeahead.navigateToPage(document.location.href);
 };
+
+document.addEventListener('scroll', function (e) {
+	var themeChangers = document.querySelectorAll("[data-secondary-theme]");
+
+	themeChangers.forEach(function (element) {
+		var currentTheme = element.getAttribute("class");
+		var primaryTheme = element.getAttribute("data-primary-theme");
+		var secondaryTheme = element.getAttribute("data-secondary-theme");
+
+		if (document.body.scrollTop > 160 || document.documentElement.scrollTop > 160) {
+			if (currentTheme != primaryTheme) {
+				element.setAttribute("class", primaryTheme);
+			}
+		} else {
+			if (currentTheme != secondaryTheme) {
+				element.setAttribute("class", secondaryTheme);
+			}
+		}
+	});
+});
