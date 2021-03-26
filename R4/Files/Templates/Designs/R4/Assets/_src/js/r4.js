@@ -28,20 +28,23 @@ window.onpopstate = function (event) {
 };
 
 document.addEventListener('scroll', function (e) {
-	var themeChangers = document.querySelectorAll("[data-secondary-theme]");
+	var themeChangers = document.querySelectorAll("[data-alternative-theme]");
 
 	themeChangers.forEach(function (element) {
 		var currentTheme = element.getAttribute("class");
-		var primaryTheme = element.getAttribute("data-primary-theme");
-		var secondaryTheme = element.getAttribute("data-secondary-theme");
+		var mainTheme = element.getAttribute("data-main-theme");
+		var alternativeTheme = element.getAttribute("data-alternative-theme");
 
-		if (document.body.scrollTop > 160 || document.documentElement.scrollTop > 160) {
-			if (currentTheme != primaryTheme) {
-				element.setAttribute("class", primaryTheme);
+		var headerElement = element.closest("header");
+		var headerHeight = headerElement.clientHeight;
+
+		if (document.body.scrollTop > headerHeight || document.documentElement.scrollTop > headerHeight) {
+			if (currentTheme != mainTheme) {
+				element.setAttribute("class", mainTheme);
 			}
 		} else {
-			if (currentTheme != secondaryTheme) {
-				element.setAttribute("class", secondaryTheme);
+			if (currentTheme != alternativeTheme) {
+				element.setAttribute("class", alternativeTheme);
 			}
 		}
 	});
