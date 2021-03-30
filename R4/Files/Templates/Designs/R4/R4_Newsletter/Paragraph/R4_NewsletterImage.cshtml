@@ -1,0 +1,88 @@
+﻿@using Dynamicweb.Content
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@functions
+{
+	private string GetImageHandlerImage()
+	{
+		var imageWidth = GetImageWidth();
+		var imageFile = Model.Item?.GetFile("Image");
+		string imagePath = imageFile?.Path ?? "";
+		string focalPoints = imageFile?.GetFocalPointParameters() ?? "";
+		string imageRatio = Model.Item?.GetList("ImageAspectRatio").SelectedValue.ToLower() ?? "1-1";
+		string image = $"/Admin/Public/GetImage.ashx?width={imageWidth}";
+		string crop = "7";
+
+		if (imageRatio != "original")
+		{
+			if (!string.IsNullOrEmpty(imageRatio))
+			{
+				image += $"&height={GetImageHeight(imageRatio, imageWidth)}&fillcanvas=true&{focalPoints}";
+			}
+	        
+			// if (!string.IsNullOrEmpty(columnObject.imageCanvasBackground))
+			// {
+			// 	image += $"&background={columnObject.imageCanvasBackground.Replace("#","")}";
+			// }
+
+			// if (!string.IsNullOrEmpty(columnObject.imageCrop))
+			// {
+			// 	crop = columnObject.imageCrop;
+			// }
+		}
+
+		image += $"&crop={crop}&image={imagePath}";
+        
+		return $"http://dev-rapidrizzo34.mydwsite1.com/Admin/Public/GetImage.ashx?width={GetImageWidth()}&height={GetImageHeight(imageRatio, imageWidth)}&fillcanvas=true&x=-28&y=-2&crop=7&image=/Files/Images/Newsletters/image1.jpg";
+	}
+
+	private int GetImageWidth()
+	{
+		int newsletterWidth = Pageview != null ? Dynamicweb.Core.Converter.ToInt32(Pageview.Page.Item["Width"]) : 660;
+
+		GridRow grid = Dynamicweb.Services.Grids.GetGridRowById(Pageview.CurrentParagraph.GridRowId);
+
+		if (grid == null) return newsletterWidth;
+		
+		var definitionId = grid.DefinitionId;
+
+		if (definitionId == "1Column") return newsletterWidth;
+		
+		var item = Dynamicweb.Services.Items.GetItem(grid.ItemType, grid.ItemId);
+		var spaceBetweenColumns = item["SpaceBetweenColumns"].ToString();
+		var spacing = 20;
+
+		return spaceBetweenColumns != "spacing" ? newsletterWidth / 2 : (newsletterWidth - spacing) / 2;
+	}
+
+	private static string GetImageHeight(string imageRatio, int imageWidth)
+	{
+		string[] ratioValues = imageRatio.Split('-');
+		double  ratio = ratioValues.Length == 2 ? Dynamicweb.Core.Converter.ToDouble(ratioValues[1]) / Dynamicweb.Core.Converter.ToDouble(ratioValues[0]) : 1;
+		return Dynamicweb.Core.Converter.ToInt32(Dynamicweb.Core.Converter.ToInt32(imageWidth) * ratio).ToString();
+	}
+}
+@{
+	string link = Model.Item?.GetString("Link") ?? "";
+	string horizontalAlignment = Model.Item.GetList("HorizontalAlignment").SelectedValue.ToLower();
+	string verticalAlignment = Model.Item.GetList("VerticalAlignment").SelectedValue.ToLower();
+}
+<td style="vertical-align:@verticalAlignment;text-align: left;font-size: 14px;line-height: 21px;font-family: Avenir,sans-serif;">
+    <div style="font-size: 12px;font-style: normal;font-weight: normal;line-height: 19px;" align="@horizontalAlignment">
+        @if (!string.IsNullOrEmpty(link))
+        {
+            <a style="text-decoration: underline;transition: opacity 0.1s ease-in;" href="@link">
+	            @RenderImage()
+            </a>
+        }
+        else
+        {
+            @RenderImage()
+        }
+    </div>
+</td>
+
+@helper RenderImage()
+{
+	string altText = Model.Item?.GetString("AltText") ?? "";
+	<img style="border: 0;display: block;height: auto;max-width: 100%;" alt="@altText" src="@GetImageHandlerImage()">
+}

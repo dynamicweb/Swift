@@ -1,0 +1,188 @@
+﻿@using Dynamicweb.Content
+@using Dynamicweb.Frontend
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@functions
+{
+	private string GetImageHandlerImage(FileViewModel imageFile)
+	{
+		int imageWidth = GetImageWidth();
+		string imagePath = imageFile?.Path ?? "";
+		string focalPoints = imageFile?.GetFocalPointParameters() ?? "";
+		string imageRatio = Model.Item.GetList("ImageAspectRatio").SelectedValue.ToLower();
+		string image = $"/Admin/Public/GetImage.ashx?width={imageWidth}";
+		string crop = "7";
+
+		if (imageRatio != "original")
+		{
+			if (!string.IsNullOrEmpty(imageRatio))
+			{
+				image += $"&height={GetImageHeight(imageRatio, imageWidth)}&fillcanvas=true&{focalPoints}";
+			}
+	        
+	// if (!string.IsNullOrEmpty(columnObject.imageCanvasBackground))
+	// {
+	// 	image += $"&background={columnObject.imageCanvasBackground.Replace("#","")}";
+	// }
+
+	// if (!string.IsNullOrEmpty(columnObject.imageCrop))
+	// {
+	// 	crop = columnObject.imageCrop;
+	// }
+		}
+
+		image += $"&crop={crop}&image={imagePath}";
+        
+		return $"http://dev-rapidrizzo34.mydwsite1.com/Admin/Public/GetImage.ashx?width={GetImageWidth()}&height={GetImageHeight(imageRatio, imageWidth)}&fillcanvas=true&x=-28&y=-2&crop=7&image=/Files/Images/Newsletters/image4.jpg";
+	}
+	
+	private int GetImageWidth()
+	{
+		int newsletterWidth = Pageview != null ? Dynamicweb.Core.Converter.ToInt32(Pageview.Page.Item["Width"]) : 660;
+
+		GridRow grid = Dynamicweb.Services.Grids.GetGridRowById(Pageview.CurrentParagraph.GridRowId);
+
+		if (grid == null) return newsletterWidth;
+		
+		var definitionId = grid.DefinitionId;
+
+		if (definitionId == "1Column") return newsletterWidth;
+		
+		var item = Dynamicweb.Services.Items.GetItem(grid.ItemType, grid.ItemId);
+		var spaceBetweenColumns = item["SpaceBetweenColumns"].ToString();
+		var spacing = 20;
+
+		return spaceBetweenColumns != "spacing" ? newsletterWidth / 2 : (newsletterWidth - spacing) / 2;
+	}
+
+	private static string GetImageHeight(string imageRatio, int imageWidth)
+	{
+		string[] ratioValues = imageRatio.Split('-');
+		double  ratio = ratioValues.Length == 2 ? Dynamicweb.Core.Converter.ToDouble(ratioValues[1]) / Dynamicweb.Core.Converter.ToDouble(ratioValues[0]) : 1;
+		return Dynamicweb.Core.Converter.ToInt32(Dynamicweb.Core.Converter.ToInt32(imageWidth) * ratio).ToString();
+	}
+}
+@{
+	string layout = Model.Item?.GetList("Layout")?.SelectedValue != null ? Model.Item.GetList("Layout").SelectedValue : "image-top";
+}
+<td style="vertical-align:center;text-align: left;font-size: 16px;line-height: 21px;font-family: Avenir,sans-serif;">
+	@switch (layout) {
+            case "image-top":
+    			@RenderImage()
+    			@RenderTitle()
+    			@RenderLead()
+    			@RenderText()
+    			@RenderButton()
+            break;
+    
+            case "title-top":
+    			@RenderTitle()
+    			@RenderImage()
+    			@RenderLead()
+    			@RenderText()
+                @RenderButton()
+            break;
+    
+            case "title-lead-top":
+    			@RenderTitle()
+     			@RenderLead()
+    			@RenderImage()
+    			@RenderText()
+    			@RenderButton()
+            break;
+    
+            case "text-center":
+    			@RenderImage("center")
+    			@RenderTitle("center")
+    			@RenderLead("center")
+    			@RenderText("center")
+    			@RenderButton("center")
+            break;
+        }
+</td>
+
+@helper RenderImage(string horizontalAlignment = "left")
+{
+	string altText = "image"; // Model.Item?.GetString("AltText") ?? "";
+	FileViewModel imageFile = Model.Item.GetFile("Image");
+
+	if (imageFile != null)
+	{
+		<div style="font-size: 12px;font-style: normal;font-weight: normal;line-height: 19px;" align="@horizontalAlignment">
+			<img style="border: 0;display: block;height: auto;max-width: 100%;" alt="@altText" src="@GetImageHandlerImage(imageFile)">
+		</div>
+	}
+}
+
+@helper RenderTitle(string horizontalAlignment = "left")
+{
+	string title = Model.Item.GetString("Title");
+	string headingColor = "#14215b";
+
+	if (!string.IsNullOrEmpty(title) && !Model.Item.GetBoolean("HideTitle"))
+	{
+		<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">
+			<h1 class="size-34" style="text-align:@horizontalAlignment;Margin-top: 20px;Margin-bottom:10px;font-style: normal;font-weight: normal;font-size: 30px;line-height: 38px;font-family: pt serif,georgia,serif;" lang="x-size-34">
+				<span class="font-pt-serif">
+					<span style="color:@headingColor">
+						<strong>@title</strong>
+					</span>
+				</span>
+			</h1>
+		</div>
+	}
+}
+
+@helper RenderLead(string horizontalAlignment = "left") {
+	string lead = Model.Item.GetString("Lead");
+    if (!string.IsNullOrEmpty(lead))
+    {
+		<div style="text-align:@horizontalAlignment;mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">
+		    <p class="size-22" style="margin-top: 0;margin-bottom: 0;font-family: avenir,sans-serif;font-size: 16px;line-height: 24px;" lang="x-size-16">
+			    <span class="font-avenir">
+					@lead
+			    </span>
+		    </p>
+		</div>
+    }
+}
+
+@helper RenderText(string horizontalAlignment = "left")
+{
+	string text = Model.Item?.GetString("Text") ?? "";
+	
+	if (!string.IsNullOrEmpty(text))
+	{
+		<div style="text-align:@horizontalAlignment;mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;color:#000000;">
+			@text
+		</div>
+	}
+}
+
+@helper RenderButton(string horizontalAlignment = "left")
+{
+	string link = Model.Item?.GetString("ButtonLink") ?? "";
+	string label = Model.Item?.GetString("ButtonLabel") ?? "";
+	string buttonColor = "#333333";
+	string buttonTextColor = "#FFFFFF";
+
+	if (!string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(label))
+	{
+		<div class="btn btn--flat btn--large" style="text-align:@horizontalAlignment;">
+		    <![if !mso]>
+		        <a href="@link" style="border-radius: 0;display: inline-block;font-size: 14px;font-weight: bold;line-height: 24px;padding: 12px 24px;text-align: center;text-decoration: none !important;transition: opacity 0.1s ease-in;color: @buttonTextColor !important;background-color:@buttonColor;font-family: Avenir, sans-serif;">
+		            @label
+		        </a>
+		    <![endif]>
+		    <!--[if mso]>
+		        <p style="line-height:0;margin:0;">&nbsp;</p>
+		        <v:rect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="@link" style="height:60px;width:300px;margin-top:20px;v-text-anchor:middle;" fillcolor="@buttonColor;">
+					<v:textbox style="mso-fit-shape-to-text:t" inset="10px,12px,10px,12px">
+		                <center style="font-size:14px;line-height:24px;color:@buttonTextColor;font-family:Avenir,sans-serif;font-weight:bold;mso-line-height-rule:exactly;mso-text-raise:4px">
+		                    @label
+		                </center>
+		            </v:textbox>
+		        </v:rect>
+		    <![endif]-->
+		</div>
+	}
+}
