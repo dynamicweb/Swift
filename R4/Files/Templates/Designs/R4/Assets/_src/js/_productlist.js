@@ -11,21 +11,31 @@ const ProductList = function () {
 		Update: async function (e) {
 			var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
 			var form = clickedButton.closest("form");
-			var responseTargetElement = "#" + form.getAttribute("data-response-target-element");
-		
-			var addPreloaderTimer = setTimeout(function () {
-				var overlayElement = document.createElement('div');
-				overlayElement.className = "preloader-overlay";
-				overlayElement.setAttribute('id', "overlay");
-				var overlayElementIcon = document.createElement('div');
-				overlayElementIcon.className = "preloader-overlay-icon";
-				overlayElementIcon.style.top = window.pageYOffset + "px";
-				overlayElement.appendChild(overlayElementIcon);
-		
-				if (form) {
-					form.parentNode.insertBefore(overlayElement, form);
-				}
-			}, 200); //Small delay to secure that the preloader is not loaded all the time
+			var responseTargetElement = document.querySelector("#" + form.getAttribute("data-response-target-element"));
+			var preloader = form.getAttribute("data-preloader");
+
+			if (preloader != "inline") {
+				var addPreloaderTimer = setTimeout(function () {
+					var overlayElement = document.createElement('div');
+					overlayElement.className = "preloader-overlay";
+					overlayElement.setAttribute('id', "overlay");
+					var overlayElementIcon = document.createElement('div');
+					overlayElementIcon.className = "preloader-overlay-icon";
+					overlayElementIcon.style.top = window.pageYOffset + "px";
+					overlayElement.appendChild(overlayElementIcon);
+
+					if (form) {
+						form.parentNode.insertBefore(overlayElement, form);
+					}
+				}, 200); //Small delay to secure that the preloader is not loaded all the time
+			} else {
+				var addPreloaderTimer = setTimeout(function () {
+					var preloaderElement = document.createElement('div');
+					preloaderElement.className = "preloader";
+					responseTargetElement.appendChild(preloaderElement);
+				}, 200); //Small delay to secure that the preloader is not loaded all the time
+			}
+			
 		
 			let formData = new FormData(form);
 			var fetchOptions = {
@@ -69,7 +79,7 @@ const ProductList = function () {
 				return text;
 			});
 
-			document.querySelector(responseTargetElement).innerHTML = html;
+			responseTargetElement.innerHTML = html;
 
 			Sliders.init();
 
