@@ -1,0 +1,166 @@
+﻿@using Dynamicweb.Content
+@using Dynamicweb.Ecommerce.ProductCatalog
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@functions
+{
+	private string GetImageHandlerImage(string imagePath)
+	{
+		int imageWidth = GetImageWidth(); // get from the page
+		string imageRatio = GetImageRatio();
+		string image = $"/Admin/Public/GetImage.ashx?width={imageWidth}";
+		string crop = "7";
+
+		if (imageRatio != "original")
+		{
+			if (!string.IsNullOrEmpty(imageRatio))
+			{
+				image += $"&height={GetImageHeight(imageRatio, imageWidth)}&fillcanvas=true";
+			}
+		}
+
+		image += $"&crop={crop}&image={imagePath}";
+        
+		return image;
+	}
+	
+	private int GetImageWidth()
+	{
+		int newsletterWidth = Pageview != null ? Dynamicweb.Core.Converter.ToInt32(Pageview.Page.Item["Width"]) : 660;
+
+		GridRow grid = Dynamicweb.Services.Grids.GetGridRowById(Pageview.CurrentParagraph.GridRowId);
+
+		if (grid == null) return newsletterWidth;
+		
+		var definitionId = grid.DefinitionId;
+		var spacing = 20;
+
+		if (definitionId == "1Column") return IsTwoColLayout() ? (newsletterWidth - spacing) / 2 : newsletterWidth;
+		
+		var item = Dynamicweb.Services.Items.GetItem(grid.ItemType, grid.ItemId);
+		var spaceBetweenColumns = item["SpaceBetweenColumns"].ToString();
+		int columnWidth = spaceBetweenColumns != "spacing" ? newsletterWidth / 2 : (newsletterWidth - spacing) / 2;
+
+		return IsTwoColLayout() ? (columnWidth - spacing) / 2 : columnWidth;
+	}
+
+	private static string GetImageHeight(string imageRatio, int imageWidth)
+	{
+		string[] ratioValues = imageRatio.Split('-');
+		double  ratio = ratioValues.Length == 2 ? Dynamicweb.Core.Converter.ToDouble(ratioValues[1]) / Dynamicweb.Core.Converter.ToDouble(ratioValues[0]) : 1;
+		return Dynamicweb.Core.Converter.ToInt32(Dynamicweb.Core.Converter.ToInt32(imageWidth) * ratio).ToString();
+	}
+	
+	private string GetImageRatio()
+	{
+		return Model.Item?.GetList("ImageAspectRatio").SelectedValue.ToLower() ?? "original";
+	}
+
+	private bool IsTwoColLayout()
+	{
+		string colLayout = Model.Item?.GetList("Layout")?.SelectedValue.ToLower() ?? "2col";
+		return colLayout == "2col";
+	}
+}
+@{
+	ProductListViewModel selectedProductList = Model.Item?.GetValue("Products") as ProductListViewModel;
+}
+
+<td>
+	@if (selectedProductList != null)
+	{
+		IList<ProductViewModel> products = selectedProductList.Products;
+    
+		if (products.Any())
+		{
+			if (IsTwoColLayout())
+			{
+				@RenderTwoCol(products)
+			}
+			else
+			{
+				@RenderOneCol(products)
+			}
+		}
+	}
+</td>
+
+@helper RenderOneCol(IList<ProductViewModel> products)
+{
+	foreach (var product in products)
+    {
+		<div class="layout__inner" style="margin-bottom:10px;border-collapse: collapse;display: table;width: 100%;">
+			<!--[if (mso)|(IE)]><table align="center" cellpadding="0" cellspacing="0" role="presentation"><tr><td style="width: 290px" valign="top" class="w250"><![endif]-->
+			@RenderProduct(product)
+			<!--[if (mso)|(IE)]></td></tr></table><![endif]-->
+		</div>
+    }
+}
+
+@helper RenderTwoCol(IList<ProductViewModel> products)
+{
+	int index = 1;
+	foreach (var product in products)
+	{
+		bool isFirstProductInRow = index % 2 != 0;
+
+		if (isFirstProductInRow)
+		{
+			@:<div class="layout__inner" style="margin-bottom:10px;border-collapse: collapse;display: table;width: 100%;">
+			<!--[if (mso)|(IE)]><table align="center" cellpadding="0" cellspacing="0" role="presentation"><tr><td style="width: 290px" valign="top" class="w250"><![endif]-->
+		}
+	
+		if (!isFirstProductInRow)
+		{
+			<!--[if (mso)|(IE)]></td><td style="width: 20px"><![endif]-->
+			<div class="gutter" style="Float: left;width: 20px;">&nbsp;</div><!--[if (mso)|(IE)]></td><td style="width: 290px" valign="top" class="w250"><![endif]-->
+		}
+	
+		@RenderProduct(product)
+		
+		if (!isFirstProductInRow || index == products.Count)
+		{
+			<!--[if (mso)|(IE)]></td></tr></table><![endif]-->
+			@:</div>
+		}
+		index++;
+	}
+}
+
+@helper RenderProduct(ProductViewModel product)
+{
+	string detailsPageLink = "/Default.aspx?ID=149&"; //TODO: figure this out
+	string link = detailsPageLink + "&amp;ProductID=" + product.Id;
+	link += !string.IsNullOrEmpty(product.VariantId) ? "&amp;VariantID=" + product.VariantId : "";
+	string headingColor = "#14215b";
+	string textColor = "#000000";
+	string width = GetImageRatio() == "original" ? "" : "width:100%";
+	string fontFamily = "Avenir,sans-serif";
+	string headingFontFamily = "PT Serif,Georgia,serif";
+
+	<div class="column product-column" style="max-width: 320px;min-width: 290px; width: 320px;width: calc(18290px - 3000%);Float: left;">
+		<table style="border-collapse: collapse;table-layout: fixed;" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+			<tbody>
+				<tr>
+					<td style="line-height: 21px;font-family:@fontFamily;">
+						<a style="text-decoration: none;transition: opacity 0.1s ease-in;color:@textColor;" href="@link">
+							<div align="center">
+								<img style="border: 0;display: block;height: auto;max-width: 100%;@width" alt="" src="@GetImageHandlerImage(product.DefaultImage.Value)">
+							</div>
+							<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">
+								<h2 class="size-20" style="Margin-top: 10px;Margin-bottom: 0;font-style: normal;font-weight: normal;font-size: 17px;line-height: 26px;font-family:@headingFontFamily;text-align: center;" lang="x-size-20">
+									<span style="color:@headingColor">@product.Name</span>
+								</h2>
+							</div>
+							<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">
+								<p style="Margin-top: 0;Margin-bottom: 0;text-align: center;">#@product.Number</p>
+							</div>
+							<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">
+								<p style="Margin-top: 0;Margin-bottom: 0;text-align: center;">@product.Price.PriceFormatted</p>
+							</div>
+						</a>
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</div>
+}
