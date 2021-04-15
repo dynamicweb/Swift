@@ -96,16 +96,16 @@ const Typeahead = function() {
 					return text;
 				});
 
-				Typeahead.displaySuggestions(html);
+				Typeahead.displaySuggestions(html, searchField);
 			}
 		},
 
-		displaySuggestions: function(data) {
+		displaySuggestions: function (data, searchField) {
 			if (data.length > 5) {
-				document.querySelectorAll(".js-type-ahead-menu").forEach(function(menu) {
-					menu.innerHTML = data;
-				});
-				Typeahead.showSearchResults();
+				var closestDropdown = searchField.closest(".js-type-ahead-dropdown");
+				closestDropdown.querySelector(".js-type-ahead-menu").innerHTML = data;
+
+				Typeahead.showSearchResults(searchField);
 			}
 		},
 
@@ -152,15 +152,15 @@ const Typeahead = function() {
 			elm.closest(".js-type-ahead-dropdown").querySelector(".js-suggest-form").submit();
 		},
 
-		showSearchResults: function() {
-			document.querySelectorAll(".js-type-ahead-menu").forEach(function (dropdown) {
-				if (dropdown.innerHTML != "") {
-					dropdown.classList.add("show");
-				}    
-			});
-			document.querySelectorAll(".js-type-ahead-dropdown").forEach(function (dropdown) {
-				dropdown.classList.add("show");
-			});
+		showSearchResults: function (searchField) {
+			var closestDropdown = searchField.closest(".js-type-ahead-dropdown");
+			var menu = closestDropdown.querySelector(".js-type-ahead-menu");
+
+			if (menu.innerHTML != "") {
+				menu.classList.add("show");
+			} 
+
+			closestDropdown.classList.add("show");
 		},
 
 		hideSearchResults: function() {
@@ -222,7 +222,7 @@ const Typeahead = function() {
 		init: function(){
 			document.body.addEventListener('click', Typeahead.hideSearchResults);
 			document.querySelectorAll(".js-type-ahead-field").forEach(function (field) {
-				field.addEventListener('focus', Typeahead.showSearchResults());
+				field.addEventListener('focus', Typeahead.showSearchResults(field));
 				field.addEventListener('keyup', (e) => Typeahead.suggest(e, field))
 				field.addEventListener('keydown', (e) => Typeahead.handleTab(e));
 			});
