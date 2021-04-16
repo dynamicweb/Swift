@@ -11,12 +11,10 @@ const postcss = require('postcss');
 
 module.exports = [
     {
-        name: 'r4.js',
+        name: 'scripts',
         mode: mode,
-        devtool: 'inline-source-map',
         entry: {
-            'r4': './R4/Files/Templates/Designs/R4/Assets/_src/js/r4.js',
-            'r4.min': './R4/Files/Templates/Designs/R4/Assets/_src/js/r4.js'
+            'scripts': './R4/Files/Templates/Designs/R4/Assets/_src/js/r4.js'
         },
         output: {
             path: path.resolve(__dirname, 'R4','Files','Templates','Designs','R4','Assets','js'),
@@ -36,19 +34,15 @@ module.exports = [
         optimization: {
             minimize: isProduction,
             minimizer: [
-                new UglifyJsPlugin({
-                    include: /\.min\.js$/
-                })
+                new UglifyJsPlugin()
             ]
         }
     },
     {
-        name: 'r4.scss',
+        name: 'styles',
         mode: mode,
-        devtool: 'inline-source-map',
         entry: {
-            'r4': './R4/Files/Templates/Designs/R4/Assets/_src/scss/r4.scss',
-            'r4.min': './R4/Files/Templates/Designs/R4/Assets/_src/scss/r4.scss'
+            'styles': './R4/Files/Templates/Designs/R4/Assets/_src/scss/r4.scss'
         },
         output: {
             path: path.resolve(__dirname, 'R4','Files','Templates','Designs','R4','Assets','css'),
@@ -82,8 +76,7 @@ module.exports = [
                         loader: 'postcss-loader'
                     },
                     {
-                        loader: 'sass-loader',
-                        options: { sourceMap: !isProduction }
+                        loader: 'sass-loader'
                     }]
                 }
             ]
@@ -92,8 +85,8 @@ module.exports = [
             minimize: isProduction,
             minimizer: [
                 new OptimizeCssAssetsPlugin({
-                    assetNameRegExp: /\.min\.css$/
-                })
+                    assetNameRegExp: /\.css$/
+                }),
             ]
         }
     }
