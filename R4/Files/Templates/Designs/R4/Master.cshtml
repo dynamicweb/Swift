@@ -3,31 +3,23 @@
 @using Dynamicweb.Content.Items
 
 @{ 
-	@* Branding/Fonts *@
-	var brandingPage = Dynamicweb.Services.Pages?.GetPage(Model.Area.Item.GetInt32("BrandingPage")) ?? null;
+	@* Branding/Themes/Fonts *@
+	var brandingPageId = Model.Area.Item.GetInt32("BrandingPage");
+	var themePageId = Model.Area.Item.GetInt32("ThemesPage");
+
+	var brandingPage = Dynamicweb.Services.Pages?.GetPage(brandingPageId) ?? null;
 	string[] fontList = new string[50];
 	int fontCount = 0;
 
 	dynamic headerFont = null;
-	string headerFontFamily = "Roboto";
+	string headerFontFamily = "Inter";
 	string headerFontWeight = "300";
-	string headerCasing = "inherit";
-	double headerLineHeight = 1.2;
-	double headerLetterSpacing = 0;
-
 	dynamic displayFont = null;
-	string displayFontFamily = "Roboto";
+	string displayFontFamily = "Inter";
 	string displayFontWeight = "bold";
-	string displayCasing = "inherit";
-	double displayLineHeight = 1.2;
-	double displayLetterSpacing = 0;
-
 	dynamic bodyFont = null;
-	string bodyFontFamily = "Roboto";
+	string bodyFontFamily = "Inter";
 	string bodyFontWeight = "regular";
-	string bodyCasing = "inherit";
-	double bodyLineHeight = 1.4;
-	double bodyLetterSpacing = 0;
 
 	if (brandingPage != null) {
 		headerFont = Newtonsoft.Json.JsonConvert.DeserializeObject(brandingPage.Item["HeaderFont"].ToString());
@@ -37,10 +29,6 @@
 			fontList[fontCount] = headerFontFamily;
 			fontCount++;
 		}
-		headerCasing = brandingPage.Item["HeaderCasing"].ToString();
-		headerLineHeight = Convert.ToDouble(brandingPage.Item["HeaderLineHeight"].ToString());
-		headerLetterSpacing = Convert.ToDouble(brandingPage.Item["HeaderLetterSpacing"].ToString());
-
 		displayFont = Newtonsoft.Json.JsonConvert.DeserializeObject(brandingPage.Item["DisplayFont"].ToString());
 		if (displayFont != null) {
 			displayFontFamily = displayFont.Family;
@@ -48,10 +36,6 @@
 			fontList[fontCount] = displayFontFamily;
 			fontCount++;
 		}
-		displayCasing = brandingPage.Item["DisplayCasing"].ToString();
-		displayLineHeight = Convert.ToDouble(brandingPage.Item["DisplayLineHeight"].ToString());
-		displayLetterSpacing = Convert.ToDouble(brandingPage.Item["DisplayLetterSpacing"].ToString());
-
 		bodyFont = Newtonsoft.Json.JsonConvert.DeserializeObject(brandingPage.Item["BodyFont"].ToString());
 		if (bodyFont != null) {
 			bodyFontFamily = bodyFont.Family;
@@ -59,15 +43,10 @@
 			fontList[fontCount] = bodyFontFamily;
 			fontCount++;
 		}
-		bodyCasing = brandingPage.Item["BodyCasing"].ToString();
-		bodyLineHeight = Convert.ToDouble(brandingPage.Item["BodyLineHeight"].ToString());
-		bodyLetterSpacing = Convert.ToDouble(brandingPage.Item["BodyLetterSpacing"].ToString());
 	}
 	var fontsToLink = string.Join("%7C", fontList.Where(x => !string.IsNullOrEmpty(x)).Distinct().Select(x => string.Format("{0}:100,200,300,400,500,600,700,800,900", x)));
 
-	@* Themes *@
-	var themesPageParagraphs = Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(Model.Area.Item.GetInt32("ThemesPage")) ?? null;
-
+	@* Theme setting for the body *@
 	string masterTheme = !string.IsNullOrEmpty(Model.Area.Item.GetString("Theme")) ? Model.Area.Item.GetString("Theme").ToLower() : "";
 	if (masterTheme != "theme default" && masterTheme != "")
 	{
@@ -83,7 +62,6 @@
 
 <!doctype html>
 <html lang="@Pageview.Area.CultureInfo.TwoLetterISOLanguageName" class="h-100">
-
 <head>
 	@* Required meta tags *@
 	<meta charset="utf-8">
@@ -95,8 +73,14 @@
 
 	<title>@Model.Title</title>
 
-	@* Styles *@
+	@* Bootstrap + R4 stylesheet *@
 	<link href="~/Files/Templates/Designs/R4/Assets/css/styles.css" rel="stylesheet" type="text/css">
+
+	@* Branding stylesheet *@
+	<link href="/Default.aspx?ID=@brandingPageId" rel="stylesheet" type="text/css">
+
+	@* Themes stylesheet *@
+	<link href="/Default.aspx?ID=@themePageId" rel="stylesheet" type="text/css">
 
 	@* Fonts *@
 	<link rel="preconnect" href="https://fonts.gstatic.com" />
@@ -105,95 +89,7 @@
 	<noscript>
 		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=@fontsToLink&display=swap" />
 	</noscript>
-
-	<style>
-		.brand {
-			--r4-header-font: @headerFontFamily;
-			--r4-header-font-weight: @headerFontWeight;
-			--r4-header-casing: @headerCasing;
-			--r4-header-line-height: @headerLineHeight;
-			--r4-header-letter-spacing: @headerLetterSpacing;
-
-			--r4-display-font: @displayFontFamily;
-			--r4-display-font-weight: @displayFontWeight;
-			--r4-display-casing: @displayCasing;
-			--r4-display-line-height: @displayLineHeight;
-			--r4-display-letter-spacing: @displayLetterSpacing;
-
-			--r4-body-font: @bodyFontFamily;
-			--r4-body-font-weight: @bodyFontWeight;
-			--r4-body-casing: @bodyCasing;
-			--r4-body-line-height: @bodyLineHeight;
-			--r4-body-letter-spacing: @bodyLetterSpacing;
-		}
-
-		@if (themesPageParagraphs != null)
-		{
-			foreach (Dynamicweb.Content.Paragraph paragraph in themesPageParagraphs) {
-				string themeClassName = paragraph.Item["Name"].ToString().ToLower();
-				themeClassName = String.Concat(themeClassName.Where(c => !Char.IsWhiteSpace(c)));
-				themeClassName = themeClassName.Replace("theme", "");
-
-				string foregroundColor = paragraph.Item["ForegroundColor"] != null ? paragraph.Item["ForegroundColor"].ToString() : "";
-				foregroundColor = foregroundColor == "" ? "transparent" : foregroundColor;
-				string backgroundColor = paragraph.Item["BackgroundColor"] != null ? paragraph.Item["BackgroundColor"].ToString() : "";
-				backgroundColor = backgroundColor == "" ? "transparent" : backgroundColor;
-				string borderColor = paragraph.Item["BorderColor"] != null ? paragraph.Item["BorderColor"].ToString() : "";
-				borderColor = borderColor == "" ? "transparent" : borderColor;
-				string buttonPrimaryBackgroundColor = paragraph.Item["ButtonPrimaryBackgroundColor"] != null ? paragraph.Item["ButtonPrimaryBackgroundColor"].ToString() : "";
-				buttonPrimaryBackgroundColor = buttonPrimaryBackgroundColor == "" ? "transparent" : buttonPrimaryBackgroundColor;
-				string buttonPrimaryForegroundColor = paragraph.Item["ButtonPrimaryForegroundColor"] != null ? paragraph.Item["ButtonPrimaryForegroundColor"].ToString() : "";
-				buttonPrimaryForegroundColor = buttonPrimaryForegroundColor == "" ? "transparent" : buttonPrimaryForegroundColor;
-				string buttonSecondaryBackgroundColor = paragraph.Item["ButtonSecondaryBackgroundColor"] != null ? paragraph.Item["ButtonSecondaryBackgroundColor"].ToString() : "";
-				buttonSecondaryBackgroundColor = buttonSecondaryBackgroundColor == "" ? "transparent" : buttonSecondaryBackgroundColor;
-				string buttonSecondaryForegroundColor = paragraph.Item["ButtonSecondaryForegroundColor"] != null ? paragraph.Item["ButtonSecondaryForegroundColor"].ToString() : "";
-				buttonSecondaryForegroundColor = buttonSecondaryForegroundColor == "" ? "transparent" : buttonSecondaryForegroundColor;
-
-				<text>
-					.theme-@themeClassName {
-						@if (!string.IsNullOrEmpty(foregroundColor)) {
-							<text>
-							--r4-foreground-color: @foregroundColor;
-							</text>
-						}
-						@if (!string.IsNullOrEmpty(backgroundColor)) {
-							<text>
-							--r4-background-color: @backgroundColor;
-							</text>
-						}
-						@if (!string.IsNullOrEmpty(borderColor)) {
-							<text>
-							--r4-border-color: @borderColor;
-							</text>
-						}
-						@if (!string.IsNullOrEmpty(buttonPrimaryBackgroundColor)) {
-							<text>
-							--r4-button-primary-background-color: @buttonPrimaryBackgroundColor;
-							</text>
-						}
-						@if (!string.IsNullOrEmpty(buttonPrimaryForegroundColor)) {
-							<text>
-							--r4-button-primary-foreground-color: @buttonPrimaryForegroundColor;
-							</text>
-						}
-						@if (!string.IsNullOrEmpty(buttonSecondaryBackgroundColor)) {
-							<text>
-							--r4-button-secondary-background-color: @buttonSecondaryBackgroundColor;
-							</text>
-						}
-						@if (!string.IsNullOrEmpty(buttonSecondaryForegroundColor)) {
-							<text>
-							--r4-button-secondary-foreground-color: @buttonSecondaryForegroundColor;
-							</text>
-						}
-					}
-				</text>
-			}
-		}
-	</style>
-
 </head>
-
 	<body class="d-flex flex-column min-vh-100 brand @(masterTheme)" style="overflow-x: hidden;">
 		<header class="page-header @headerCssClass top-0 d-none d-lg-block" id="page-header-dekstop" style="z-index: 10" role="banner">
 			@if (@Model.Area.Item.GetString("HeaderDesktop") != null)
@@ -207,7 +103,6 @@
 			{
 				@RenderGrid(@Model.Area.Item.GetInt32("HeaderMobile"))
 			}
-			
 		</header>
 
 		<main id="page-content" class="overflow-hidden" role="main">
@@ -230,12 +125,11 @@
 			}
 		</footer>
 
-		@*Render any offcanvas menu here*@
+		@* Render any offcanvas menu here *@
 		@RenderSnippet("offcanvas")
 		
 		@* Scripts *@
 		<script src="~/Files/Templates/Designs/R4/Assets/js/scripts.js" type="text/javascript"></script>
 
 	</body>
-
 </html>
