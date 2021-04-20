@@ -56,7 +56,7 @@ const ProductList = function () {
 
 				if (updateUrl != "false") {
 					url += "?" + newParams.toString();
-					window.history.pushState({}, '', decodeURI(url));
+					window.history.replaceState({}, '', decodeURI(url));
 				}
 
 				//Success
