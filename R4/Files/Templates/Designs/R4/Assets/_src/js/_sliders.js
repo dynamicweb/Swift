@@ -8,6 +8,7 @@ const Sliders = function() {
 			if (sliders) {
 				for (var i = 0; i < sliders.length; ++i) {
 					var sliderContainer = sliders[i];
+					var sliderIsInitialized = sliderContainer.classList.contains("tns-slider");
 					var closestColumn = sliderContainer.closest("[class^='col-']");
 					var colMdClassIndex = closestColumn.getAttribute("class").search("col-md-") + 7;
 					var parentColumnSize = closestColumn.getAttribute("class").charAt(colMdClassIndex) + closestColumn.getAttribute("class").charAt(colMdClassIndex + 1);
