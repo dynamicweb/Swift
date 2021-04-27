@@ -12,6 +12,8 @@ const Sliders = function() {
 					var closestColumn = sliderContainer.closest("[class^='col-']");
 					var colMdClassIndex = closestColumn.getAttribute("class").search("col-md-") + 7;
 					var parentColumnSize = closestColumn.getAttribute("class").charAt(colMdClassIndex) + closestColumn.getAttribute("class").charAt(colMdClassIndex + 1);
+					var hideNavigationBar = sliderContainer.getAttribute("data-hide-navigation-bar") ? sliderContainer.getAttribute("data-hide-navigation-bar") : "true";
+					hideNavigationBar = hideNavigationBar == "true" ? false : true; 
 
 					var itemsInSlider = 5;
 
@@ -35,6 +37,7 @@ const Sliders = function() {
 						var slider = tns({
 							container: sliderContainer,
 							controls: false,
+							nav: hideNavigationBar,
 							items: 1.2,
 							gutter: 16,
 							loop: false,
