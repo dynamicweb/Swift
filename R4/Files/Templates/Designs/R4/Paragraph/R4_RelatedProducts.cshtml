@@ -25,6 +25,20 @@
 		theme = "";
 	}
 
+	string imageTheme = !string.IsNullOrEmpty(Model.Item.GetString("ImageTheme")) ? Model.Item.GetString("ImageTheme").ToLower() : "";
+	if (imageTheme != "theme default" && imageTheme != "")
+	{
+		imageTheme = String.Concat(imageTheme.Where(c => !Char.IsWhiteSpace(c)));
+		imageTheme = imageTheme.Replace("theme", "");
+		imageTheme = " theme theme-" + imageTheme;
+	} else {
+		imageTheme = "";
+	}
+
+	string detailPageId = Model?.Item?.GetString("ProductDetailsPage") != null ? Model.Item.GetString("ProductDetailsPage") : "";
+	string productPageByNavigationTag = GetPageIdByNavigationTag("ProductDetailPage") != 0 ? GetPageIdByNavigationTag("ProductDetailPage").ToString() : "";
+	detailPageId = detailPageId == "" ? productPageByNavigationTag : detailPageId;
+
 	string pageId = Model?.Item?.GetString("ProductSliderServicePage") != null ? Model.Item.GetString("ProductSliderServicePage") : "";
 	string servicePageByNavigationTag = GetPageIdByNavigationTag("ProductSliderService") != 0 ? GetPageIdByNavigationTag("ProductSliderService").ToString() : "";
 	pageId = pageId == "" ? servicePageByNavigationTag : pageId;
@@ -38,7 +52,7 @@
 	}
 
 	//If products is added through the selector
-	ProductListViewModel productsToRelateTo = Model.Item.GetValue("ProductsToRelateTo") as ProductListViewModel;
+	ProductListViewModel productsToRelateTo = Model.Item.GetValue<ProductListViewModel>("ProductsToRelateTo");
 	IList<string> relateFromProductIds = new List<string>{};
 	IList<string> relateFromGroupIds = new List<string>{};
 
@@ -50,7 +64,7 @@
 		}
 	}
 
-	ProductListViewModel products = Model.Item.GetValue("Products") as ProductListViewModel;
+	ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("Products");
 	IList<string> selectedProductIds = new List<string>{};
 
 	if (products != null) {
@@ -64,13 +78,14 @@
 	string productIds = productViewModelFound ? product.Id : string.Join(",", relateFromProductIds);
 	string relationType = Model?.Item?.GetList("RelationType") != null ? Model.Item.GetList("RelationType").SelectedValue : "trending";
 	string relationTypeName = Model?.Item?.GetString("Title") != null ? Model.Item.GetString("Title") : Translate("Products");
-
-	string height = !Model.Item.GetBoolean("HideTitle") ? "605px" : "390px";
 }
 
-<form method="post" action="@url" data-response-target-element="RelatedProducts_@Model.ID" data-preloader="inline" data-update-url="false" class="w-100 js-product-list" id="RelatedProducts_@Model.ID" style="min-height: @height">
-	@if (!string.IsNullOrEmpty(Model.Item.GetString("ProductDetailsPage"))) { 
-		<input type="hidden" name="ProductDetailsPage" value="@Model.Item.GetString("ProductDetailsPage")" />
+<form method="post" action="@url" data-response-target-element="RelatedProducts_@Model.ID" data-preloader="inline" data-update-url="false" class="w-100 js-product-list" id="RelatedProducts_@Model.ID">
+	@if (Model.Item.GetInt32("ProductsCount") != 0) { 
+		<input type="hidden" name="PageSize" value="@Model.Item.GetInt32("ProductsCount")" />
+	}
+	@if (detailPageId != "") { 
+		<input type="hidden" name="ProductDetailsPage" value="@detailPageId" />
 	}
 	@if (!Model.Item.GetBoolean("HideTitle")) { 
 		<input type="hidden" name="HeadingTitle" value="@relationTypeName" />
@@ -81,6 +96,9 @@
 	}
 	@if (theme != "") { 
 		<input type="hidden" name="Theme" value="@theme" />
+	}
+	@if (imageTheme != "") { 
+		<input type="hidden" name="ImageTheme" value="@imageTheme" />
 	}
 	@if (!string.IsNullOrEmpty(Model.Item.GetString("ContentPadding"))) { 
 		string contentPadding = Model.Item.GetList("ContentPadding").SelectedValue;
