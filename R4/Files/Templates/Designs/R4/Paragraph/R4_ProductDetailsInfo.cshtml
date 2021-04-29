@@ -26,7 +26,9 @@
 		theme = String.Concat(theme.Where(c => !Char.IsWhiteSpace(c)));
 		theme = theme.Replace("theme", "");
 		theme = " theme theme-" + theme;
-	} else {
+	}
+	else
+	{
 		theme = "";
 	}
 }
@@ -38,14 +40,16 @@
 	</div>
 	<div class="mb-4">
 		<div class="fs-4 fw-bold">@product.Price.PriceFormatted</div>
-		@if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+		@if (product.Price.Price != product.PriceBeforeDiscount.Price)
+		{
 			<div class="text-decoration-line-through text-muted">
 				@product.PriceBeforeDiscount.PriceFormatted
 			</div>
 		}
 	</div>
 
-	@if (!string.IsNullOrEmpty(product.ShortDescription)) {
+	@if (!string.IsNullOrEmpty(product.ShortDescription))
+	{
 		<div class="mb-4">
 			@product.ShortDescription
 		</div>
@@ -62,10 +66,298 @@
 		</div>
 	</form>
 
-	@if (product.StockLevel > 0) {
+	@if (product.StockLevel > 0)
+	{
 		<small class="text-success">@product.StockLevel @Translate("Products available in stock")</small>
-	} else {
+	}
+	else
+	{
 		<small class="text-danger">@Translate("Out of Stock")</small>
 	}
 </div>
+
+<style>
+	.btn.active {
+		border: 4px solid red;
+	}
+</style>
+
+
+@* Basic data rendering from VariantInfo *@
+
+@RenderVariants(product)
+
+@helper RenderVariants(ProductViewModel productModel) {
+	if (productModel.VariantInfo.VariantInfo != null)
+					{
+	<h4>Variant info</h4>
+	@RenderVariantInfo(productModel.VariantInfo)}
+}
+
+
+@helper RenderVariantInfo(VariantInfoViewModel variantModel) {
+	if (variantModel.VariantInfo != null)
+	{
+		<ul>
+			@foreach (var variant in variantModel.VariantInfo)
+			{
+				<li>
+					@variant.OptionName (@variant.VariantID) @variant.Image.Value
+					@RenderVariantInfo(variant)
+				</li>
+			}
+		</ul>
+	}
+}
+
+
+@* Rendering from new data set *@
+@{ 
+	if (product.VariantInfo.VariantInfo != null)
+	{
+		FillAvailableVariants(product.VariantInfo);
+	}
+}
+
+
+@GetAvailableVariants(product).AllOptions.Count
+
+@RenderVariantSelector(GetAvailableVariants(product))
+
+@helper RenderVariantSelector(AvailableVariants availableVariants)
+{
+	int groupNumber = 1;
+
+	<div class="js-variant-selector">
+		@foreach (var variantGroup in availableVariants.Groups)
+		{
+			VariantGroup group = variantGroup.Value;
+
+			<h3 class="h5">@group.Name</h3>
+			<div class="mb-4 js-variant-group" data-group-number="@groupNumber">
+				@RenderVariantOptions(group.Options)
+			</div>
+			
+			groupNumber++;
+		}
+	</div>
+}
+
+
+@helper RenderVariantOptions(Dictionary<string, VariantOption> variantOptions) {
+	if (variantOptions != null)
+	{
+		foreach (VariantOption option in variantOptions.Values)
+		{
+			string[] allowedParentsArray = option.AllowedParents.Values.ToArray();
+			string allowedParents = string.Join(",", allowedParentsArray);
+
+			string[] allowedChildrenArray = option.AllowedChildren.Values.ToArray();
+			string allowedChildren = string.Join(",", allowedChildrenArray);
+
+			<span>
+				<button type="button" class="btn btn-secondary js-variant-option" onclick="UpdateVariants(event)" data-variant-id="@option.ID" data-allowed-parents="@allowedParents" data-allowed-children="@allowedChildren" data-selectable="true">@option.Name</button>
+			</span>
+		}
+	}
+}
+
+
+
+@functions{ 
+	Dictionary<string, Dictionary<string, string>> allowedParents = new Dictionary<string, Dictionary<string, string>>();
+	Dictionary<string, Dictionary<string, string>> allowedChildren = new Dictionary<string, Dictionary<string, string>>();
+
+	public AvailableVariants GetAvailableVariants(ProductViewModel productModel) {
+
+		AvailableVariants variants = new AvailableVariants();
+		if (productModel.VariantInfo.VariantInfo != null)
+		{
+			FillVariants(variants, productModel.VariantInfo);
+		}
+		return variants;
+	}
+
+	public void FillVariants(AvailableVariants variants, VariantInfoViewModel variantInfo)
+	{
+		if (variantInfo.VariantInfo != null)
+		{
+			if (!variants.Groups.ContainsKey(variantInfo.VariantInfoGroupName))
+			{
+				variants.Groups.Add(variantInfo.VariantInfoGroupName, new VariantGroup { Name = variantInfo.VariantInfoGroupName });
+			}
+			foreach (var variantoption in variantInfo.VariantInfo)
+			{
+				if (!variants.Groups[variantInfo.VariantInfoGroupName].Options.ContainsKey(variantoption.OptionID))
+				{
+					Dictionary<string, string> allowedChildrenForOption;
+					if(!allowedChildren.TryGetValue(variantoption.OptionID, out allowedChildrenForOption))
+					{
+						allowedChildrenForOption = new Dictionary<string, string>();
+					}
+
+					Dictionary<string, string> allowedParentsForOption;
+					if(!allowedParents.TryGetValue(variantoption.OptionID, out allowedParentsForOption))
+					{
+						allowedParentsForOption = new Dictionary<string, string>();
+					}
+
+					variants.Groups[variantInfo.VariantInfoGroupName].Options.Add(variantoption.OptionID, new VariantOption()
+					{
+						ID = variantoption.OptionID,
+						Name = variantoption.OptionName,
+						Color = variantoption.OptionColor,
+						Image = variantoption.OptionImage.Value,
+						AllowedChildren = allowedChildrenForOption,
+						AllowedParents = allowedParentsForOption
+					});
+				}
+				if (!variants.AllOptions.ContainsKey(variantoption.OptionID))
+				{
+					variants.AllOptions.Add(variantoption.OptionID, new VariantOption
+					{
+						ID = variantoption.OptionID,
+						Name = variantoption.OptionName,
+						Color = variantoption.OptionColor,
+						Image = variantoption.OptionImage.Value
+					});
+				}
+				FillVariants(variants, variantoption);
+			}
+		}
+	}
+
+	public void FillAvailableVariants(VariantInfoViewModel variantInfo) {
+		if (variantInfo.VariantInfo != null)
+		{
+			foreach (var variantOption in variantInfo.VariantInfo)
+			{
+				var parent = variantOption.GetParent();
+
+				if (parent != null && variantOption.OptionID != null) {
+					if (parent.OptionID != null) {
+
+						//Fill allowedParents
+						Dictionary<string, string> allowedParentsForOption;
+						if (!allowedParents.TryGetValue(variantOption.OptionID, out allowedParentsForOption))
+						{
+							allowedParentsForOption = new Dictionary<string, string>();
+							allowedParentsForOption.Add(parent.OptionID, variantOption.GetParent().OptionID);
+							allowedParents.Add(variantOption.OptionID, allowedParentsForOption);
+						}
+						else
+						{
+							if (!allowedParentsForOption.ContainsKey(parent.OptionID)) {
+								allowedParentsForOption.Add(parent.OptionID, variantOption.GetParent().OptionID);
+							}	
+						}
+						//Fill allowedChildren
+						Dictionary<string, string> allowedChildrenForOption;
+						if (!allowedChildren.TryGetValue(parent.OptionID, out allowedChildrenForOption))
+						{
+							allowedChildrenForOption = new Dictionary<string, string>();
+							allowedChildrenForOption.Add(variantOption.OptionID, variantOption.OptionID);
+							allowedChildren.Add(parent.OptionID, allowedChildrenForOption);
+						}
+						else
+						{
+							if (!allowedChildrenForOption.ContainsKey(variantOption.OptionID)) {
+								allowedChildrenForOption.Add(variantOption.OptionID, variantOption.OptionID);
+							}
+						}
+					}
+				}
+
+				FillAvailableVariants(variantOption);
+			}
+		}
+	}
+
+	public class AvailableVariants
+	{
+		public Dictionary<string, VariantGroup> Groups { get; set; } = new Dictionary<string, VariantGroup>();
+		public Dictionary<string, VariantOption> AllOptions { get; set; } = new Dictionary<string, VariantOption>();
+	}
+
+	public class VariantGroup
+	{
+		public string Name { get; set; }
+		public Dictionary<string, VariantOption> Options { get; set; } = new Dictionary<string, VariantOption>();
+	}
+
+	public class VariantOption
+	{
+		public string ID { get; set; }
+		public string Name { get; set; }
+		public string Color { get; set; }
+		public string Image { get; set; }
+
+		public Dictionary<string, string> AllowedChildren { get; set; } = new Dictionary<string, string>();
+		public Dictionary<string, string> AllowedParents { get; set; } = new Dictionary<string, string>();
+	}
+}
+
+<script>
+	function UpdateVariants(e) {
+		var clickedButton = e.currentTarget;
+		var currentGroup = clickedButton.closest(".js-variant-group");
+		var groupNumber = currentGroup.getAttribute("data-group-number");
+		var allowedParents = clickedButton.getAttribute("data-allowed-parents").trim().split(",");
+		var allowedChildren = clickedButton.getAttribute("data-allowed-children").trim().split(",");
+
+		var variantSelectorElement = clickedButton.closest(".js-variant-selector");
+		var parentGroup = variantSelectorElement.querySelector("[data-group-number='" + (parseInt(groupNumber) - 1) + "']");
+		var childGroup = variantSelectorElement.querySelector("[data-group-number='" + (parseInt(groupNumber) + 1) + "']");
+
+		currentGroup.querySelectorAll(".js-variant-option").forEach(function (option) {
+			option.classList.remove("active");
+		});
+		clickedButton.classList.add("active");
+
+		if (parentGroup && allowedParents.length != 0) {
+			UpdateVariantGroup(allowedParents, parentGroup);
+		}
+
+		if (childGroup && allowedChildren.length != 0) {
+			UpdateVariantGroup(allowedChildren, childGroup);
+		}
+
+		CheckSelectionComplete(variantSelectorElement);
+	}
+
+	function UpdateVariantGroup(variantsArray, groupElement) {
+		//Clear all 
+		groupElement.querySelectorAll(".js-variant-option").forEach(function (option) {
+			option.setAttribute("data-selectable", false);
+			option.disabled = true;
+		});
+
+		//Disable unavailable
+		variantsArray.forEach(function (availableOptionId) {
+			var option = groupElement.querySelector("[data-variant-id='" + availableOptionId + "']")
+
+			if (option) {
+				option.setAttribute("data-selectable", true);
+				option.disabled = false;
+			}
+		});
+	}
+
+	function CheckSelectionComplete(variantSelectorElement) {
+		//var selections = 0;
+		//var totalGroups = variantSelectorElement.querySelectorAll(".js-variant-group").length;
+
+		//variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
+		//	if (option.classList.contains("active")) {
+		//		selections++;
+		//	}
+		//});
+
+		//if (selections == totalGroups) {
+		//	var groupId = currentVariantsBlock.getAttribute("data-group-id");
+		//          var cleanLink = "/Default.aspx?ID=" + pageId + "&ProductID=" + productId + "&VariantID=" + selectionsList.join(".");
+		//          window.location = cleanLink;
+		//}
+	}
+</script>
 
