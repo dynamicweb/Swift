@@ -4,7 +4,70 @@
 @using System.Web
 
 @{ 
+	string buttonLink = !string.IsNullOrEmpty(HttpContext.Current.Request.Form["Link"]) ? HttpContext.Current.Request.Form["Link"].ToString() : "";
+
+	string layout = !string.IsNullOrEmpty(HttpContext.Current.Request.Form["Layout"]) ? HttpContext.Current.Request.Form["Layout"].ToString() : "";
+
 	string headingTitle = !string.IsNullOrEmpty(HttpContext.Current.Request.Form["HeadingTitle"]) ? HttpContext.Current.Request.Form["HeadingTitle"].ToString() : "";
+	string headingSubtitle = !string.IsNullOrEmpty(HttpContext.Current.Request.Form["Subtitle"]) ? HttpContext.Current.Request.Form["Subtitle"].ToString() : "";
+
+	string alignButtonMiddle = headingTitle == "" && headingSubtitle == "" ? " justify-content-center" : "";
+}
+
+@if (layout == "" || layout == "text-top") {
+	if (headingTitle != "") {
+		<div class="pt-5 pb-2 pt-lg-6 pb-lg-4">
+			@RenderHeader(headingTitle, headingSubtitle)
+			@RenderDesktopLinkButton(headingTitle, headingSubtitle)
+		</div>
+	}
+
+	@RenderSlider()
+
+	@RenderMobileLinkButton(headingTitle, headingSubtitle)
+}
+
+@if (layout == "text-left") {
+	<div class="row">
+		@if (headingTitle != "" || headingSubtitle != "" || buttonLink != "") {
+			<div class="col-12 col-lg-4">
+				<div class="d-flex flex-row align-items-center@(alignButtonMiddle) h-100">
+					<div class="mb-5 mb-lg-0">
+						@RenderHeader(headingTitle, headingSubtitle)
+						@RenderDesktopLinkButton(headingTitle, headingSubtitle)
+					</div>
+				</div>
+			</div>
+		}
+		<div class="col">
+			@RenderSlider()
+		</div>
+	</div>
+
+	@RenderMobileLinkButton(headingTitle, headingSubtitle)
+}
+
+@if (layout == "text-right") {
+	<div class="row">
+		@if (headingTitle != "" || headingSubtitle != "" || buttonLink != "") {
+			<div class="col-12 col-lg-4 order-1 order-lg-2">
+				<div class="d-flex flex-row align-items-center@(alignButtonMiddle) h-100">
+					<div class="mb-5 mb-lg-0">
+						@RenderHeader(headingTitle, headingSubtitle)
+						@RenderDesktopLinkButton(headingTitle, headingSubtitle)
+					</div>
+				</div>
+			</div>
+		}
+		<div class="col order-2 order-lg-1">
+			@RenderSlider()
+		</div>
+	</div>
+
+	@RenderMobileLinkButton(headingTitle, headingSubtitle)
+}
+
+@helper RenderSlider () {
 	string detailsPageLink = !string.IsNullOrEmpty(HttpContext.Current.Request.Form["ProductDetailsPage"]) ? HttpContext.Current.Request.Form["ProductDetailsPage"].ToString() : "#";
 
 	string ratio = !string.IsNullOrEmpty(HttpContext.Current.Request.Form["ImageAspectRatio"]) ? HttpContext.Current.Request.Form["ImageAspectRatio"].ToString() : "";
@@ -15,39 +78,68 @@
 	string imageTheme = !string.IsNullOrEmpty(HttpContext.Current.Request.Form["ImageTheme"]) ? HttpContext.Current.Request.Form["ImageTheme"].ToString() : "";
 	string contentPadding = !string.IsNullOrEmpty(HttpContext.Current.Request.Form["ContentPadding"]) ? HttpContext.Current.Request.Form["ContentPadding"].ToString() : "";
 	string hideNavigationBar = !string.IsNullOrEmpty(HttpContext.Current.Request.Form["HideNavigationBar"]) ? HttpContext.Current.Request.Form["HideNavigationBar"].ToString() : "false";
-}
 
-@if (headingTitle != "") {
-	<div class="pt-5 pb-2 pt-lg-6 pb-lg-4">
-		<h2 class="display-4">@Translate(headingTitle)</h2>
+	<div class="js-slider d-flex" data-hide-navigation-bar="@hideNavigationBar.ToLower()">
+		@foreach (var product in Model.Products)
+		{
+			string link = "/Default.aspx?ID=" + detailsPageLink + "&amp;ProductID=" + product.Id;
+			link += !string.IsNullOrEmpty(product.VariantId) ? "&amp;VariantID=" + product.VariantId : "";
+
+			string imagePath = product?.DefaultImage.Value.ToString() ?? "";
+			imagePath = "/Admin/Public/GetImage.ashx?width=" + 1050 + "&height=" + 1050 + "&image=" + imagePath + "&crop=5&FillCanvas=true&Format=WebP&Quality=100";
+
+			string imagePadding = imageTheme != "" ? " p-2" : "";
+
+			<div>
+				<div class="card rounded-0 h-100 @(theme)">
+					<div class="@(ratioCssClass)@(imageTheme) mb-3" style="@ratioVariable">
+						<img loading="lazy" src="@imagePath" class="card-img rounded-0 h-100 w-100@(imagePadding)" style="object-fit: contain;" title="@product.Name" alt="@product.Name" />
+					</div>
+					<div class="card-body p-0 d-flex flex-column h-100 @contentPadding">
+						<div class="flex-fill">
+							<h4 class="h6 opacity-75">
+								<a class="stretched-link text-decoration-none" href="@link">@product.Name @product.VariantId</a>
+							</h4>
+						</div>
+						<p class="h5 fw-bold">@product.Price.PriceFormatted</p>
+					</div>
+				</div>
+			</div>	
+		}
 	</div>
 }
 
-<div class="js-slider d-flex" data-hide-navigation-bar="@hideNavigationBar.ToLower()">
-	@foreach (var product in Model.Products)
+@helper RenderHeader(string headingTitle, string headingSubtitle) { 
+	if (!string.IsNullOrEmpty(headingTitle))
 	{
-		string link = "/Default.aspx?ID=" + detailsPageLink + "&amp;ProductID=" + product.Id;
-		link += !string.IsNullOrEmpty(product.VariantId) ? "&amp;VariantID=" + product.VariantId : "";
-
-		string imagePath = product?.DefaultImage.Value.ToString() ?? "";
-		imagePath = "/Admin/Public/GetImage.ashx?width=" + 1050 + "&height=" + 1050 + "&image=" + imagePath + "&crop=5&FillCanvas=true&Format=WebP&Quality=100";
-
-		string imagePadding = imageTheme != "" ? " p-2" : "";
-
-		<div>
-			<div class="card rounded-0 h-100 @(theme)">
-				<div class="@(ratioCssClass)@(imageTheme) mb-3" style="@ratioVariable">
-					<img loading="lazy" src="@imagePath" class="card-img rounded-0 h-100 w-100@(imagePadding)" style="object-fit: contain;" title="@product.Name" alt="@product.Name" />
-				</div>
-				<div class="card-body p-0 d-flex flex-column h-100 justify-content-end @contentPadding">
-					<div>
-						<h4 class="h6 opacity-75">
-							<a class="stretched-link text-decoration-none" href="@link">@product.Name @product.VariantId</a>
-						</h4>
-					</div>
-					<p class="h5 fw-bold">@product.Price.PriceFormatted</p>
-				</div>
-			</div>
-		</div>	
+		<h2 class="display-4">@Translate(headingTitle)</h2>
 	}
-</div>
+	if (!string.IsNullOrEmpty(headingSubtitle))
+	{
+		<p class="lead mb-2 mb-md-3 max-w-75ch">@headingSubtitle</p>
+	}
+}
+
+@helper RenderDesktopLinkButton(string headingTitle, string headingSubtitle) { 
+	string link = !string.IsNullOrEmpty(HttpContext.Current.Request.Form["Link"]) ? HttpContext.Current.Request.Form["Link"].ToString() : "";
+	string linkText = !string.IsNullOrEmpty(HttpContext.Current.Request.Form["LinkText"]) ? HttpContext.Current.Request.Form["LinkText"].ToString() : "";
+	string marginTop = headingTitle != "" && headingSubtitle != "" ? " mt-4" : "";
+
+	if (!string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(linkText)) {
+		<div class="d-none d-lg-block">
+			<a href="@link" class="btn btn-primary@(marginTop) mb-4">@linkText</a>
+		</div>
+	}
+}
+
+@helper RenderMobileLinkButton(string headingTitle, string headingSubtitle) { 
+	string link = !string.IsNullOrEmpty(HttpContext.Current.Request.Form["Link"]) ? HttpContext.Current.Request.Form["Link"].ToString() : "";
+	string linkText = !string.IsNullOrEmpty(HttpContext.Current.Request.Form["LinkText"]) ? HttpContext.Current.Request.Form["LinkText"].ToString() : "";
+	string marginTop = headingTitle != "" && headingSubtitle != "" ? " mt-4" : "";
+
+	if (!string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(linkText)) {
+		<div class="d-block d-lg-none">
+			<a href="@link" class="btn btn-primary@(marginTop) mb-4 w-100">@linkText</a>
+		</div>
+	}
+}
