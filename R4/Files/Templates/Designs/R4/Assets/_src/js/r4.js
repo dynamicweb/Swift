@@ -48,4 +48,17 @@ document.addEventListener('scroll', function (e) {
 			}
 		}
 	});
+
+	//Hideable elements
+	var hideableElements = document.querySelectorAll(".js-hide-on-scroll");
+
+	if (document.body.scrollTop > 0 || document.documentElement.scrollTop > 0) {
+		hideableElements.forEach(function (element) {
+			element.classList.add("d-none");
+		});
+	} else {
+		hideableElements.forEach(function (element) {
+			element.classList.remove("d-none");
+		});
+	}
 });
