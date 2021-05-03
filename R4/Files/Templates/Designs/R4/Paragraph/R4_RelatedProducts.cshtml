@@ -51,16 +51,35 @@
 		url += "&VisualEdit=True";
 	}
 
+	string relationType = Model?.Item?.GetList("RelationType") != null ? Model.Item.GetList("RelationType").SelectedValue : "trending";
+
+	//If products is added through the trending groups selector
+	IList<ProductGroupViewModel> groupsToRelateToTrending = Model.Item.GetValue<IList<ProductGroupViewModel>>("GroupsToRelateToTrending");
+	IList<ProductGroupViewModel> groupsToRelateToMostSold = Model.Item.GetValue<IList<ProductGroupViewModel>>("GroupsToRelateToMostSold");
+	IList<string> relateFromGroupIds = new List<string>{};
+
+	if (groupsToRelateToTrending != null && relationType == "trending") {
+		foreach (var fromGroup in groupsToRelateToTrending)
+		{
+			relateFromGroupIds.Add(fromGroup.Id);
+		}
+	}
+
+	if (groupsToRelateToMostSold != null && relationType == "most-sold") {
+		foreach (var fromGroup in groupsToRelateToMostSold)
+		{
+			relateFromGroupIds.Add(fromGroup.Id);
+		}
+	}
+
 	//If products is added through the selector
 	ProductListViewModel productsToRelateTo = Model.Item.GetValue<ProductListViewModel>("ProductsToRelateTo");
 	IList<string> relateFromProductIds = new List<string>{};
-	IList<string> relateFromGroupIds = new List<string>{};
 
 	if (productsToRelateTo != null) {
 		foreach (var fromProduct in productsToRelateTo.Products)
 		{
 			relateFromProductIds.Add(fromProduct.Id);
-			relateFromGroupIds.Add(fromProduct.PrimaryOrDefaultGroup.Id);
 		}
 	}
 
@@ -76,7 +95,6 @@
 
 	string groupIds = productViewModelFound ? product.PrimaryOrDefaultGroup.Id : string.Join(",", relateFromGroupIds);
 	string productIds = productViewModelFound ? product.Id : string.Join(",", relateFromProductIds);
-	string relationType = Model?.Item?.GetList("RelationType") != null ? Model.Item.GetList("RelationType").SelectedValue : "trending";
 	string relationTypeName = Model?.Item?.GetString("Title") != null ? Model.Item.GetString("Title") : Translate("Products");
 }
 
@@ -119,8 +137,10 @@
 	<input type="hidden" name="HideNavigationBar" value="@Model.Item.GetString("HideNavigationBar").ToLower()" />
 
 	@* Types *@
-	@if (groupIds != "" && relationType != "frequently" && relationType != "selected") {
-		<input type="hidden" name="GroupId" value="@groupIds" />
+	@if (relationType == "trending" || relationType == "most-sold") {
+		if (groupIds != "") { 
+			<input type="hidden" name="GroupId" value="@groupIds" />
+		}
 	}
 
 	@if (relationType == "trending") {
