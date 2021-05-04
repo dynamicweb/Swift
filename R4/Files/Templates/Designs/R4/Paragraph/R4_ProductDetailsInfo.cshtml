@@ -156,7 +156,7 @@
 			string allowedChildren = string.Join(",", allowedChildrenArray);
 
 			<span>
-				<button type="button" class="btn btn-secondary js-variant-option" onclick="UpdateVariants(event)" data-variant-id="@option.ID" data-allowed-parents="@allowedParents" data-allowed-children="@allowedChildren" data-selectable="true">@option.Name</button>
+				<button type="button" class="btn btn-secondary js-variant-option" onclick="UpdateAllVariants(event)" data-variant-id="@option.ID" data-allowed-parents="@allowedParents" data-allowed-children="@allowedChildren" data-selectable="true">@option.Name</button>
 			</span>
 		}
 	}
@@ -298,48 +298,71 @@
 }
 
 <script>
-	function UpdateVariants(e) {
+	function UpdateAllVariants(e) {
 		var clickedButton = e.currentTarget;
-		var currentGroup = clickedButton.closest(".js-variant-group");
-		var groupNumber = currentGroup.getAttribute("data-group-number");
-		var allowedParents = clickedButton.getAttribute("data-allowed-parents").trim().split(",");
-		var allowedChildren = clickedButton.getAttribute("data-allowed-children").trim().split(",");
-
 		var variantSelectorElement = clickedButton.closest(".js-variant-selector");
-		var parentGroup = variantSelectorElement.querySelector("[data-group-number='" + (parseInt(groupNumber) - 1) + "']");
-		var childGroup = variantSelectorElement.querySelector("[data-group-number='" + (parseInt(groupNumber) + 1) + "']");
+		var currentGroup = clickedButton.closest(".js-variant-group");
 
-		currentGroup.querySelectorAll(".js-variant-option").forEach(function (option) {
-			option.classList.remove("active");
+		ClearAllOptions(variantSelectorElement);
+
+		if (!clickedButton.classList.contains("active")) {
+			currentGroup.querySelectorAll(".js-variant-option").forEach(function (option) {
+				option.classList.remove("active");
+			});
+
+			clickedButton.classList.add("active");
+		} else {
+			clickedButton.classList.remove("active");
+		}
+		
+		variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
+			if (option.classList.contains("active")) {
+				var group = option.closest(".js-variant-group");
+				var groupNumber = group.getAttribute("data-group-number");
+				var allowedParents = option.getAttribute("data-allowed-parents").trim().split(",");
+				var allowedChildren = option.getAttribute("data-allowed-children").trim().split(",");
+
+				var parentGroup = variantSelectorElement.querySelector("[data-group-number='" + (parseInt(groupNumber) - 1) + "']");
+				var childGroup = variantSelectorElement.querySelector("[data-group-number='" + (parseInt(groupNumber) + 1) + "']");
+
+				if (parentGroup !== null && allowedParents.length != 0) {
+					UpdateVariantGroup(allowedParents, parentGroup);
+				}
+
+				if (childGroup !== null && allowedChildren.length != 0) {
+					UpdateVariantGroup(allowedChildren, childGroup);
+				}
+			}
 		});
-		clickedButton.classList.add("active");
-
-		if (parentGroup && allowedParents.length != 0) {
-			UpdateVariantGroup(allowedParents, parentGroup);
-		}
-
-		if (childGroup && allowedChildren.length != 0) {
-			UpdateVariantGroup(allowedChildren, childGroup);
-		}
 
 		CheckSelectionComplete(variantSelectorElement);
 	}
 
-	function UpdateVariantGroup(variantsArray, groupElement) {
-		//Clear all 
-		groupElement.querySelectorAll(".js-variant-option").forEach(function (option) {
-			option.setAttribute("data-selectable", false);
-			option.disabled = true;
+	function ClearAllOptions(variantSelectorElement) {
+		variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
+			option.setAttribute("data-selectable", true);
+			option.disabled = false;
 		});
+	}
 
-		//Disable unavailable
-		variantsArray.forEach(function (availableOptionId) {
-			var option = groupElement.querySelector("[data-variant-id='" + availableOptionId + "']")
+	function UpdateVariantGroup(variantsArray, groupElement) {
+		groupElement.querySelectorAll(".js-variant-option").forEach(function (option) {
+			var optionFound = false;
 
-			if (option) {
-				option.setAttribute("data-selectable", true);
-				option.disabled = false;
-			}
+			variantsArray.forEach(function (availableOptionId) {
+				var optionId = option.getAttribute("data-variant-id");
+
+				console.log(optionId +  ":" + availableOptionId);
+
+				if (optionId == availableOptionId) {
+					optionFound = true;
+				}
+			});
+
+			if (!optionFound) {
+				option.setAttribute("data-selectable", false);
+				option.disabled = true;
+			} 
 		});
 	}
 
