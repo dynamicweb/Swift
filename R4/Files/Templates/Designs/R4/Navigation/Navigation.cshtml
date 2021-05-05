@@ -1,118 +1,92 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
 @using Dynamicweb
 @using System.Web
-@using Dynamicweb.Frontend.Navigation
-@using Dynamicweb.Content
 @using System.IO
 
 @RenderFirstLevelNodes(Model.Nodes)
 
 
 @helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
-{
+{string contentPadding = Model?.Parameters["ContentPadding"] != null ? Model.Parameters["ContentPadding"].ToString() : "none";
+
+	if (contentPadding == "none")
+	{
+		contentPadding = "px-3 py-2";
+	}
+	if (contentPadding == "small")
+	{
+		contentPadding = "px-2 py-1";
+	}
+	if (contentPadding == "large")
+	{
+		contentPadding = "px-4 py-3";
+	}
+
+	string hoverTheme = Model?.Parameters["hoverTheme"] != null ? Model.Parameters["hoverTheme"].ToString() : "";
+	if (hoverTheme != "theme default" && hoverTheme != "")
+	{
+		hoverTheme = String.Concat(hoverTheme.Where(c => !Char.IsWhiteSpace(c)));
+		hoverTheme = hoverTheme.Replace("theme", "");
+		hoverTheme = "theme-hover theme-" + hoverTheme;
+
+	}
+	else
+	{
+		hoverTheme = "";
+	}
+
 	foreach (var node in nodes)
 	{
 		var hasChildren = node.Nodes.Count() > 0;
-		bool hasManyChildren = false;
-		foreach (var subnode in node.Nodes)
-		{
-			if (subnode.Nodes.Any())
-			{
-				hasManyChildren = true;
-			}
-		}
 
-		string submenuType = "auto";
-		if (submenuType == "auto")
-		{
-			submenuType = hasManyChildren ? "megamenu" : "dropdown";
-		}
-
-		string megamenuCss = hasChildren && submenuType == "megamenu" ? " has-megamenu" : "";
 		string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
 
-		<li class="nav-item@(node.IsActive ? " active" : "")@(megamenuCss)">
-			@if (node.IsClickable)
-			{
-				<a class="nav-link nav-link-clean@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" title="@node.Name" @dropdownAttributes>
-					@RenderNavigationItem(node)
-				</a>
-			}
-			else
-			{
-				<span class="nav-link nav-link-clean" title="@node.Name" @dropdownAttributes>
-					@RenderNavigationItem(node)
-				</span>
-			}
+		if (node.IsClickable)
+		{
+			<a class="nav-link nav-link-clean @(contentPadding) @(hoverTheme) @(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" title="@node.Name" @dropdownAttributes>
+				@RenderNavigationItem(node)
+			</a>
+		}
+		else
+		{
+			<span class="nav-link nav-link-clean" title="@node.Name" @dropdownAttributes>
+				@RenderNavigationItem(node)
+			</span>
+		}
 
-			@if (hasChildren)
-			{
-				if (submenuType == "megamenu")
+		if (hasChildren)
+		{
+			var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+			string pageType = page.ItemType;
+
+			<ul class="dropdown-menu border-0 rounded-0" aria-labelledby="NavGroup@(node.PageId)">
+				@if (pageType == "R4_SignIn")
 				{
-					<div class="dropdown-menu megamenu border-0 rounded-0 py-5 shadow-lg theme theme-light" id="NavGroup@(node.PageId)">
-						<div class="container">
-							<div class="row g-5">
-								@foreach (var subnode in node.Nodes)
-								{
-									<div class="col-3">
-										<a href="@subnode.Link" class="text-decoration-none text-reset">
-											<span class="megamenu-link mb-4 h5">@subnode.Name</span>
-										</a>
-										@if (subnode.Nodes.Any())
-										{
-											foreach (var subsubnode in subnode.Nodes)
-											{
-												<a class="d-block w-100 text-nowrap py-1 font-size-sm text-decoration-none text-reset megamenu-link small overflow-hidden" href="@subsubnode.Link">@subsubnode.Name</a>
-											}
-										}
-										else
-										{
-											<a class="d-block w-100 text-nowrap py-1 font-size-sm text-decoration-none text-reset megamenu-link overflow-hidden" href="@subnode.Link">@subnode.Name</a>
-										}
-									</div>
-								}
-							</div>
-						</div>
-					</div>
+					if (Pageview.User == null)
+					{
+						<li class="dropdown-item py-2">
+							<a href="@node.Link" class="btn btn-primary w-100 m-0">@node.Name</a>
+						</li>
+					}
 				}
-				else
+				@foreach (var subnode in node.Nodes)
 				{
-					var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
-					string pageType = page.ItemType;
-
-					<ul class="dropdown-menu rounded-0 theme theme-light" aria-labelledby="NavGroup@(node.PageId)">
-						@if (pageType == "R4_SignIn")
-						{
-							if (Pageview.User == null)
-							{
-								<li class="dropdown-item py-2">
-									<a href="@node.Link" class="btn btn-primary w-100 m-0">@node.Name</a>
-								</li>
-							}
-						}
-
-						@foreach (var subnode in node.Nodes)
-						{
-							<li>
-								<a class="dropdown-item py-2" href="@subnode.Link">@subnode.Name</a>
-							</li>
-						}
-
-						@if (pageType == "R4_SignIn")
-						{
-							if (Pageview.User != null)
-							{
-								<li class="dropdown-item py-2">
-									<a href="/Admin/Public/ExtranetLogoff.aspx?ID=@Pageview.Page.ID" class="btn btn-primary m-0 w-100">@Translate("Sign out")</a>
-								</li>
-							}
-						}
-					</ul>
+					<li>
+						<a class="dropdown-item py-2" href="@subnode.Link">@subnode.Name</a>
+					</li>
 				}
-			}
-		</li>
+				@if (pageType == "R4_SignIn")
+				{
+					if (Pageview.User != null)
+					{
+						<li class="dropdown-item py-2">
+							<a href="/Admin/Public/ExtranetLogoff.aspx?ID=@Pageview.Page.ID" class="btn btn-primary m-0 w-100">@Translate("Sign out")</a>
+						</li>
+					}
+				}
+			</ul>
+		}
 	}
-
 }
 
 @helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node)
@@ -120,117 +94,74 @@
 	var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
 	string pageType = page.ItemType;
 
-	string textPosition = Model?.Parameters["TextPosition"] != null ? Model.Parameters["TextPosition"].ToString() : "right";
-	bool hideTexts = Model?.Parameters["HideTexts"] != null ? Convert.ToBoolean(Model.Parameters["HideTexts"].ToString()) : false;
-	bool hideIcons = Model?.Parameters["HideIcons"] != null ? Convert.ToBoolean(Model.Parameters["HideIcons"].ToString()) : false;
-
 	string icon = page.Item["Icon"] != null ? page.Item["Icon"].ToString() : "";
+	string layout = Model?.Parameters["Layout"] != null ? Model.Parameters["Layout"].ToString() : "";
 
 	if (pageType == "R4_Checkout")
 	{
 		double totalProducts = 0;
+
 		if (Dynamicweb.Ecommerce.Common.Context.Cart != null)
 		{
 			totalProducts = Dynamicweb.Ecommerce.Common.Context.Cart.GetParentProductLineQuantityCount(Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines);
 		}
 
-		if (hideTexts)
-		{
-			if (Path.GetExtension(icon).ToLower() == ".svg")
-			{
-				<div class="d-flex flex-row align-items-center position-relative">
-					@RenderIcon(icon)
-					<span class="ms-1 js-cart-qty">@totalProducts</span>
-				</div>
-			}
-		}
-		else if (hideIcons)
+		if (layout == "linksOnly")
 		{
 			<span>@node.Name</span>
 		}
-		else
+
+		if (layout == "iconsOnly")
 		{
-			if (textPosition == "bottom")
+			if (Path.GetExtension(icon).ToLower() == ".svg")
 			{
-				<div class="d-flex flex-column align-items-center position-relative">
-					@RenderIcon(icon)
-					<span class="mt-0">@node.Name (<span class="js-cart-qty">@totalProducts</span>)</span>
-				</div>
+				@RenderIcon(icon)
+				<span class="ms-1 js-cart-qty">@totalProducts</span>
 			}
-			if (textPosition == "left")
+		}
+
+		if (layout == "iconsAndLinks")
+		{
+			if (Path.GetExtension(icon).ToLower() == ".svg")
 			{
-				<div class="d-flex flex-row align-items-center position-relative">
-					<span class="me-2">@node.Name (<span class="js-cart-qty">@totalProducts</span>)</span>
-					@RenderIcon(icon)
-				</div>
-			}
-			if (textPosition == "right")
-			{
-				<div class="d-flex flex-row align-items-center position-relative">
-					@RenderIcon(icon, " me-2")
-					<span>@node.Name (<span class="js-cart-qty">@totalProducts</span>)</span>
-				</div>
+				@RenderIcon(icon)
+				<span class="ms-1 js-cart-qty">@totalProducts</span>
+				<span>@node.Name</span>
+
 			}
 		}
 	}
 	else
 	{
-		if (hideTexts)
-		{
-			if (Path.GetExtension(icon).ToLower() == ".svg")
-			{
-				<div class="d-flex flex-row align-items-center position-relative">
-					@RenderIcon(icon)
-				</div>
-			}
-		}
-		else if (hideIcons)
+		if (layout == "linksOnly")
 		{
 			<div>@node.Name</div>
 		}
-		else
+
+		if (layout == "iconsOnly")
 		{
-			if (textPosition == "bottom")
-			{
-				<div class="d-flex flex-column align-items-center position-relative">
-					@RenderIcon(icon)
-					<span class="mt-0">@node.Name</span>
-				</div>
-			}
-			if (textPosition == "left")
-			{
-				<div class="d-flex flex-row align-items-center position-relative">
-					<span class="me-2">@node.Name</span>
-					@RenderIcon(icon)
-				</div>
-			}
-			if (textPosition == "right")
-			{
-				<div class="d-flex flex-row align-items-center position-relative">
-					@RenderIcon(icon, " me-2")
-					<span>@node.Name</span>
-				</div>
-			}
+			@RenderIcon(icon)
+		}
+
+		if (layout == "iconsAndLinks")
+		{
+			@RenderIcon(icon)
+			<span>@node.Name</span>
 		}
 	}
 }
 
-@helper RenderIcon(string icon, string cssClass = "")
+@helper RenderIcon(string icon)
 {
 	if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none"))
 	{
 		string iconPath = HttpContext.Current.Server.MapPath(icon);
-		string size = Model?.Parameters["Size"] != null ? Model.Parameters["Size"].ToString() : "normal";
-		string iconSize = size == "small" ? "icon-2" : "icon-3";
 
 		if (File.Exists(iconPath))
 		{
-			<span class="@iconSize@(cssClass)">
+			<span class="icon-3">
 				@System.IO.File.ReadAllText(iconPath)
 			</span>
 		}
 	}
 }
-
-
-
