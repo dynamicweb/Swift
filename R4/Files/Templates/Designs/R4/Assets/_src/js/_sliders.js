@@ -10,7 +10,7 @@ const Sliders = function() {
 					var sliderContainer = sliders[i];
 					var sliderIsInitialized = sliderContainer.classList.contains("tns-slider");
 					var closestColumn = sliderContainer.closest("[class^='col-']");
-					var colMdClassIndex = closestColumn.getAttribute("class").search("col-md-") + 7;
+					var colMdClassIndex = closestColumn.getAttribute("class").search("col-lg-") + 7;
 					var parentColumnSize = closestColumn.getAttribute("class").charAt(colMdClassIndex) + closestColumn.getAttribute("class").charAt(colMdClassIndex + 1);
 					var hideNavigationBar = sliderContainer.getAttribute("data-hide-navigation-bar") ? sliderContainer.getAttribute("data-hide-navigation-bar") : "true";
 					hideNavigationBar = hideNavigationBar == "true" ? false : true; 
