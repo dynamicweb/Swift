@@ -1,59 +1,21 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
 @using System
 @using Dynamicweb
+@using Dynamicweb.Environment
 
 @Include("Partials/R4_MetaTags.cshtml")
 
-@{
-	@* Branding/Themes/Fonts *@
+@{ 
+	/* Branding Themes Fonts */
 	var brandingPageId = Model.Area.Item.GetInt32("BrandingPage");
 	var themePageId = Model.Area.Item.GetInt32("ThemesPage");
 
 	var brandingPage = Dynamicweb.Services.Pages?.GetPage(brandingPageId) ?? null;
-	string[] fontList = new string[50];
-	int fontCount = 0;
+	//var themesPagee = Dynamicweb.Services.Pages?.GetPage(themePageId) ?? null;
+	var themesParagraphLastChanged = Services.Paragraphs.GetParagraphsByPageId(themePageId).OrderByDescending(p => p.Audit.LastModifiedAt).FirstOrDefault();
 
-	dynamic headerFont = null;
-	string headerFontFamily = "Inter";
-	string headerFontWeight = "300";
-	dynamic displayFont = null;
-	string displayFontFamily = "Inter";
-	string displayFontWeight = "bold";
-	dynamic bodyFont = null;
-	string bodyFontFamily = "Inter";
-	string bodyFontWeight = "regular";
-
-	if (brandingPage != null)
-	{
-		headerFont = Newtonsoft.Json.JsonConvert.DeserializeObject(brandingPage.Item["HeaderFont"].ToString());
-		if (headerFont != null)
-		{
-			headerFontFamily = headerFont.Family;
-			headerFontWeight = headerFont.SelectedVariant;
-			fontList[fontCount] = headerFontFamily;
-			fontCount++;
-		}
-		displayFont = Newtonsoft.Json.JsonConvert.DeserializeObject(brandingPage.Item["DisplayFont"].ToString());
-		if (displayFont != null)
-		{
-			displayFontFamily = displayFont.Family;
-			displayFontWeight = displayFont.SelectedVariant;
-			fontList[fontCount] = displayFontFamily;
-			fontCount++;
-		}
-		bodyFont = Newtonsoft.Json.JsonConvert.DeserializeObject(brandingPage.Item["BodyFont"].ToString());
-		if (bodyFont != null)
-		{
-			bodyFontFamily = bodyFont.Family;
-			bodyFontWeight = bodyFont.SelectedVariant;
-			fontList[fontCount] = bodyFontFamily;
-			fontCount++;
-		}
-	}
-	var fontsToLink = string.Join("%7C", fontList.Where(x => !string.IsNullOrEmpty(x)).Distinct().Select(x => string.Format("{0}:100,200,300,400,500,600,700,800,900", x)));
-
-	@* Theme setting for the body *@
-	string masterTheme = !string.IsNullOrEmpty(Model.Area.Item.GetString("Theme")) ? Model.Area.Item.GetString("Theme").ToLower() : "";
+	/* Theme setting for the body */
+	string masterTheme = Model.Area.Item.GetRawValueString("Theme").ToLower();
 	if (masterTheme != "theme default" && masterTheme != "")
 	{
 		masterTheme = String.Concat(masterTheme.Where(c => !Char.IsWhiteSpace(c)));
@@ -65,7 +27,7 @@
 		masterTheme = "";
 	}
 
-	@* Sticky/Fixed header *@
+	/* Sticky/Fixed header */
 	string headerCssClass = Pageview.Item["MoveThisPageBehindTheHeader"] != null ? Pageview.Item["MoveThisPageBehindTheHeader"].ToString() : "sticky-top";
 	headerCssClass = headerCssClass == "" ? "sticky-top" : headerCssClass;
 }
@@ -77,7 +39,12 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0">
 	<link rel="preconnect" href="https://fonts.gstatic.com" />
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preload" href="~/Files/Templates/Designs/R4/Assets/css/styles.css" as="style">
+	<link rel="preload" href="~/Files/Templates/Designs/R4/Assets/js/scripts.js" as="script">
 
+	<link rel="shortcut icon" href="~/Files/Templates/Designs/R4/Assets/Images/favicon.png" />
+	<link rel="apple-touch-icon" href="~/Files/Templates/Designs/R4/Assets/Images/logo_transparent.png" />
 	<meta http-equiv="X-UA-Compatible" content="ie=edge" />
 	<meta name="googlebot-news" content="nosnippet">
 
@@ -85,22 +52,18 @@
 
 	<title>@Model.Title</title>
 
+
 	@* Bootstrap + R4 stylesheet *@
 	<link href="~/Files/Templates/Designs/R4/Assets/css/styles.css" rel="stylesheet" media="all" type="text/css">
 
 	@* Branding stylesheet *@
-	<link href="/Default.aspx?ID=@brandingPageId" rel="stylesheet" media="all" type="text/css">
-	@* Themes stylesheet *@
-	<link href="/Default.aspx?ID=@themePageId" rel="stylesheet" media="all" type="text/css">
+	<link href="~/Files/Templates/Designs/R4/_parsed/R4_css/R4_branding_styles_@(Model.Area.ID).css?@brandingPage.Audit.LastModifiedAt.Ticks" rel="stylesheet" media="all" type="text/css" data-last-modified="@brandingPage.Audit.LastModifiedAt">
 
-	@* Fonts *@
-	<link rel="preload" as="style" href="https://fonts.googleapis.com/css?family=@fontsToLink&display=swap"	/>
-	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=@fontsToLink&display=swap" media="print" onload="this.media='all'" />
-	<noscript>
-		<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=@fontsToLink&display=swap" />
-	</noscript>
+	@* Themes stylesheet *@
+	<link href="~/Files/Templates/Designs/R4/_parsed/R4_css/R4_theme_styles_@(Model.Area.ID).css?@themesParagraphLastChanged.Audit.LastModifiedAt.Ticks" rel="stylesheet" media="all" type="text/css" data-last-modified-content="@themesParagraphLastChanged.Audit.LastModifiedAt">
+
 </head>
-<body class="d-flex flex-column min-vh-100 brand@(masterTheme)" style="overflow-x: hidden;">
+<body class="d-flex flex-column min-vh-100 brand@(masterTheme)" style="overflow-x: hidden;" id="page@(Model.ID)">
 	<header class="page-header @headerCssClass top-0 d-none d-lg-block" id="page-header-dekstop" style="z-index: 10" role="banner">
 		@if (@Model.Area.Item.GetString("HeaderDesktop") != null)
 		{
@@ -111,8 +74,7 @@
 	<header class="page-header @headerCssClass top-0 d-block d-lg-none" id="page-header-mobile" style="z-index: 10" role="banner">
 		@if (@Model.Area.Item.GetString("HeaderMobile") != null)
 		{
-			@RenderGrid(@Model.Area.Item.GetInt32("HeaderMobile"))
-		}
+@RenderGrid(@Model.Area.Item.GetInt32("HeaderMobile"))}
 	</header>
 
 	<main id="content" class="overflow-hidden" role="main">
@@ -122,22 +84,20 @@
 	<footer class="page-footer d-none d-lg-block mt-auto" id="page-footer-desktop" role="contentinfo">
 		@if (@Model.Area.Item.GetString("FooterDesktop") != null)
 		{
-			@RenderGrid(@Model.Area.Item.GetInt32("FooterDesktop"))
-		}
+@RenderGrid(@Model.Area.Item.GetInt32("FooterDesktop"))}
 	</footer>
 
 	<footer class="page-footer d-block d-lg-none mt-auto" id="page-footer-mobile" role="contentinfo">
 		@if (@Model.Area.Item.GetString("FooterMobile") != null)
 		{
-			@RenderGrid(@Model.Area.Item.GetInt32("FooterMobile"))
-		}
+@RenderGrid(@Model.Area.Item.GetInt32("FooterMobile"))}
 	</footer>
 
-		@* Render any offcanvas menu here *@
-		@RenderSnippet("offcanvas")
-		
-		@* Scripts *@
-		<script src="~/Files/Templates/Designs/R4/Assets/js/scripts.js" defer type="text/javascript"></script>
+	@* Render any offcanvas menu here *@
+	@RenderSnippet("offcanvas")
+
+	@* Scripts *@
+	<script src="~/Files/Templates/Designs/R4/Assets/js/scripts.js" defer type="text/javascript"></script>
 
 </body>
 </html>

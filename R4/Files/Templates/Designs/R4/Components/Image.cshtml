@@ -2,57 +2,72 @@
 @using System.IO
 @using Dynamicweb.Frontend
 
-@{
-	FileViewModel image = Model?.Item?.GetFile("Image") ?? null;
-}
+@{ FileViewModel image = Model?.Item?.GetFile("Image") ?? null; }
 
-@if (image != null) {
+@if (image != null)
+{
 	string imagePath = image?.Path ?? "";
 	imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
 
 	int xPos = image?.FocalPositionFromLeft ?? 50;
 	int yPos = image?.FocalPositionFromTop ?? 50;
-
-	@* Image sizes + a fallback image *@
-	string imagePathXS       = "/Admin/Public/GetImage.ashx?width=" + 320 + "&image=" + imagePath + "&Format=WebP&Quality=70";
-	string imagePathS        = "/Admin/Public/GetImage.ashx?width=" + 480 + "&image=" + imagePath + "&Format=WebP&Quality=70";
-	string imagePathM        = "/Admin/Public/GetImage.ashx?width=" + 640 + "&image=" + imagePath + "&Format=WebP&Quality=70";
-	string imagePathL        = "/Admin/Public/GetImage.ashx?width=" + 1280 + "&image=" + imagePath + "&Format=WebP&Quality=70";
-	string imagePathXL       = "/Admin/Public/GetImage.ashx?width=" + 1920 + "&image=" + imagePath + "&Format=WebP&Quality=70";
+	string cssPosition = $"{xPos}% {yPos}%";
+	/* Image sizes + a fallback image */
+	string imagePathXS = $"/Admin/Public/GetImage.ashx?width=320&Format=WebP&Quality=70&image={imagePath}";
+	string imagePathS = $"/Admin/Public/GetImage.ashx?width=480&Format=WebP&Quality=70&image={imagePath}";
+	string imagePathM = $"/Admin/Public/GetImage.ashx?width=640&Format=WebP&Quality=70&image={imagePath}";
+	string imagePathL = $"/Admin/Public/GetImage.ashx?width=1280&Format=WebP&Quality=70&image={imagePath}";
+	string imagePathXL = $"/Admin/Public/GetImage.ashx?width=1920&Format=WebP&Quality=70&image={imagePath}";
 	string imagePathFallBack = imagePathL;
+	/* attributes to send to the image tag */
+	string loading = GetViewParameterString("loading");
+	string cssClass = GetViewParameterString("cssClass");
+	string style = GetViewParameterString("style");
+	string alt = GetViewParameterString("alt");
 
-	@* attributes to send to the image tag *@
-	string loading           = GetViewParameterString("loading");
-	string cssClass          = GetViewParameterString("cssClass");
-	string style             = GetViewParameterString("style");
-	string alt               = GetViewParameterString("alt");
+	if (Path.GetExtension(imagePath).ToLower() == ".svg")
+	{
+<span>@ReadFile(imagePath)</span> }
+else
+{
+<img srcset="@imagePathXS   320w,
+					@imagePathS    480w,
+					@imagePathM    640w,
+					@imagePathL   1280w,
+					@imagePathXL  1920w"
+	 sizes="(min-width:  320px and max-width:  480px)  480px,
+					(min-width:  480px and max-width:  640px)  640px,
+					(min-width:  640px and max-width: 1280px) 1280px,
+					(min-width: 1280px and max-width: 1920px) 1920px,
+					(min-width: 1920px) 1920px,
+					100vw
+					"
+	 src="@imagePathFallBack"
+	 loading="@loading"
+	 class="@cssClass"
+	 style="object-fit: cover;object-position: @cssPosition;@style"
+	 alt="@alt">}
+			}
 
-	if (Path.GetExtension(imagePath).ToLower() == ".svg") {
-		@System.IO.File.ReadAllText(Dynamicweb.Context.Current.Server.MapPath(imagePath))
-	} else {
-		<img 
-			srcset="
-				@imagePathXS   320w,
-				@imagePathS    480w,
-				@imagePathM    640w,
-				@imagePathL   1280w,
-				@imagePathXL  1920w"
-			sizes="
-				(min-width:  320px and max-width:  480px)  480px, 
-				(min-width:  480px and max-width:  640px)  640px, 
-				(min-width:  640px and max-width: 1280px) 1280px, 
-				(min-width: 1280px and max-width: 1920px) 1920px, 
-				(min-width: 1920px) 1920px, 
-				100vw
-				"
-			src="@imagePathFallBack"
-			loading="@loading"
-			class="@cssClass"
-			style="
-				object-fit: cover; 
-				object-position: @(xPos)% @(yPos)%;
-				@style
-				"
-			alt="@alt">
-	}
-}
+@functions{ string ReadFile(string path)
+	{
+		string result;
+		if (!Dynamicweb.Caching.Cache.Current.TryGet(path, out result))
+		{
+			string fullpath = path;
+			if (!path.Contains(":/"))
+			{
+				fullpath = Dynamicweb.Context.Current.Server.MapPath(path);
+			}
+
+			if (!File.Exists(fullpath))
+			{
+				return string.Empty;
+			}
+
+			result = System.IO.File.ReadAllText(fullpath);
+			Dynamicweb.Caching.Cache.Current.Set(path, result, new Dynamicweb.Caching.CacheItemPolicy() { FileDependencies = new[] { fullpath } });
+		}
+
+		return result;
+	} }
