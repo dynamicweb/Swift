@@ -55,7 +55,9 @@
 			string ratioCssClass = ratio != "" ? " ratio" : "";
 			string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
 
-			string imagePathFixed = "/Admin/Public/GetImage.ashx?image=" + imagePath + "&width=480&height=480&crop=5&FillCanvas=true&Format=WebP&Quality=70";
+			string imagePathXs       = "/Admin/Public/GetImage.ashx?width=" + 240 + "&image=" + imagePath + "&Format=WebP&Quality=70";
+			string imagePathS        = "/Admin/Public/GetImage.ashx?width=" + 350 + "&image=" + imagePath + "&Format=WebP&Quality=70";
+			string imagePathFallBack = "/Admin/Public/GetImage.ashx?width=" + 350 + "&image=" + imagePath + "&Format=WebP&Quality=70";
 
 			string imageTheme = !string.IsNullOrEmpty(Model.Item.GetString("ImageTheme")) ? Model.Item.GetString("ImageTheme").ToLower() : "";
 			if (imageTheme != "theme default" && imageTheme != "")
@@ -73,93 +75,79 @@
 			string priceId = "ProductPrice_" + product.Id + product.VariantId;
 
 			<article class="col-6 col-lg-4 pb-3 pb-lg-5">
-				<div class="d-flex flex-column h-100 @(theme)">
-					<div class="@(ratioCssClass)@(imageTheme)" style="@(ratioVariable)">
-						<div class="d-flex align-items-center justify-content-center @imagePadding">
-							<img 
-								id="@imageId"
-								src="@imagePathFixed"
-								loading="lazy"
-								height="480"
-								width="480"
-								class="mw-100 mh-100"
-								alt="@product.Name">
+				<div class="d-flex flex-column h-100@(theme)">
+					<a href="@link" title="@product.Name">
+						<div class="@(ratioCssClass)@(imageTheme)" style="@(ratioVariable)">
+							<div class="d-flex align-items-center justify-content-center">
+								<img 
+									id="@imageId"
+									srcset="
+										@imagePathXs 240w,
+										@imagePathS  350w"
+									sizes="(max-width: 640px) 480px, 640px"
+									src="@imagePathFallBack"
+									height=""
+									width=""
+									loading="lazy"
+									class="mw-100 mh-100 @imagePadding"
+									alt="@product.Name">
+							</div>
 						</div>
-					</div>
-					<div class="d-flex flex-column h-100 mt-3 position-relative @textPadding">
-						<header class="flex-fill">
+					</a>
+					<div class="mt-3 d-flex flex-column h-100 position-relative @textPadding">
+						<div class="flex-fill">
 							<h3 class="h6 mb-0">
 								<a href="@link" class="text-decoration-none">
 									@product.Name @product.VariantId
 								</a>
 							</h3>
-							<div class="small text-muted">@product.Number</div>
-						</header>
-						<div class="mt-2">
+							<p class="small text-muted mb-2">@product.Number</p>
+						</div>
+						<div>
 							@if (product.Price.Price != product.PriceBeforeDiscount.Price) {
 								<span class="text-decoration-line-through text-muted">
-									<span class="text-price">@product.PriceBeforeDiscount.PriceFormatted</span>
+									@product.PriceBeforeDiscount.PriceFormatted
 								</span>
 							}
 							<span class="fw-bold" id="@priceId">
 								<span class="text-price">@price</span>
 							</span>
 						</div>
-					</div>
+					
+						@if (product.VariantInfo.VariantInfo != null && Model.Item.GetBoolean("ShowVariants"))
+						{
+							var optionCount = product.VariantInfo.VariantInfo.Count();
+							var showMaxVariants = 3;
 
-					@if (product.VariantInfo.VariantInfo != null && Model.Item.GetBoolean("ShowVariants"))
-					{
-						var optionCount = product.VariantInfo.VariantInfo.Count();
-						var showMaxVariants = 3;
+							<div class="mt-3 pt-3 border-top w-100 d-none d-lg-flex">
+								@foreach (VariantInfoViewModel variant in product.VariantInfo.VariantInfo.Take(showMaxVariants))
+								{
+									string variantLink = detailsPageLink + "&amp;ProductID=" + product.Id;
+									variantLink += "&amp;VariantID=" + variant.VariantID;
 
-						<section class="mt-4 d-none d-lg-flex">
-							@foreach (VariantInfoViewModel variant in product.VariantInfo.VariantInfo.Take(showMaxVariants))
-							{
-								string variantLink = detailsPageLink + "&amp;ProductID=" + product.Id;
-								variantLink += "&amp;VariantID=" + variant.VariantID;
-
-								<article class="productVariant w-25 me-2">
-									<a 
-										id="@variant.VariantID"
-										href="@variantLink" 
-										class="text-decoration-none"
-										data-variant-id="@variant.VariantID"
-										data-variant-name="@product.Name, @variant.OptionName"
-										data-variant-price="@variant.Price.PriceFormatted"
-										data-variant-img="@imagePathFixed">
-										<div class="figure w-100 d-block m-0">
-
-											<div class="@(ratioCssClass)@(imageTheme)" style="@(ratioVariable)">
-												<div class="d-flex align-items-center justify-content-center">
-													<img 
-														src="/Admin/public/GetImage.ashx?image=@variant.Image.Value&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" 
-														loading="lazy" 
-														height="75"
-														width="75"
-														class="mw-100 mh-100 p-1" 
-														alt="@variant.OptionName">
+									<article class="w-25 me-2">
+										<a href="@variantLink" class="text-decoration-none">
+											<figure class="figure w-100 d-block m-0" onmouseover="switchVariantProduct('@product.Id', '@variant.Price.PriceFormatted', '@variant.Image.Value')" onmouseout="switchVariantProduct('@product.Id', '@product.Price.PriceFormatted', '@product.DefaultImage.Value')">
+												<div class="@(ratioCssClass)@(imageTheme)" style="@(ratioVariable)">
+													<div class="d-flex align-items-center justify-content-center">
+														<img src="/admin/public/GetImage.ashx?image=@variant.Image.Value&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" class="mw-100 mh-100 p-1" alt="@variant.OptionName">
+													</div>
 												</div>
-											</div>
-										</div>
-										<div class="text-center text-uppercase text-truncate w-100 d-block fs-7">@variant.OptionName</div>
-										<div class="visually-hidden">
-											<h4>@Translate("Variant Name")</h4>
-											<p>@product.Name, @variant.OptionName</p>
-											<dh4>@Translate("Variant Price")</dh4>
-											<p><span class="text-price">@variant.Price.PriceFormatted</span></p>
-										</div>
-									</a>
-								</article>
-							}
-							@if (optionCount > showMaxVariants)
-							{
-								int left = optionCount - showMaxVariants;
-								<div class="w-25 pe-2 d-flex justify-content-center align-items-center">
-									<div>+@left</div>
-								</div>
-							}
-						</section>
-					}
+												<figcaption class="figure-caption text-center text-uppercase text-truncate w-100 d-block">@variant.OptionName</figcaption>
+											</figure>
+										</a>
+									</article>
+								}
+								@if (optionCount > showMaxVariants)
+								{
+									int left = optionCount - showMaxVariants;
+									<div class="w-25 pe-2 d-flex justify-content-center align-items-center">
+										<div>+@left</div>
+									</div>
+								}
+							</div>
+						}
+					</div>
 				</div>
 			</article>
 		}
@@ -204,7 +192,7 @@
 	<script>
 		function switchVariantProduct(id, price, imagesrc) {
 			var productImageElement = document.querySelector("#ProductImage_" + id);
-			var productPriceElement = document.querySelector("#ProductPrice_" + id);
+			var productPriceElement = document.querySelector("#ProductPrice_" + id + " .text-price");
 
 			if (productPriceElement) {
 				productPriceElement.innerText = price;
