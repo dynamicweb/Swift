@@ -9,28 +9,32 @@ const Sliders = function() {
 				for (var i = 0; i < sliders.length; ++i) {
 					var sliderContainer = sliders[i];
 					var sliderIsInitialized = sliderContainer.classList.contains("tns-slider");
-					var closestColumn = sliderContainer.closest("[class^='col-']");
-					var colMdClassIndex = closestColumn.getAttribute("class").search("col-lg-") + 7;
-					var parentColumnSize = closestColumn.getAttribute("class").charAt(colMdClassIndex) + closestColumn.getAttribute("class").charAt(colMdClassIndex + 1);
+
 					var hideNavigationBar = sliderContainer.getAttribute("data-hide-navigation-bar") ? sliderContainer.getAttribute("data-hide-navigation-bar") : "true";
-					hideNavigationBar = hideNavigationBar == "true" ? false : true; 
+					hideNavigationBar = hideNavigationBar == "true" ? false : true;
 
 					var itemsInSlider = 5;
+					var closestColumn = sliderContainer.closest("[class^='col-']");
 
-					if (parentColumnSize == 12) {
-						itemsInSlider = 4;
-					}
-					if (parentColumnSize == 10 || parentColumnSize == 9 || parentColumnSize == 8) {
-						itemsInSlider = 3;
-					}
-					if (parentColumnSize == 6) {
-						itemsInSlider = 2;
-					}
-					if (parentColumnSize == 4) {
-						itemsInSlider = 1;
-					}
-					if (parentColumnSize == 3 || parentColumnSize == 2 || parentColumnSize == 1) {
-						itemsInSlider = 1;
+					if (closestColumn) {
+						var colMdClassIndex = closestColumn.getAttribute("class").search("col-lg-") + 7;
+						var parentColumnSize = closestColumn.getAttribute("class").charAt(colMdClassIndex) + closestColumn.getAttribute("class").charAt(colMdClassIndex + 1);
+
+						if (parentColumnSize == 12) {
+							itemsInSlider = 4;
+						}
+						if (parentColumnSize == 10 || parentColumnSize == 9 || parentColumnSize == 8) {
+							itemsInSlider = 3;
+						}
+						if (parentColumnSize == 6) {
+							itemsInSlider = 2;
+						}
+						if (parentColumnSize == 4) {
+							itemsInSlider = 1;
+						}
+						if (parentColumnSize == 3 || parentColumnSize == 2 || parentColumnSize == 1) {
+							itemsInSlider = 1;
+						}
 					}
 
 					if (sliderIsInitialized == false) {
