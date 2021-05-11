@@ -37,13 +37,14 @@ document.addEventListener('scroll', function (e) {
 
 		var headerElement = element.closest("header");
 		var headerHeight = headerElement.clientHeight;
+		console.log(headerHeight);
 
 		if (document.body.scrollTop > headerHeight || document.documentElement.scrollTop > headerHeight) {
-			if (currentTheme != mainTheme) {
+			if (currentTheme !== mainTheme) {
 				element.setAttribute("class", mainTheme);
 			}
 		} else {
-			if (currentTheme != alternativeTheme) {
+			if (currentTheme !== alternativeTheme) {
 				element.setAttribute("class", alternativeTheme);
 			}
 		}
