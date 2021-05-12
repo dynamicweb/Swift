@@ -1,51 +1,150 @@
 @inherits ViewModelTemplate<ProductListViewModel>
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
-@using System.Web
+
 
 @{ 
-	string headingTitle = !string.IsNullOrEmpty(HttpContext.Current.Request.Form["HeadingTitle"]) ? HttpContext.Current.Request.Form["HeadingTitle"].ToString() : "";
+	string buttonLink = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Link"]) ? Dynamicweb.Context.Current.Request.Form["Link"].ToString() : "";
 
-	string detailsPageLink = Pageview.CurrentParagraph.Item["ProductDetailsPage"] != null ? Pageview.CurrentParagraph.Item["ProductDetailsPage"].ToString() : "#";
+	string layout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Layout"]) ? Dynamicweb.Context.Current.Request.Form["Layout"].ToString() : "";
 
-	string ratioCssClass = "";
-	string ratioVariable = "";
+	string headingTitle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HeadingTitle"]) ? Dynamicweb.Context.Current.Request.Form["HeadingTitle"].ToString() : "";
+	string headingSubtitle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Subtitle"]) ? Dynamicweb.Context.Current.Request.Form["Subtitle"].ToString() : "";
 
-	if (Pageview?.CurrentParagraph?.Item["ImageAspectRatio"] != null) {
-		ratioCssClass = Pageview.CurrentParagraph.Item["ImageAspectRatio"].ToString() != "0" && Pageview.CurrentParagraph.Item["ImageAspectRatio"].ToString() != "" ? "ratio" : "ratio";
-		ratioVariable = Pageview.CurrentParagraph.Item["ImageAspectRatio"].ToString() != "0" && Pageview.CurrentParagraph.Item["ImageAspectRatio"].ToString() != "" ? "style=\"--bs-aspect-ratio: " + Pageview.CurrentParagraph.Item["ImageAspectRatio"].ToString() + "\"" : "--bs-aspect-ratio: 100%";
-	}
+	string alignButtonMiddle = headingTitle == "" && headingSubtitle == "" ? " justify-content-center" : "";
 }
 
-@if (headingTitle != "") {
-	<div class="pt-5 pb-2 pt-lg-6 pb-lg-4">
-		<h2 class="display-4">@Translate(headingTitle)</h2>
+@if (layout == "" || layout == "text-top") {
+	if (headingTitle != "") {
+		<div class="pt-5 pb-2 pt-lg-6 pb-lg-4">
+			@RenderHeader(headingTitle, headingSubtitle)
+			@RenderDesktopLinkButton(headingTitle, headingSubtitle)
+		</div>
+	}
+
+	@RenderSlider()
+
+	@RenderMobileLinkButton(headingTitle, headingSubtitle)
+}
+
+@if (layout == "text-left") {
+	<div class="row">
+		@if (headingTitle != "" || headingSubtitle != "" || buttonLink != "") {
+			<div class="col-12 col-lg-4">
+				<div class="d-flex flex-row align-items-center@(alignButtonMiddle) h-100">
+					<div class="mb-5 mb-lg-0">
+						@RenderHeader(headingTitle, headingSubtitle)
+						@RenderDesktopLinkButton(headingTitle, headingSubtitle)
+					</div>
+				</div>
+			</div>
+		}
+		<div class="col">
+			@RenderSlider()
+		</div>
+	</div>
+
+	@RenderMobileLinkButton(headingTitle, headingSubtitle)
+}
+
+@if (layout == "text-right") {
+	<div class="row">
+		@if (headingTitle != "" || headingSubtitle != "" || buttonLink != "") {
+			<div class="col-12 col-lg-4 order-1 order-lg-2">
+				<div class="d-flex flex-row align-items-center@(alignButtonMiddle) h-100">
+					<div class="mb-5 mb-lg-0">
+						@RenderHeader(headingTitle, headingSubtitle)
+						@RenderDesktopLinkButton(headingTitle, headingSubtitle)
+					</div>
+				</div>
+			</div>
+		}
+		<div class="col order-2 order-lg-1">
+			@RenderSlider()
+		</div>
+	</div>
+
+	@RenderMobileLinkButton(headingTitle, headingSubtitle)
+}
+
+@helper RenderSlider () {
+	string detailsPageLink = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["ProductDetailsPage"]) ? Dynamicweb.Context.Current.Request.Form["ProductDetailsPage"].ToString() : "#";
+
+	string ratio = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["ImageAspectRatio"]) ? Dynamicweb.Context.Current.Request.Form["ImageAspectRatio"].ToString() : "";
+	string ratioCssClass = ratio != "" ? "ratio" : "";
+	string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
+
+	string theme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Theme"]) ? Dynamicweb.Context.Current.Request.Form["Theme"].ToString() : "";
+	string imageTheme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["ImageTheme"]) ? Dynamicweb.Context.Current.Request.Form["ImageTheme"].ToString() : "";
+	string contentPadding = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["ContentPadding"]) ? Dynamicweb.Context.Current.Request.Form["ContentPadding"].ToString() : "";
+	string hideNavigationBar = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideNavigationBar"]) ? Dynamicweb.Context.Current.Request.Form["HideNavigationBar"].ToString() : "false";
+
+	<div class="js-slider d-flex" data-hide-navigation-bar="@hideNavigationBar.ToLower()">
+		@foreach (var product in Model.Products)
+		{
+			string link = "/Default.aspx?ID=" + detailsPageLink + "&amp;ProductID=" + product.Id;
+			link += !string.IsNullOrEmpty(product.VariantId) ? "&amp;VariantID=" + product.VariantId : "";
+
+			string imagePath = product?.DefaultImage.Value.ToString() ?? "";
+			imagePath = "/Admin/Public/GetImage.ashx?width=" + 350 + "&image=" + imagePath + "&crop=5&Format=WebP&Quality=70";
+
+			string imagePadding = imageTheme != "" ? " p-2" : "";
+
+			<div>
+				<div class="card rounded-0 h-100 @(theme)">
+					<div class="@(ratioCssClass)@(imageTheme) mb-3" style="@ratioVariable">
+						<img loading="lazy" src="@imagePath" class="card-img rounded-0 h-100 w-100@(imagePadding)" style="object-fit: contain;" title="@product.Name" alt="@product.Name" />
+					</div>
+					<div class="card-body p-0 d-flex flex-column h-100 @contentPadding">
+						<div class="flex-fill">
+							<h4 class="h6 opacity-75">
+								<a class="stretched-link text-decoration-none" href="@link">@product.Name @product.VariantId</a>
+							</h4>
+						</div>
+						<p class="h5 fw-bold">@product.Price.PriceFormatted</p>
+					</div>
+				</div>
+			</div>	
+		}
 	</div>
 }
 
-<div class="js-slider d-flex">
-	@foreach (var product in Model.Products)
+@helper RenderHeader(string headingTitle, string headingSubtitle) { 
+	string titleFontSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["TitleFontSize"]) ? Dynamicweb.Context.Current.Request.Form["TitleFontSize"].ToString() : "h3";
+	string subtitleFontSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["SubtitleFontSize"]) ? Dynamicweb.Context.Current.Request.Form["SubtitleFontSize"].ToString() : "fs-5";
+
+	if (!string.IsNullOrEmpty(headingTitle))
 	{
-		string link = detailsPageLink + "&amp;ProductID=" + product.Id;
-		link += !string.IsNullOrEmpty(product.VariantId) ? "&amp;VariantID=" + product.VariantId : "";
+		<h2 class="@titleFontSize">@Translate(headingTitle)</h2>
+	}
+	if (!string.IsNullOrEmpty(headingSubtitle))
+	{
+		<p class="@subtitleFontSize mb-2 mb-md-3 max-w-75ch">@headingSubtitle</p>
+	}
+}
 
-		string imagePath = product?.DefaultImage.Value.ToString() ?? "";
-		imagePath = "/Admin/Public/GetImage.ashx?width=" + 1050 + "&height=" + 1050 + "&image=" + imagePath + "&crop=5&FillCanvas=true&Format=WebP&Quality=100";
+@helper RenderDesktopLinkButton(string headingTitle, string headingSubtitle) { 
+	string buttonStyle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["ButtonStyle"]) ? Dynamicweb.Context.Current.Request.Form["ButtonStyle"].ToString() : "btn-primary";
+	string link = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Link"]) ? Dynamicweb.Context.Current.Request.Form["Link"].ToString() : "";
+	string linkText = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["LinkText"]) ? Dynamicweb.Context.Current.Request.Form["LinkText"].ToString() : "";
+	string marginTop = headingTitle != "" && headingSubtitle != "" ? " mt-4" : "";
 
-		<div>
-			<div class="card rounded-0 h-100">
-				<div class="@ratioCssClass mb-3 theme theme-light" @ratioVariable>
-					<img loading="lazy" src="@imagePath" class="card-img rounded-0 h-100 w-100" style="object-fit: contain;" title="@product.Name" alt="@product.Name" />
-				</div>
-				<div class="card-body p-0 d-flex flex-column h-100 justify-content-end">
-					<div>
-						<h4 class="h6">
-							<a class="stretched-link text-decoration-none" href="@link">@product.Name @product.VariantId</a>
-						</h4>
-					</div>
-					<p class="h5 fw-bold">@product.Price.PriceFormatted</p>
-				</div>
-			</div>
+	if (!string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(linkText)) {
+		<div class="d-none d-lg-block">
+			<a href="@(link)" class="btn @(buttonStyle) @(marginTop) mb-4">@linkText</a>
 		</div>
 	}
-</div>
+}
+
+@helper RenderMobileLinkButton(string headingTitle, string headingSubtitle) { 
+	string buttonStyle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["ButtonStyle"]) ? Dynamicweb.Context.Current.Request.Form["ButtonStyle"].ToString() : "btn-primary";
+	string link = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Link"]) ? Dynamicweb.Context.Current.Request.Form["Link"].ToString() : "";
+	string linkText = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["LinkText"]) ? Dynamicweb.Context.Current.Request.Form["LinkText"].ToString() : "";
+	string marginTop = headingTitle != "" && headingSubtitle != "" ? " mt-4" : "";
+
+	if (!string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(linkText)) {
+		<div class="d-block d-lg-none">
+			<a href="@(link)" class="btn @(buttonStyle) @(marginTop) mb-4 w-100">@linkText</a>
+		</div>
+	}
+}

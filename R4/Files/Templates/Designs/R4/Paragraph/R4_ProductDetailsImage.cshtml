@@ -1,17 +1,15 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
-@using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
-@using Dynamicweb.Frontend
-@using System.Web
+
 
 @{ 
-	bool isVisualEditor = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(HttpContext.Current.Request.QueryString.Get("VisualEdit")) : false;
+	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
 
 	ProductViewModel product = new ProductViewModel();
 
-	if (System.Web.HttpContext.Current.Items.Contains("ProductDetails"))
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
-		product = (ProductViewModel)System.Web.HttpContext.Current.Items["ProductDetails"];
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
 
 	//Collect the images
@@ -66,10 +64,16 @@
 			{
 				<div class="col-2">
 					<div id="LargeScreenImages_@Model.ID">
-						@foreach (MediaViewModel asset in images) {
-							var assetName = asset.Value.ToLower(); 
-							if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
-								@RenderThumbnail(asset)
+						@{ 
+							int thumbNumber = 0;
+
+							foreach (MediaViewModel asset in images) {
+								var assetName = asset.Value.ToLower();
+								if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
+									@RenderThumbnail(asset, product, thumbNumber)
+
+									thumbNumber++;
+								}
 							}
 						}
 					</div>
@@ -79,7 +83,7 @@
 			@* Main image *@
 			<div class="@mainImageColClass">
 				<div class="@(padding)@(theme)">
-					<div class="@mainRatioCssClass" style="@(mainRatioVariable);" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
+					<button class="btn @mainRatioCssClass js-product-image" style="@(mainRatioVariable);" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
 						<div class="d-flex align-items-center justify-content-center">
 							<img id="MainImage_@Model.ID" srcset="
 									@imagePathXs 320w,
@@ -89,15 +93,13 @@
 									@imagePathXl 2560w"
 								sizes="(max-width: 2560px) 480px, 800px"
 								src="@imagePathFallBack"
-								height=""
-								width=""
 								loading="lazy"
 								class="mw-100 mh-100"
 								style="cursor: pointer"
 								alt="@product.Name"
-								onclick="document.querySelector('#FullImage_@Model.ID').src = this.src">
+								data-image-number="0">
 						</div>
-					</div>
+					</button>
 				</div>
 			</div>
 		</div>
@@ -105,16 +107,16 @@
 		@* Tiny slider *@
 		<script type="module">
 			var slider = tns({
-			container: '#LargeScreenImages_@Model.ID',
-			items: 5.5,
-			gutter: 8,
-			axis: 'vertical',
-			arrowKeys: false,
-			nav: false,
-			loop: false,
-			controls: false,
-			lazyload: true
-		});
+				container: '#LargeScreenImages_@Model.ID',
+				items: 5.5,
+				gutter: 8,
+				axis: 'vertical',
+				arrowKeys: false,
+				nav: false,
+				loop: false,
+				controls: false,
+				lazyload: true
+			});
 		</script>
 	</div>
 
@@ -122,18 +124,47 @@
 	@* Modal *@
 	<div class="modal fade" id="ImageModal_@Model.ID" tabindex="-1" aria-labelledby="@Translate("Full image")" aria-hidden="true">
 		<div class="modal-dialog modal-fullscreen">
-		<div class="modal-content">
-			<div class="modal-header">
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
-			</div>
-			<div class="modal-body">
-				<div class="ratio ratio-16x9 h-100">
-					<div class="d-flex align-items-center justify-content-center">
-							<img src="data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=" alt="" id="FullImage_@Model.ID" class="mw-100 mh-100">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
+				</div>
+				<div class="modal-body">
+					<div id="FullImages_@Model.ID" class="d-flex align-items-center justify-content-center">
+						@foreach (MediaViewModel asset in images) {
+							var assetName = asset.Value.ToLower(); 
+							if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
+								string assetPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+								string assetPathL        = "/Admin/Public/GetImage.ashx?width=" + 1920 + "&image=" + assetPath + "&Format=WebP";
+
+								<img loading="lazy" src="@assetPathL" alt="@assetName" class="img-fluid">
+							}
+						}
 					</div>
+					<script type="module">
+						var sliderFull_@(Model.ID) = tns({
+							container: '#FullImages_@Model.ID',
+							items: 1,
+							gutter: 16,
+							mode: 'carousel',
+							navPosition: 'bottom',
+							mouseDrag: true,
+							touch: true,
+							arrowKeys: true,
+							nav: false,
+							loop: false,
+							controls: false,
+						});
+
+						document.querySelectorAll('.js-product-image').forEach(function (imageElement) {
+							imageElement.onclick = function (e) {
+								var clickedButton = e.currentTarget;
+								var slideNumber = clickedButton.querySelector("img").getAttribute("data-image-number");
+								sliderFull_@(Model.ID).goTo(slideNumber);
+							};
+						});
+					</script>
 				</div>
 			</div>
-		</div>
 		</div>
 	</div>
 
@@ -141,10 +172,16 @@
 	@* Show the thumbs on small screens *@
 	<div class="d-block d-lg-none">
 		<div id="SmallScreenImages_@Model.ID" class="">
-			@foreach (MediaViewModel asset in images) {
-				var assetName = asset.Value.ToLower(); 
-				if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
-					@RenderImage(asset)
+			@{ 
+				int number = 0;
+
+				foreach (MediaViewModel asset in images) {
+					var assetName = asset.Value.ToLower();
+					if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
+						@RenderImage(asset, product, number)
+
+						number++;
+					}
 				}
 			}
 		</div>
@@ -170,8 +207,8 @@
 }
 
 
-@helper RenderThumbnail(MediaViewModel asset) { 
-	string imagePath = asset.Value;
+@helper RenderThumbnail(MediaViewModel asset, ProductViewModel product, int imageNumber) { 
+	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
 	string imagePathXs       = "/Admin/Public/GetImage.ashx?width=" + 920 + "&image=" + imagePath + "&Format=WebP";
 	string imagePathS        = "/Admin/Public/GetImage.ashx?width=" + 1280 + "&image=" + imagePath + "&Format=WebP";
 	string imagePathM        = "/Admin/Public/GetImage.ashx?width=" + 1420 + "&image=" + imagePath + "&Format=WebP";
@@ -179,9 +216,9 @@
 	string imagePathXl       = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + imagePath + "&Format=WebP";
 	string imagePathFallBack = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + imagePath + "&Format=PNG";
 
-	<div class="border ratio ratio-16x9">
-		<div class="d-flex align-items-center justify-content-center">
-			<img id="MainImage_@Model.ID" srcset="
+	<button class="btn p-0 border ratio ratio-16x9" onclick="document.querySelector('#MainImage_@Model.ID').srcset = this.querySelector('img').srcset; document.querySelector('#MainImage_@Model.ID').setAttribute('data-image-number', '@imageNumber')">
+		<span class="btn p-0 d-flex align-items-center justify-content-center">
+			<img srcset="
 				@imagePathXs 320w,
 				@imagePathS 640w,
 				@imagePathM 1280w,
@@ -189,18 +226,15 @@
 				@imagePathXl 2560w"
 			sizes="(max-width: 2560px) 480px, 800px"
 			src="@imagePathFallBack"
-			height=""
-			width=""
 			class="mw-100 mh-100"
 			style="cursor: pointer"
-			alt="@asset.Name"
-			onclick="document.querySelector('#MainImage_@Model.ID').src = this.src">
-		</div>
-	</div>
+			alt="@asset.Name">
+		</span>
+	</button>
 }
 
-@helper RenderImage(MediaViewModel asset) {
-	string imagePath = asset.Value;
+@helper RenderImage(MediaViewModel asset, ProductViewModel product, int number) {
+	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
 	string imagePathXs       = "/Admin/Public/GetImage.ashx?width=" + 920 + "&image=" + imagePath + "&Format=WebP";
 	string imagePathS        = "/Admin/Public/GetImage.ashx?width=" + 1280 + "&image=" + imagePath + "&Format=WebP";
 	string imagePathM        = "/Admin/Public/GetImage.ashx?width=" + 1420 + "&image=" + imagePath + "&Format=WebP";
@@ -212,7 +246,7 @@
 	string ratioCssClass = ratio != "" ? "ratio" : "";
 	string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
 
-	<div class="@ratioCssClass" style="@(ratioVariable); cursor: pointer;" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
+	<buttom class="btn @ratioCssClass js-product-image" style="@(ratioVariable); cursor: pointer;" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
 		<div class="d-flex align-items-center justify-content-center">
 			<img id="MainImage_@Model.ID" srcset="
 				@imagePathXs 320w,
@@ -222,13 +256,11 @@
 				@imagePathXl 2560w"
 			sizes="(max-width: 2560px) 480px, 800px"
 			src="@imagePathFallBack"
-			height=""
-			width=""
 			loading="lazy"
 			class="mw-100 mh-100"
 			style="cursor: pointer"
 			alt="@asset.Name"
-			onclick="document.querySelector('#FullImage_@Model.ID').src = this.src">	
+			data-image-number="@number">	
 		</div>
-	</div>
+	</buttom>
 }

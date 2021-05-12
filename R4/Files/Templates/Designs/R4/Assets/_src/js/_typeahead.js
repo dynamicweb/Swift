@@ -48,7 +48,6 @@ const Typeahead = function() {
 		handleTab: function(e) {
 			if (e.key === "Tab") {
 				//keep selection from dropdown navigation but do not submit search
-				e.preventDefault();
 				Typeahead.hideSearchResults();
 				return;
 			}

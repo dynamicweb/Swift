@@ -37,15 +37,29 @@ document.addEventListener('scroll', function (e) {
 
 		var headerElement = element.closest("header");
 		var headerHeight = headerElement.clientHeight;
+		console.log(headerHeight);
 
 		if (document.body.scrollTop > headerHeight || document.documentElement.scrollTop > headerHeight) {
-			if (currentTheme != mainTheme) {
+			if (currentTheme !== mainTheme) {
 				element.setAttribute("class", mainTheme);
 			}
 		} else {
-			if (currentTheme != alternativeTheme) {
+			if (currentTheme !== alternativeTheme) {
 				element.setAttribute("class", alternativeTheme);
 			}
 		}
 	});
+
+	//Hideable elements
+	var hideableElements = document.querySelectorAll(".js-hide-on-scroll");
+
+	if (document.body.scrollTop > 0 || document.documentElement.scrollTop > 0) {
+		hideableElements.forEach(function (element) {
+			element.classList.add("d-none");
+		});
+	} else {
+		hideableElements.forEach(function (element) {
+			element.classList.remove("d-none");
+		});
+	}
 });
