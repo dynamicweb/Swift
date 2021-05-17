@@ -1,6 +1,6 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
-
+@using Dynamicweb.Frontend
 
 @{ 
 	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
@@ -12,7 +12,7 @@
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
 
-	//Collect the images
+	@* Collect the images *@
 	var selectedImageCategories = Model.Item.GetList("ImageAssets").SelectedValues;
 	var images = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName)).SelectMany(x => x.Assets).Union(product.ImagePatternImages);
 	string ratio = Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "0" && Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "" ? Model.Item.GetList("ImageAspectRatio").SelectedValue : "";
@@ -41,17 +41,9 @@
 	} 
 }
 
-
 @* Get images from selected categories or get all images *@
 @if (totalImages != 0)
 {
-	string imagePathXs       = "/Admin/Public/GetImage.ashx?width=" + 920 + "&image=" + mainImagePath + "&Format=WebP";
-	string imagePathS        = "/Admin/Public/GetImage.ashx?width=" + 1280 + "&image=" + mainImagePath + "&Format=WebP";
-	string imagePathM        = "/Admin/Public/GetImage.ashx?width=" + 1420 + "&image=" + mainImagePath + "&Format=WebP";
-	string imagePathL        = "/Admin/Public/GetImage.ashx?width=" + 1920 + "&image=" + mainImagePath + "&Format=WebP";
-	string imagePathXl       = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + mainImagePath + "&Format=WebP";
-	string imagePathFallBack = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + mainImagePath + "&Format=PNG";
-
 	@* Show image + thumbs on large screens *@
 	<div class="d-none d-lg-block">
 		<div class="row g-3">
@@ -80,19 +72,11 @@
 				<div class="@(padding)@(theme)">
 					<button class="btn @mainRatioCssClass js-product-image" style="@(mainRatioVariable);" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
 						<div class="d-flex align-items-center justify-content-center">
-							<img id="MainImage_@Model.ID" srcset="
-									@imagePathXs 320w,
-									@imagePathS 640w,
-									@imagePathM 1280w,
-									@imagePathL 1920w,
-									@imagePathXl 2560w"
-								sizes="(max-width: 2560px) 480px, 800px"
-								src="@imagePathFallBack"
-								loading="lazy"
-								class="mw-100 mh-100"
-								style="cursor: pointer"
-								alt="@product.Name"
-								data-image-number="0">
+							@{
+								var parms = new Dictionary<string, object>();
+								parms.Add("cssClass", "mh-100 mw-100");
+							}
+							@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = mainImagePath }, parms)
 						</div>
 					</button>
 				</div>
@@ -115,7 +99,6 @@
 		</script>
 	</div>
 
-
 	@* Modal *@
 	<div class="modal fade" id="ImageModal_@Model.ID" tabindex="-1" aria-labelledby="@Translate("Full image")" aria-hidden="true">
 		<div class="modal-dialog modal-fullscreen">
@@ -128,10 +111,8 @@
 						@foreach (MediaViewModel asset in images) {
 							var assetName = asset.Value.ToLower(); 
 							if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
-								string assetPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
-								string assetPathL        = "/Admin/Public/GetImage.ashx?width=" + 1920 + "&image=" + assetPath + "&Format=WebP";
-
-								<img loading="lazy" src="@assetPathL" alt="@assetName" class="img-fluid">
+								string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+								@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
 							}
 						}
 					</div>
@@ -163,10 +144,9 @@
 		</div>
 	</div>
 
-
-	@* Show the thumbs on small screens *@
-	<div class="d-block d-lg-none">
-		<div id="SmallScreenImages_@Model.ID" class="">
+	@* Show the slider on small screens *@
+	<div class="d-block d-lg-none mb-3">
+		<div id="SmallScreenImages_@Model.ID">
 			@{ 
 				int number = 0;
 
@@ -201,61 +181,35 @@
 	</div>
 }
 
-
-@helper RenderThumbnail(MediaViewModel asset, ProductViewModel product, int imageNumber) { 
+@helper RenderThumbnail(MediaViewModel asset, ProductViewModel product, int imageNumber) {
 	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
-	string imagePathXs       = "/Admin/Public/GetImage.ashx?width=" + 920 + "&image=" + imagePath + "&Format=WebP";
-	string imagePathS        = "/Admin/Public/GetImage.ashx?width=" + 1280 + "&image=" + imagePath + "&Format=WebP";
-	string imagePathM        = "/Admin/Public/GetImage.ashx?width=" + 1420 + "&image=" + imagePath + "&Format=WebP";
-	string imagePathL        = "/Admin/Public/GetImage.ashx?width=" + 1920 + "&image=" + imagePath + "&Format=WebP";
-	string imagePathXl       = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + imagePath + "&Format=WebP";
-	string imagePathFallBack = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + imagePath + "&Format=PNG";
 
 	<button class="btn p-0 border ratio ratio-16x9" onclick="document.querySelector('#MainImage_@Model.ID').srcset = this.querySelector('img').srcset; document.querySelector('#MainImage_@Model.ID').setAttribute('data-image-number', '@imageNumber')">
 		<span class="btn p-0 d-flex align-items-center justify-content-center">
-			<img srcset="
-				@imagePathXs 320w,
-				@imagePathS 640w,
-				@imagePathM 1280w,
-				@imagePathL 1920w,
-				@imagePathXl 2560w"
-			sizes="(max-width: 2560px) 480px, 800px"
-			src="@imagePathFallBack"
-			class="mw-100 mh-100"
-			style="cursor: pointer"
-			alt="@asset.Name">
+			<img 
+				src="/Admin/Public/GetImage.ashx?width=150&image=@imagePath&Format=WebP"
+				class="mw-100 mh-100"
+				style="cursor: pointer"
+				alt="@asset.Name">
 		</span>
 	</button>
 }
 
 @helper RenderImage(MediaViewModel asset, ProductViewModel product, int number) {
 	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
-	string imagePathXs       = "/Admin/Public/GetImage.ashx?width=" + 920 + "&image=" + imagePath + "&Format=WebP";
-	string imagePathS        = "/Admin/Public/GetImage.ashx?width=" + 1280 + "&image=" + imagePath + "&Format=WebP";
-	string imagePathM        = "/Admin/Public/GetImage.ashx?width=" + 1420 + "&image=" + imagePath + "&Format=WebP";
-	string imagePathL        = "/Admin/Public/GetImage.ashx?width=" + 1920 + "&image=" + imagePath + "&Format=WebP";
-	string imagePathXl       = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + imagePath + "&Format=WebP";
-	string imagePathFallBack = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + imagePath + "&Format=PNG";
 
 	string ratio = Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "0" && Model.Item?.GetList("ImageAspectRatio")?.SelectedValue != "" ? Model.Item.GetList("ImageAspectRatio").SelectedValue : "";
 	string ratioCssClass = ratio != "" ? "ratio" : "";
 	string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
 
-	<buttom class="btn @ratioCssClass js-product-image" style="@(ratioVariable); cursor: pointer;" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
+	<button class="btn @ratioCssClass js-product-image" style="@(ratioVariable); cursor: pointer;" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
 		<div class="d-flex align-items-center justify-content-center">
-			<img id="MainImage_@Model.ID" srcset="
-				@imagePathXs 320w,
-				@imagePathS 640w,
-				@imagePathM 1280w,
-				@imagePathL 1920w,
-				@imagePathXl 2560w"
-			sizes="(max-width: 2560px) 480px, 800px"
-			src="@imagePathFallBack"
-			loading="lazy"
-			class="mw-100 mh-100"
-			style="cursor: pointer"
-			alt="@asset.Name"
-			data-image-number="@number">	
+			@{
+				var parms = new Dictionary<string, object>();
+				parms.Add("cssClass", "mh-100 mw-100");
+				parms.Add("dataImageNumber", @number);
+			}
+			@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
 		</div>
-	</buttom>
+	</button>
 }
