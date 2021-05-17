@@ -1,62 +1,77 @@
-@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.FileViewModel>
 @using System.IO
-@using System.Web
 @using Dynamicweb.Frontend
 
-@{
-	FileViewModel image = Model?.Item?.GetFile("Image") ?? null;
-}
-
-@if (image != null) {
-	string imagePath = image?.Path ?? "";
+@if (Model != null)
+{
+	string imagePath = Model?.Path ?? "";
 	imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
 
-	int xPos = image?.FocalPositionFromLeft ?? 50;
-	int yPos = image?.FocalPositionFromTop ?? 50;
+	int xPos = Model?.FocalPositionFromLeft ?? 50;
+	int yPos = Model?.FocalPositionFromTop ?? 50;
+	string cssPosition = $"{xPos}% {yPos}%";
 
 	@* Image sizes + a fallback image *@
-	string imagePathXS       = "/Admin/Public/GetImage.ashx?width=" + 320 + "&image=" + imagePath + "&Format=WebP&Quality=90";
-	string imagePathS        = "/Admin/Public/GetImage.ashx?width=" + 480 + "&image=" + imagePath + "&Format=WebP&Quality=90";
-	string imagePathM        = "/Admin/Public/GetImage.ashx?width=" + 640 + "&image=" + imagePath + "&Format=WebP&Quality=90";
-	string imagePathL        = "/Admin/Public/GetImage.ashx?width=" + 1280 + "&image=" + imagePath + "&Format=WebP&Quality=90";
-	string imagePathXL       = "/Admin/Public/GetImage.ashx?width=" + 1920 + "&image=" + imagePath + "&Format=WebP&Quality=90";
-	string imagePathXXL      = "/Admin/Public/GetImage.ashx?width=" + 2560 + "&image=" + imagePath + "&Format=WebP&Quality=90";
+	string imagePathXS = 	$"/Admin/Public/GetImage.ashx?image={imagePath}&width=320&Format=WebP&Quality=70";
+	string imagePathS = 	$"/Admin/Public/GetImage.ashx?image={imagePath}&width=480&Format=WebP&Quality=70";
+	string imagePathM = 	$"/Admin/Public/GetImage.ashx?image={imagePath}&width=640&Format=WebP&Quality=70";
+	string imagePathL = 	$"/Admin/Public/GetImage.ashx?image={imagePath}&width=1280&Format=WebP&Quality=70";
+	string imagePathXL = 	$"/Admin/Public/GetImage.ashx?image={imagePath}&width=1920&Format=WebP&Quality=70";
 	string imagePathFallBack = imagePathL;
 
 	@* attributes to send to the image tag *@
-	string loading           = GetViewParameterString("loading");
-	string cssClass          = GetViewParameterString("cssClass");
-	string style             = GetViewParameterString("style");
-	string alt               = GetViewParameterString("alt");
+	string loading = 	!string.IsNullOrEmpty(GetViewParameterString("loading")) ? GetViewParameterString("loading") : "loading";
+	string cssClass = 	GetViewParameterString("cssClass");
+	string style = 		GetViewParameterString("style");
+	string alt = 		GetViewParameterString("alt");
+	string dataImageNumber = GetViewParameterString("data-image-number");
 
-	if (Path.GetExtension(imagePath).ToLower() == ".svg") {
-		@System.IO.File.ReadAllText(HttpContext.Current.Server.MapPath(imagePath))
-	} else {
-		<img 
-			srcset="
-				@imagePathXS   320w,
-				@imagePathS    480w,
-				@imagePathM    640w,
-				@imagePathL   1280w,
-				@imagePathXL  1920w,
-				@imagePathXXL 2560w"
-			sizes="
-				(min-width:  320px and max-width:  480px)  320px, 
-				(min-width:  480px and max-width:  640px)  480px, 
-				(min-width:  640px and max-width: 1280px)  640px, 
-				(min-width: 1280px and max-width: 1920px) 1280px, 
-				(min-width: 1920px and max-width: 2560px) 1920px, 
-				(min-width: 2560px) 2560px, 
-				100vw
-				"
-			src="@imagePathFallBack"
-			loading="@loading"
-			class="@cssClass"
-			style="
-				object-fit: cover; 
-				object-position: @(xPos)% @(yPos)%;
-				@style
-				"
-			alt="@alt">
+	if (Path.GetExtension(imagePath).ToLower() == ".svg")
+	{
+	}
+	else
+	{
+	<img srcset="
+			@imagePathXS  320w,
+			@imagePathS   480w,
+			@imagePathM   640w,
+			@imagePathL  1280w,
+			@imagePathXL 1920w"
+		sizes="
+			(max-width:  480px) 480px,
+			(min-width:  480px and max-width:  640px)  640px,
+			(min-width:  640px and max-width: 1280px) 1280px,
+			(min-width: 1280px) 1920px,
+			100vw"
+		src="@imagePathFallBack"
+		loading="@loading"
+		class="@cssClass"
+		style="object-fit: cover;object-position: @cssPosition;@style" 
+		alt="@alt"
+		data-image-number="@dataImageNumber">
+	}
+}
+
+@functions{ string ReadFile(string path)
+	{
+		string result;
+		if (!Dynamicweb.Caching.Cache.Current.TryGet(path, out result))
+		{
+			string fullpath = path;
+			if (!path.Contains(":/"))
+			{
+				fullpath = Dynamicweb.Context.Current.Server.MapPath(path);
+			}
+
+			if (!File.Exists(fullpath))
+			{
+				return string.Empty;
+			}
+
+			result = System.IO.File.ReadAllText(fullpath);
+			Dynamicweb.Caching.Cache.Current.Set(path, result, new Dynamicweb.Caching.CacheItemPolicy() { FileDependencies = new[] { fullpath } });
+		}
+
+		return result;
 	}
 }

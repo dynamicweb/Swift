@@ -1,0 +1,164 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using Dynamicweb
+@using System.Web
+@using System.IO
+
+@RenderFirstLevelNodes(Model.Nodes)
+
+@helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
+{
+	string hoverTheme = Model.Parameters["HoverTheme"].ToString();
+	string linkFontSize = Model.Parameters["LinkFontSize"].ToString();
+	string contentPadding = Model.Parameters["ContentPadding"].ToString();
+
+	if (contentPadding == "small")
+	{
+		contentPadding = "px-2 py-1";
+	}
+	if (contentPadding == "large")
+	{
+		contentPadding = "px-4 py-3";
+	}
+
+	foreach (var node in nodes)
+	{
+		var hasChildren = node.Nodes.Count() > 0;
+
+		string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
+
+		if (node.IsClickable)
+		{
+			<a class="nav-link nav-link-clean text-nowrap @(contentPadding) @(hoverTheme) @(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" title="@node.Name" @dropdownAttributes>
+				@RenderNavigationItem(node, linkFontSize)
+			</a>
+		}
+		else
+		{
+			<span class="nav-link nav-link-clean text-nowrap" title="@node.Name" @dropdownAttributes>
+				@RenderNavigationItem(node, linkFontSize)
+			</span>
+		}
+
+		if (hasChildren)
+		{
+			var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+			string pageType = page.ItemType;
+
+			<ul class="dropdown-menu border-0 rounded-0" aria-labelledby="NavGroup@(node.PageId)">
+				@if (pageType == "R4_SignIn")
+				{
+					if (Pageview.User == null)
+					{
+						<li class="dropdown-item py-2">
+							<a href="@node.Link" class="btn btn-primary w-100 m-0">@node.Name</a>
+						</li>
+					}
+				}
+				@foreach (var subnode in node.Nodes)
+				{
+					<li>
+						<a class="dropdown-item py-2" href="@subnode.Link">@subnode.Name</a>
+					</li>
+				}
+				@if (pageType == "R4_SignIn")
+				{
+					if (Pageview.User != null)
+					{
+						<li class="dropdown-item py-2">
+							<a href="/Admin/Public/ExtranetLogoff.aspx?ID=@Pageview.Page.ID" class="btn btn-primary m-0 w-100">@Translate("Sign out")</a>
+						</li>
+					}
+				}
+			</ul>
+		}
+	}
+}
+
+@helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node, string linkFontSize)
+{
+	var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+	string pageType = page.ItemType;
+
+	string iconSize = "icon-3";
+
+	if (linkFontSize == "fs-7")
+	{
+		iconSize = "icon-2";
+	}
+	if (linkFontSize == "fs-5")
+	{
+		iconSize = "icon-4";
+	}
+
+	string icon = page.Item["Icon"] != null ? page.Item["Icon"].ToString() : "";
+	string layout = Model?.Parameters["Layout"].ToString();
+
+	if (pageType == "R4_Checkout")
+	{
+		double totalProducts = 0;
+
+		if (Dynamicweb.Ecommerce.Common.Context.Cart != null)
+		{
+			totalProducts = Dynamicweb.Ecommerce.Common.Context.Cart.GetParentProductLineQuantityCount(Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines);
+		}
+
+		switch (layout)
+		{
+			case "linksOnly":
+				<span class="align-middle">@node.Name</span>
+			break;
+			
+			case "iconsOnly":
+				@RenderIcon(icon, iconSize)
+				<span class="js-cart-qty align-middle">(@totalProducts)</span>
+			break;
+			case "iconsAndLinks":
+				@RenderIcon(icon, iconSize)
+				<span class="js-cart-qty align-middle">(@totalProducts)</span>
+				<span class="align-middle">@node.Name</span>
+			break;
+			case "linksAndIcons":
+				<span class="align-middle">@node.Name</span>
+				<span class="js-cart-qty align-middle">(@totalProducts)</span>
+				@RenderIcon(icon, iconSize)
+			break;
+		}
+	}
+	else
+	{
+
+		switch (layout)
+		{
+			case "linksOnly":
+				<span class="align-middle">@node.Name</span>
+			break;
+			
+			case "iconsOnly":
+				@RenderIcon(icon, iconSize)
+			break;
+			case "iconsAndLinks":
+				@RenderIcon(icon, iconSize)
+				<span class="align-middle">@node.Name</span>
+			break;
+			case "linksAndIcons":
+				<span class="align-middle">@node.Name</span>
+				@RenderIcon(icon, iconSize)
+			break;
+		}
+	}
+}
+
+@helper RenderIcon(string icon, string iconSize)
+{
+	if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none"))
+	{
+		string iconPath = HttpContext.Current.Server.MapPath(icon);
+
+		if (File.Exists(iconPath))
+		{
+			<span class="@iconSize me-2">
+				@System.IO.File.ReadAllText(iconPath)
+			</span>
+		}
+	}
+}

@@ -1,39 +1,27 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
-@using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
-@using System.Web
 
 @{
-	bool isVisualEditor = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(HttpContext.Current.Request.QueryString.Get("VisualEdit")) : false;
+	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
 
 	bool productViewModelFound = false;
 	ProductViewModel product = new ProductViewModel();
 
-	if (System.Web.HttpContext.Current.Items.Contains("ProductDetails"))
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		productViewModelFound = true;
-		product = (ProductViewModel)System.Web.HttpContext.Current.Items["ProductDetails"];
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
 
-	string theme = !string.IsNullOrEmpty(Model.Item.GetString("Theme")) ? Model.Item.GetString("Theme").ToLower() : "";
-	if (theme != "theme default" && theme != "")
-	{
-		theme = String.Concat(theme.Where(c => !Char.IsWhiteSpace(c)));
-		theme = theme.Replace("theme", "");
-		theme = " theme theme-" + theme;
-	} else {
-		theme = "";
-	}
+	string titleFontSize = Model.Item?.GetList("TitleFontSize")?.SelectedValue != null ? Model.Item.GetList("TitleFontSize").SelectedValue : "h3";
+	string subtitleFontSize = Model.Item?.GetList("SubtitleFontSize")?.SelectedValue != null ? Model.Item.GetList("SubtitleFontSize").SelectedValue : "fs-5";
 
-	string imageTheme = !string.IsNullOrEmpty(Model.Item.GetString("ImageTheme")) ? Model.Item.GetString("ImageTheme").ToLower() : "";
-	if (imageTheme != "theme default" && imageTheme != "")
-	{
-		imageTheme = String.Concat(imageTheme.Where(c => !Char.IsWhiteSpace(c)));
-		imageTheme = imageTheme.Replace("theme", "");
-		imageTheme = " theme theme-" + imageTheme;
-	} else {
-		imageTheme = "";
-	}
+	string buttonStyle = !string.IsNullOrEmpty(Model.Item.GetString("ButtonStyle")) ? Model.Item.GetList("ButtonStyle").SelectedValue : "";
+	buttonStyle = buttonStyle == "primary" ? " btn-primary" : buttonStyle;
+	buttonStyle = buttonStyle == "secondary" ? " btn-secondary" : buttonStyle;
+
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
 
 	string detailPageId = Model?.Item?.GetString("ProductDetailsPage") != null ? Model.Item.GetString("ProductDetailsPage") : "";
 	string productPageByNavigationTag = GetPageIdByNavigationTag("ProductDetailPage") != 0 ? GetPageIdByNavigationTag("ProductDetailPage").ToString() : "";
@@ -51,16 +39,35 @@
 		url += "&VisualEdit=True";
 	}
 
+	string relationType = Model?.Item?.GetList("RelationType") != null ? Model.Item.GetList("RelationType").SelectedValue : "trending";
+
+	//If products is added through the trending groups selector
+	IList<ProductGroupViewModel> groupsToRelateToTrending = Model.Item.GetValue<IList<ProductGroupViewModel>>("GroupsToRelateToTrending");
+	IList<ProductGroupViewModel> groupsToRelateToMostSold = Model.Item.GetValue<IList<ProductGroupViewModel>>("GroupsToRelateToMostSold");
+	IList<string> relateFromGroupIds = new List<string>{};
+
+	if (groupsToRelateToTrending != null && relationType == "trending") {
+		foreach (var fromGroup in groupsToRelateToTrending)
+		{
+			relateFromGroupIds.Add(fromGroup.Id);
+		}
+	}
+
+	if (groupsToRelateToMostSold != null && relationType == "most-sold") {
+		foreach (var fromGroup in groupsToRelateToMostSold)
+		{
+			relateFromGroupIds.Add(fromGroup.Id);
+		}
+	}
+
 	//If products is added through the selector
 	ProductListViewModel productsToRelateTo = Model.Item.GetValue<ProductListViewModel>("ProductsToRelateTo");
 	IList<string> relateFromProductIds = new List<string>{};
-	IList<string> relateFromGroupIds = new List<string>{};
 
 	if (productsToRelateTo != null) {
 		foreach (var fromProduct in productsToRelateTo.Products)
 		{
 			relateFromProductIds.Add(fromProduct.Id);
-			relateFromGroupIds.Add(fromProduct.PrimaryOrDefaultGroup.Id);
 		}
 	}
 
@@ -76,8 +83,16 @@
 
 	string groupIds = productViewModelFound ? product.PrimaryOrDefaultGroup.Id : string.Join(",", relateFromGroupIds);
 	string productIds = productViewModelFound ? product.Id : string.Join(",", relateFromProductIds);
-	string relationType = Model?.Item?.GetList("RelationType") != null ? Model.Item.GetList("RelationType").SelectedValue : "trending";
 	string relationTypeName = Model?.Item?.GetString("Title") != null ? Model.Item.GetString("Title") : Translate("Products");
+
+	string linkParameters = "";
+	linkParameters += "&GroupId=" + groupIds;
+	linkParameters += !string.IsNullOrEmpty(productIds) ? "&MainProductId=" + productIds : "";
+	linkParameters += selectedProductIds.Count > 0 ? "&MainProductId=" +  string.Join(",", selectedProductIds) : "";
+	string productListPageId = Model?.Item?.GetString("ProductDetailsPage") != null ? Model.Item.GetString("ProductDetailsPage") : "";
+	string productListPageByNavigationTag = GetPageIdByNavigationTag("Shop") != 0 ? GetPageIdByNavigationTag("Shop").ToString() : "";
+	productListPageId = productListPageId == "" ? productListPageByNavigationTag : productListPageId;
+	string link = "/Default.aspx?ID=" + productListPageId + linkParameters;
 }
 
 <form method="post" action="@url" data-response-target-element="RelatedProducts_@Model.ID" data-preloader="inline" data-update-url="false" class="w-100 js-product-list" id="RelatedProducts_@Model.ID">
@@ -93,9 +108,9 @@
 	@if (!string.IsNullOrEmpty(Model.Item.GetString("Subtitle"))) { 
 		<input type="hidden" name="Subtitle" value="@Model.Item.GetString("Subtitle")" />
 	}
-	@if (!string.IsNullOrEmpty(Model.Item.GetString("Link"))) { 
-		<input type="hidden" name="Link" value="@Model.Item.GetString("Link")" />
-	}
+	
+	<input type="hidden" name="Link" value="@link" />
+
 	@if (!string.IsNullOrEmpty(Model.Item.GetString("LinkText"))) { 
 		<input type="hidden" name="LinkText" value="@Model.Item.GetString("LinkText")" />
 	}
@@ -105,6 +120,15 @@
 	}
 	@if (!string.IsNullOrEmpty(Model.Item.GetString("Layout"))) { 
 		<input type="hidden" name="Layout" value="@Model.Item.GetList("Layout").SelectedValue" />
+	}
+	@if (titleFontSize != "") { 
+		<input type="hidden" name="TitleFontSize" value="@titleFontSize" />
+	}
+	@if (subtitleFontSize != "") { 
+		<input type="hidden" name="SubtitleFontSize" value="@subtitleFontSize" />
+	}
+	@if (buttonStyle != "") { 
+		<input type="hidden" name="ButtonStyle" value="@buttonStyle" />
 	}
 	@if (theme != "") { 
 		<input type="hidden" name="Theme" value="@theme" />
@@ -119,8 +143,10 @@
 	<input type="hidden" name="HideNavigationBar" value="@Model.Item.GetString("HideNavigationBar").ToLower()" />
 
 	@* Types *@
-	@if (groupIds != "" && relationType != "frequently" && relationType != "selected") {
-		<input type="hidden" name="GroupId" value="@groupIds" />
+	@if (relationType == "trending" || relationType == "most-sold") {
+		if (groupIds != "") { 
+			<input type="hidden" name="GroupId" value="@groupIds" />
+		}
 	}
 
 	@if (relationType == "trending") {
