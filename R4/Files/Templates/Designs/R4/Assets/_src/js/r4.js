@@ -37,15 +37,38 @@ document.addEventListener('scroll', function (e) {
 
 		var headerElement = element.closest("header");
 		var headerHeight = headerElement.clientHeight;
-		console.log(headerHeight);
 
 		if (document.body.scrollTop > headerHeight || document.documentElement.scrollTop > headerHeight) {
 			if (currentTheme !== mainTheme) {
-				element.setAttribute("class", mainTheme);
+				var alternativeThemeClasses = alternativeTheme.split(" ");
+				for (var i = 0; i < alternativeThemeClasses.length; i++) {
+					if (alternativeThemeClasses[i] != "") {
+						element.classList.remove(alternativeThemeClasses[i]);
+					}
+				}
+
+				var mainThemeClasses = mainTheme.split(" ");
+				for (var i = 0; i < mainThemeClasses.length; i++) {
+					if (mainThemeClasses[i] != "") {
+						element.classList.add(mainThemeClasses[i]);
+					}
+				}
 			}
 		} else {
 			if (currentTheme !== alternativeTheme) {
-				element.setAttribute("class", alternativeTheme);
+				var mainThemeClasses = mainTheme.split(" ");
+				for (var i = 0; i < mainThemeClasses.length; i++) {
+					if (mainThemeClasses[i] != "") {
+						element.classList.remove(mainThemeClasses[i]);
+					}
+				}
+
+				var alternativeThemeClasses = alternativeTheme.split(" ");
+				for (var i = 0; i < alternativeThemeClasses.length; i++) {
+					if (alternativeThemeClasses[i] != "") {
+						element.classList.add(alternativeThemeClasses[i]);
+					}
+				}
 			}
 		}
 	});
