@@ -9,7 +9,7 @@ import { Typeahead } from './_typeahead';
 import { hcOffcanvasNav } from 'hc-offcanvas-nav';
 
 window.Modal = Modal;
-
+window.Collapse = Collapse;
 window.tns = tns;
 window.Sliders = Sliders;
 window.Cart = Cart;
