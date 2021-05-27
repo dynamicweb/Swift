@@ -8,21 +8,56 @@
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	} 
+
+	
+	IEnumerable<string> selectedDisplayGroupIds = Model.Item.GetList("DisplayGroups").SelectedValues;
+	List<CategoryFieldViewModel> displayGroups = new List<CategoryFieldViewModel>();
+
+	foreach (var selection in selectedDisplayGroupIds)
+	{
+		foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
+		{		
+			if (selection == group.Id) {
+				displayGroups.Add(group);
+			}
+		}
+	}
+
+	bool hideTitle = Model.Item.GetBoolean("HideTitle");
 }
 
-@if ((product.ProductFields != null && Model.Item.GetBoolean("ProductFields")) || (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields"))) {
-	<div class="text-start pt-5 pb-2 pt-lg-6 pb-lg-4">
-		<h2 class="display-4">@Translate("Specifications")</h2>
-	</div>
+@if ((product.ProductFields != null && Model.Item.GetBoolean("ProductFields")) || (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields")) || (displayGroups.Count != 0)) {
+	if (!hideTitle)
+	{
+		<div class="text-start pt-5 pb-2 pt-lg-6 pb-lg-4">
+			<h2 class="display-4">@Translate("Specifications")</h2>
+		</div>
+	}
+}
+
+@if (displayGroups.Count != 0) {
+	foreach (var group in displayGroups) {
+		bool hideHeader = Model.Item.GetBoolean("HideGroupHeaders");
+
+		if (!hideHeader) { 
+			<h4 class="h4 mb-4">@group.Name</h4>
+		}
+
+		<dl class="definition-list">
+			@foreach (var field in group.Fields) {
+				@RenderField(field.Value)  
+			}  
+		</dl>
+	}
 }
 
 @if (product.ProductFields != null && Model.Item.GetBoolean("ProductFields")) {
 	if (product.ProductFields.Count > 0) {
-		<table class="table text-left mb-4">
+		<dl class="definition-list">
 			@foreach (var field in product.ProductFields) {
 				@RenderField(field.Value)  
 			}  
-		</table>
+		</dl>
 	}
 }
 
@@ -30,8 +65,11 @@
 	if (product.ProductCategories.Count > 0) {
 		foreach (var group in product.ProductCategories) {
 			CategoryFieldViewModel category = group.Value;
+			bool hideHeader = Model.Item.GetBoolean("HideGroupHeaders");
 
-			<h4 class="h4 mb-4">@group.Key</h4>
+			if (!hideHeader) { 
+				<h4 class="h4 mb-4">@group.Key</h4>
+			}
 
 			<dl class="definition-list">
 				@foreach (var field in category.Fields) {
