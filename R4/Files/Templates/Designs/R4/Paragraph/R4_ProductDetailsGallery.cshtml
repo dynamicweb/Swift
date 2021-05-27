@@ -21,6 +21,14 @@
 			totalImages++;
 		} 
 	}
+
+	@* Layout settings *@
+	string spacing = Model.Item.GetRawValueString("Spacing", "4");
+	spacing = spacing == "none" ? "g-0" : spacing;
+	spacing = spacing == "small" ? "g-3" : spacing;
+	spacing = spacing == "large" ? "g-4" : spacing;
+
+	string layout = Model.Item.GetRawValueString("Layout", "grid");
 }
 
 @* Get images from selected categories or get all images *@
@@ -28,7 +36,7 @@
 {
 	@* Show the gallery on large screens *@
 	<div class="d-none d-lg-block">
-		<div class="row g-4">
+		<div class="row @spacing">
 			@{ 
 				int imageNumber = 0;
 
@@ -37,6 +45,9 @@
 
 					if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
 						string colClass = totalImages > 1 ? "col-lg-6" : "col-12";
+						colClass = layout == "full-first" && imageNumber == 0 ? "col-12" : colClass;
+						colClass = layout == "full-last" && imageNumber == (totalImages - 1) ? "col-12" : colClass;
+						colClass = layout == "advanced-grid" && imageNumber > 1 ? "col-4" : colClass;
 
 						<div class="@colClass">
 							@RenderImage(asset, product, imageNumber)
@@ -50,19 +61,17 @@
 	</div>
 
 	@* Modal *@
-	<div class="modal fade" id="ImageModal_@Model.ID" tabindex="-1" aria-labelledby="@Translate("Full image")" aria-hidden="true">
-		<div class="modal-dialog modal-fullscreen">
+	<div class="modal fade" id="modal_@Model.ID" tabindex="-1" aria-labelledby="@Translate("Full image")" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered modal-xl">
 			<div class="modal-content">
-				<div class="modal-header">
-					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
-				</div>
 				<div class="modal-body">
 					<div id="FullImages_@Model.ID" class="d-flex align-items-center justify-content-center">
 						@foreach (MediaViewModel asset in images) {
 							var assetName = asset.Value.ToLower(); 
 							if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
 								string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
-								@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath })
+								var parms = new Dictionary<string, object>();
+								@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
 							}
 						}
 					</div>
@@ -78,7 +87,7 @@
 							arrowKeys: true,
 							nav: false,
 							loop: false,
-							controls: false,
+							controls: false
 						});
 
 						document.querySelectorAll('.js-product-image').forEach(function (imageElement) {
@@ -143,19 +152,29 @@
 
 	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
 	ratio = ratio != "0" ? ratio : "";
-	string ratioCssClass = ratio != "" ? "ratio" : "";
+	string ratioCssClass = ratio != "" && ratio != "fill" ? " ratio" : "";
 	string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
+	string fillClass = ratio == "fill" ? " h-100" : "";
 
 	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+	string productName = product.Name;
+
 	var parms = new Dictionary<string, object>();
-	parms.Add("cssClass", "mh-100 mw-100");
-	parms.Add("alt", "");
+	parms.Add("alt", @product.Name);
+
+	if (ratio == "fill") {
+		parms.Add("cssClass", "w-100 h-100 image-zoom");
+	}
+	else
+	{
+		parms.Add("cssClass", "mw-100 mh-100");
+	}
 
 	<div class="@(padding)@(theme)">
-		<button class="btn @ratioCssClass js-product-image" style="@(ratioVariable)" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID" data-image-number="@number">
-			<span class="d-flex align-items-center justify-content-center">
+		<a href="@imagePath" class="d-block @(ratioCssClass)@(fillClass) js-product-image" style="@(ratioVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
+			<span class="d-flex align-items-center justify-content-center overflow-hidden">
 				@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
 			</span>
-		</button>
+		</a>
 	</div>
 }
