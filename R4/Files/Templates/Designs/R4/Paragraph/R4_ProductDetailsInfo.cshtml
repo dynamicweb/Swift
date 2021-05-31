@@ -14,6 +14,8 @@
 		product = (ProductViewModel)System.Web.HttpContext.Current.Items["ProductDetails"];
 	}
 
+	string variantId = product.VariantId;
+
 	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
 	if (!url.Contains("LayoutTemplate"))
 	{
@@ -80,93 +82,14 @@
 	.btn.active {
 		border: 4px solid red;
 	}
+
+	.btn.disabled {
+		opacity: 0.3;
+	}
 </style>
 
-
-@* Basic data rendering from VariantInfo *@
-
-@RenderVariants(product)
-
-@helper RenderVariants(ProductViewModel productModel) {
-	if (productModel.VariantInfo.VariantInfo != null)
-					{
-	<h4>Variant info</h4>
-	@RenderVariantInfo(productModel.VariantInfo)}
-}
-
-
-@helper RenderVariantInfo(VariantInfoViewModel variantModel) {
-	if (variantModel.VariantInfo != null)
-	{
-		<ul>
-			@foreach (var variant in variantModel.VariantInfo)
-			{
-				<li>
-					@variant.OptionName (@variant.VariantID) @variant.Image.Value
-					@RenderVariantInfo(variant)
-				</li>
-			}
-		</ul>
-	}
-}
-
-
-@* Rendering from new data set *@
-@{ 
-	if (product.VariantInfo.VariantInfo != null)
-	{
-		FillAvailableVariants(product.VariantInfo);
-	}
-}
-
-
-@GetAvailableVariants(product).AllOptions.Count
-
-@RenderVariantSelector(GetAvailableVariants(product))
-
-@helper RenderVariantSelector(AvailableVariants availableVariants)
-{
-	int groupNumber = 1;
-
-	<div class="js-variant-selector">
-		@foreach (var variantGroup in availableVariants.Groups)
-		{
-			VariantGroup group = variantGroup.Value;
-
-			<h3 class="h5">@group.Name</h3>
-			<div class="mb-4 js-variant-group" data-group-number="@groupNumber">
-				@RenderVariantOptions(group.Options)
-			</div>
-			
-			groupNumber++;
-		}
-	</div>
-}
-
-
-@helper RenderVariantOptions(Dictionary<string, VariantOption> variantOptions) {
-	if (variantOptions != null)
-	{
-		foreach (VariantOption option in variantOptions.Values)
-		{
-			string[] allowedParentsArray = option.AllowedParents.Values.ToArray();
-			string allowedParents = string.Join(",", allowedParentsArray);
-
-			string[] allowedChildrenArray = option.AllowedChildren.Values.ToArray();
-			string allowedChildren = string.Join(",", allowedChildrenArray);
-
-			<span>
-				<button type="button" class="btn btn-secondary js-variant-option" onclick="UpdateAllVariants(event)" data-variant-id="@option.ID" data-allowed-parents="@allowedParents" data-allowed-children="@allowedChildren" data-selectable="true">@option.Name</button>
-			</span>
-		}
-	}
-}
-
-
-
 @functions{ 
-	Dictionary<string, Dictionary<string, string>> allowedParents = new Dictionary<string, Dictionary<string, string>>();
-	Dictionary<string, Dictionary<string, string>> allowedChildren = new Dictionary<string, Dictionary<string, string>>();
+	List<string> variantCombinations = new List<string>();
 
 	public AvailableVariants GetAvailableVariants(ProductViewModel productModel) {
 
@@ -190,31 +113,7 @@
 			{
 				if (!variants.Groups[variantInfo.VariantInfoGroupName].Options.ContainsKey(variantoption.OptionID))
 				{
-					Dictionary<string, string> allowedChildrenForOption;
-					if(!allowedChildren.TryGetValue(variantoption.OptionID, out allowedChildrenForOption))
-					{
-						allowedChildrenForOption = new Dictionary<string, string>();
-					}
-
-					Dictionary<string, string> allowedParentsForOption;
-					if(!allowedParents.TryGetValue(variantoption.OptionID, out allowedParentsForOption))
-					{
-						allowedParentsForOption = new Dictionary<string, string>();
-					}
-
 					variants.Groups[variantInfo.VariantInfoGroupName].Options.Add(variantoption.OptionID, new VariantOption()
-					{
-						ID = variantoption.OptionID,
-						Name = variantoption.OptionName,
-						Color = variantoption.OptionColor,
-						Image = variantoption.OptionImage.Value,
-						AllowedChildren = allowedChildrenForOption,
-						AllowedParents = allowedParentsForOption
-					});
-				}
-				if (!variants.AllOptions.ContainsKey(variantoption.OptionID))
-				{
-					variants.AllOptions.Add(variantoption.OptionID, new VariantOption
 					{
 						ID = variantoption.OptionID,
 						Name = variantoption.OptionName,
@@ -233,41 +132,6 @@
 			foreach (var variantOption in variantInfo.VariantInfo)
 			{
 				var parent = variantOption.GetParent();
-
-				if (parent != null && variantOption.OptionID != null) {
-					if (parent.OptionID != null) {
-
-						//Fill allowedParents
-						Dictionary<string, string> allowedParentsForOption;
-						if (!allowedParents.TryGetValue(variantOption.OptionID, out allowedParentsForOption))
-						{
-							allowedParentsForOption = new Dictionary<string, string>();
-							allowedParentsForOption.Add(parent.OptionID, variantOption.GetParent().OptionID);
-							allowedParents.Add(variantOption.OptionID, allowedParentsForOption);
-						}
-						else
-						{
-							if (!allowedParentsForOption.ContainsKey(parent.OptionID)) {
-								allowedParentsForOption.Add(parent.OptionID, variantOption.GetParent().OptionID);
-							}	
-						}
-						//Fill allowedChildren
-						Dictionary<string, string> allowedChildrenForOption;
-						if (!allowedChildren.TryGetValue(parent.OptionID, out allowedChildrenForOption))
-						{
-							allowedChildrenForOption = new Dictionary<string, string>();
-							allowedChildrenForOption.Add(variantOption.OptionID, variantOption.OptionID);
-							allowedChildren.Add(parent.OptionID, allowedChildrenForOption);
-						}
-						else
-						{
-							if (!allowedChildrenForOption.ContainsKey(variantOption.OptionID)) {
-								allowedChildrenForOption.Add(variantOption.OptionID, variantOption.OptionID);
-							}
-						}
-					}
-				}
-
 				FillAvailableVariants(variantOption);
 			}
 		}
@@ -276,7 +140,6 @@
 	public class AvailableVariants
 	{
 		public Dictionary<string, VariantGroup> Groups { get; set; } = new Dictionary<string, VariantGroup>();
-		public Dictionary<string, VariantOption> AllOptions { get; set; } = new Dictionary<string, VariantOption>();
 	}
 
 	public class VariantGroup
@@ -291,128 +154,181 @@
 		public string Name { get; set; }
 		public string Color { get; set; }
 		public string Image { get; set; }
+	}
 
-		public Dictionary<string, string> AllowedChildren { get; set; } = new Dictionary<string, string>();
-		public Dictionary<string, string> AllowedParents { get; set; } = new Dictionary<string, string>();
+	public void GetChild(IEnumerable<VariantInfoViewModel> variantModels) {
+		foreach (VariantInfoViewModel variantModel in variantModels) {
+			if(variantModel?.VariantInfo == null)
+			{
+				variantCombinations.Add(variantModel?.VariantID);
+			}
+			else
+			{
+				GetChild(variantModel?.VariantInfo);
+			}
+		}	
+	}
+}
+
+@* Rendering from new data set *@
+@{ 
+	GetChild(new List<VariantInfoViewModel>() { product.VariantInfo });
+
+	if (product.VariantInfo.VariantInfo != null)
+	{
+		FillAvailableVariants(product.VariantInfo);
+	}
+}
+
+@RenderVariantSelector(GetAvailableVariants(product), variantId)
+
+@helper RenderVariantSelector(AvailableVariants availableVariants, string variantId)
+{
+	int groupNumber = 1;
+
+	<div class="js-variant-selector" data-combinations="@string.Join(",", variantCombinations)">
+		@foreach (var variantGroup in availableVariants.Groups)
+		{
+			VariantGroup group = variantGroup.Value;
+
+			<h3 class="h5">@group.Name</h3>
+			<div class="mb-4 js-variant-group" data-group-id="@groupNumber">
+				@RenderVariantOptions(group.Options, variantId)
+			</div>
+			
+			groupNumber++;
+		}
+	</div>
+}
+
+
+@helper RenderVariantOptions(Dictionary<string, VariantOption> variantOptions, string variantId) {
+	if (variantOptions != null)
+	{
+		foreach (VariantOption option in variantOptions.Values)
+		{
+			string active = variantId.Contains(option.ID) ? "active" : "";
+
+			<span>
+				<button type="button" class="btn btn-secondary js-variant-option @active" onclick="VariantsOptionClick(event)" data-variant-id="@option.ID">@option.Name</button>
+			</span>
+		}
 	}
 }
 
 <script>
-	function UpdateAllVariants(e) {
+	document.addEventListener('DOMContentLoaded', function (event) {
+		init();
+	});
+
+	function init() {
+		document.querySelectorAll(".js-variant-selector").forEach(function (variantSelector) {
+			UpdateAllVariants(variantSelector);
+		});
+	}
+
+	function VariantsOptionClick(e) {
 		var clickedButton = e.currentTarget;
 		var variantSelectorElement = clickedButton.closest(".js-variant-selector");
-		var currentGroup = clickedButton.closest(".js-variant-group");
 
-		ClearAllOptions(variantSelectorElement);
-
-		if (!clickedButton.classList.contains("active")) {
-			currentGroup.querySelectorAll(".js-variant-option").forEach(function (option) {
-				option.classList.remove("active");
-			});
-
-			clickedButton.classList.add("active");
-		} else {
-			clickedButton.classList.remove("active");
-		}
-
-		//Check active selections
-		variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
-			if (option.classList.contains("active")) {
-				var group = option.closest(".js-variant-group");
-				var groupNumber = group.getAttribute("data-group-number");
-				var allowedParents = option.getAttribute("data-allowed-parents").trim().split(",");
-				var allowedChildren = option.getAttribute("data-allowed-children").trim().split(",");
-
-				var parentGroup = variantSelectorElement.querySelector("[data-group-number='" + (parseInt(groupNumber) - 1) + "']");
-				var childGroup = variantSelectorElement.querySelector("[data-group-number='" + (parseInt(groupNumber) + 1) + "']");
-
-				if (parentGroup !== null && allowedParents.length != 0) {
-					UpdateVariantGroup(allowedParents, parentGroup);
-				}
-
-				if (childGroup !== null && allowedChildren.length != 0) {
-					UpdateVariantGroup(allowedChildren, childGroup);
-				}
-			}
-		});
-
-		//Check groups with no active selections
-		variantSelectorElement.querySelectorAll(".js-variant-group").forEach(function (group) {
-			var activeOptionFound = false;
-
-			group.querySelectorAll(".js-variant-option").forEach(function (option) {
-				if (option.classList.contains("active")) {
-					activeOptionFound = true;
-				}
-			});
-
-			if (activeOptionFound == false) {
-				var groupNumber = group.getAttribute("data-group-number");
-				var allowedParents = [];
-				var allowedChildren = [];
-
-				group.querySelectorAll(".js-variant-option").forEach(function (option) {
-					allowedParents = allowedParents.concat(option.getAttribute("data-allowed-parents").trim().split(","));
-					allowedChildren = allowedChildren.concat(option.getAttribute("data-allowed-children").trim().split(","));
-
-					var parentGroup = variantSelectorElement.querySelector("[data-group-number='" + (parseInt(groupNumber) - 1) + "']");
-					var childGroup = variantSelectorElement.querySelector("[data-group-number='" + (parseInt(groupNumber) + 1) + "']");
-
-					if (parentGroup !== null && allowedParents.length != 0) {
-						UpdateVariantGroup(allowedParents, parentGroup);
-					}
-
-					if (childGroup !== null && allowedChildren.length != 0) {
-						UpdateVariantGroup(allowedChildren, childGroup);
-					}
-				});
-			}
-		});
-
+		ToggleActiveState(clickedButton);
+		UpdateAllVariants(variantSelectorElement);
 		CheckSelectionComplete(variantSelectorElement);
 	}
 
-	function ClearAllOptions(variantSelectorElement) {
+	function UpdateAllVariants(variantSelectorElement) {
+		var combinations = variantSelectorElement.getAttribute("data-combinations");
+		combinations = combinations.split(",");
+
+		//Go through each option, in their group, and check the availability
 		variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
-			option.setAttribute("data-selectable", true);
-			option.disabled = false;
+			var groupId = option.closest(".js-variant-group").getAttribute("data-group-id");
+			var variantId = option.getAttribute("data-variant-id");
+
+			option.classList.add("opacity-50");
+
+			var show = IsOptionAvailable(variantSelectorElement, variantId, groupId, combinations);
+
+			if (show == true) {
+				option.classList.remove("opacity-50");
+			}
 		});
 	}
 
-	function UpdateVariantGroup(variantsArray, groupElement) {
-		groupElement.querySelectorAll(".js-variant-option").forEach(function (option) {
-			var optionFound = false;
+	function IsOptionAvailable(variantSelectorElement, currentVariantId, currentGroupId, combinations) {
+		var show = false;
+		var selections = [];
 
-			variantsArray.forEach(function (availableOptionId) {
-				var optionId = option.getAttribute("data-variant-id");
+		//Add the VariantId we are testing for
+		selections.push(currentVariantId);
 
-				if (optionId == availableOptionId) {
-					optionFound = true;
+		//Find all selections, excluding selections in the current group
+		variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
+			var parentGroupId = option.closest(".js-variant-group").getAttribute("data-group-id");
+
+			if (parentGroupId != currentGroupId) {
+				if (option.classList.contains("active")) {
+					var activeVariantId = option.getAttribute("data-variant-id");
+					selections.push(activeVariantId);
 				}
+			}
+		});
+
+		var selectionsTotal = selections.length;
+
+		//Compare the selections with the available combinations
+		combinations.forEach(function (combi) {
+			var selectionsCount = 0;
+			var combiVariantIds = combi.split(".");
+
+			combiVariantIds.forEach(function (combiVariantId) {
+				selections.forEach(function (selectionVariantId) {
+					if (combiVariantId == selectionVariantId) {
+						selectionsCount++;
+					}
+				});
 			});
 
-			if (!optionFound) {
-				option.setAttribute("data-selectable", false);
-				option.disabled = true;
-			} 
+			if (selectionsCount == selectionsTotal) {
+				show = true;
+			}
 		});
+
+		return show;
+	}
+
+	function ToggleActiveState(clickedButton) {
+		var isAlreadyActive = clickedButton.classList.contains("active");
+
+		clickedButton.closest(".js-variant-group").querySelectorAll(".js-variant-option").forEach(function (option) {
+			option.classList.remove("active");
+		});
+
+		if (!isAlreadyActive) {
+			clickedButton.classList.add("active");
+		}
 	}
 
 	function CheckSelectionComplete(variantSelectorElement) {
-		//var selections = 0;
-		//var totalGroups = variantSelectorElement.querySelectorAll(".js-variant-group").length;
+		var selections = [];
+		var selectionCount = 0;
+		var totalGroups = variantSelectorElement.querySelectorAll(".js-variant-group").length;
 
-		//variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
-		//	if (option.classList.contains("active")) {
-		//		selections++;
-		//	}
-		//});
+		variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
+			if (option.classList.contains("active")) {
+				var activeVariantId = option.getAttribute("data-variant-id");
+				selections.push(activeVariantId);
+				selectionCount++;
+			}
+		});
 
-		//if (selections == totalGroups) {
-		//	var groupId = currentVariantsBlock.getAttribute("data-group-id");
-		//          var cleanLink = "/Default.aspx?ID=" + pageId + "&ProductID=" + productId + "&VariantID=" + selectionsList.join(".");
-		//          window.location = cleanLink;
-		//}
+		if (selectionCount == totalGroups) {
+			var url = new URL(window.location);
+			var searchParams = url.searchParams;
+			searchParams.set('VariantId', selections.join("."));
+			url.search = searchParams.toString();
+			window.location = url.toString();
+		}
 	}
 </script>
 
