@@ -1,20 +1,107 @@
-# Introduction 
-TODO: Give a short introduction of your project. Let this section explain the objectives or the motivation behind this project. 
 
-# Getting Started
-TODO: Guide users through getting your code up and running on their own system. In this section you can talk about:
-1.	Installation process
-2.	Software dependencies
-3.	Latest releases
-4.	API references
+# Introduction  
 
-# Build and Test
-TODO: Describe and show how to build your code and run the tests. 
+Dynamicweb Swift is a **plug-and-play standard solution** which allows you to create beautiful mobile-friendly ecommerce websites with almost no coding.  
 
-# Contribute
-TODO: Explain how other users and developers can contribute to make your code better. 
+It is installed on top of a [Dynamicweb application](https://doc.dynamicweb.com/get-started/introduction).
 
-If you want to learn more about creating good readme files then refer the following [guidelines](https://www.visualstudio.com/en-us/docs/git/create-a-readme). You can also seek inspiration from the below readme files:
-- [ASP.NET Core](https://github.com/aspnet/Home)
-- [Visual Studio Code](https://github.com/Microsoft/vscode)
-- [Chakra Core](https://github.com/Microsoft/ChakraCore)
+This repository contains:
+
+1. A folder with design files, images, and other static resources
+2. A folder with database files - .bak or .bacpac - with demo data such as pages, users, products, etc.
+
+# Installation
+
+The basic install procedure is:
+
+1. Prepare the hosting environment and install the Dynamicweb application
+2. Set up a website in IIS Manager and add the Swift-folder as a virtual directory
+3. Build the Swift design
+4. Install the Swift database & connect solution to it
+5. Log in and install a license
+
+## Hosting environment & Dynamicweb install
+
+Swift must be installed on a server or local machine running Windows & a recent Dynamicweb application.
+
+* [Software/Hardware requirements for Dynamicweb 9](https://doc.dynamicweb.com/get-started/introduction/requirements/requirements-dw9#2171)
+* [Preparing the hosting environment](https://doc.dynamicweb.com/get-started/introduction/installation/hosting-environment "Preparing the hosting environment")
+* [Install Dynamicweb](https://doc.dynamicweb.com/get-started/introduction/installation/installing-dynamicweb "Install Dynamicweb")
+
+After following these guides you will have a freshly installed Dynamicweb solution, which is ready to run Swift.
+
+## Add Swift-folder as virtual directory
+
+To use the Swift-design you must add the Files-folder from this repositoryas a virtual folder for the website you created in IIS Manager:
+
+1. Open IIS Manager and locate the website
+2. Right-click the website and click Add virtual directory
+3. Write *Files* in the Alias-field
+4. Enter the physical path to the Swift /files-folder
+5. Click OK
+
+This sets the downloaded /Files-folder as a virtual directory for the website, which means that you can easily upgrade the Dynamicweb application at a later date without having to physically move the Files-folder every time.
+
+## Install Node.js and build design
+
+Swift uses webpack to calculate dependencies and bundle scripts, images and other assets. This means that the design must be built after being cloned:
+
+1. Download and install Node.js
+2. Open a command prompt and navigate to folder Swift is cloned to
+3. Run *npm install*
+4. Run *npm run build:webpack*
+5. Run *nmp run start*
+
+## Restore database and connect with solution
+
+This repository contains a number of **database files** - .bak or .bacpac - with demo data, e.g. pages, products, demo users, etc.  You often want to use these as a starting point for a new Swift project.
+
+To restore the database:
+
+* Open SQL Management studio and connect to your server
+* Right-click the server and open Properties > Security – verify that Server Authentication is set to SQL Server and Windows authentication mode
+* Right-click the Databases-node and select Import Data-tier Application
+* Select Import from local disk and select the .bacpac file – click next
+* Enter a name and click next
+
+The connection between a solution and a database is stored inside a files called *GlobalSettings*. This file is part of the repo, so it will be overwritten every time you retrieve the latest version of Swift from here.
+
+To solve this issue consider creating a *GlobalSettings.database.config* file inside the /Files folder with the connection details:
+
+```xml
+<?xml version="1.0"?>
+<Globalsettings>
+    <Database>
+      <Password>yourpassword</Password>
+      <Type>ms_sqlserver</Type>
+      <UserName>yourSQLusername</UserName>
+      <Database>yourdatabasename</Database>
+      <SQLServer>localhost</SQLServer>
+      <DWWebIP>
+      </DWWebIP>
+      <SQLServer2>
+      </SQLServer2>
+      <Database2>
+      </Database2>
+      <UserName2>
+      </UserName2>
+      <Password2>
+      </Password2>
+      <IntegratedSecurity>False</IntegratedSecurity>
+      <ConnectionString>
+      </ConnectionString>
+      <ConnectionString2>
+      </ConnectionString2>
+    </Database>
+</Globalsettings>
+```
+
+Whenever the solution is accessed this file will be used in place of the database node in globalsettings – and it will not be overwritten.
+
+## Log in and install a license
+
+After successfully connecting the database and solution you can go to ***yoururl.com/admin*** and log in with the administrator username and password.
+
+After logging in you will be asked to [Install a license](https://doc.dynamicweb.com/get-started/introduction/installation/installing-a-license "Install a license").  
+
+If you instead see the Dynamicweb Installer the database and solution are not correctly linked. Try recycling the application pool and trying again.
