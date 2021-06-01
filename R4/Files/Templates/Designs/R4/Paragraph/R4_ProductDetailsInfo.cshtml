@@ -5,16 +5,6 @@
 @using System.Web
 @using System.Linq
 
-<style>
-	.btn.active {
-		border: 4px solid red;
-	}
-
-	.btn.in-active {
-		opacity: 0.5;
-	}
-</style>
-
 @functions{ 
 	List<string> variantCombinations = new List<string>();
 
@@ -108,6 +98,7 @@
 	}
 
 	string[] variantId = product.VariantId.Split('.');
+	string disableAddToCart = string.IsNullOrEmpty(product.VariantId) && product.VariantInfo != null ? "disabled" : "";
 
 	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
 	if (!url.Contains("LayoutTemplate"))
@@ -115,11 +106,10 @@
 		url += url.Contains("?") ? "&LayoutTemplate=R4_MiniCart.cshtml" : "?LayoutTemplate=R4_MiniCart.cshtml";
 	}
 
+	//Create the VariantCombinations list
 	GetChild(new List<VariantInfoViewModel>() { product.VariantInfo });
 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
-	
-	string disableAddToCart = string.IsNullOrEmpty(product.VariantId) && product.VariantInfo != null ? "disabled" : "";
 }
 
 <div class="d-flex flex-column@(theme) js-product">
@@ -147,7 +137,24 @@
 		</div>
 	}
 
-	@RenderVariantSelector(GetAvailableVariants(product), variantId)
+	@if (product.VariantInfo != null) {
+		AvailableVariants availableVariants = GetAvailableVariants(product);
+		int groupNumber = 1;
+
+		<div class="mb-3 js-variant-selector" data-combinations="@string.Join(",", variantCombinations)">
+			@foreach (var variantGroup in availableVariants.Groups)
+			{
+				VariantGroup group = variantGroup.Value;
+
+				<h3 class="h6">@group.Name</h3>
+				<div class="mb-4 js-variant-group" data-group-id="@groupNumber">
+					@RenderVariantOptions(group.Options, variantId)
+				</div>
+			
+				groupNumber++;
+			}
+		</div>
+	}
 
 	<form method="post" action="@url" class="mb-3 d-flex flex-row">
 		<input type="hidden" name="redirect" value="false" />
@@ -173,29 +180,6 @@
 	}
 </div>
 
-
-
-
-
-@helper RenderVariantSelector(AvailableVariants availableVariants, string[] variantId)
-{
-	int groupNumber = 1;
-
-	<div class="js-variant-selector" data-combinations="@string.Join(",", variantCombinations)">
-		@foreach (var variantGroup in availableVariants.Groups)
-		{
-			VariantGroup group = variantGroup.Value;
-
-			<h3 class="h5">@group.Name</h3>
-			<div class="mb-4 js-variant-group" data-group-id="@groupNumber">
-				@RenderVariantOptions(group.Options, variantId)
-			</div>
-			
-			groupNumber++;
-		}
-	</div>
-}
-
 @helper RenderVariantOptions(Dictionary<string, VariantOption> variantOptions, string[] variantId) {
 	if (variantOptions != null)
 	{
@@ -203,147 +187,23 @@
 		{
 			string active = variantId.Contains(option.ID) ? "active" : "";
 
-			<button type="button" class="btn btn-secondary d-inline-block js-variant-option @active" onclick="VariantsOptionClick(event)" data-variant-id="@option.ID">@option.Name</button>
+			if (!string.IsNullOrEmpty(option.Color))
+			{
+				<button type="button" class="btn variant-option colorbox rounded-circle me-1 d-inline-block js-variant-option @active" style="background-color: @option.Color" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.ID"></button>
+			}
+			else if (!string.IsNullOrEmpty(option.Image))
+			{
+				<button type="button" class="btn variant-option p-0 d-inline-block js-variant-option @active" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.ID">
+					<img src="/Admin/Public/GetImage.ashx?image=@(option.Image)&width=42&Format=WebP&Quality=70" />
+				</button>
+			} 
+			else 
+			{
+				<button type="button" class="btn btn-secondary variant-option btn-secondary d-inline-block js-variant-option @active" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.ID">
+					@option.Name
+				</button>
+			}
 		}
 	}
 }
-
-<script>
-	document.addEventListener('DOMContentLoaded', function (event) {
-		init();
-	});
-
-	function init() {
-		document.querySelectorAll(".js-variant-selector").forEach(function (variantSelector) {
-			UpdateAllVariants(variantSelector);
-		});
-	}
-
-	function VariantsOptionClick(e) {
-		var clickedButton = e.currentTarget;
-		var variantSelectorElement = clickedButton.closest(".js-variant-selector");
-
-		ToggleActiveState(clickedButton);
-		UpdateAllVariants(variantSelectorElement);
-		CheckSelectionComplete(variantSelectorElement);
-	}
-
-	function UpdateAllVariants(variantSelectorElement) {
-		var combinations = variantSelectorElement.getAttribute("data-combinations");
-		combinations = combinations.split(",");
-
-		//Go through each option, in their group, and check the availability
-		variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
-			var groupId = option.closest(".js-variant-group").getAttribute("data-group-id");
-			var variantId = option.getAttribute("data-variant-id");
-
-			option.classList.add("in-active");
-
-			var show = IsOptionAvailable(variantSelectorElement, variantId, groupId, combinations);
-
-			if (show == true) {
-				option.classList.remove("in-active");
-			}
-		});
-	}
-
-	function IsOptionAvailable(variantSelectorElement, currentVariantId, currentGroupId, combinations) {
-		var show = false;
-		var selections = [];
-
-		//Add the VariantId we are testing for
-		selections.push(currentVariantId);
-
-		//Find all selections, excluding selections in the current group
-		variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
-			var parentGroupId = option.closest(".js-variant-group").getAttribute("data-group-id");
-
-			if (parentGroupId != currentGroupId) {
-				if (option.classList.contains("active")) {
-					var activeVariantId = option.getAttribute("data-variant-id");
-					selections.push(activeVariantId);
-				}
-			}
-		});
-
-		var selectionsTotal = selections.length;
-
-		//Compare the selections with the available combinations
-		combinations.forEach(function (combi) {
-			var selectionsCount = 0;
-			var combiVariantIds = combi.split(".");
-
-			combiVariantIds.forEach(function (combiVariantId) {
-				selections.forEach(function (selectionVariantId) {
-					if (combiVariantId == selectionVariantId) {
-						selectionsCount++;
-					}
-				});
-			});
-
-			if (selectionsCount == selectionsTotal) {
-				show = true;
-			}
-		});
-
-		return show;
-	}
-
-	function ToggleActiveState(clickedButton) {
-		var inactiveClicked = clickedButton.classList.contains("in-active");
-		var isAlreadyActive = clickedButton.classList.contains("active");
-
-		//Allow clicking in-active options
-		if (inactiveClicked) {
-			clickedButton.closest(".js-variant-selector").querySelectorAll(".js-variant-option").forEach(function (option) {
-				option.classList.remove("active");
-			});
-		}
-
-		//Remove all active options in the current group
-		clickedButton.closest(".js-variant-group").querySelectorAll(".js-variant-option").forEach(function (option) {
-			option.classList.remove("active");
-		});
-
-		//Add active to the selected options
-		if (!isAlreadyActive) {
-			clickedButton.classList.add("active");
-		}
-	}
-
-	function CheckSelectionComplete(variantSelectorElement) {
-		var selections = [];
-		var selectionCount = 0;
-		var totalGroups = variantSelectorElement.querySelectorAll(".js-variant-group").length;
-
-		variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
-			if (option.classList.contains("active")) {
-				var activeVariantId = option.getAttribute("data-variant-id");
-				selections.push(activeVariantId);
-				selectionCount++;
-			}
-		});
-
-		if (selectionCount == totalGroups) {
-			var url = new URL(window.location);
-			var searchParams = url.searchParams;
-			searchParams.set('VariantId', selections.join("."));
-			url.search = searchParams.toString();
-			window.location = url.toString();
-		}
-
-		var productElement = variantSelectorElement.closest(".js-product");
-		if (productElement) {
-			var addToCartElement = variantSelectorElement.querySelector(".js-add-to-cart");
-
-			if (addToCartElement) {
-				if (selectionCount == totalGroups) {
-					addToCartElement.classList.remove("disabled");
-				} else {
-					addToCartElement.classList.add("disabled");
-				}
-			}
-		}
-	}
-</script>
 
