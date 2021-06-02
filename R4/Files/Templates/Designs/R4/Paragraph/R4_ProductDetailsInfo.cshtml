@@ -123,87 +123,103 @@
 	}
 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+
+	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-6");
+
+	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
+	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
+	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
 }
 
-<div class="d-flex flex-column@(theme) js-product">
-	<div class="mb-4">
-		<h1 class="display-6">@product.Name</h1>
-		@if (!Model.Item.GetBoolean("HideProductNumber")) { 
-			<div class="text-muted">@product.Number</div>
-		}
-	</div>
-	<div class="mb-4">
-		<div class="fs-4 fw-bold">
-			<span class="text-price">@product.Price.PriceFormatted</span>
+<div class="h-100 @(contentPadding) @(theme)">
+	<div class="d-flex flex-column js-product">
+		<div class="mb-4">
+			<h1 class="@titleFontSize">@product.Name</h1>
+			@if (!Model.Item.GetBoolean("HideProductNumber")) { 
+				<div class="text-muted">@product.Number</div>
+			}
 		</div>
-		@if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-			<div class="text-decoration-line-through text-muted">
-				@product.PriceBeforeDiscount.PriceFormatted
+		<div class="mb-4">
+			<div class="fs-4 fw-bold">
+				<span class="text-price">@product.Price.PriceFormatted</span>
+			</div>
+			@if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+				<div class="text-decoration-line-through text-muted">
+					@product.PriceBeforeDiscount.PriceFormatted
+				</div>
+			}
+		</div>
+
+		@if (!string.IsNullOrEmpty(product.ShortDescription))
+		{
+			<div class="mb-4">
+				@product.ShortDescription
 			</div>
 		}
-	</div>
 
-	@if (!string.IsNullOrEmpty(product.ShortDescription))
-	{
-		<div class="mb-4">
-			@product.ShortDescription
-		</div>
-	}
-
-	@if (mainFeatures.Count > 0)
-	{
-		<div class="mb-4">
-			@foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
-			{
-				foreach (var field in mainFeatureGroup.Fields)
+		@if (mainFeatures.Count > 0)
+		{
+			<div class="mb-4">
+				@foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
 				{
-				@RenderField(field.Value)
+					foreach (var field in mainFeatureGroup.Fields)
+					{
+					@RenderField(field.Value)
+					}
 				}
-			}
-		</div>
-	}
-
-	@if (product.VariantInfo.VariantInfo != null) {
-		AvailableVariants availableVariants = GetAvailableVariants(product);
-		int groupNumber = 1;
-
-		<div class="mb-3 js-variant-selector" data-combinations="@string.Join(",", variantCombinations)">
-			@foreach (var variantGroup in availableVariants.Groups)
-			{
-				VariantGroup group = variantGroup.Value;
-
-				<h3 class="h6">@group.Name</h3>
-				<div class="mb-4 js-variant-group" data-group-id="@groupNumber">
-					@RenderVariantOptions(group.Options, variantId)
-				</div>
-			
-				groupNumber++;
-			}
-		</div>
-	}
-
-	<form method="post" action="@url" class="mb-3 d-flex flex-row">
-		<input type="hidden" name="redirect" value="false" />
-		<input type="hidden" name="ProductId" value="@product.Id" />
-		<input type="hidden" name="cartcmd" value="add" />
-
-		<div class="input-group flex-fill">
-			<input id="Quantity_@product.Id" name="Quantity" value="1" type="hidden">
-			<button type="button" onclick="Cart.UpdateCart(event)" class="btn btn-primary js-add-to-cart-button w-100 @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
-		</div>
-	</form>
-
-	@if (!Model.Item.GetBoolean("HideStockState")) {
-		if (product.StockLevel > 0) {
-			if (!Model.Item.GetBoolean("HideInventory")) {
-				<small class="text-success">@product.StockLevel @Translate("Products available in stock")</small>
-			} else {
-				<small class="text-success">@Translate("Available in stock")</small>
-			}
-		} else {
-			<small class="text-danger">@Translate("Out of Stock")</small>
+			</div>
 		}
-	}
+
+		@if (product.VariantInfo.VariantInfo != null) {
+			AvailableVariants availableVariants = GetAvailableVariants(product);
+			int groupNumber = 1;
+
+			<div class="mb-3 js-variant-selector" data-combinations="@string.Join(",", variantCombinations)">
+				@foreach (var variantGroup in availableVariants.Groups)
+				{
+					VariantGroup group = variantGroup.Value;
+
+					<h3 class="h6">@group.Name</h3>
+					<div class="mb-4 js-variant-group" data-group-id="@groupNumber">
+						@RenderVariantOptions(group.Options, variantId)
+					</div>
+			
+					groupNumber++;
+				}
+			</div>
+		}
+
+		<form method="post" action="@url" class="mb-3 d-flex flex-row">
+			<input type="hidden" name="redirect" value="false" />
+			<input type="hidden" name="ProductId" value="@product.Id" />
+			<input type="hidden" name="cartcmd" value="add" />
+
+			@if (!Model.Item.GetBoolean("QuantitySelector"))
+			{
+				<div class="flex-fill">
+					<input id="Quantity_@product.Id" name="Quantity" value="1" type="hidden">
+					<button type="button" onclick="Cart.UpdateCart(event)" class="btn btn-primary js-add-to-cart-button w-100 @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
+				</div>
+			} else {
+				<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
+					<input id="Quantity_@product.Id" name="Quantity" value="1" class="form-control" style="max-width: 100px" type="number">
+					<button type="button" onclick="Cart.UpdateCart(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
+				</div>
+			}
+		</form>
+
+		@if (!Model.Item.GetBoolean("HideStockState")) {
+			if (product.StockLevel > 0) {
+				if (!Model.Item.GetBoolean("HideInventory")) {
+					<small class="text-success">@product.StockLevel @Translate("Products available in stock")</small>
+				} else {
+					<small class="text-success">@Translate("Available in stock")</small>
+				}
+			} else {
+				<small class="text-danger">@Translate("Out of Stock")</small>
+			}
+		}
+	</div>
 </div>
 
 
@@ -228,7 +244,7 @@
 		}
 
 		if (!string.IsNullOrEmpty(fieldValue)) {
-			<div class="definition-list-item">
+			<div class="definition-list-item gap-3">
 				<dt class="fw-bold">@field.Name</dt>
 				@if (!isColor) {
 					<dd>@fieldValue</dd>
