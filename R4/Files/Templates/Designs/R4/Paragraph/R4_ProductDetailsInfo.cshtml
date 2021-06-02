@@ -1,7 +1,94 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.Products.FieldDisplayGroups
+@using Dynamicweb.Frontend
+@using System.Web
+@using System.Linq
 
-@{ bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+@functions{ 
+	List<string> variantCombinations = new List<string>();
+
+	public AvailableVariants GetAvailableVariants(ProductViewModel productModel) {
+
+		AvailableVariants variants = new AvailableVariants();
+		if (productModel.VariantInfo.VariantInfo != null)
+		{
+			FillVariants(variants, productModel.VariantInfo);
+		}
+		return variants;
+	}
+
+	public void FillVariants(AvailableVariants variants, VariantInfoViewModel variantInfo)
+	{
+		if (variantInfo.VariantInfo != null)
+		{
+			if (!variants.Groups.ContainsKey(variantInfo.VariantInfoGroupName))
+			{
+				variants.Groups.Add(variantInfo.VariantInfoGroupName, new VariantGroup { Name = variantInfo.VariantInfoGroupName });
+			}
+			foreach (var variantoption in variantInfo.VariantInfo)
+			{
+				if (!variants.Groups[variantInfo.VariantInfoGroupName].Options.ContainsKey(variantoption.OptionID))
+				{
+					variants.Groups[variantInfo.VariantInfoGroupName].Options.Add(variantoption.OptionID, new VariantOption()
+					{
+						ID = variantoption.OptionID,
+						Name = variantoption.OptionName,
+						Color = variantoption.OptionColor,
+						Image = variantoption.OptionImage.Value
+					});
+				}
+				FillVariants(variants, variantoption);
+			}
+		}
+	}
+
+	public void FillAvailableVariants(VariantInfoViewModel variantInfo) {
+		if (variantInfo.VariantInfo != null)
+		{
+			foreach (var variantOption in variantInfo.VariantInfo)
+			{
+				var parent = variantOption.GetParent();
+				FillAvailableVariants(variantOption);
+			}
+		}
+	}
+
+	public class AvailableVariants
+	{
+		public Dictionary<string, VariantGroup> Groups { get; set; } = new Dictionary<string, VariantGroup>();
+	}
+
+	public class VariantGroup
+	{
+		public string Name { get; set; }
+		public Dictionary<string, VariantOption> Options { get; set; } = new Dictionary<string, VariantOption>();
+	}
+
+	public class VariantOption
+	{
+		public string ID { get; set; }
+		public string Name { get; set; }
+		public string Color { get; set; }
+		public string Image { get; set; }
+	}
+
+	public void GetChild(IEnumerable<VariantInfoViewModel> variantModels) {
+		foreach (VariantInfoViewModel variantModel in variantModels) {
+			if(variantModel?.VariantInfo == null)
+			{
+				variantCombinations.Add(variantModel?.VariantID);
+			}
+			else
+			{
+				GetChild(variantModel?.VariantInfo);
+			}
+		}	
+	}
+}
+
+@{ 
+	bool isVisualEditor = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(HttpContext.Current.Request.QueryString.Get("VisualEdit")) : false;
 
 	ProductViewModel product = new ProductViewModel();
 
@@ -10,16 +97,22 @@
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
 
+	string[] variantId = product.VariantId.Split('.');
+	string disableAddToCart = string.IsNullOrEmpty(product.VariantId) && product.VariantInfo.VariantInfo != null ? "disabled" : "";
+
 	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
 	if (!url.Contains("LayoutTemplate"))
 	{
 		url += url.Contains("?") ? "&LayoutTemplate=R4_MiniCart.cshtml" : "?LayoutTemplate=R4_MiniCart.cshtml";
 	}
 
+	//Create the VariantCombinations list
+	GetChild(new List<VariantInfoViewModel>() { product.VariantInfo });
+
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 }
 
-<div class="d-flex flex-column@(theme)">
+<div class="d-flex flex-column@(theme) js-product">
 	<div class="mb-4">
 		<h1 class="display-6">@product.Name</h1>
 		@if (!Model.Item.GetBoolean("HideProductNumber")) { 
@@ -37,9 +130,29 @@
 		}
 	</div>
 
-	@if (!string.IsNullOrEmpty(product.ShortDescription)) {
+	@if (!string.IsNullOrEmpty(product.ShortDescription))
+	{
 		<div class="mb-4">
 			@product.ShortDescription
+		</div>
+	}
+
+	@if (product.VariantInfo.VariantInfo != null) {
+		AvailableVariants availableVariants = GetAvailableVariants(product);
+		int groupNumber = 1;
+
+		<div class="mb-3 js-variant-selector" data-combinations="@string.Join(",", variantCombinations)">
+			@foreach (var variantGroup in availableVariants.Groups)
+			{
+				VariantGroup group = variantGroup.Value;
+
+				<h3 class="h6">@group.Name</h3>
+				<div class="mb-4 js-variant-group" data-group-id="@groupNumber">
+					@RenderVariantOptions(group.Options, variantId)
+				</div>
+			
+				groupNumber++;
+			}
 		</div>
 	}
 
@@ -50,7 +163,7 @@
 
 		<div class="input-group flex-fill">
 			<input id="Quantity_@product.Id" name="Quantity" value="1" type="hidden">
-			<button type="button" onclick="Cart.UpdateCart(event)" class="btn btn-primary w-100" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
+			<button type="button" onclick="Cart.UpdateCart(event)" class="btn btn-primary js-add-to-cart-button w-100 @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
 		</div>
 	</form>
 
@@ -66,4 +179,31 @@
 		}
 	}
 </div>
+
+@helper RenderVariantOptions(Dictionary<string, VariantOption> variantOptions, string[] variantId) {
+	if (variantOptions != null)
+	{
+		foreach (VariantOption option in variantOptions.Values)
+		{
+			string active = variantId.Contains(option.ID) ? "active" : "";
+
+			if (!string.IsNullOrEmpty(option.Color))
+			{
+				<button type="button" class="btn variant-option colorbox rounded-circle me-1 d-inline-block js-variant-option @active" style="background-color: @option.Color" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.ID"></button>
+			}
+			else if (!string.IsNullOrEmpty(option.Image))
+			{
+				<button type="button" class="btn variant-option p-0 d-inline-block js-variant-option @active" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.ID">
+					<img src="/Admin/Public/GetImage.ashx?image=@(option.Image)&width=42&Format=WebP&Quality=70" />
+				</button>
+			} 
+			else 
+			{
+				<button type="button" class="btn btn-secondary variant-option btn-secondary d-inline-block js-variant-option @active" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.ID">
+					@option.Name
+				</button>
+			}
+		}
+	}
+}
 

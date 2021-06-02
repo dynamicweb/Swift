@@ -4,6 +4,7 @@ import { tns } from 'tiny-slider/src/tiny-slider';
 import { Sliders } from './_sliders';
 import { Cart } from './_cart';
 import { ProductList } from './_productlist';
+import { VariantSelector } from './_variantselector';
 
 import { Typeahead } from './_typeahead';
 import { hcOffcanvasNav } from 'hc-offcanvas-nav';
@@ -14,11 +15,13 @@ window.tns = tns;
 window.Sliders = Sliders;
 window.Cart = Cart;
 window.ProductList = ProductList;
+window.VariantSelector = VariantSelector;
 window.Typeahead = Typeahead;
 
 
 document.addEventListener('DOMContentLoaded', function (event) {
 	ProductList.init();
+	VariantSelector.init();
     Sliders.init();
 	Typeahead.init();
 });
