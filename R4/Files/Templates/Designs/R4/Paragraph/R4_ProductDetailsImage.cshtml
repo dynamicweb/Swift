@@ -14,6 +14,7 @@
 
 	@* Collect the images *@
 	var selectedImageCategories = Model.Item.GetList("ImageAssets").SelectedValues;
+	var showOnlyPrimaryImage = Model.Item.GetBoolean("ShowOnlyPrimaryImage");
 	var images = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName)).SelectMany(x => x.Assets).Union(product.ImagePatternImages);
 	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
 	ratio = ratio != "0" ? ratio : "";
@@ -22,20 +23,23 @@
 	string mainImagePath = "";
 
 	int totalImages = 0;
-	foreach (MediaViewModel asset in images) {
-		var assetName = asset.Value.ToLower();
-		if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
-			if (totalImages == 0) {
-				mainImagePath = asset.Value;
+	if (showOnlyPrimaryImage == false) {
+		foreach (MediaViewModel asset in images) {
+			var assetName = asset.Value.ToLower();
+			if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
+				if (totalImages == 0) {
+					mainImagePath = asset.Value;
+				}
+				totalImages++;
 			}
-			totalImages++;
 		}
 	}
 
-	if(totalImages == 0 && product.DefaultImage != null)
+	if((totalImages == 0 && product.DefaultImage != null) || (showOnlyPrimaryImage == true && product.DefaultImage != null))
 	{
-		images = new List<MediaViewModel>(){product.DefaultImage};
+		images = new List<MediaViewModel>(){ product.DefaultImage };
 		totalImages = 1;
+		mainImagePath = product.DefaultImage.Value;
 	}
 
 	string mainImageColClass = totalImages > 1 ? "col-10" : "col-12";
@@ -45,7 +49,7 @@
 	if (theme != "")
 	{
 		padding = "p-4";
-	} 
+	}
 }
 
 @* Get images from selected categories or get all images *@
