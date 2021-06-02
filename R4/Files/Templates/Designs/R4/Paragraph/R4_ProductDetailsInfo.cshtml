@@ -108,6 +108,19 @@
 
 	//Create the VariantCombinations list
 	GetChild(new List<VariantInfoViewModel>() { product.VariantInfo });
+		
+	IEnumerable<string> selectedDisplayGroups = Model.Item.GetList("MainFeatures").SelectedValues;
+	List<CategoryFieldViewModel> mainFeatures = new List<CategoryFieldViewModel>();
+
+	foreach (var selection in selectedDisplayGroups)
+	{
+		foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
+		{		
+			if (selection == group.Id) {
+				mainFeatures.Add(group);
+			}
+		}
+	}
 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 }
@@ -134,6 +147,19 @@
 	{
 		<div class="mb-4">
 			@product.ShortDescription
+		</div>
+	}
+
+	@if (mainFeatures.Count > 0)
+	{
+		<div class="mb-4">
+			@foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
+			{
+				foreach (var field in mainFeatureGroup.Fields)
+				{
+				@RenderField(field.Value)
+				}
+			}
 		</div>
 	}
 
@@ -180,6 +206,45 @@
 	}
 </div>
 
+
+@helper RenderField(FieldValueViewModel field) { 
+	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
+
+	if (fieldValue != "") {
+		fieldValue = fieldValue == "False" ? Translate("No") : fieldValue;
+		fieldValue = fieldValue == "True" ? Translate("Yes") : fieldValue;
+
+		if (field.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+			fieldValue = "";
+
+			foreach (FieldOptionValueViewModel option in field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>) {
+				fieldValue = option.Value;
+			}
+		}
+
+		bool isColor = false;
+		if (fieldValue.Contains("#") && (Translate(field.Name) == Translate("Color") || Translate(field.Name) == Translate("Colour"))) {
+			isColor = true;   
+		}
+
+		if (!string.IsNullOrEmpty(fieldValue)) {
+			<div class="definition-list-item">
+				<dt class="fw-bold">@field.Name</dt>
+				@if (!isColor) {
+					<dd>@fieldValue</dd>
+				} else {
+					<dd>
+						<div class="position-relative">
+							<span class="colorbox-small" style="background-color: @fieldValue"></span>
+						</div>
+					</dd>
+				}
+			</div>				
+
+		} 
+	}
+}
+
 @helper RenderVariantOptions(Dictionary<string, VariantOption> variantOptions, string[] variantId) {
 	if (variantOptions != null)
 	{
@@ -206,4 +271,3 @@
 		}
 	}
 }
-
