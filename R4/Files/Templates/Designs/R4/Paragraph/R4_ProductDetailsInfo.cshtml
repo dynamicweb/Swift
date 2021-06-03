@@ -1,7 +1,94 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.Products.FieldDisplayGroups
+@using Dynamicweb.Frontend
+@using System.Web
+@using System.Linq
 
-@{ bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+@functions{ 
+	List<string> variantCombinations = new List<string>();
+
+	public AvailableVariants GetAvailableVariants(ProductViewModel productModel) {
+
+		AvailableVariants variants = new AvailableVariants();
+		if (productModel.VariantInfo.VariantInfo != null)
+		{
+			FillVariants(variants, productModel.VariantInfo);
+		}
+		return variants;
+	}
+
+	public void FillVariants(AvailableVariants variants, VariantInfoViewModel variantInfo)
+	{
+		if (variantInfo.VariantInfo != null)
+		{
+			if (!variants.Groups.ContainsKey(variantInfo.VariantInfoGroupName))
+			{
+				variants.Groups.Add(variantInfo.VariantInfoGroupName, new VariantGroup { Name = variantInfo.VariantInfoGroupName });
+			}
+			foreach (var variantoption in variantInfo.VariantInfo)
+			{
+				if (!variants.Groups[variantInfo.VariantInfoGroupName].Options.ContainsKey(variantoption.OptionID))
+				{
+					variants.Groups[variantInfo.VariantInfoGroupName].Options.Add(variantoption.OptionID, new VariantOption()
+					{
+						ID = variantoption.OptionID,
+						Name = variantoption.OptionName,
+						Color = variantoption.OptionColor,
+						Image = variantoption.OptionImage.Value
+					});
+				}
+				FillVariants(variants, variantoption);
+			}
+		}
+	}
+
+	public void FillAvailableVariants(VariantInfoViewModel variantInfo) {
+		if (variantInfo.VariantInfo != null)
+		{
+			foreach (var variantOption in variantInfo.VariantInfo)
+			{
+				var parent = variantOption.GetParent();
+				FillAvailableVariants(variantOption);
+			}
+		}
+	}
+
+	public class AvailableVariants
+	{
+		public Dictionary<string, VariantGroup> Groups { get; set; } = new Dictionary<string, VariantGroup>();
+	}
+
+	public class VariantGroup
+	{
+		public string Name { get; set; }
+		public Dictionary<string, VariantOption> Options { get; set; } = new Dictionary<string, VariantOption>();
+	}
+
+	public class VariantOption
+	{
+		public string ID { get; set; }
+		public string Name { get; set; }
+		public string Color { get; set; }
+		public string Image { get; set; }
+	}
+
+	public void GetChild(IEnumerable<VariantInfoViewModel> variantModels) {
+		foreach (VariantInfoViewModel variantModel in variantModels) {
+			if(variantModel?.VariantInfo == null)
+			{
+				variantCombinations.Add(variantModel?.VariantID);
+			}
+			else
+			{
+				GetChild(variantModel?.VariantInfo);
+			}
+		}	
+	}
+}
+
+@{ 
+	bool isVisualEditor = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(HttpContext.Current.Request.QueryString.Get("VisualEdit")) : false;
 
 	ProductViewModel product = new ProductViewModel();
 
@@ -10,60 +97,193 @@
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
 
+	string[] variantId = product.VariantId.Split('.');
+	string disableAddToCart = string.IsNullOrEmpty(product.VariantId) && product.VariantInfo.VariantInfo != null ? "disabled" : "";
+
 	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
 	if (!url.Contains("LayoutTemplate"))
 	{
 		url += url.Contains("?") ? "&LayoutTemplate=R4_MiniCart.cshtml" : "?LayoutTemplate=R4_MiniCart.cshtml";
 	}
 
+	//Create the VariantCombinations list
+	GetChild(new List<VariantInfoViewModel>() { product.VariantInfo });
+		
+	IEnumerable<string> selectedDisplayGroups = Model.Item.GetList("MainFeatures").SelectedValues;
+	List<CategoryFieldViewModel> mainFeatures = new List<CategoryFieldViewModel>();
+
+	foreach (var selection in selectedDisplayGroups)
+	{
+		foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
+		{		
+			if (selection == group.Id) {
+				mainFeatures.Add(group);
+			}
+		}
+	}
+
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+
+	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-6");
+
+	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
+	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
+	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
 }
 
-<div class="d-flex flex-column@(theme)">
-	<div class="mb-4">
-		<h1 class="display-6">@product.Name</h1>
-		@if (!Model.Item.GetBoolean("HideProductNumber")) { 
-			<div class="text-muted">@product.Number</div>
-		}
-	</div>
-	<div class="mb-4">
-		<div class="fs-4 fw-bold">
-			<span class="text-price">@product.Price.PriceFormatted</span>
+<div class="h-100 @(contentPadding) @(theme)">
+	<div class="d-flex flex-column js-product">
+		<div class="mb-4">
+			<h1 class="@titleFontSize">@product.Name</h1>
+			@if (!Model.Item.GetBoolean("HideProductNumber")) { 
+				<div class="text-muted">@product.Number</div>
+			}
 		</div>
-		@if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-			<div class="text-decoration-line-through text-muted">
-				@product.PriceBeforeDiscount.PriceFormatted
+		<div class="mb-4">
+			<div class="fs-4 fw-bold">
+				<span class="text-price">@product.Price.PriceFormatted</span>
+			</div>
+			@if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+				<div class="text-decoration-line-through text-muted">
+					@product.PriceBeforeDiscount.PriceFormatted
+				</div>
+			}
+		</div>
+
+		@if (!string.IsNullOrEmpty(product.ShortDescription))
+		{
+			<div class="mb-4">
+				@product.ShortDescription
 			</div>
 		}
-	</div>
 
-	@if (!string.IsNullOrEmpty(product.ShortDescription)) {
-		<div class="mb-4">
-			@product.ShortDescription
-		</div>
-	}
-
-	<form method="post" action="@url" class="mb-3 d-flex flex-row">
-		<input type="hidden" name="redirect" value="false" />
-		<input type="hidden" name="ProductId" value="@product.Id" />
-		<input type="hidden" name="cartcmd" value="add" />
-
-		<div class="input-group flex-fill">
-			<input id="Quantity_@product.Id" name="Quantity" value="1" type="hidden">
-			<button type="button" onclick="Cart.UpdateCart(event)" class="btn btn-primary w-100" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
-		</div>
-	</form>
-
-	@if (!Model.Item.GetBoolean("HideStockState")) {
-		if (product.StockLevel > 0) {
-			if (!Model.Item.GetBoolean("HideInventory")) {
-				<small class="text-success">@product.StockLevel @Translate("Products available in stock")</small>
-			} else {
-				<small class="text-success">@Translate("Available in stock")</small>
-			}
-		} else {
-			<small class="text-danger">@Translate("Out of Stock")</small>
+		@if (mainFeatures.Count > 0)
+		{
+			<div class="mb-4">
+				@foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
+				{
+					foreach (var field in mainFeatureGroup.Fields)
+					{
+					@RenderField(field.Value)
+					}
+				}
+			</div>
 		}
-	}
+
+		@if (product.VariantInfo.VariantInfo != null) {
+			AvailableVariants availableVariants = GetAvailableVariants(product);
+			int groupNumber = 1;
+
+			<div class="mb-3 js-variant-selector" data-combinations="@string.Join(",", variantCombinations)">
+				@foreach (var variantGroup in availableVariants.Groups)
+				{
+					VariantGroup group = variantGroup.Value;
+
+					<h3 class="h6">@group.Name</h3>
+					<div class="mb-4 js-variant-group" data-group-id="@groupNumber">
+						@RenderVariantOptions(group.Options, variantId)
+					</div>
+			
+					groupNumber++;
+				}
+			</div>
+		}
+
+		<form method="post" action="@url" class="mb-3 d-flex flex-row">
+			<input type="hidden" name="redirect" value="false" />
+			<input type="hidden" name="ProductId" value="@product.Id" />
+			<input type="hidden" name="cartcmd" value="add" />
+
+			@if (!Model.Item.GetBoolean("QuantitySelector"))
+			{
+				<div class="flex-fill">
+					<input id="Quantity_@product.Id" name="Quantity" value="1" type="hidden">
+					<button type="button" onclick="Cart.UpdateCart(event)" class="btn btn-primary js-add-to-cart-button w-100 @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
+				</div>
+			} else {
+				<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
+					<input id="Quantity_@product.Id" name="Quantity" value="1" class="form-control" style="max-width: 100px" type="number">
+					<button type="button" onclick="Cart.UpdateCart(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
+				</div>
+			}
+		</form>
+
+		@if (!Model.Item.GetBoolean("HideStockState")) {
+			if (product.StockLevel > 0) {
+				if (!Model.Item.GetBoolean("HideInventory")) {
+					<small class="text-success">@product.StockLevel @Translate("Products available in stock")</small>
+				} else {
+					<small class="text-success">@Translate("Available in stock")</small>
+				}
+			} else {
+				<small class="text-danger">@Translate("Out of Stock")</small>
+			}
+		}
+	</div>
 </div>
 
+
+@helper RenderField(FieldValueViewModel field) { 
+	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
+
+	if (fieldValue != "") {
+		fieldValue = fieldValue == "False" ? Translate("No") : fieldValue;
+		fieldValue = fieldValue == "True" ? Translate("Yes") : fieldValue;
+
+		if (field.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+			fieldValue = "";
+
+			foreach (FieldOptionValueViewModel option in field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>) {
+				fieldValue = option.Value;
+			}
+		}
+
+		bool isColor = false;
+		if (fieldValue.Contains("#") && (Translate(field.Name) == Translate("Color") || Translate(field.Name) == Translate("Colour"))) {
+			isColor = true;   
+		}
+
+		if (!string.IsNullOrEmpty(fieldValue)) {
+			<div class="definition-list-item gap-3">
+				<dt class="fw-bold">@field.Name</dt>
+				@if (!isColor) {
+					<dd>@fieldValue</dd>
+				} else {
+					<dd>
+						<div class="position-relative">
+							<span class="colorbox-small" style="background-color: @fieldValue"></span>
+						</div>
+					</dd>
+				}
+			</div>				
+
+		} 
+	}
+}
+
+@helper RenderVariantOptions(Dictionary<string, VariantOption> variantOptions, string[] variantId) {
+	if (variantOptions != null)
+	{
+		foreach (VariantOption option in variantOptions.Values)
+		{
+			string active = variantId.Contains(option.ID) ? "active" : "";
+
+			if (!string.IsNullOrEmpty(option.Color))
+			{
+				<button type="button" class="btn variant-option colorbox rounded-circle me-1 d-inline-block js-variant-option @active" style="background-color: @option.Color" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.ID"></button>
+			}
+			else if (!string.IsNullOrEmpty(option.Image))
+			{
+				<button type="button" class="btn variant-option p-0 d-inline-block js-variant-option @active" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.ID">
+					<img src="/Admin/Public/GetImage.ashx?image=@(option.Image)&width=42&Format=WebP&Quality=70" />
+				</button>
+			} 
+			else 
+			{
+				<button type="button" class="btn btn-secondary variant-option btn-secondary d-inline-block js-variant-option @active" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.ID">
+					@option.Name
+				</button>
+			}
+		}
+	}
+}

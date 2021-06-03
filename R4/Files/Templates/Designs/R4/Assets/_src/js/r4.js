@@ -4,21 +4,24 @@ import { tns } from 'tiny-slider/src/tiny-slider';
 import { Sliders } from './_sliders';
 import { Cart } from './_cart';
 import { ProductList } from './_productlist';
+import { VariantSelector } from './_variantselector';
 
 import { Typeahead } from './_typeahead';
 import { hcOffcanvasNav } from 'hc-offcanvas-nav';
 
 window.Modal = Modal;
-
+window.Collapse = Collapse;
 window.tns = tns;
 window.Sliders = Sliders;
 window.Cart = Cart;
 window.ProductList = ProductList;
+window.VariantSelector = VariantSelector;
 window.Typeahead = Typeahead;
 
 
 document.addEventListener('DOMContentLoaded', function (event) {
 	ProductList.init();
+	VariantSelector.init();
     Sliders.init();
 	Typeahead.init();
 });
@@ -36,7 +39,7 @@ document.addEventListener('scroll', function (e) {
 		var alternativeTheme = element.getAttribute("data-alternative-theme");
 
 		var headerElement = element.closest("header");
-		var headerHeight = headerElement.clientHeight;
+		var headerHeight = headerElement.clientHeight ? headerElement.clientHeight : 0;
 
 		if (document.body.scrollTop > headerHeight || document.documentElement.scrollTop > headerHeight) {
 			if (currentTheme !== mainTheme) {
