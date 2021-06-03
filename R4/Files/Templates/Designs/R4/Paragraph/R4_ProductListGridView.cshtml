@@ -59,6 +59,19 @@
 			string imageId = "ProductImage_" + product.Id + product.VariantId;
 			string priceId = "ProductPrice_" + product.Id + product.VariantId;
 
+			IEnumerable<string> selectedDisplayGroups = Model.Item.GetList("MainFeatures").SelectedValues;
+			List<CategoryFieldViewModel> mainFeatures = new List<CategoryFieldViewModel>();
+
+			foreach (var selection in selectedDisplayGroups)
+			{
+				foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
+				{		
+					if (selection == group.Id) {
+						mainFeatures.Add(group);
+					}
+				}
+			}
+
 			<article class="product-list__item col-6 col-lg-4 pb-3 pb-lg-5">
 				<div class="d-flex flex-column h-100@(theme)" onmouseover="showStaticVariants('@product.Id')" onmouseout="hideStaticVariants('@product.Id')">
 					<div>
@@ -160,6 +173,18 @@
 							</h3>
 							@if (!Model.Item.GetBoolean("HideProductNumber")) { 
 								<p class="small text-muted mb-2">@product.Number</p>
+							}
+							@if (mainFeatures.Count > 0)
+							{
+								<div class="mt-3 mb-2">
+									@foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
+									{
+										foreach (var field in mainFeatureGroup.Fields)
+										{
+											@RenderField(field.Value)
+										}
+									}
+								</div>
 							}
 						</div>
 						<div>
@@ -277,5 +302,43 @@
 		<div class="alert alert-dark m-0" role="alert">
 			<span>@Translate("Product list: The list will be shown here, if any")</span>
 		</div>
+	}
+}
+
+@helper RenderField(FieldValueViewModel field) { 
+	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
+
+	if (fieldValue != "") {
+		fieldValue = fieldValue == "False" ? Translate("No") : fieldValue;
+		fieldValue = fieldValue == "True" ? Translate("Yes") : fieldValue;
+
+		if (field.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+			fieldValue = "";
+
+			foreach (FieldOptionValueViewModel option in field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>) {
+				fieldValue = option.Value;
+			}
+		}
+
+		bool isColor = false;
+		if (fieldValue.Contains("#") && (Translate(field.Name) == Translate("Color") || Translate(field.Name) == Translate("Colour"))) {
+			isColor = true;   
+		}
+
+		if (!string.IsNullOrEmpty(fieldValue)) {
+			<div class="definition-list-item gap-3">
+				<dt class="fw-bold" style="width: 50%; min-width: 50%; max-width: 50%">@field.Name</dt>
+				@if (!isColor) {
+					<dd>@fieldValue</dd>
+				} else {
+					<dd>
+						<div class="position-relative">
+							<span class="colorbox-small" style="background-color: @fieldValue"></span>
+						</div>
+					</dd>
+				}
+			</div>				
+
+		} 
 	}
 }
