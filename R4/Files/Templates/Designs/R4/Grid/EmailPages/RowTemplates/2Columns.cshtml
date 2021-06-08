@@ -1,14 +1,36 @@
-﻿@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.GridRowViewModel>
+﻿@using Dynamicweb.Content
+@using Page = Dynamicweb.Content.Page
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.GridRowViewModel>
 @{
 	int newsletterWidth = Pageview != null ? Dynamicweb.Core.Converter.ToInt32(Pageview.Page.Item["Width"]) : 660;
-	string backgroundColor = Model.Item.GetString("BackgroundColor");
-	string backgroundStyle = !string.IsNullOrEmpty(backgroundColor) ? $"background-color:{backgroundColor};" : "";
 	bool isStretchRow = Model.Item.GetList("Width").SelectedValue.ToLower() == "stretch";
 	bool hasSpacingBetweenRows = Model.Item.GetList("SpaceBetweenRows").SelectedValue.ToLower() != "none";
 	bool hasSpacingBetweenColumns = Model.Item.GetList("SpaceBetweenColumns").SelectedValue.ToLower() != "stick";
 	string rowWidth = newsletterWidth + "px";
 	string columnWidth = hasSpacingBetweenColumns ? (newsletterWidth - 20) / 2 + "px" : newsletterWidth / 2 + "px";
 	int yMargin = hasSpacingBetweenRows ? 20 : 0;
+	string backgroundStyle = "";
+	
+	GridRow grid = Dynamicweb.Services.Grids.GetGridRowById(Model.Id);
+	var item = Dynamicweb.Services.Items.GetItem(grid.ItemType, grid.ItemId);
+	string theme = !string.IsNullOrEmpty(item["Theme"]?.ToString()) ? item["Theme"].ToString().ToLower() : "";
+	
+	if (!string.IsNullOrEmpty(theme))
+	{
+		var themesPageId = Pageview.AreaSettings.GetLink("ThemesPage") != null ? Pageview.AreaSettings.GetLink("ThemesPage").PageId : 0;
+		if (themesPageId > 0)
+		{
+			List<Paragraph> themesPageParagraphs = Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(themesPageId)?.ToList();
+			Paragraph themeParagraph = themesPageParagraphs?.FirstOrDefault(p => p.Item["Name"].ToString().ToLower().Equals(theme));
+		
+			if (themeParagraph != null)
+			{
+				string backgroundColor = themeParagraph.Item["BackgroundColor"] != null ? themeParagraph.Item["BackgroundColor"].ToString() : "";
+				backgroundColor = backgroundColor == "" ? "transparent" : backgroundColor;
+				backgroundStyle = !string.IsNullOrEmpty(backgroundColor) ? $"background-color:{backgroundColor};" : "";
+			}
+		}
+	}
 }
 
 <div style="@(isStretchRow ? backgroundStyle : "")">

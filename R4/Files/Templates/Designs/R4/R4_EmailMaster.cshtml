@@ -1,15 +1,85 @@
-﻿@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
+﻿@using Dynamicweb.Content
+@using Page = Dynamicweb.Content.Page
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
+@functions
+{
+	private Page GetBrandingPage()
+	{
+		int brandingPageId = Model.Area.Item.GetLink("BrandingPage") != null ? Model.Area.Item.GetLink("BrandingPage").PageId : 0;
+		return brandingPageId > 0 ? Dynamicweb.Services.Pages?.GetPage(brandingPageId) : null;
+	}
+	
+	private string GetFontsToLink()
+	{
+		Page brandingPage = GetBrandingPage();
+		if (brandingPage == null) return "";
+		
+		List<string> fonts = new List<string>();
+		AddFontFamily(brandingPage, "HeaderFont", fonts);
+		AddFontFamily(brandingPage, "DisplayFont", fonts);
+		AddFontFamily(brandingPage, "BodyFont", fonts);
+		
+		var fontsToLink = string.Join("%7C", fonts.Where(x => !string.IsNullOrEmpty(x)).Distinct().Select(x => string.Format("{0}:100,200,300,400,500,600,700,800,900", x)));
+		return fontsToLink;
+	}
+
+	private static void AddFontFamily(Page brandingPage, string systemName, List<string> fonts)
+	{
+		if (brandingPage.Item[systemName] == null) return;
+		dynamic font = Newtonsoft.Json.JsonConvert.DeserializeObject(brandingPage.Item[systemName].ToString());
+		if (font != null && font.Family != null) {
+			fonts.Add(font.Family.ToString());
+		}
+	}
+
+	private string GetFontStyle(string type)
+	{
+		Page brandingPage = GetBrandingPage();
+		if (brandingPage == null) return "";
+		
+		string fontStyle = "";
+		dynamic font = Newtonsoft.Json.JsonConvert.DeserializeObject(brandingPage.Item[type+"Font"].ToString());
+		if (font != null) {
+			fontStyle += $"font-family:{font.Family}, sans-serif;";
+			fontStyle += $"font-weight:{font.SelectedVariant};";
+		}
+		fontStyle += $"text-transform:{brandingPage.Item[type+"Casing"]};";
+		fontStyle += $"line-height:{brandingPage.Item[type+"LineHeight"]};";
+		fontStyle += $"letter-spacing:{brandingPage.Item[type+"LetterSpacing"]};";
+		return fontStyle;
+	}
+}
+
 @{
 	int newsletterWidth = Model.Item.GetInt32("Width");
 	string mediaQuery = newsletterWidth + 20 + "px";
 	string oneColWidth = newsletterWidth + "px";
 	string twoColWidth = newsletterWidth / 2 + "px";
 	string twoColGutterWidth = (newsletterWidth - 20) / 2 + "px";
-	string backgroundColor = Model.Item.GetString("BackgroundColor");
+	string backgroundColor = "";
 	string viewInBrowserLink = "/Default.aspx?ID=" + Model.ID;
 	string viewInBrowserText = Model.Item.GetString("ViewInBrowserText");
 	string lang = Pageview.Area.CultureInfo.TwoLetterISOLanguageName;
 	string emailLinksColor = "#808080";
+	string fontsToLink = GetFontsToLink();
+	string bodyFontStyle = GetFontStyle("Body");
+    string theme = !string.IsNullOrEmpty(Pageview.Page.Item["Theme"]?.ToString()) ? Pageview.Page.Item["Theme"].ToString().ToLower() : "";
+	
+	if (!string.IsNullOrEmpty(theme))
+	{
+		var themesPageId = Pageview.AreaSettings.GetLink("ThemesPage") != null ? Pageview.AreaSettings.GetLink("ThemesPage").PageId : 0;
+		if (themesPageId > 0)
+		{
+			List<Paragraph> themesPageParagraphs = Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(themesPageId)?.ToList();
+			Paragraph themeParagraph = themesPageParagraphs?.FirstOrDefault(p => p.Item["Name"].ToString().ToLower().Equals(theme));
+		
+			if (themeParagraph != null)
+			{
+				backgroundColor = themeParagraph.Item["BackgroundColor"] != null ? themeParagraph.Item["BackgroundColor"].ToString() : "";
+				backgroundColor = backgroundColor == "" ? "transparent" : backgroundColor;
+			}
+		}
+	}
 }
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional //EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <!--[if IE]>
@@ -372,12 +442,12 @@
 </style>
 	<!--[if !mso]><!-->
 	<style type="text/css">
-      @@import url(https://fonts.googleapis.com/css?family=PT+Serif:400,700,400italic,700italic);
+      @@import url(https://fonts.googleapis.com/css?family=@fontsToLink);
     </style>
-	<link href="https://fonts.googleapis.com/css?family=PT+Serif:400,700,400italic,700italic" rel="stylesheet" type="text/css">
+	<link href="https://fonts.googleapis.com/css?family=@fontsToLink" rel="stylesheet" type="text/css">
 	<!--<![endif]-->
 	<style type="text/css">
-      .main,.mso{background-color:@backgroundColor}.logo a:hover,.logo a:focus{color:#1e2e3b !important}.mso h1,.ie h1{}.mso h1,.ie h1{font-size:22px !important;line-height:31px !important}.mso h2,.ie h2{}.mso h2,.ie h2{font-size:20px !important;line-height:28px !important}.mso h3,.ie h3{}.mso h3,.ie h3{font-size:18px !important;line-height:26px !important}.mso .layout__inner,.ie .layout__inner{}.mso .footer__share-button p{}.mso .footer__share-button p{font-family:Avenir,sans-serif}
+      .main,.mso{background-color:@backgroundColor}.logo a:hover,.logo a:focus{color:#1e2e3b !important}.mso h1,.ie h1{}.mso h1,.ie h1{font-size:22px !important;line-height:31px !important}.mso h2,.ie h2{}.mso h2,.ie h2{font-size:20px !important;line-height:28px !important}.mso h3,.ie h3{}.mso h3,.ie h3{font-size:18px !important;line-height:26px !important}.mso .layout__inner,.ie .layout__inner{}.mso .footer__share-button p{}
     </style>
 	<meta name="robots" content="noindex,nofollow"></meta>
 	<meta property="og:title" content="@Model.Item.GetString("Title")"></meta>
@@ -398,7 +468,7 @@
 					<div class="preheader" style="Margin: 0 auto;max-width: 560px;min-width: 280px; width: 280px;width: calc(28000% - 167440px);">
 						<div style="border-collapse: collapse;display: table;width: 100%;">
 							<!--[if (mso)|(IE)]><table align="center" class="preheader" cellpadding="0" cellspacing="0" role="presentation"><tr><td style="width: @oneColWidth" valign="top"><![endif]-->
-							<div class="webversion" style="display: table-cell;Float: left;font-size: 12px;line-height: 19px;max-width: @oneColWidth;min-width: 320px; width: 320px;width: calc(28000% - 167400px);padding: 10px 0 5px 0;text-align: center;color: @emailLinksColor;font-family: Avenir,sans-serif;">
+							<div class="webversion" style="display: table-cell;Float: left;font-size: 12px;max-width: @oneColWidth;min-width: 320px; width: 320px;width: calc(28000% - 167400px);padding: 10px 0 5px 0;text-align: center;color: @emailLinksColor;@bodyFontStyle">
 								<p style="Margin-top: 0;Margin-bottom: 0;">
 									<a style="text-decoration: underline;transition: opacity 0.1s ease-in;color: @emailLinksColor;" href=@viewInBrowserLink>@viewInBrowserText</a>
 								</p>
@@ -415,7 +485,7 @@
 				<div class="layout one-col email-footer" style="Margin: 0 auto;max-width: @oneColWidth;min-width: 320px; width: 320px;width: calc(28000% - 167400px);overflow-wrap: break-word;word-wrap: break-word;word-break: break-word;">
 					<div class="layout__inner" style="border-collapse: collapse;display: table;width: 100%;">
 						<!--[if (mso)|(IE)]><table align="center" cellpadding="0" cellspacing="0" role="presentation"><tr class="layout-email-footer"><td style="width: @oneColWidth;" class="w560"><![endif]-->
-						<div class="column" style="text-align: center;font-size: 12px;line-height: 19px;color: @emailLinksColor;font-family: Avenir,sans-serif;">
+						<div class="column" style="text-align: center;font-size: 12px;color: @emailLinksColor;@bodyFontStyle">
 							<div style="Margin-left: 20px;Margin-right: 20px;Margin-top: 10px;Margin-bottom: 10px;">
 								<div style="font-size: 12px;line-height: 19px;margin-bottom: 15px;">
 									<a style="text-decoration: underline;transition: opacity 0.1s ease-in;color: @emailLinksColor;" href="{{EmailMarketing:Email.UnsubscribeLink.Clean}}">@Translate("Unsubscribe")</a>
