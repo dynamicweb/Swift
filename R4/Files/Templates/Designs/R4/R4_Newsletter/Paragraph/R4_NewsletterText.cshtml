@@ -1,17 +1,73 @@
+@using Dynamicweb.Content
+@using Dynamicweb.Content.Items
+@using Page = Dynamicweb.Content.Page
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@functions
+{
+	private string GetThemeValue(string systemName)
+	{
+		int themesPageId = Pageview.AreaSettings.GetLink("ThemesPage") != null ? Pageview.AreaSettings.GetLink("ThemesPage").PageId : 0;
+		if (themesPageId == 0) return "";
+        
+		List<Paragraph> themesPageParagraphs = Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(themesPageId)?.ToList();
+		string theme = GetSelectedTheme();
+		Paragraph themeParagraph = themesPageParagraphs?.FirstOrDefault(p => p.Item["Name"].ToString().ToLower().Equals(theme));
+		if (themeParagraph == null) return "";
+		string themeValue = themeParagraph.Item[systemName] != null ? themeParagraph.Item[systemName].ToString() : "";
+		themeValue = themeValue == "" ? "transparent" : themeValue;
+		return themeValue;
+	}
+
+	private string GetSelectedTheme()
+	{
+		string theme = !string.IsNullOrEmpty(Pageview.CurrentParagraph.Item["Theme"]?.ToString()) ? Pageview.CurrentParagraph.Item["Theme"].ToString().ToLower() : "";
+		if (!string.IsNullOrEmpty(theme) && theme != "theme default") return theme;
+
+		GridRow grid = Dynamicweb.Services.Grids.GetGridRowById(Pageview.CurrentParagraph.GridRowId);
+		Item item = Dynamicweb.Services.Items.GetItem(grid.ItemType, grid.ItemId);
+		theme = item["Theme"]?.ToString().ToLower();
+		
+		if (!string.IsNullOrEmpty(theme) && theme != "theme default") return theme;
+		
+		theme = Dynamicweb.Core.Converter.ToString(Pageview.Page.Item["Theme"])?.ToLower();
+		return !string.IsNullOrEmpty(theme) && theme != "theme default" ? theme : "";
+	}
+	
+	private string GetFontStyle(string type)
+	{
+		int brandingPageId = Pageview.AreaSettings.GetLink("BrandingPage") != null ? Pageview.AreaSettings.GetLink("BrandingPage").PageId : 0;
+		if (brandingPageId == 0) return "";
+		
+		Page brandingPage = Dynamicweb.Services.Pages?.GetPage(brandingPageId);
+		if (brandingPage == null) return "";
+		
+		string fontStyle = "";
+		dynamic font = Newtonsoft.Json.JsonConvert.DeserializeObject(brandingPage.Item[type+"Font"].ToString());
+		if (font != null) {
+			fontStyle += $"font-family:{font.Family}, sans-serif;";
+			fontStyle += $"font-weight:{font.SelectedVariant};";
+		}
+		fontStyle += $"text-transform:{brandingPage.Item[type+"Casing"]};";
+		fontStyle += $"line-height:{brandingPage.Item[type+"LineHeight"]};";
+		fontStyle += $"letter-spacing:{brandingPage.Item[type+"LetterSpacing"]};";
+		return fontStyle;
+	}
+}
 @{
 	string verticalAlignment = Model.Item.GetRawValueString("VerticalAlignment").ToLower();
-	string fontFamily = "Avenir,sans-serif";
+	string bodyFontStyle = GetFontStyle("Body");
+	string backgroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("BackgroundColor") : "transparent";
 }
-<td style="vertical-align:@verticalAlignment;text-align: left;font-size: 16px;line-height: 21px;font-family:@fontFamily;">
+<td style="vertical-align:@verticalAlignment;background-color:@backgroundColor;text-align: left;font-size: 16px;@bodyFontStyle">
 	@RenderText()
 </td>
 
 @helper RenderText()
 {
 	string text = Model.Item?.GetString("Text") ?? "";
+	string foregroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("ForegroundColor") : "#000000";
 
-	<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;color:#000000;">
+	<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;color:@foregroundColor;">
 		@text
 	</div>
 }

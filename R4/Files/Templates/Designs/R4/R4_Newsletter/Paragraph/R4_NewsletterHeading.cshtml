@@ -1,24 +1,77 @@
+@using Dynamicweb.Content
+@using Dynamicweb.Content.Items
+@using Page = Dynamicweb.Content.Page
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @functions
 {
 	private string GetAlignment(string direction)
 	{
 		var layout = Model.Item.GetRawValueString("Layout", "middle-center");
-    	var alignments = layout.Split('-');
-    	var indexPosition = direction == "vertical" ? 0 : 1;
+		var alignments = layout.Split('-');
+		var indexPosition = direction == "vertical" ? 0 : 1;
 
-    	if (alignments.Length == 2)
-    	{
-    		return alignments.Length == 2 ? alignments[indexPosition] : "middle";
-    	}
+		if (alignments.Length == 2)
+		{
+			return alignments.Length == 2 ? alignments[indexPosition] : "middle";
+		}
     	
-    	return direction == "vertical" ? "middle" : "center";
-    }
+		return direction == "vertical" ? "middle" : "center";
+	}
+	
+	private string GetThemeValue(string systemName)
+	{
+		string theme = GetSelectedTheme();
+		int themesPageId = Pageview.AreaSettings.GetLink("ThemesPage") != null ? Pageview.AreaSettings.GetLink("ThemesPage").PageId : 0;
+        if (themesPageId == 0) return "";
+        
+		List<Paragraph> themesPageParagraphs = Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(themesPageId)?.ToList();
+		Paragraph themeParagraph = themesPageParagraphs?.FirstOrDefault(p => p.Item["Name"].ToString().ToLower().Equals(theme));
+		if (themeParagraph == null) return "";
+		string themeValue = themeParagraph.Item[systemName] != null ? themeParagraph.Item[systemName].ToString() : "";
+		themeValue = themeValue == "" ? "transparent" : themeValue;
+		return themeValue;
+	}
+
+	private string GetSelectedTheme()
+	{
+		string theme = !string.IsNullOrEmpty(Pageview.CurrentParagraph.Item["Theme"]?.ToString()) ? Pageview.CurrentParagraph.Item["Theme"].ToString().ToLower() : "";
+		if (!string.IsNullOrEmpty(theme) && theme != "theme default") return theme;
+
+		GridRow grid = Dynamicweb.Services.Grids.GetGridRowById(Pageview.CurrentParagraph.GridRowId);
+		Item item = Dynamicweb.Services.Items.GetItem(grid.ItemType, grid.ItemId);
+		theme = item["Theme"]?.ToString().ToLower();
+		
+		if (!string.IsNullOrEmpty(theme) && theme != "theme default") return theme;
+		
+		theme = Dynamicweb.Core.Converter.ToString(Pageview.Page.Item["Theme"])?.ToLower();
+		return !string.IsNullOrEmpty(theme) && theme != "theme default" ? theme : "";
+	}
+	
+	private string GetFontStyle(string type)
+	{
+		int brandingPageId = Pageview.AreaSettings.GetLink("BrandingPage") != null ? Pageview.AreaSettings.GetLink("BrandingPage").PageId : 0;
+		if (brandingPageId == 0) return "";
+		
+		Page brandingPage = Dynamicweb.Services.Pages?.GetPage(brandingPageId);
+		if (brandingPage == null) return "";
+		
+		string fontStyle = "";
+		dynamic font = Newtonsoft.Json.JsonConvert.DeserializeObject(brandingPage.Item[type+"Font"].ToString());
+		if (font != null) {
+			fontStyle += $"font-family:{font.Family}, sans-serif;";
+			fontStyle += $"font-weight:{font.SelectedVariant};";
+		}
+		fontStyle += $"text-transform:{brandingPage.Item[type+"Casing"]};";
+		fontStyle += $"line-height:{brandingPage.Item[type+"LineHeight"]};";
+		fontStyle += $"letter-spacing:{brandingPage.Item[type+"LetterSpacing"]};";
+		return fontStyle;
+	}
 }
 @{
 	string verticalAlignment = GetAlignment("vertical");
+	string backgroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("BackgroundColor") : "transparent";
 }
-<td style="vertical-align:@verticalAlignment;line-height: 21px;">
+<td style="vertical-align:@verticalAlignment;background-color:@backgroundColor;line-height: 21px;">
 	@RenderTitle()
 </td>
 
@@ -26,13 +79,13 @@
 {
 	string title = Model.Item?.GetString("Title") ?? "";
 	string horizontalAlignment = GetAlignment("horizontal");
-	string headingColor = "#14215b";
-	string headingFontFamily = "PT Serif,Georgia,serif";
+	string foregroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("ForegroundColor") : "#000000";
+	string headingFontStyle = GetFontStyle("Header");
 	
 	<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">
-		<h1 class="size-34" style="text-align:@horizontalAlignment;Margin-top: 20px;Margin-bottom: 20px;font-size: 30px;line-height: 38px;font-family:@headingFontFamily;" lang="x-size-34">
+		<h1 class="size-34" style="text-align:@horizontalAlignment;margin-top:20px;margin-bottom:20px;font-size: 30px;@headingFontStyle" lang="x-size-34">
 			<span>
-				<span style="color:@headingColor">
+				<span style="color:@foregroundColor">
 					<strong>@title</strong>
 				</span>
 			</span>
