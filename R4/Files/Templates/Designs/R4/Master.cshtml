@@ -1,11 +1,11 @@
-﻿@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
 @using System
 @using Dynamicweb
 @using Dynamicweb.Environment
 
 @Include("Partials/R4_MetaTags.cshtml")
 
-@{ 
+@{
 	@* Branding Themes Fonts *@
 	var brandingPageId = Model.Area.Item.GetLink("BrandingPage") != null ? Model.Area.Item.GetLink("BrandingPage").PageId : 0;
 	var themePageId = Model.Area.Item.GetLink("ThemesPage") != null ? Model.Area.Item.GetLink("ThemesPage").PageId : 0;
@@ -13,12 +13,44 @@
 	var brandingPage = Dynamicweb.Services.Pages?.GetPage(brandingPageId) ?? null;
 	var themesParagraphLastChanged = Services.Paragraphs.GetParagraphsByPageId(themePageId).OrderByDescending(p => p.Audit.LastModifiedAt).FirstOrDefault();
 
+	var cssLastModified = brandingPage.Audit.LastModifiedAt > themesParagraphLastChanged.Audit.LastModifiedAt ? brandingPage.Audit.LastModifiedAt : themesParagraphLastChanged.Audit.LastModifiedAt;
+	var cssThemeAndBrandingStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath($"~/Files/Templates/Designs/R4/_parsed/R4_css/R4_styles_{Model.Area.ID}.min.css"));
+
+	if (!cssThemeAndBrandingStyleFileInfo.Exists || cssThemeAndBrandingStyleFileInfo.LastWriteTime < brandingPage.Audit.LastModifiedAt)
+	{
+		//Branding page has been saved or the file is missing. Rewrite the file to disc.
+		if (brandingPageId > 0)
+		{
+			var brandingPageview = Dynamicweb.Frontend.PageView.GetPageviewByPageID(brandingPageId);
+			brandingPageview.Redirect = false;
+			brandingPageview.Output();
+		}
+	}
+
+
+	if (!cssThemeAndBrandingStyleFileInfo.Exists || cssThemeAndBrandingStyleFileInfo.LastWriteTime < themesParagraphLastChanged.Audit.LastModifiedAt)
+	{
+		//Branding page has been saved or the file is missing. Rewrite the file to disc.
+		if (themePageId > 0)
+		{
+			var themePageview = Dynamicweb.Frontend.PageView.GetPageviewByPageID(themePageId);
+			themePageview.Redirect = false;
+			themePageview.Output();
+		}
+	}
+
+	var cssStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("~/Files/Templates/Designs/R4/Assets/css/styles.css"));
+	var jsFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("~/Files/Templates/Designs/R4/Assets/js/scripts.js"));
+
+
 	@* Theme setting for the body *@
 	string masterTheme = !string.IsNullOrWhiteSpace(Model.Area.Item.GetRawValueString("Theme")) ? " theme " + Model.Area.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+
 
 	@* Sticky/Fixed header *@
 	string headerCssClass = Pageview.Item["MoveThisPageBehindTheHeader"] != null ? Pageview.Item["MoveThisPageBehindTheHeader"].ToString() : "sticky-top";
 	headerCssClass = headerCssClass == "" ? "sticky-top" : headerCssClass;
+
 }
 
 <!doctype html>
@@ -29,8 +61,8 @@
 	<meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0">
 	<link rel="preconnect" href="https://fonts.gstatic.com" />
 	<link rel="preconnect" href="https://fonts.googleapis.com" />
-	<link rel="preload" href="~/Files/Templates/Designs/R4/Assets/css/styles.css" as="style">
-	<link rel="preload" href="~/Files/Templates/Designs/R4/Assets/js/scripts.js" as="script">
+	<link rel="preload" href="~/Files/Templates/Designs/R4/Assets/css/styles.css?@cssStyleFileInfo.LastWriteTime.Ticks" as="style">
+	<link rel="preload" href="~/Files/Templates/Designs/R4/Assets/js/scripts.js?@jsFileInfo.LastWriteTime.Ticks" as="script">
 
 	<link rel="shortcut icon" href="~/Files/Templates/Designs/R4/Assets/Images/favicon.png" />
 	<link rel="apple-touch-icon" href="~/Files/Templates/Designs/R4/Assets/Images/logo_transparent.png" />
@@ -43,14 +75,12 @@
 
 
 	@* Bootstrap + R4 stylesheet *@
-	<link href="~/Files/Templates/Designs/R4/Assets/css/styles.css" rel="stylesheet" media="all" type="text/css">
+	<link href="~/Files/Templates/Designs/R4/Assets/css/styles.css?@cssStyleFileInfo.LastWriteTime.Ticks" rel="stylesheet" media="all" type="text/css">
 
-	@* Branding stylesheet *@
-	<link href="~/Files/Templates/Designs/R4/_parsed/R4_css/R4_branding_styles_@(Model.Area.ID).css?@brandingPage.Audit.LastModifiedAt.Ticks" rel="stylesheet" media="all" type="text/css" data-last-modified="@brandingPage.Audit.LastModifiedAt">
+	@* Branding and Themes min stylesheet *@
+	<link href="~/Files/Templates/Designs/R4/_parsed/R4_css/R4_styles_@(Model.Area.ID).min.css?@cssLastModified.Ticks" rel="stylesheet" media="all" type="text/css" data-last-modified-content="@cssLastModified">
 
-	@* Themes stylesheet *@
-	<link href="~/Files/Templates/Designs/R4/_parsed/R4_css/R4_theme_styles_@(Model.Area.ID).css?@themesParagraphLastChanged.Audit.LastModifiedAt.Ticks" rel="stylesheet" media="all" type="text/css" data-last-modified-content="@themesParagraphLastChanged.Audit.LastModifiedAt">
-	<script src="~/Files/Templates/Designs/R4/Assets/js/scripts.js" defer></script>
+	<script src="~/Files/Templates/Designs/R4/Assets/js/scripts.js?@jsFileInfo.LastWriteTime.Ticks"></script>
 </head>
 <body class="d-flex flex-column min-vh-100 brand@(masterTheme)" style="overflow-x: hidden;" id="page@(Model.ID)">
 	<header class="page-header @headerCssClass top-0 d-none d-lg-block" id="page-header-dekstop" role="banner">
@@ -70,6 +100,7 @@
 	<main id="content" class="overflow-hidden" role="main">
 		@ContentPlaceholder()
 	</main>
+
 
 	<footer class="page-footer d-none d-lg-block mt-auto" id="page-footer-desktop" role="contentinfo">
 		@if (@Model.Area.Item.GetLink("FooterDesktop") != null)

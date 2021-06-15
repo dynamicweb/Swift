@@ -1,6 +1,8 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Content
+@using Dynamicweb.Content.Items
 @using Dynamicweb.Frontend
+@using Page = Dynamicweb.Content.Page
 @functions
 {
 	private string GetImageHandlerImage(FileViewModel imageFile)
@@ -55,12 +57,62 @@
 	{
 		return Model.Item.GetRawValueString("ImageAspectRatio", "original");
 	}
+	
+	private string GetThemeValue(string systemName)
+	{
+		int themesPageId = Pageview.AreaSettings.GetLink("ThemesPage") != null ? Pageview.AreaSettings.GetLink("ThemesPage").PageId : 0;
+		if (themesPageId == 0) return "";
+        
+		List<Paragraph> themesPageParagraphs = Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(themesPageId)?.ToList();
+		string theme = GetSelectedTheme();
+		Paragraph themeParagraph = themesPageParagraphs?.FirstOrDefault(p => p.Item["Name"].ToString().ToLower().Equals(theme));
+		if (themeParagraph == null) return "";
+		string themeValue = themeParagraph.Item[systemName] != null ? themeParagraph.Item[systemName].ToString() : "";
+		themeValue = themeValue == "" ? "transparent" : themeValue;
+		return themeValue;
+	}
+
+	private string GetSelectedTheme()
+	{
+		string theme = !string.IsNullOrEmpty(Pageview.CurrentParagraph.Item["Theme"]?.ToString()) ? Pageview.CurrentParagraph.Item["Theme"].ToString().ToLower() : "";
+		if (!string.IsNullOrEmpty(theme) && theme != "theme default") return theme;
+
+		GridRow grid = Dynamicweb.Services.Grids.GetGridRowById(Pageview.CurrentParagraph.GridRowId);
+		Item item = Dynamicweb.Services.Items.GetItem(grid.ItemType, grid.ItemId);
+		theme = item["Theme"]?.ToString().ToLower();
+		
+		if (!string.IsNullOrEmpty(theme) && theme != "theme default") return theme;
+		
+		theme = Dynamicweb.Core.Converter.ToString(Pageview.Page.Item["Theme"])?.ToLower();
+		return !string.IsNullOrEmpty(theme) && theme != "theme default" ? theme : "";
+	}
+	
+	private string GetFontStyle(string type)
+	{
+		int brandingPageId = Pageview.AreaSettings.GetLink("BrandingPage") != null ? Pageview.AreaSettings.GetLink("BrandingPage").PageId : 0;
+		if (brandingPageId == 0) return "";
+		
+		Page brandingPage = Dynamicweb.Services.Pages?.GetPage(brandingPageId);
+		if (brandingPage == null) return "";
+		
+		string fontStyle = "";
+		dynamic font = Newtonsoft.Json.JsonConvert.DeserializeObject(brandingPage.Item[type+"Font"].ToString());
+		if (font != null) {
+			fontStyle += $"font-family:{font.Family}, sans-serif;";
+			fontStyle += $"font-weight:{font.SelectedVariant};";
+		}
+		fontStyle += $"text-transform:{brandingPage.Item[type+"Casing"]};";
+		fontStyle += $"line-height:{brandingPage.Item[type+"LineHeight"]};";
+		fontStyle += $"letter-spacing:{brandingPage.Item[type+"LetterSpacing"]};";
+		return fontStyle;
+	}
 }
 @{
 	string layout = Model.Item.GetRawValueString("Layout", "image-top");
-	string fontFamily = "Avenir,sans-serif";
+	string backgroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("BackgroundColor") : "transparent";
+	string bodyFontStyle = GetFontStyle("Body");
 }
-<td style="vertical-align:center;font-size: 16px;line-height: 21px;font-family:@fontFamily;">
+<td style="background-color:@backgroundColor;vertical-align:center;font-size: 16px;@bodyFontStyle">
 	@switch (layout)
 	{
 		case "image-top":
@@ -114,15 +166,15 @@
 @helper RenderTitle(string horizontalAlignment = "left")
 {
 	string title = Model.Item.GetString("Title");
-	string headingColor = "#14215b";
-	string headingFontFamily = "pt serif,georgia,serif";
+	string foregroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("ForegroundColor") : "#000000";
+	string headerFontStyle = GetFontStyle("Header");
 
 	if (!string.IsNullOrEmpty(title) && !Model.Item.GetBoolean("HideTitle"))
 	{
 		<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">
-			<h1 class="size-34" style="text-align:@horizontalAlignment;Margin-top: 20px;Margin-bottom:10px;font-style: normal;font-weight: normal;font-size: 30px;line-height: 38px;font-family:@headingFontFamily;" lang="x-size-34">
+			<h1 class="size-34" style="text-align:@horizontalAlignment;margin-top:20px;margin-bottom:10px;font-size: 30px;@headerFontStyle;" lang="x-size-34">
 				<span>
-					<span style="color:@headingColor">
+					<span style="color:@foregroundColor">
 						<strong>@title</strong>
 					</span>
 				</span>
@@ -134,12 +186,13 @@
 @helper RenderLead(string horizontalAlignment = "left")
 {
 	string lead = Model.Item.GetString("Lead");
-	string fontColor = "#000000";
+	string foregroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("ForegroundColor") : "#000000";
+	string displayFontStyle = GetFontStyle("Display");
 
 	if (!string.IsNullOrEmpty(lead))
 	{
 		<div style="text-align:@horizontalAlignment;mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">
-			<p class="size-22" style="margin-top: 0;margin-bottom: 0;font-family: avenir,sans-serif;font-size: 16px;line-height: 24px;color:@fontColor" lang="x-size-16">
+		    <p class="size-22" style="margin-top:0;margin-bottom:0;font-size: 16px;color:@foregroundColor;@displayFontStyle" lang="x-size-16">
 				@lead
 			</p>
 		</div>
@@ -149,10 +202,11 @@
 @helper RenderText(string horizontalAlignment = "left")
 {
 	string text = Model.Item?.GetString("Text") ?? "";
+	string foregroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("ForegroundColor") : "#000000";
 
 	if (!string.IsNullOrEmpty(text))
 	{
-		<div style="text-align:@horizontalAlignment;mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;color:#000000;">
+		<div style="text-align:@horizontalAlignment;mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;color:@foregroundColor">
 			@text
 		</div>
 	}
@@ -162,27 +216,26 @@
 {
 	string link = Model.Item?.GetString("ButtonLink") ?? "";
 	string label = Model.Item?.GetString("ButtonLabel") ?? "";
-	string buttonColor = "#333333";
-	string buttonTextColor = "#FFFFFF";
+	string buttonBackgroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("ButtonPrimaryBackgroundColor") : "#000000";
+	string buttonForegroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("ButtonPrimaryForegroundColor") : "#FFFFFF";
 
 	if (!string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(label))
 	{
 		<div class="btn" style="text-align:@horizontalAlignment;">
-			<![if !mso]>
-			<a href="@link" style="border-radius: 0;display: inline-block;font-size: 14px;font-weight: bold;line-height: 24px;padding: 12px 24px;text-align: center;text-decoration: none !important;transition: opacity 0.1s ease-in;color: @buttonTextColor !important;background-color:@buttonColor;">
-				@label
-			</a>
-			<![endif]>
-			<!--[if mso]>
-				<p style="line-height:0;margin:0;">&nbsp;</p>
-				<v:rect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="@link" style="height:60px;width:300px;margin-top:20px;v-text-anchor:middle;" fillcolor="@buttonColor;">
+		    <![if !mso]>
+		        <a href="@link" style="border-radius: 0;display: inline-block;font-size: 14px;font-weight: bold;line-height: 24px;padding: 12px 24px;text-align: center;text-decoration: none !important;transition: opacity 0.1s ease-in;color: @buttonForegroundColor !important;background-color:@buttonBackgroundColor;">
+		            @label
+		        </a>
+		    <![endif]>
+		    <!--[if mso]>
+		        <v:rect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="@link" style="height:60px;width:300px;margin-top:20px;v-text-anchor:middle;" fillcolor="@buttonBackgroundColor" stroke="f">
 					<v:textbox style="mso-fit-shape-to-text:t" inset="10px,12px,10px,12px">
-						<center style="font-size:14px;line-height:24px;color:@buttonTextColor;font-weight:bold;mso-line-height-rule:exactly;mso-text-raise:4px">
-							@label
-						</center>
-					</v:textbox>
-				</v:rect>
-			<![endif]-->
+						<center style="font-size:14px;line-height:24px;color:@buttonForegroundColor;background-color:@buttonBackgroundColor">
+		                    @label
+		                </center>
+		            </v:textbox>
+		        </v:rect>
+		    <![endif]-->
 		</div>
 	}
 }

@@ -1,6 +1,8 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Content
+@using Dynamicweb.Content.Items
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using Page = Dynamicweb.Content.Page
 @functions
 {
 	private string GetImageHandlerImage(string imagePath)
@@ -60,12 +62,62 @@
 		string colLayout = Model.Item.GetRawValueString("Layout", "2col").ToLower();
 		return colLayout == "2col";
 	}
+	
+	private string GetThemeValue(string systemName)
+	{
+		int themesPageId = Pageview.AreaSettings.GetLink("ThemesPage") != null ? Pageview.AreaSettings.GetLink("ThemesPage").PageId : 0;
+		if (themesPageId == 0) return "";
+        
+		List<Paragraph> themesPageParagraphs = Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(themesPageId)?.ToList();
+		string theme = GetSelectedTheme();
+		Paragraph themeParagraph = themesPageParagraphs?.FirstOrDefault(p => p.Item["Name"].ToString().ToLower().Equals(theme));
+		if (themeParagraph == null) return "";
+		string themeValue = themeParagraph.Item[systemName] != null ? themeParagraph.Item[systemName].ToString() : "";
+		themeValue = themeValue == "" ? "transparent" : themeValue;
+		return themeValue;
+	}
+
+	private string GetSelectedTheme()
+	{
+		string theme = !string.IsNullOrEmpty(Pageview.CurrentParagraph.Item["Theme"]?.ToString()) ? Pageview.CurrentParagraph.Item["Theme"].ToString().ToLower() : "";
+		if (!string.IsNullOrEmpty(theme) && theme != "theme default") return theme;
+
+		GridRow grid = Dynamicweb.Services.Grids.GetGridRowById(Pageview.CurrentParagraph.GridRowId);
+		Item item = Dynamicweb.Services.Items.GetItem(grid.ItemType, grid.ItemId);
+		theme = item["Theme"]?.ToString().ToLower();
+		
+		if (!string.IsNullOrEmpty(theme) && theme != "theme default") return theme;
+		
+		theme = Dynamicweb.Core.Converter.ToString(Pageview.Page.Item["Theme"])?.ToLower();
+		return !string.IsNullOrEmpty(theme) && theme != "theme default" ? theme : "";
+	}
+	
+	private string GetFontStyle(string type)
+	{
+		int brandingPageId = Pageview.AreaSettings.GetLink("BrandingPage") != null ? Pageview.AreaSettings.GetLink("BrandingPage").PageId : 0;
+		if (brandingPageId == 0) return "";
+		
+		Page brandingPage = Dynamicweb.Services.Pages?.GetPage(brandingPageId);
+		if (brandingPage == null) return "";
+		
+		string fontStyle = "";
+		dynamic font = Newtonsoft.Json.JsonConvert.DeserializeObject(brandingPage.Item[type+"Font"].ToString());
+		if (font != null) {
+			fontStyle += $"font-family:{font.Family}, sans-serif;";
+			fontStyle += $"font-weight:{font.SelectedVariant};";
+		}
+		fontStyle += $"text-transform:{brandingPage.Item[type+"Casing"]};";
+		fontStyle += $"line-height:{brandingPage.Item[type+"LineHeight"]};";
+		fontStyle += $"letter-spacing:{brandingPage.Item[type+"LetterSpacing"]};";
+		return fontStyle;
+	}
 }
 @{
 	ProductListViewModel selectedProductList = Model.Item?.GetValue("Products") as ProductListViewModel;
+	string backgroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("BackgroundColor") : "transparent";
 }
 
-<td>
+<td style="background-color:@backgroundColor;">
 	@if (selectedProductList != null)
 	{
 		IList<ProductViewModel> products = selectedProductList.Products;
@@ -106,20 +158,20 @@
 		if (isFirstProductInRow)
 		{
 			@:<div class="layout__inner" style="margin-bottom:10px;border-collapse: collapse;display: table;width: 100%;">
- <!--[if (mso)|(IE)]><table align="center" cellpadding="0" cellspacing="0" role="presentation"><tr><td style="width: 290px" valign="top" class="w250"><![endif]-->
-			}
-
-			if (!isFirstProductInRow)
-			{
-				<!--[if (mso)|(IE)]></td><td style="width: 20px"><![endif]-->
-				<div class="gutter" style="Float: left;width: 20px;">&nbsp;</div><!--[if (mso)|(IE)]></td><td style="width: 290px" valign="top" class="w250"><![endif]-->
-			}
-
-			@RenderProduct(product)
-
-			if (!isFirstProductInRow || index == products.Count)
-			{
-				<!--[if (mso)|(IE)]></td></tr></table><![endif]-->
+			<!--[if (mso)|(IE)]><table align="center" cellpadding="0" cellspacing="0" role="presentation"><tr><td style="width: 290px" valign="top" class="w250"><![endif]-->
+		}
+	
+		if (!isFirstProductInRow)
+		{
+			<!--[if (mso)|(IE)]></td><td style="width: 20px"><![endif]-->
+			<div class="gutter" style="Float: left;width: 20px;">&nbsp;</div><!--[if (mso)|(IE)]></td><td style="width: 290px" valign="top" class="w250"><![endif]-->
+		}
+	
+		@RenderProduct(product)
+		
+		if (!isFirstProductInRow || index == products.Count)
+		{
+			<!--[if (mso)|(IE)]></td></tr></table><![endif]-->
 			@:</div>
 		}
 		index++;
@@ -131,24 +183,23 @@
 	string detailsPageLink = "/Default.aspx?ID=149&"; //TODO: figure this out
 	string link = detailsPageLink + "&amp;ProductID=" + product.Id;
 	link += !string.IsNullOrEmpty(product.VariantId) ? "&amp;VariantID=" + product.VariantId : "";
-	string headingColor = "#14215b";
-	string textColor = "#000000";
+	string foregroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("ForegroundColor") : "#000000";
 	string width = GetImageRatio() == "original" ? "" : "width:100%";
-	string fontFamily = "Avenir,sans-serif";
-	string headingFontFamily = "PT Serif,Georgia,serif";
+	string bodyFontStyle = GetFontStyle("Body");
+	string headerFontStyle = GetFontStyle("Header");
 
 	<div class="column product-column" style="max-width: 320px;min-width: 290px; width: 320px;width: calc(18290px - 3000%);Float: left;">
 		<table style="border-collapse: collapse;table-layout: fixed;" cellpadding="0" cellspacing="0" width="100%" role="presentation">
 			<tbody>
 				<tr>
-					<td style="line-height: 21px;font-family:@fontFamily;">
-						<a style="text-decoration: none;transition: opacity 0.1s ease-in;color:@textColor;" href="@link">
+					<td style="@bodyFontStyle">
+						<a style="text-decoration: none;transition: opacity 0.1s ease-in;color:@foregroundColor;" href="@link">
 							<div align="center">
 								<img style="border: 0;display: block;height: auto;max-width: 100%;@width" alt="" src="@GetImageHandlerImage(product.DefaultImage.Value)">
 							</div>
 							<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">
-								<h2 class="size-20" style="Margin-top: 10px;Margin-bottom: 0;font-style: normal;font-weight: normal;font-size: 17px;line-height: 26px;font-family:@headingFontFamily;text-align: center;" lang="x-size-20">
-									<span style="color:@headingColor">@product.Name</span>
+								<h2 class="size-20" style="margin-top:10px;margin-bottom:0;font-size: 17px;text-align: center;@headerFontStyle" lang="x-size-20">
+									<span>@product.Name</span>
 								</h2>
 							</div>
 							<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">

@@ -39,7 +39,7 @@ document.addEventListener('scroll', function (e) {
 		var alternativeTheme = element.getAttribute("data-alternative-theme");
 
 		var headerElement = element.closest("header");
-		var headerHeight = headerElement.clientHeight;
+		var headerHeight = headerElement ? headerElement.clientHeight : 0;
 
 		if (document.body.scrollTop > headerHeight || document.documentElement.scrollTop > headerHeight) {
 			if (currentTheme !== mainTheme) {
