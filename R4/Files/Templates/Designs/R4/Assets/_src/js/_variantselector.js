@@ -116,7 +116,8 @@ const VariantSelector = function () {
 			if (selectionCount == totalGroups) {
 				var url = new URL(window.location);
 				var searchParams = url.searchParams;
-				searchParams.set('VariantId', selections.join("."));
+
+				searchParams.set('variantid', selections.join("."));
 				url.search = searchParams.toString();
 				window.location = url.toString();
 			}
