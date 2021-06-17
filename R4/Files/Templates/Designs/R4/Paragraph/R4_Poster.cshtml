@@ -1,4 +1,5 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
 	string layout = Model.Item.GetRawValueString("Layout", "align-middle-center-text-center");
@@ -155,9 +156,51 @@ if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
 
 @helper RenderButton()
 {
-	if (Model.Item.GetLink("ButtonLink") != null && !string.IsNullOrEmpty(Model.Item.GetString("ButtonLabel")))
+	string linkType = Model.Item.GetRawValueString("LinkType", "page");
+	Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
+
+	if (linkType == "page" && Model.Item.GetLink("ButtonLink") != null) {
+		link = Model.Item.GetLink("ButtonLink");
+	}
+
+	if (linkType == "product-group") {
+		IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
+		IList<string> groupIds = new List<string>{};
+
+		if (selectedGroups != null) {
+			foreach (var fromGroup in selectedGroups)
+			{
+				groupIds.Add(fromGroup.Id);
+			}
+		}
+
+		link = new Dynamicweb.Frontend.LinkViewModel() {
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
+			IsExternal = false
+		};
+	}
+
+	if (linkType == "product") {
+		ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink");
+		IList<string> productIds = new List<string>{};
+
+		if (products != null) {
+			foreach (var product in products.Products)
+			{
+				productIds.Add(product.Id);
+			}
+		}
+
+		string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
+		string pageTag = productIds.Count == 1 ? "ProductDetailPage" : "Shop";
+		link = new Dynamicweb.Frontend.LinkViewModel() {
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds).Trim(),
+			IsExternal = false
+		};
+	}
+
+	if (link != null && !string.IsNullOrEmpty(Model.Item.GetString("ButtonLabel")))
 	{
-		Dynamicweb.Frontend.LinkViewModel link = Model.Item.GetLink("ButtonLink");
 		string target = link.IsExternal ? "target=\"_blank\"" : "";
 
 		string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "");
