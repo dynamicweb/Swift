@@ -7,51 +7,109 @@
 
 @helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
 {
-foreach (var node in nodes)
-{
-	var hasChildren = node.Nodes.Count() > 0;
-	string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
+	string theme = Model.Parameters["theme"].ToString();
+
+	foreach (var node in nodes)
+	{
+		var hasChildren = node.Nodes.Count() > 0;
+		bool hasManyChildren = false;
+		foreach (var subnode in node.Nodes)
+		{
+			if (subnode.Nodes.Any())
+			{
+				hasManyChildren = true;
+			}
+		}
+		string submenuType = "auto";
+		if (submenuType == "auto")
+		{
+			submenuType = hasManyChildren ? "megamenu" : "dropdown";
+		}
+
+		string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
 
 
 		<div class="nav-item has-megamenu@(node.IsActive ? " active" : "")">
 			@if (node.IsClickable)
-                {
-                    <a class="nav-link nav-link-clean@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" title="@node.Name" @dropdownAttributes>
-                        @RenderNavigationItem(node)
-                    </a>
-                } else {
-                    <span class="nav-link nav-link-clean" title="@node.Name" @dropdownAttributes>
-                        @RenderNavigationItem(node)
-                    </span>
-                }
+			{
+				<a class="nav-link nav-link-clean@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" title="@node.Name" @dropdownAttributes>
+					@RenderNavigationItem(node)
+				</a>
+			}
+			else
+			{
+				<span class="nav-link nav-link-clean" title="@node.Name" @dropdownAttributes>
+					@RenderNavigationItem(node)
+				</span>
+			}
 
 			@if (hasChildren)
 			{
-				<div class="dropdown-menu megamenu rounded-0 border-0 py-3" id="NavGroup@(node.PageId)">
-					<div class="container-xl">
-						<div class="row g-5">
-							@foreach (var subnode in node.Nodes)
-							{
-								<div class="col-3">
-									<a href="@subnode.Link" class="text-decoration-none text-reset">
-										<span class="megamenu-link mb-4 h5">@subnode.Name</span>
-									</a>
-									@if (subnode.Nodes.Any())
-									{
-										foreach (var subsubnode in subnode.Nodes)
+				if (submenuType == "megamenu")
+				{
+					<div class="dropdown-menu megamenu p-3@(theme)" id="NavGroup@(node.PageId)">
+						<div class="container-xl">
+							<div class="row">
+								@foreach (var subnode in node.Nodes)
+								{
+									<div class="col-2">
+										<a href="@subnode.Link" class="nav-link mx-n3 fw-bold text-uppercase">
+											<h6 class="m-0">@subnode.Name</h6>
+										</a>
+										@if (subnode.Nodes.Any())
 										{
-											<a class="d-block w-100 text-nowrap megamenu-link text-decoration-none" href="@subsubnode.Link">@subsubnode.Name</a>
+											foreach (var subsubnode in subnode.Nodes)
+											{
+												<a class="nav-link mx-n3" href="@subsubnode.Link">
+													<span>@subsubnode.Name</span>
+												</a>
+											}
 										}
-									}
-									else
-									{
-										<a class="d-block w-100 text-nowrap megamenu-link text-decoration-none" href="@subnode.Link">@subnode.Name</a>
-									}
-								</div>
-							}
+										else
+										{
+											<a class="nav-link mx-n3" href="@subnode.Link">
+												<span>@subnode.Name</span>
+											</a>
+										}
+									</div>
+								}
+							</div>
 						</div>
-					</div>
-				</div>
+					</div> }
+				else
+				{
+					var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+					string pageType = page.ItemType;
+
+					<ul class="dropdown-menu@(theme)" aria-labelledby="NavGroup@(node.PageId)">
+						@if (pageType == "R4_SignIn")
+						{
+							if (Pageview.User == null)
+							{
+								<li class="dropdown-item">
+									<a href="@node.Link" class="btn btn-primary w-100 m-0">@node.Name</a>
+								</li>
+							}
+						}
+
+						@foreach (var subnode in node.Nodes)
+						{
+							<li>
+								<a class="dropdown-item" href="@subnode.Link">@subnode.Name</a>
+							</li>
+						}
+
+						@if (pageType == "R4_SignIn")
+						{
+							if (Pageview.User != null)
+							{
+								<li class="dropdown-item">
+									<a href="/Admin/Public/ExtranetLogoff.aspx?ID=@Pageview.Page.ID" class="btn btn-primary m-0 w-100">@Translate("Sign out")</a>
+								</li>
+							}
+						}
+					</ul>
+				}
 			}
 		</div>
 	}
