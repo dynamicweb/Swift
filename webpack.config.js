@@ -1,13 +1,16 @@
 const path = require('path');
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const IgnoreEmitPlugin = require('ignore-emit-webpack-plugin');
-const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
+const TerserPlugin = require("terser-webpack-plugin");
 const OptimizeCssAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const isProduction = process.env.NODE_ENV === 'production';
 const mode = isProduction ? 'production' : 'development';
 const StylelintPlugin = require('stylelint-webpack-plugin');
-const autoprefixer = require('autoprefixer');
-const postcss = require('postcss');
+
+if (process.env.NODE_ENV !== 'production') {
+	console.log('Looks like we are in development mode!');
+}
+console.warn(isProduction, process.env.NODE_ENV, mode);
 
 module.exports = [
     {
@@ -23,7 +26,7 @@ module.exports = [
         module: {
             rules: [
                 {
-                    test: /\.jsx?$/,
+                    test: /\.js?$/,
                     loader: 'babel-loader',
                     options: {
                         presets: ['@babel/preset-env']
@@ -34,7 +37,14 @@ module.exports = [
         optimization: {
             minimize: isProduction,
             minimizer: [
-                new UglifyJsPlugin()
+                new TerserPlugin({
+					terserOptions: {
+						mangle: true,
+						format: {
+							comments: false,
+						}
+					},
+				})
             ]
         }
     },
@@ -56,37 +66,42 @@ module.exports = [
             new MiniCssExtractPlugin({
                 filename: '[name].css'
             }),
-            new IgnoreEmitPlugin(/\.js$/)
+            new IgnoreEmitPlugin(/\.js$/),
         ],
         module: {
             rules: [
                 {
-                    test: /\.(scss)$/,
+                    test: /.s?css$/,
                     use: [
-                    {
-                        loader: 'style-loader'
-                    },
-                    {
-                        loader: MiniCssExtractPlugin.loader
-                    },
-                    {
-                        loader: 'css-loader'
-                    },
-                    {
-                        loader: 'postcss-loader'
-                    },
-                    {
-                        loader: 'sass-loader'
-                    }]
-                }
+						MiniCssExtractPlugin.loader,
+						{
+							loader: 'css-loader',
+							options: {
+								importLoaders: 1
+							}
+						},
+						'postcss-loader',
+						'sass-loader'
+					],
+				},
+				{
+					test: /\.(jpe?g|gif|png|svg)$/,
+					loader: 'url-loader',
+				}
             ]
         },
         optimization: {
             minimize: isProduction,
             minimizer: [
-                new OptimizeCssAssetsPlugin({
-                    assetNameRegExp: /\.css$/
-                }),
+				new OptimizeCssAssetsPlugin({
+					assetNameRegExp: /\.css$/,
+					cssProcessorOptions: {
+						map: {
+							inline: false,
+							annotation: true,
+						},
+					},
+				}),
             ]
         }
     }
