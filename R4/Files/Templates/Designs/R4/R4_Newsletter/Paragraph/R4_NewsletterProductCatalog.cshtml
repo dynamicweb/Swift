@@ -7,10 +7,10 @@
 {
 	private string GetImageHandlerImage(string imagePath)
 	{
-		int imageWidth = GetImageWidth(); // get from the page
+		double imageWidth = GetImageWidth(); // get from the page
 		string imageRatio = GetImageRatio();
 		string image = $"/Admin/Public/GetImage.ashx?width={imageWidth}";
-		string crop = "7";
+		string crop = "5";
 
 		if (imageRatio != "original")
 		{
@@ -25,31 +25,34 @@
 		return image;
 	}
 
-	private int GetImageWidth()
+	private double GetImageWidth()
 	{
 		int newsletterWidth = Pageview != null ? Dynamicweb.Core.Converter.ToInt32(Pageview.Page.Item["Width"]) : 660;
 
 		GridRow grid = Dynamicweb.Services.Grids.GetGridRowById(Pageview.CurrentParagraph.GridRowId);
-
-		if (grid == null) return newsletterWidth;
+		var spacing = 20;
+		int padding = Convert.ToInt16(Model.Item.GetRawValueString("ContentPadding", "0"));
+		int oneColPadding = padding * 2;
+		double twoColPadding = padding * 1.5;
+		
+		if (grid == null) return IsTwoColLayout() ? (newsletterWidth - spacing) / 2 - twoColPadding : newsletterWidth - oneColPadding;
 
 		var definitionId = grid.DefinitionId;
-		var spacing = 20;
 
-		if (definitionId == "1Column") return IsTwoColLayout() ? (newsletterWidth - spacing) / 2 : newsletterWidth;
+		if (definitionId == "1Column") return IsTwoColLayout() ? (newsletterWidth - spacing) / 2 - twoColPadding : newsletterWidth - oneColPadding;
 
 		var item = Dynamicweb.Services.Items.GetItem(grid.ItemType, grid.ItemId);
 		var spaceBetweenColumns = item["SpaceBetweenColumns"].ToString();
 		int columnWidth = spaceBetweenColumns != "spacing" ? newsletterWidth / 2 : (newsletterWidth - spacing) / 2;
 
-		return IsTwoColLayout() ? (columnWidth - spacing) / 2 : columnWidth;
+		return IsTwoColLayout() ? (columnWidth - spacing) / 2 - twoColPadding : columnWidth - oneColPadding;
 	}
 
-	private static string GetImageHeight(string imageRatio, int imageWidth)
+	private static double GetImageHeight(string imageRatio, double imageWidth)
 	{
 		string[] ratioValues = imageRatio.Split('-');
 		double ratio = ratioValues.Length == 2 ? Dynamicweb.Core.Converter.ToDouble(ratioValues[1]) / Dynamicweb.Core.Converter.ToDouble(ratioValues[0]) : 1;
-		return Dynamicweb.Core.Converter.ToInt32(Dynamicweb.Core.Converter.ToInt32(imageWidth) * ratio).ToString();
+		return imageWidth * ratio;
 	}
 
 	private string GetImageRatio()
@@ -111,13 +114,20 @@
 		fontStyle += $"letter-spacing:{brandingPage.Item[type+"LetterSpacing"]};";
 		return fontStyle;
 	}
+
+	private string GetPadding(bool isProductColumn = false)
+	{
+		if (isProductColumn && !IsTwoColLayout()) return "0";
+		int paddingValue = Convert.ToInt32(Model.Item.GetRawValueString("ContentPadding", "0"));
+		return (IsTwoColLayout() ? paddingValue / 2 : paddingValue) + "px";
+	}
 }
 @{
 	ProductListViewModel selectedProductList = Model.Item?.GetValue("Products") as ProductListViewModel;
 	string backgroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("BackgroundColor") : "transparent";
 }
 
-<td style="background-color:@backgroundColor;">
+<td style="padding:@GetPadding();background-color:@backgroundColor;">
 	@if (selectedProductList != null)
 	{
 		IList<ProductViewModel> products = selectedProductList.Products;
@@ -192,21 +202,18 @@
 		<table style="border-collapse: collapse;table-layout: fixed;" cellpadding="0" cellspacing="0" width="100%" role="presentation">
 			<tbody>
 				<tr>
-					<td style="@bodyFontStyle">
+					<td style="padding:@GetPadding(true);@bodyFontStyle">
 						<a style="text-decoration: none;transition: opacity 0.1s ease-in;color:@foregroundColor;" href="@link">
-							<div align="center">
+							<div align="left">
 								<img style="border: 0;display: block;height: auto;max-width: 100%;@width" alt="" src="@GetImageHandlerImage(product.DefaultImage.Value)">
 							</div>
 							<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">
-								<h2 class="size-20" style="margin-top:10px;margin-bottom:0;font-size: 17px;text-align: center;@headerFontStyle" lang="x-size-20">
+								<h2 class="size-16" style="margin-top:10px;margin-bottom:0;font-size: 16px;text-align: left;@headerFontStyle;text-transform:uppercase;" lang="x-size-16">
 									<span>@product.Name</span>
 								</h2>
 							</div>
 							<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">
-								<p style="Margin-top: 0;Margin-bottom: 0;text-align: center;">#@product.Number</p>
-							</div>
-							<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">
-								<p style="Margin-top: 0;Margin-bottom: 0;text-align: center;">@product.Price.PriceFormatted</p>
+								<p style="Margin-top: 0;Margin-bottom: 0;text-align:left;font-weight:700;">@product.Price.PriceFormatted</p>
 							</div>
 						</a>
 					</td>

@@ -6,7 +6,7 @@ const Typeahead = function() {
 	return {
 		suggest: function(e, searchField){
 			if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-				//handle dropdown navigation if present
+				// handle dropdown navigation if present
 				document.querySelectorAll(".js-type-ahead-menu").forEach(function (menu) {
 					if (menu.classList.contains("show")) {
 						Typeahead.debounce(() => Typeahead.handleArrowNavigation(e.key, menu), 100)();
@@ -29,7 +29,7 @@ const Typeahead = function() {
 			}
 
 			if (e.key === "Escape") {
-				//Revert back to the original value last entered in the input field
+				// Revert back to the original value last entered in the input field
 				const highlightedItems = userList.querySelectorAll(".highlighted");
 
 				document.querySelectorAll(".js-type-ahead-field").forEach(function(field) {
@@ -89,7 +89,6 @@ const Typeahead = function() {
 
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`);
-				alert(response.status + '\n' + responseText);
 			} else {
 				let html = await response.text().then(function (text) {
 					return text;
@@ -140,7 +139,6 @@ const Typeahead = function() {
 				} else {
 					parm.removeAttribute("name");
 					parm.removeAttribute("value");
-
 				}
 			});
 		},
@@ -221,7 +219,6 @@ const Typeahead = function() {
 		init: function(){
 			document.body.addEventListener('click', Typeahead.hideSearchResults);
 			document.querySelectorAll(".js-type-ahead-field").forEach(function (field) {
-				field.addEventListener('focus', Typeahead.showSearchResults(field));
 				field.addEventListener('keyup', (e) => Typeahead.suggest(e, field))
 				field.addEventListener('keydown', (e) => Typeahead.handleTab(e));
 			});

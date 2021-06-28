@@ -5,9 +5,7 @@ import { Sliders } from './_sliders';
 import { Cart } from './_cart';
 import { ProductList } from './_productlist';
 import { VariantSelector } from './_variantselector';
-
 import { Typeahead } from './_typeahead';
-import { hcOffcanvasNav } from 'hc-offcanvas-nav';
 
 window.Modal = Modal;
 window.Collapse = Collapse;

@@ -16,8 +16,14 @@
 	var selectedImageCategories = Model.Item.GetList("ImageAssets").SelectedValues;
 	bool showOnlyPrimaryImage = Model.Item.GetBoolean("ShowOnlyPrimaryImage");
 	bool includeImagePatternImages = Model.Item.GetBoolean("ImagePatternImages"); 
-	var images = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
+	
+	@* Needed image data collection to support both DefaultImage, ImagePatterns and Image Assets *@
+	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
+	IEnumerable<MediaViewModel> images = new MediaViewModel[]{};
+	images = includeImagePatternImages && assetsImages.Count() == 0 ? images.Append(product.DefaultImage) : images;
+	images = images.Union(assetsImages);
 	images = includeImagePatternImages ? images.Union(product.ImagePatternImages) : images;
+
 	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
 	ratio = ratio != "0" ? ratio : "";
 	string mainRatioCssClass = ratio != "" ? "ratio" : "";
@@ -58,12 +64,12 @@
 @if (totalImages != 0)
 {
 	@* Show image + thumbs on large screens *@
-	<div class="d-none d-lg-block">
+	<div class="d-none d-lg-block @(padding)@(theme) h-100">
 		<div class="row g-3">
 			@* Main image *@
 			<div class="col-12">
-				<div class="@(padding)@(theme) mb-3">
-					<button class="btn @mainRatioCssClass js-product-image" style="@(mainRatioVariable);" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
+				<div class="mb-3">
+					<a href="@mainImagePath" class="btn @mainRatioCssClass js-product-image" style="@(mainRatioVariable);" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
 						<div class="d-flex align-items-center justify-content-center">
 							@{
 								var parms = new Dictionary<string, object>();
@@ -72,7 +78,7 @@
 							}
 							@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = mainImagePath }, parms)
 						</div>
-					</button>
+					</a>
 				</div>
 			</div>
 
@@ -197,7 +203,7 @@
 @helper RenderThumbnail(MediaViewModel asset, ProductViewModel product, int imageNumber) {
 	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
 
-	<button class="btn p-0 border ratio ratio-16x9 me-2" onclick="document.querySelector('#MainImage_@Model.ID').srcset = this.querySelector('img').srcset; document.querySelector('#MainImage_@Model.ID').setAttribute('data-image-number', '@imageNumber')">
+	<a href="@imagePath" class="btn p-0 border ratio ratio-16x9 me-2" onclick="document.querySelector('#MainImage_@Model.ID').srcset = this.querySelector('img').srcset; document.querySelector('#MainImage_@Model.ID').setAttribute('data-image-number', '@imageNumber')">
 		<span class="btn p-0 d-flex align-items-center justify-content-center">
 			@{
 				var parms = new Dictionary<string, object>();
@@ -206,7 +212,7 @@
 			}
 			@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
 		</span>
-	</button>
+	</a>
 }
 
 @helper RenderImage(MediaViewModel asset, ProductViewModel product, int number) {
@@ -217,7 +223,7 @@
 	string ratioCssClass = ratio != "" ? "ratio" : "";
 	string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
 
-	<button class="btn @ratioCssClass js-product-image" style="@(ratioVariable); cursor: pointer;" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
+	<a href="@imagePath" class="btn @ratioCssClass js-product-image" style="@(ratioVariable); cursor: pointer;" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
 		<div class="d-flex align-items-center justify-content-center">
 			@{
 				var parms = new Dictionary<string, object>();
@@ -226,5 +232,5 @@
 			}
 			@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
 		</div>
-	</button>
+	</a>
 }
