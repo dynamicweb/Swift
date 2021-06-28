@@ -4,24 +4,21 @@
 @using System.IO
 
 @{ 
-	string linkFontSize = Model.Parameters["LinkFontSize"].ToString();
 	string negativMargin = Model.Parameters["mx-n3"].ToString();
 	string navOrientation = Model.Parameters["navOrientation"].ToString();
-	string linkFontWeight = Model.Parameters["LinkFontWeight"].ToString();
 	string navAlignment = Model.Parameters["navAlignment"].ToString();
-	string linkCasing = Model.Parameters["LinkCasing"].ToString();
 	string theme = Model.Parameters["theme"].ToString();
 }
 
-<nav class="d-none d-lg-flex nav flex-nowrap @negativMargin @navOrientation @linkFontWeight @linkFontSize @navAlignment @linkCasing@(theme)">
-	@RenderFirstLevelNodes(Model.Nodes)
+<nav class="d-none d-lg-flex nav flex-nowrap @negativMargin @navOrientation @navAlignment">
+	@RenderFirstLevelNodes(Model.Nodes, theme)
 </nav>
 
-<nav class="d-flex d-lg-none nav flex-nowrap @negativMargin @navOrientation @linkFontWeight @linkFontSize @navAlignment @linkCasing@(theme)">
+<nav class="d-flex d-lg-none nav flex-nowrap @negativMargin @navOrientation @navAlignment">
 	@RenderFirstLevelNodesMobile(Model.Nodes)
 </nav>
 
-@helper RenderFirstLevelNodesMobile(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
+@helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string theme)
 {
 	foreach (var node in nodes)
 	{
@@ -54,29 +51,27 @@
 
 	foreach (var node in nodes)
 	{
-		var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
-		string pageType = page.ItemType;
-
 		var hasChildren = node.Nodes.Count() > 0;
-		string cartLinkCssClass = pageType == "R4_Cart" ? "js-cart-link" : "";
 		string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
 
 		if (node.IsClickable)
 		{
-			<a class="nav-link nav-link-clean text-nowrap @(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "") @cartLinkCssClass" href="@(hasChildren ? "#" : node.Link)" title="@node.Name" @dropdownAttributes @(node.IsActive ? " aria-current='page'" : "")>
-				@RenderNavigationItem(node, page)
+			<a class="nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing@(theme)@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" title="@node.Name" @dropdownAttributes@(node.IsActive ? " aria-current='page'" : "")>
+				@RenderNavigationItem(node)
 			</a>
 		}
 		else
 		{
-			<span class="nav-link nav-link-clean text-nowrap @cartLinkCssClass" title="@node.Name" @dropdownAttributes>
-				@RenderNavigationItem(node, page)
+			<span class="nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing" title="@node.Name" @dropdownAttributes>
+				@RenderNavigationItem(node)
 			</span>
 		}
 
 		if (hasChildren)
 		{
-			<ul class="dropdown-menu">
+			var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+			string pageType = page.ItemType;
+			<ul class="dropdown-menu @(theme)">
 				@if (pageType == "R4_SignIn")
 				{
 					if (Pageview.User == null)
@@ -106,10 +101,38 @@
 	}
 }
 
-@helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node, Dynamicweb.Content.Page page)
+@helper RenderFirstLevelNodesMobile(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
 {
 	string linkFontSize = Model.Parameters["LinkFontSize"].ToString();
+	string linkFontWeight = Model.Parameters["LinkFontWeight"].ToString();
+	string linkCasing = Model.Parameters["LinkCasing"].ToString();
+
+	foreach (var node in nodes)
+	{
+		var hasChildren = node.Nodes.Count() > 0;
+
+		if (node.IsClickable)
+		{
+			<a class="nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize @(node.IsActive ? " active" : "")" href="@node.Link" title="@node.Name">
+				@RenderNavigationItem(node)
+			</a>
+		}
+		else
+		{
+			<span class="nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize" title="@node.Name">
+				@RenderNavigationItem(node)
+			</span>
+		}
+	}
+}
+
+@helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node)
+{
+	var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
 	string pageType = page.ItemType;
+	string linkFontSize = Model.Parameters["LinkFontSize"].ToString();
+	string layout = Model?.Parameters["Layout"].ToString();
+	string icon = page.Item["Icon"] != null ? page.Item["Icon"].ToString() : "";
 	string iconSize = "icon-3";
 
 	if (linkFontSize == "fs-7")
@@ -125,9 +148,6 @@
 	if (page.PropertyItem != null) {
         icon = page.PropertyItem["Icon"] != null ? page.PropertyItem["Icon"].ToString() : "";
     }
-
-	string layout = Model?.Parameters["Layout"].ToString();
-
 	if (pageType == "R4_Cart")
 	{
 		double totalProducts = 0;
@@ -141,7 +161,8 @@
 		{
 			case "linksOnly":
 				<span class="align-middle">@node.Name</span>
-				break;
+				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
+			break;
 
 			case "iconsOnly":
 				@RenderIcon(icon, iconSize)
