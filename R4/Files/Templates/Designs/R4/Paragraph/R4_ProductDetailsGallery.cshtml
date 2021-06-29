@@ -13,8 +13,15 @@
 	@* Collect the images *@
 	var selectedImageCategories = Model.Item.GetList("ImageAssets").SelectedValues;
 	bool includeImagePatternImages = Model.Item.GetBoolean("ImagePatternImages"); 
-	var images = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
+	
+	@* Needed image data collection to support both DefaultImage, ImagePatterns and Image Assets *@
+	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
+	IEnumerable<MediaViewModel> images = new MediaViewModel[]{};
+	images = includeImagePatternImages && assetsImages.Count() == 0 ? images.Append(product.DefaultImage) : images;
+	images = images.Union(assetsImages);
 	images = includeImagePatternImages ? images.Union(product.ImagePatternImages) : images;
+
+	bool defaultImageFallback = Model.Item.GetBoolean("DefaultImageFallback"); 
 
 	int totalImages = 0;
 	foreach (MediaViewModel asset in images) {
@@ -26,8 +33,13 @@
 
 	if (totalImages == 0)
 	{
-		images = new List<MediaViewModel>(){};
-		totalImages = 1;
+		if (defaultImageFallback) {
+			images = new List<MediaViewModel>(){ product.DefaultImage };
+			totalImages = 1;
+		} else {
+			images = new List<MediaViewModel>(){ };
+			totalImages = 0;
+		}
 	}
 
 	@* Layout settings *@
@@ -43,7 +55,7 @@
 @if (totalImages != 0 && images.Count() != 0)
 {
 	@* Show the gallery on large screens *@
-	<div class="d-none d-lg-block">
+	<div class="d-none d-lg-block h-100">
 		<div class="row @spacing">
 			@{ 
 				int imageNumber = 0;

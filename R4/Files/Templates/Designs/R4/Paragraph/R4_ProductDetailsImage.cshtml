@@ -16,8 +16,14 @@
 	var selectedImageCategories = Model.Item.GetList("ImageAssets").SelectedValues;
 	bool showOnlyPrimaryImage = Model.Item.GetBoolean("ShowOnlyPrimaryImage");
 	bool includeImagePatternImages = Model.Item.GetBoolean("ImagePatternImages"); 
-	var images = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
+	
+	@* Needed image data collection to support both DefaultImage, ImagePatterns and Image Assets *@
+	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
+	IEnumerable<MediaViewModel> images = new MediaViewModel[]{};
+	images = includeImagePatternImages && assetsImages.Count() == 0 ? images.Append(product.DefaultImage) : images;
+	images = images.Union(assetsImages);
 	images = includeImagePatternImages ? images.Union(product.ImagePatternImages) : images;
+
 	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
 	ratio = ratio != "0" ? ratio : "";
 	string mainRatioCssClass = ratio != "" ? "ratio" : "";
@@ -58,11 +64,11 @@
 @if (totalImages != 0)
 {
 	@* Show image + thumbs on large screens *@
-	<div class="d-none d-lg-block">
+	<div class="d-none d-lg-block @(padding)@(theme) h-100">
 		<div class="row g-3">
 			@* Main image *@
 			<div class="col-12">
-				<div class="@(padding)@(theme) mb-3">
+				<div class="mb-3">
 					<a href="@mainImagePath" class="btn @mainRatioCssClass js-product-image" style="@(mainRatioVariable);" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
 						<div class="d-flex align-items-center justify-content-center">
 							@{

@@ -3,6 +3,7 @@
 @using Dynamicweb.Content.Items
 @using Dynamicweb.Frontend
 @using Page = Dynamicweb.Content.Page
+@using Dynamicweb.Ecommerce.ProductCatalog
 @functions
 {
 	private string GetImageHandlerImage(FileViewModel imageFile)
@@ -32,18 +33,19 @@
 		int newsletterWidth = Pageview != null ? Dynamicweb.Core.Converter.ToInt32(Pageview.Page.Item["Width"]) : 660;
 
 		GridRow grid = Dynamicweb.Services.Grids.GetGridRowById(Pageview.CurrentParagraph.GridRowId);
+		int padding = Convert.ToInt16(Model.Item.GetRawValueString("ContentPadding", "0")) * 2;
 
-		if (grid == null) return newsletterWidth;
+		if (grid == null) return newsletterWidth - padding;
 
 		var definitionId = grid.DefinitionId;
 
-		if (definitionId == "1Column") return newsletterWidth;
+		if (definitionId == "1Column") return newsletterWidth - padding;
 
 		var item = Dynamicweb.Services.Items.GetItem(grid.ItemType, grid.ItemId);
 		var spaceBetweenColumns = item["SpaceBetweenColumns"].ToString();
 		var spacing = 20;
 
-		return spaceBetweenColumns != "spacing" ? newsletterWidth / 2 : (newsletterWidth - spacing) / 2;
+		return spaceBetweenColumns != "spacing" ? newsletterWidth / 2 - padding : (newsletterWidth - spacing) / 2 - padding;
 	}
 
 	private static string GetImageHeight(string imageRatio, int imageWidth)
@@ -57,12 +59,12 @@
 	{
 		return Model.Item.GetRawValueString("ImageAspectRatio", "original");
 	}
-	
+
 	private string GetThemeValue(string systemName)
 	{
 		int themesPageId = Pageview.AreaSettings.GetLink("ThemesPage") != null ? Pageview.AreaSettings.GetLink("ThemesPage").PageId : 0;
 		if (themesPageId == 0) return "";
-        
+
 		List<Paragraph> themesPageParagraphs = Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(themesPageId)?.ToList();
 		string theme = GetSelectedTheme();
 		Paragraph themeParagraph = themesPageParagraphs?.FirstOrDefault(p => p.Item["Name"].ToString().ToLower().Equals(theme));
@@ -80,30 +82,31 @@
 		GridRow grid = Dynamicweb.Services.Grids.GetGridRowById(Pageview.CurrentParagraph.GridRowId);
 		Item item = Dynamicweb.Services.Items.GetItem(grid.ItemType, grid.ItemId);
 		theme = item["Theme"]?.ToString().ToLower();
-		
+
 		if (!string.IsNullOrEmpty(theme) && theme != "theme default") return theme;
-		
+
 		theme = Dynamicweb.Core.Converter.ToString(Pageview.Page.Item["Theme"])?.ToLower();
 		return !string.IsNullOrEmpty(theme) && theme != "theme default" ? theme : "";
 	}
-	
+
 	private string GetFontStyle(string type)
 	{
 		int brandingPageId = Pageview.AreaSettings.GetLink("BrandingPage") != null ? Pageview.AreaSettings.GetLink("BrandingPage").PageId : 0;
 		if (brandingPageId == 0) return "";
-		
+
 		Page brandingPage = Dynamicweb.Services.Pages?.GetPage(brandingPageId);
 		if (brandingPage == null) return "";
-		
+
 		string fontStyle = "";
-		dynamic font = Newtonsoft.Json.JsonConvert.DeserializeObject(brandingPage.Item[type+"Font"].ToString());
-		if (font != null) {
+		dynamic font = Newtonsoft.Json.JsonConvert.DeserializeObject(brandingPage.Item[type + "Font"].ToString());
+		if (font != null)
+		{
 			fontStyle += $"font-family:{font.Family}, sans-serif;";
 			fontStyle += $"font-weight:{font.SelectedVariant};";
 		}
-		fontStyle += $"text-transform:{brandingPage.Item[type+"Casing"]};";
-		fontStyle += $"line-height:{brandingPage.Item[type+"LineHeight"]};";
-		fontStyle += $"letter-spacing:{brandingPage.Item[type+"LetterSpacing"]};";
+		fontStyle += $"text-transform:{brandingPage.Item[type + "Casing"]};";
+		fontStyle += $"line-height:{brandingPage.Item[type + "LineHeight"]};";
+		fontStyle += $"letter-spacing:{brandingPage.Item[type + "LetterSpacing"]};";
 		return fontStyle;
 	}
 }
@@ -111,8 +114,9 @@
 	string layout = Model.Item.GetRawValueString("Layout", "image-top");
 	string backgroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("BackgroundColor") : "transparent";
 	string bodyFontStyle = GetFontStyle("Body");
+	string padding = Model.Item.GetRawValueString("ContentPadding", "0") + "px";
 }
-<td style="background-color:@backgroundColor;vertical-align:center;font-size: 16px;@bodyFontStyle">
+<td style="padding:@padding;background-color:@backgroundColor;vertical-align:center;font-size: 16px;@bodyFontStyle">
 	@switch (layout)
 	{
 		case "image-top":
@@ -166,13 +170,15 @@
 @helper RenderTitle(string horizontalAlignment = "left")
 {
 	string title = Model.Item.GetString("Title");
+	string titleFontSizeClass = Model.Item?.GetRawValueString("TitleFontSize", "size-44");
+	string titleFontSize = (titleFontSizeClass?.Split('-')[1] ?? "44") + "px";
 	string foregroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("ForegroundColor") : "#000000";
 	string headerFontStyle = GetFontStyle("Header");
 
 	if (!string.IsNullOrEmpty(title) && !Model.Item.GetBoolean("HideTitle"))
 	{
 		<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">
-			<h1 class="size-34" style="text-align:@horizontalAlignment;margin-top:20px;margin-bottom:10px;font-size: 30px;@headerFontStyle;" lang="x-size-34">
+			<h1 class="@titleFontSizeClass" style="text-align:@horizontalAlignment;margin-top:20px;margin-bottom:10px;font-size:@titleFontSize;@headerFontStyle;" lang="x-@titleFontSizeClass">
 				<span>
 					<span style="color:@foregroundColor">
 						<strong>@title</strong>
@@ -186,13 +192,15 @@
 @helper RenderLead(string horizontalAlignment = "left")
 {
 	string lead = Model.Item.GetString("Lead");
+	string subtitleFontSizeClass = Model.Item.GetRawValueString("SubtitleFontSize", "size-20");
+	string subtitleFontSize = (subtitleFontSizeClass?.Split('-')[1] ?? "20") + "px";
 	string foregroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("ForegroundColor") : "#000000";
 	string displayFontStyle = GetFontStyle("Display");
 
 	if (!string.IsNullOrEmpty(lead))
 	{
 		<div style="text-align:@horizontalAlignment;mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle;">
-		    <p class="size-22" style="margin-top:0;margin-bottom:0;font-size: 16px;color:@foregroundColor;@displayFontStyle" lang="x-size-16">
+			<p class="@subtitleFontSizeClass" style="margin-top:0;margin-bottom:0;font-size:@subtitleFontSize;color:@foregroundColor;@displayFontStyle" lang="x-@subtitleFontSizeClass">
 				@lead
 			</p>
 		</div>
@@ -214,28 +222,77 @@
 
 @helper RenderButton(string horizontalAlignment = "left")
 {
-	string link = Model.Item?.GetString("ButtonLink") ?? "";
 	string label = Model.Item?.GetString("ButtonLabel") ?? "";
 	string buttonBackgroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("ButtonPrimaryBackgroundColor") : "#000000";
 	string buttonForegroundColor = !string.IsNullOrEmpty(GetSelectedTheme()) ? GetThemeValue("ButtonPrimaryForegroundColor") : "#FFFFFF";
 
-	if (!string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(label))
+	string linkType = Model.Item.GetRawValueString("LinkType", "page");
+	Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
+
+	if (linkType == "page" && Model.Item.GetLink("ButtonLink") != null)
+	{
+		link = Model.Item.GetLink("ButtonLink");
+	}
+
+	if (linkType == "product-group")
+	{
+		IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
+		IList<string> groupIds = new List<string> { };
+
+		if (selectedGroups != null)
+		{
+			foreach (var fromGroup in selectedGroups)
+			{
+				groupIds.Add(fromGroup.Id);
+			}
+		}
+
+		link = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
+			IsExternal = false
+		};
+	}
+
+	if (linkType == "product")
+	{
+		ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink");
+		IList<string> productIds = new List<string> { };
+
+		if (products != null)
+		{
+			foreach (var product in products.Products)
+			{
+				productIds.Add(product.Id);
+			}
+		}
+
+		string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
+		string pageTag = productIds.Count == 1 ? "ProductDetailPage" : "Shop";
+		link = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds).Trim(),
+			IsExternal = false
+		};
+	}
+
+	if (link != null && !string.IsNullOrEmpty(label))
 	{
 		<div class="btn" style="text-align:@horizontalAlignment;">
-		    <![if !mso]>
-		        <a href="@link" style="border-radius: 0;display: inline-block;font-size: 14px;font-weight: bold;line-height: 24px;padding: 12px 24px;text-align: center;text-decoration: none !important;transition: opacity 0.1s ease-in;color: @buttonForegroundColor !important;background-color:@buttonBackgroundColor;">
-		            @label
-		        </a>
-		    <![endif]>
-		    <!--[if mso]>
-		        <v:rect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="@link" style="height:60px;width:300px;margin-top:20px;v-text-anchor:middle;" fillcolor="@buttonBackgroundColor" stroke="f">
+			<![if !mso]>
+			<a href="@link.Url" style="border-radius: 0;display: inline-block;font-size: 14px;font-weight: bold;line-height: 24px;padding: 12px 24px;text-align: center;text-decoration: none !important;transition: opacity 0.1s ease-in;color: @buttonForegroundColor !important;background-color:@buttonBackgroundColor;">
+				@label
+			</a>
+			<![endif]>
+			<!--[if mso]>
+				<v:rect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="@link.Url" style="height:60px;width:300px;margin-top:20px;v-text-anchor:middle;" fillcolor="@buttonBackgroundColor" stroke="f">
 					<v:textbox style="mso-fit-shape-to-text:t" inset="10px,12px,10px,12px">
 						<center style="font-size:14px;line-height:24px;color:@buttonForegroundColor;background-color:@buttonBackgroundColor">
-		                    @label
-		                </center>
-		            </v:textbox>
-		        </v:rect>
-		    <![endif]-->
+							@label
+						</center>
+					</v:textbox>
+				</v:rect>
+			<![endif]-->
 		</div>
 	}
 }
