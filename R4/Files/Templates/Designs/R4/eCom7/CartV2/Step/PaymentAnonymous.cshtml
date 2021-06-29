@@ -3,8 +3,13 @@
 @using System.IO
 
 @{ 
-	string useSameAddressChecked = !GetBoolean("Ecom:Order.UseDeliveryAddress") ? "checked=\"checked\"" : "";
-	string useDeliveryAddressChecked = GetBoolean("Ecom:Order.UseDeliveryAddress") ? "checked=\"checked\"" : "";
+	string deliveryAddressString = GetString("Ecom:Order.Delivery.Company") + GetString("Ecom:Order.Delivery.Address") + GetString("Ecom:Order.Delivery.Zip") + GetString("Ecom:Order.Delivery.City") + GetString("Ecom:Order.Delivery.Phone");
+	string billingAddressString = GetString("Ecom:Order.Customer.Company") + GetString("Ecom:Order.Customer.Address") + GetString("Ecom:Order.Customer.Zip") + GetString("Ecom:Order.Customer.City") + GetString("Ecom:Order.Customer.Phone");
+
+	string useSameAddressChecked = (deliveryAddressString == billingAddressString) || billingAddressString == "" ? "checked=\"checked\"" : "";
+	string useBillingAddressChecked = (deliveryAddressString != billingAddressString) && billingAddressString != "" ? "checked=\"checked\"" : "";
+	string showBilling = (deliveryAddressString != billingAddressString) && billingAddressString != "" ? "show" : "";
+	string disableSameFields = (deliveryAddressString != billingAddressString) && billingAddressString != "" ? "disabled" : "";
 }
 
 <div class="row">
@@ -30,45 +35,73 @@
 
 			<div class="mt-4">
 
-				<h3 class="fs-6 fw-normal mb-0">@Translate("Delivery address")</h3>
+				<h3 class="fs-6 fw-normal mb-0">@Translate("Billing address")</h3>
 				<p class="fs-8 mb-3">@Translate("Select the address that matches your credit card or payment method")</p>
 				
 				<div class="list-group">
 					
 					<label class="list-group-item list-group-item-action py-3 d-flex justify-content-between">
 						<span class="d-flex justify-content-between">
-							<input class="form-check-input me-3" type="radio" name="EcomOrderUseDeliveryAddress" value="False" @useSameAddressChecked onchange="hideDeliveryAddressContainer()">
+							<input class="form-check-input me-3" type="radio" name="BillingAddress" value="False" @useSameAddressChecked onchange="hideBillingAddressContainer()">
 							<div>@Translate("Same address as billing address")</div>
 						</span>
 					</label>
 
 					<label class="list-group-item list-group-item-action py-3 d-flex justify-content-between">
 						<span class="d-flex justify-content-between">
-							<input class="form-check-input me-3" type="radio" name="EcomOrderUseDeliveryAddress" value="True" @useDeliveryAddressChecked onchange="showDeliveryAddressContainer()">
-							<div>@Translate("Use another delivery address")</div>
+							<input class="form-check-input me-3" type="radio" name="BillingAddress" value="True" @useBillingAddressChecked onchange="showBillingAddressContainer()">
+							<div>@Translate("Use another billing address")</div>
 						</span>
 					</label>
 
-					<div class="collapse" id="DeliveryAddressContainer">
+					@* Save delivery fields to the billing fields, if it is the same *@
+					<div class="d-none" id="SameBillingAddressContainer">
+						<input @disableSameFields type="hidden" name="EcomOrderCustomerName" value="@GetString("Ecom:Order.Delivery.Name")">
+						<input @disableSameFields type="hidden" name="EcomOrderCustomerCompany" value="@GetString("Ecom:Order.Delivery.Company")">
+						<input @disableSameFields type="hidden" name="EcomOrderCustomerAddress" value="@GetString("Ecom:Order.Delivery.Address")">
+						<input @disableSameFields type="hidden" name="EcomOrderCustomerZip" value="@GetString("Ecom:Order.Delivery.Zip")">
+						<input @disableSameFields type="hidden" name="EcomOrderCustomerCity" value="@GetString("Ecom:Order.Delivery.City")">
+						<input @disableSameFields type="hidden" name="EcomOrderCustomerCountry" value="@GetString("Ecom:Order.Delivery.Country")">
+						<input @disableSameFields type="hidden" name="EcomOrderCustomerCountryCode" value="@GetString("Ecom:Order.Delivery.Country.Code")">
+						<input @disableSameFields type="hidden" name="EcomOrderCustomerPhone" value="@GetString("Ecom:Order.Delivery.Phone")">
+					</div>
+
+					<div class="collapse @showBilling" id="BillingAddressContainer">
 						<div class="list-group-item border-top-0 py-3 bg-light">
-							@RenderAddressDeliveryAnonymous()
+							@RenderAddressBillingAnonymous()
 						</div>
 					</div>
 					
 				</div>
 
 				<script>
-					function showDeliveryAddressContainer() {
-						var show = new Collapse('#DeliveryAddressContainer', {
+					function showBillingAddressContainer() {
+						var show = new Collapse('#BillingAddressContainer', {
 							show: true
 						});
-						document.getElementById('ordersubmit').submit()
+
+						//Enable the correct form fields
+						document.querySelector("#BillingAddressContainer").querySelectorAll(".form-control").forEach(function (field) {
+							field.removeAttribute("disabled");
+						});
+
+						document.querySelector("#SameBillingAddressContainer").querySelectorAll("input").forEach(function (field) {
+							field.setAttribute("disabled", "true");
+						});
 					};
-					function hideDeliveryAddressContainer() {
-						var hide = new Collapse('#DeliveryAddressContainer', {
+					function hideBillingAddressContainer() {
+						var hide = new Collapse('#BillingAddressContainer', {
 							hide: true
 						});
-						document.getElementById('ordersubmit').submit()
+
+						//Enable the correct form fields
+						document.querySelector("#BillingAddressContainer").querySelectorAll(".form-control").forEach(function(field) {
+							field.setAttribute("disabled", "true");
+						});
+
+						document.querySelector("#SameBillingAddressContainer").querySelectorAll("input").forEach(function (field) {
+							field.removeAttribute("disabled");
+						});
 					};
 				</script>
 
@@ -87,7 +120,8 @@
 @Include("Helpers/StepsBreadcrumbs.cshtml")
 @Include("Helpers/Errors.cshtml")
 @Include("Helpers/StepSummary.cshtml")
-@Include("Helpers/AddressDeliveryAnonymous.cshtml")
+@Include("Helpers/AddressBillingAnonymous.cshtml")
 @Include("Helpers/PaymentMethods.cshtml")
 @Include("Helpers/SummarySidebar.cshtml")
 @Include("Helpers/StepsNavigation.cshtml")
+
