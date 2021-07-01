@@ -4,6 +4,7 @@ import { tns } from 'tiny-slider/src/tiny-slider';
 import { Sliders } from './_sliders';
 import { Cart } from './_cart';
 import { ProductList } from './_productlist';
+import { PageUpdater } from './_pageupdater';
 import { VariantSelector } from './_variantselector';
 import { Typeahead } from './_typeahead';
 
@@ -13,6 +14,7 @@ window.tns = tns;
 window.Sliders = Sliders;
 window.Cart = Cart;
 window.ProductList = ProductList;
+window.PageUpdater = PageUpdater;
 window.VariantSelector = VariantSelector;
 window.Typeahead = Typeahead;
 
