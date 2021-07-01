@@ -7,7 +7,7 @@ const ProductList = function () {
 				ProductList.Update(el);
 			});
 		},
-		
+
 		Update: async function (e) {
 			var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
 			var form = clickedButton.closest("form");
@@ -20,7 +20,7 @@ const ProductList = function () {
 					overlayElement.className = "preloader-overlay";
 					overlayElement.setAttribute('id', "overlay");
 					var overlayElementIcon = document.createElement('div');
-					overlayElementIcon.className = "preloader-overlay-icon";
+					overlayElementIcon.className = "spinner-border";
 					overlayElementIcon.style.top = window.pageYOffset + "px";
 					overlayElement.appendChild(overlayElementIcon);
 
@@ -35,8 +35,7 @@ const ProductList = function () {
 					responseTargetElement.appendChild(preloaderElement);
 				}, 200); //Small delay to secure that the preloader is not loaded all the time
 			}
-			
-		
+
 			let formData = new FormData(form);
 			var fetchOptions = {
 				method: 'POST',
@@ -65,10 +64,10 @@ const ProductList = function () {
 				ProductList.Error(response, responseTargetElement, addPreloaderTimer);
 			}
 		},
-		
+
 		Success: async function (response, responseTargetElement, addPreloaderTimer, formData) {
 			clearTimeout(addPreloaderTimer);
-		
+
 			//Remove preloader
 			if (document.querySelector("#overlay")) {
 				document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
@@ -96,23 +95,23 @@ const ProductList = function () {
 				}
 			}
 		},
-		
+
 		Error: function (e, responseTargetElement, addPreloaderTimer) {
 			clearTimeout(addPreloaderTimer);
-		
+
 			if (document.querySelector("#overlay")) {
 				document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
 			}
 		},
-		
+
 		ResetFacets: async function (e) {
 			var clickedButton = e.currentTarget;
 			var form = clickedButton.closest("form");
-		
+
 			form.querySelectorAll("input[type='checkbox']").forEach(function (el) {
 				el.checked = false;
 			});
-		
+
 			ProductList.Update(e);
 		}
 	}
