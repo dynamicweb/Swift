@@ -5,88 +5,6 @@
 @using System.Web
 @using System.Linq
 
-@functions{ 
-	List<string> variantCombinations = new List<string>();
-
-	public AvailableVariants GetAvailableVariants(ProductViewModel productModel) {
-
-		AvailableVariants variants = new AvailableVariants();
-		if (productModel.VariantInfo.VariantInfo != null)
-		{
-			FillVariants(variants, productModel.VariantInfo);
-		}
-		return variants;
-	}
-
-	public void FillVariants(AvailableVariants variants, VariantInfoViewModel variantInfo)
-	{
-		if (variantInfo.VariantInfo != null)
-		{
-			if (!variants.Groups.ContainsKey(variantInfo.VariantInfoGroupName))
-			{
-				variants.Groups.Add(variantInfo.VariantInfoGroupName, new VariantGroup { Name = variantInfo.VariantInfoGroupName });
-			}
-			foreach (var variantoption in variantInfo.VariantInfo)
-			{
-				if (!variants.Groups[variantInfo.VariantInfoGroupName].Options.ContainsKey(variantoption.OptionID))
-				{
-					variants.Groups[variantInfo.VariantInfoGroupName].Options.Add(variantoption.OptionID, new VariantOption()
-					{
-						ID = variantoption.OptionID,
-						Name = variantoption.OptionName,
-						Color = variantoption.OptionColor,
-						Image = variantoption.OptionImage.Value
-					});
-				}
-				FillVariants(variants, variantoption);
-			}
-		}
-	}
-
-	public void FillAvailableVariants(VariantInfoViewModel variantInfo) {
-		if (variantInfo.VariantInfo != null)
-		{
-			foreach (var variantOption in variantInfo.VariantInfo)
-			{
-				var parent = variantOption.GetParent();
-				FillAvailableVariants(variantOption);
-			}
-		}
-	}
-
-	public class AvailableVariants
-	{
-		public Dictionary<string, VariantGroup> Groups { get; set; } = new Dictionary<string, VariantGroup>();
-	}
-
-	public class VariantGroup
-	{
-		public string Name { get; set; }
-		public Dictionary<string, VariantOption> Options { get; set; } = new Dictionary<string, VariantOption>();
-	}
-
-	public class VariantOption
-	{
-		public string ID { get; set; }
-		public string Name { get; set; }
-		public string Color { get; set; }
-		public string Image { get; set; }
-	}
-
-	public void GetChild(IEnumerable<VariantInfoViewModel> variantModels) {
-		foreach (VariantInfoViewModel variantModel in variantModels) {
-			if(variantModel?.VariantInfo == null)
-			{
-				variantCombinations.Add(variantModel?.VariantID);
-			}
-			else
-			{
-				GetChild(variantModel?.VariantInfo);
-			}
-		}	
-	}
-}
-
 @{ 
 	bool isVisualEditor = !string.IsNullOrEmpty(HttpContext.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(HttpContext.Current.Request.QueryString.Get("VisualEdit")) : false;
 
@@ -106,9 +24,6 @@
 		url += url.Contains("?") ? "&LayoutTemplate=R4_MiniCart.cshtml" : "?LayoutTemplate=R4_MiniCart.cshtml";
 	}
 
-	//Create the VariantCombinations list
-	GetChild(new List<VariantInfoViewModel>() { product.VariantInfo });
-		
 	IEnumerable<string> selectedDisplayGroups = Model.Item.GetList("MainFeatures").SelectedValues;
 	List<CategoryFieldViewModel> mainFeatures = new List<CategoryFieldViewModel>();
 
@@ -171,13 +86,12 @@
 		}
 
 		@if (product.VariantInfo.VariantInfo != null) {
-			AvailableVariants availableVariants = GetAvailableVariants(product);
 			int groupNumber = 1;
 
-			<div class="mb-3 js-variant-selector" data-combinations="@string.Join(",", variantCombinations)">
-				@foreach (var variantGroup in availableVariants.Groups)
+			<div class="mb-3 js-variant-selector" data-combinations="@string.Join(",", product.VariantCombinations())">
+				@foreach (var variantGroup in product.VariantGroups())
 				{
-					VariantGroup group = variantGroup.Value;
+					VariantGroupViewModel group = variantGroup.Value;
 
 					<h3 class="h6">@group.Name</h3>
 					<div class="mb-3 js-variant-group" data-group-id="@groupNumber">
@@ -265,29 +179,40 @@
 	}
 }
 
-@helper RenderVariantOptions(Dictionary<string, VariantOption> variantOptions, string[] variantId) {
+@helper RenderVariantOptions(Dictionary<string, VariantOptionViewModel> variantOptions, string[] variantId) {
 	if (variantOptions != null)
 	{
-		foreach (VariantOption option in variantOptions.Values)
+		foreach (var option in variantOptions.Values)
 		{
-			string active = variantId.Contains(option.ID) ? "active" : "";
+			string active = variantId.Contains(option.Id) ? "active" : "";
 
 			if (!string.IsNullOrEmpty(option.Color))
 			{
-				<button type="button" class="btn variant-option colorbox rounded-circle me-1 mb-2 d-inline-block js-variant-option @active" style="background-color: @option.Color" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.ID"></button>
+				<button type="button" class="btn colorbox rounded-circle me-1 mb-2 d-inline-block variant-option js-variant-option @active" style="background-color: @option.Color" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.Id"></button>
 			}
 			else if (!string.IsNullOrEmpty(option.Image))
 			{
-				<button type="button" class="btn variant-option p-0 d-inline-block mb-2 js-variant-option @active" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.ID">
+				<button type="button" class="btn p-0 d-inline-block mb-2 variant-option js-variant-option @active" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.Id">
 					<img src="/Admin/Public/GetImage.ashx?image=@(option.Image)&width=42&Format=WebP&Quality=70" />
 				</button>
 			} 
 			else 
 			{
-				<button type="button" class="btn btn-secondary variant-option btn-secondary d-inline-block mb-2 js-variant-option @active" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.ID">
+				<button type="button" class="btn btn-secondary d-inline-block mb-2 variant-option js-variant-option @active" onclick="VariantSelector.OptionClick(event)" data-variant-id="@option.Id">
 					@option.Name
 				</button>
 			}
 		}
 	}
+}
+
+
+@if (product.VariantInfo.VariantInfo != null)
+{
+	<script>
+		//Initialize the variant selector
+		document.addEventListener('DOMContentLoaded', function (event) {
+			VariantSelector.init();
+		});
+	</script>
 }
