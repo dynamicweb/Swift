@@ -80,6 +80,7 @@ const ProductList = function () {
 
 			responseTargetElement.innerHTML = html;
 
+			//Initialize all the sliders
 			Sliders.init();
 
 			//Modal
