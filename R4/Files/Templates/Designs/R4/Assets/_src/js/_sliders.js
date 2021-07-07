@@ -14,25 +14,25 @@ const Sliders = function() {
 					hideNavigationBar = hideNavigationBar == "true" ? false : true;
 
 					var itemsInSlider = 5;
-					var closestColumn = sliderContainer.closest("[class^='col-']");
+					var closestColumn = sliderContainer.closest("[data-col-size]");
+					var currentLayout = sliderContainer.closest("[data-slider-layout]") != null ? sliderContainer.closest("[data-slider-layout]") : "top";
 
 					if (closestColumn) {
-						var colMdClassIndex = closestColumn.getAttribute("class").search("col-lg-") + 7;
-						var parentColumnSize = closestColumn.getAttribute("class").charAt(colMdClassIndex) + closestColumn.getAttribute("class").charAt(colMdClassIndex + 1);
+						var columnSize = closestColumn.getAttribute("data-col-size");
 
-						if (parentColumnSize == 12) {
+						if (columnSize == 12) {
 							itemsInSlider = 4;
 						}
-						if (parentColumnSize == 10 || parentColumnSize == 9 || parentColumnSize == 8) {
-							itemsInSlider = 3;
+						if (columnSize == 10 || columnSize == 9 || columnSize == 8) {
+							itemsInSlider = currentLayout != "top" ? 2 : 3;
 						}
-						if (parentColumnSize == 6) {
-							itemsInSlider = 2;
+						if (columnSize == 6) {
+							itemsInSlider = currentLayout != "top" ? 1 : 2;
 						}
-						if (parentColumnSize == 4) {
+						if (columnSize == 4) {
 							itemsInSlider = 1;
 						}
-						if (parentColumnSize == 3 || parentColumnSize == 2 || parentColumnSize == 1) {
+						if (columnSize == 3 || columnSize == 2 || columnSize == 1) {
 							itemsInSlider = 1;
 						}
 					}
