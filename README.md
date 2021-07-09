@@ -27,6 +27,7 @@ Swift must be installed on a server or local machine running Windows & a recent 
 * [Software/Hardware requirements for Dynamicweb 9](https://doc.dynamicweb.com/get-started/introduction/requirements/requirements-dw9#2171)
 * [Preparing the hosting environment](https://doc.dynamicweb.com/get-started/introduction/installation/hosting-environment "Preparing the hosting environment")
 * [Install Dynamicweb](https://doc.dynamicweb.com/get-started/introduction/installation/installing-dynamicweb "Install Dynamicweb")
+* [Download Swift database](https://doc.dynamicweb.com/Files/Files/Downloads/Rapido/swift_07_07.zip "Download Swift database")
 
 After following these guides you will have a freshly installed Dynamicweb solution, which is ready to run Swift.
 
