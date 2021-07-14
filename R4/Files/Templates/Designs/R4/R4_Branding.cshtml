@@ -1,7 +1,6 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
 @using Dynamicweb.Frontend
-@using System.Web
-
+@using System.Text.RegularExpressions
 @MasterPageFile("R4_MasterNoLayout.cshtml")
 
 @{
@@ -67,8 +66,8 @@
 			bodyFontWeight = bodyFont.Weight;
 			fontList.Add(System.Net.WebUtility.UrlEncode(bodyFontFamily) + ":ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900");
 		}
-		bodyLineHeight = Model.Item.GetString("BodyLineHeight").Replace(",",".");
-		bodyLetterSpacing = Model.Item.GetString("BodyLetterSpacing").Replace(",",".");
+		bodyLineHeight = Model.Item.GetString("BodyLineHeight").Replace(",", ".");
+		bodyLetterSpacing = Model.Item.GetString("BodyLetterSpacing").Replace(",", ".");
 
 		@* Primary button *@
 		primaryButtonFontWeight = Model.Item.GetRawValueString("PrimaryButtonFontWeight", "normal");
@@ -79,63 +78,110 @@
 		primaryButtonShape = primaryButtonShape == "pill" ? "200px" : primaryButtonShape;
 
 		@* Secondary button *@
-		secondaryButtonFontWeight = Model.Item.GetRawValueString("SecondaryButtonFontWeight", "normal");
-		secondaryButtonCasing = Model.Item.GetRawValueString("SecondaryButtonCasing", "initial");
+	secondaryButtonFontWeight = Model.Item.GetRawValueString("SecondaryButtonFontWeight", "normal");
+	secondaryButtonCasing = Model.Item.GetRawValueString("SecondaryButtonCasing", "initial");
 
-		secondaryButtonShape = Model.Item.GetRawValueString("SecondaryButtonShape", "0");
-		secondaryButtonShape = secondaryButtonShape == "rounded" ? "4px" : secondaryButtonShape;
-		secondaryButtonShape = secondaryButtonShape == "pill" ? "200px" : secondaryButtonShape;
+	secondaryButtonShape = Model.Item.GetRawValueString("SecondaryButtonShape", "0");
+	secondaryButtonShape = secondaryButtonShape == "rounded" ? "4px" : secondaryButtonShape;
+	secondaryButtonShape = secondaryButtonShape == "pill" ? "200px" : secondaryButtonShape;
+}
+
+var fontsToLink = string.Join("&", fontList.Where(x => !string.IsNullOrEmpty(x)).Distinct().Select(x => string.Format("family={0}", x)));
+
+var sb = new System.Text.StringBuilder();
+
+
+string googleCss = string.Empty;
+try
+{
+	using (var client = new System.Net.WebClient())
+	{
+
+		client.Headers.Add("user-agent", Dynamicweb.Context.Current.Request.UserAgent);
+		googleCss = client.DownloadString($"https://fonts.googleapis.com/css2?{fontsToLink}&display=swap");
+		//googleCss = System.Text.RegularExpressions.Regex.Replace(googleCss, @"\s+", ""); //minify the css.
+
+		Dictionary<string, string> googleFontUrls = new Dictionary<string, string>();
+		Regex cssUrlGoogleFontsRegEx = new Regex(@"url\((?<googleFontUrl>.+?)\)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+		string firstPartOfCss = googleCss.Substring(googleCss.LastIndexOf("{"), googleCss.LastIndexOf("}")- googleCss.LastIndexOf("{"));
+
+		MatchCollection matches = cssUrlGoogleFontsRegEx.Matches(firstPartOfCss);//We will only take the first URL as that is what is primarily used. If the remaining woff fonts needs loading, the browser will take care of that.
+
+		for (var i = 0; i < matches.Count; i++)
+		{
+			Match match = matches[i];
+			string url = match.Groups["googleFontUrl"].Value;
+			if (!googleFontUrls.ContainsKey(url))
+			{
+				googleFontUrls.Add(url, url);
+			}
+			break;//We will only take the first URL as that is what is primarily used. If the remaining woff fonts needs loading, the browser will take care of that.
+		}
+
+		if (googleFontUrls.Count > 0)
+		{
+			var fontSb = new System.Text.StringBuilder();
+			foreach (string url in googleFontUrls.Values)
+			{
+				fontSb.AppendLine($"<link rel=\"preload\" href=\"{url}\" as=\"font\" type=\"font/woff2\" crossorigin>");
+			}
+			string htmlPathFontPreload = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/R4/_parsed/R4_css/R4_GoogleFontUrls_{Model.Area.ID}.html");
+			Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(fontSb.ToString(), htmlPathFontPreload, false);
+		}
+
+		sb.AppendLine(googleCss);
 	}
-
-	var fontsToLink = string.Join("&", fontList.Where(x => !string.IsNullOrEmpty(x)).Distinct().Select(x => string.Format("family={0}", x)));
-
-	var sb = new System.Text.StringBuilder();
-
-
+}
+catch (Exception ex)
+{
+	//Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(Dynamicweb.Context.Current.Server.MapPath($"~/Files/Templates/Designs/R4/_parsed/R4_css/R4_error.txt"), ex.ToString(), false);
+	@ex.ToString()
 	sb.AppendLine($"@import url('https://fonts.googleapis.com/css2?{fontsToLink}&display=swap');");
+}
 
-	sb.AppendLine("");
+
+sb.AppendLine("");
 
 
-	sb.AppendLine(".brand {");
+sb.AppendLine(".brand {");
 
-	sb.AppendLine($"--r4-header-font: {headerFontFamily};");
-	sb.AppendLine($"--r4-header-font-weight: {headerFontWeight};");
-	sb.AppendLine($"--r4-header-casing: {headerCasing};");
-	sb.AppendLine($"--r4-header-line-height: {headerLineHeight};");
-	sb.AppendLine($"--r4-header-letter-spacing: {headerLetterSpacing}rem;");
-	sb.AppendLine($"--r4-display-font: {displayFontFamily};");
-	sb.AppendLine($"--r4-display-font-weight: {displayFontWeight};");
-	sb.AppendLine($"--r4-display-casing: {displayCasing};");
-	sb.AppendLine($"--r4-display-line-height: {displayLineHeight};");
-	sb.AppendLine($"--r4-display-letter-spacing: {displayLetterSpacing}rem;");
-	sb.AppendLine($"--r4-body-font: {bodyFontFamily};");
-	sb.AppendLine($"--r4-body-font-weight: {bodyFontWeight};");
-	sb.AppendLine($"--r4-body-line-height: {bodyLineHeight};");
-	sb.AppendLine($"--r4-body-letter-spacing: {bodyLetterSpacing}rem;");
+sb.AppendLine($"--r4-header-font: {headerFontFamily};");
+sb.AppendLine($"--r4-header-font-weight: {headerFontWeight};");
+sb.AppendLine($"--r4-header-casing: {headerCasing};");
+sb.AppendLine($"--r4-header-line-height: {headerLineHeight};");
+sb.AppendLine($"--r4-header-letter-spacing: {headerLetterSpacing}rem;");
+sb.AppendLine($"--r4-display-font: {displayFontFamily};");
+sb.AppendLine($"--r4-display-font-weight: {displayFontWeight};");
+sb.AppendLine($"--r4-display-casing: {displayCasing};");
+sb.AppendLine($"--r4-display-line-height: {displayLineHeight};");
+sb.AppendLine($"--r4-display-letter-spacing: {displayLetterSpacing}rem;");
+sb.AppendLine($"--r4-body-font: {bodyFontFamily};");
+sb.AppendLine($"--r4-body-font-weight: {bodyFontWeight};");
+sb.AppendLine($"--r4-body-line-height: {bodyLineHeight};");
+sb.AppendLine($"--r4-body-letter-spacing: {bodyLetterSpacing}rem;");
 
-	sb.AppendLine($"--r4-button-primary-font-weight: {primaryButtonFontWeight};");
-	sb.AppendLine($"--r4-button-primary-casing: {primaryButtonCasing};");
-	sb.AppendLine($"--r4-button-primary-shape: {primaryButtonShape};");
+sb.AppendLine($"--r4-button-primary-font-weight: {primaryButtonFontWeight};");
+sb.AppendLine($"--r4-button-primary-casing: {primaryButtonCasing};");
+sb.AppendLine($"--r4-button-primary-shape: {primaryButtonShape};");
 
-	sb.AppendLine($"--r4-button-secondary-font-weight: {secondaryButtonFontWeight};");
-	sb.AppendLine($"--r4-button-secondary-casing: {secondaryButtonCasing};");
-	sb.AppendLine($"--r4-button-secondary-shape: {secondaryButtonShape};");
+sb.AppendLine($"--r4-button-secondary-font-weight: {secondaryButtonFontWeight};");
+sb.AppendLine($"--r4-button-secondary-casing: {secondaryButtonCasing};");
+sb.AppendLine($"--r4-button-secondary-shape: {secondaryButtonShape};");
 
-	sb.AppendLine($"--r4-debug-css-written: '{DateTime.Now.ToString()}';");
-	sb.AppendLine($"--r4-debug-page-changed: '{Model.UpdatedDate.ToString()}';");
+sb.AppendLine($"--r4-debug-css-written: '{DateTime.Now.ToString()}';");
+sb.AppendLine($"--r4-debug-page-changed: '{Model.UpdatedDate.ToString()}';");
 
-	sb.AppendLine("}");
+sb.AppendLine("}");
 
-	string cssPathTheme = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/R4/_parsed/R4_css/R4_theme_styles_{Model.Area.ID}.css");
-	string cssPathBranding = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/R4/_parsed/R4_css/R4_branding_styles_{Model.Area.ID}.css");
-	string cssPathCombined = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/R4/_parsed/R4_css/R4_styles_{Model.Area.ID}.min.css");
-	Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(sb.ToString(), cssPathBranding, false);
+string cssPathTheme = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/R4/_parsed/R4_css/R4_theme_styles_{Model.Area.ID}.css");
+string cssPathBranding = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/R4/_parsed/R4_css/R4_branding_styles_{Model.Area.ID}.css");
+string cssPathCombined = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/R4/_parsed/R4_css/R4_styles_{Model.Area.ID}.min.css");
+Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(sb.ToString(), cssPathBranding, false);
 
-	string combinedCss = Dynamicweb.Core.Helpers.TextFileHelper.ReadTextFile(cssPathBranding);
-	combinedCss += Dynamicweb.Core.Helpers.TextFileHelper.ReadTextFile(cssPathTheme);
-	combinedCss = combinedCss.Replace(Environment.NewLine, "");
-	Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(combinedCss, cssPathCombined, false);
+string combinedCss = Dynamicweb.Core.Helpers.TextFileHelper.ReadTextFile(cssPathBranding);
+combinedCss += Dynamicweb.Core.Helpers.TextFileHelper.ReadTextFile(cssPathTheme);
+combinedCss = combinedCss.Replace(Environment.NewLine, "");
+Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(combinedCss, cssPathCombined, false);
 }
 
 <div class="container my-5">
@@ -352,7 +398,7 @@
 								}
 								<div class="text-muted">
 									<a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('btn btn-primary');">
-										@HttpUtility.HtmlEncode(implementationPrimary)
+										@Dynamicweb.Core.Encoders.HtmlEncoder.HtmlEncode(implementationPrimary)
 									</a>
 								</div>
 							</td>
@@ -400,7 +446,7 @@
 								}
 								<div class="text-muted">
 									<a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('btn btn-secondary');">
-										@HttpUtility.HtmlEncode(implementationSecondary)
+										@Dynamicweb.Core.Encoders.HtmlEncoder.HtmlEncode(implementationSecondary)
 									</a>
 								</div>
 							</td>
