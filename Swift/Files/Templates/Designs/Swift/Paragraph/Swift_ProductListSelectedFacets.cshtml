@@ -1,0 +1,162 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Environment
+
+@{
+	bool isVisualEditor = Dynamicweb.Context.Current.Request.GetBoolean("visualedit");
+
+	ProductListViewModel productList = new ProductListViewModel();
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
+	{
+		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
+	}
+
+	bool facetsFound = false;
+
+	if (productList.FacetGroups != null)
+	{
+		foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+		{
+			foreach (FacetViewModel facetItem in facetGroup.Facets)
+			{
+				foreach (FacetOptionViewModel facetOption in facetItem.Options)
+				{
+					if (facetOption.Selected)
+					{
+						facetsFound = true;
+					}
+				}
+			}
+		}
+	}
+
+	string url = "/Default.aspx?ID=" + Model.PageID;
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=Designs/Swift/Swift_PageClean.cshtml" : "?LayoutTemplate=Designs/Swift/Swift_PageClean.cshtml";
+	}
+
+	string pageSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("PageSize")) ? Dynamicweb.Context.Current.Request.QueryString.Get("PageSize") : productList.PageSize.ToString();
+
+	string groupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GroupID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") : "";
+	if (groupId != "")
+	{
+		url += url.Contains("?") ? "&GroupID=" + groupId : "";
+	}
+
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+}
+
+@if (facetsFound)
+{
+	int facetOptionsCount = 0;
+	string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "name";
+
+	<form method="post" action="@url" data-response-target-element="content" class="@theme">
+		@if (productList?.Group?.Id != null)
+		{
+			<input type="hidden" name="GroupId" value="@productList.Group.Id" />
+		}
+
+		<input type="hidden" name="PageSize" value="@pageSize" />
+		<input type="hidden" name="SortBy" value="@sortBySelection" />
+		<input type="hidden" name="RequestType" value="UpdateList" />
+
+		@foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+		{
+			foreach (FacetViewModel facetItem in facetGroup.Facets)
+			{
+				string name = facetItem.Name.ToString();
+
+				foreach (FacetOptionViewModel facetOption in facetItem.Options)
+				{
+					if (facetOption.Selected)
+					{
+						string renderType = facetItem.RenderType;
+
+						if (renderType == "Colors")
+						{
+							@RenderColorOption(facetItem, facetOption, name)
+						}
+						else
+						{
+							@RenderCheckboxOption(facetItem, facetOption, name)
+						}
+
+						facetOptionsCount++;
+					}
+				}
+			}
+		}
+
+		@if (facetOptionsCount > 2)
+		{
+			<button type="button" class="btn btn-clean btn-sm me-sm-1 me-lg-2" onclick="ProductList.ResetFacets(event)"><i class="fas fa-undo-alt"></i> @Translate("Clear filters")</button>
+		}
+	</form>
+}
+else if (isVisualEditor)
+{
+	<div class="alert alert-dark m-0" role="alert">
+		<span>@Translate("Facets: The facet selections will be shown here, if any")</span>
+	</div>
+}
+
+
+@helper RenderCheckboxOption(FacetViewModel facet, FacetOptionViewModel facetOption, string name)
+{
+	string selected = facetOption.Selected ? "checked" : "";
+	string facetLabel = facetOption.Label;
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	if (facetLabel.ToLower() == "true")
+	{
+		facetLabel = Translate("Yes");
+	}
+
+	if (facetLabel.ToLower() == "false")
+	{
+		facetLabel = Translate("No");
+	}
+
+	<input class="visually-hidden" id="Selected_@(Model.ID)_@facetOption.Value" name="@facet.QueryParameter" onclick="ProductList.Update(event)" type="checkbox" value="[@facetOption.Value]" title="@facetOption.Label" @selected>
+	<label class="btn btn-secondary mb-2 d-inline-flex align-items-center" for="Selected_@(Model.ID)_@facetOption.Value">
+		<span>@(name): @facetLabel</span>
+		<span class="icon-2 ms-2 my-auto">
+			@ReadFile(iconPath+"check.svg")
+		</span>
+	</label>
+}
+
+@helper RenderColorOption(FacetViewModel facet, FacetOptionViewModel facetOption, string name)
+{
+	string selected = facetOption.Selected ? "checked" : "";
+	string facetLabel = facetOption.Label;
+	string colorCode = facetOption.Value;
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	string image = facetOption.Value;
+
+	var variantOption = Dynamicweb.Ecommerce.Services.VariantOptions.GetVariantOption(facetOption.Value.ToString(), Dynamicweb.Ecommerce.Common.Context.LanguageID);
+	if (variantOption != null)
+	{
+		image = variantOption.LargeImage;
+		colorCode = variantOption.Color;
+	}
+
+	<input class="btn-check" id="Selected_@(Model.ID)_@facetOption.Value.Replace("#", "")" name="@facet.QueryParameter" onclick="ProductList.Update(event)" type="checkbox" value="[@facetOption.Value]" title="@facetOption.Label" @selected>
+	<label class="btn btn-secondary mb-2 d-inline-flex align-items-center" for="Selected_@(Model.ID)_@facetOption.Value.Replace("#", "")">
+		<span>@(name):</span>
+		@if (colorCode.Contains("#"))
+		{
+			<span class="colorbox-icon ms-1" style="background-color: @colorCode"></span>
+		}
+		else
+		{
+			<img class="colorbox-background" src="/Admin/Public/GetImage.ashx?width=25&height=25&image=@image" />
+		}
+		<span class="icon-2 ms-2 my-auto">
+			@ReadFile(iconPath+"check.svg")
+		</span>
+	</label>
+}

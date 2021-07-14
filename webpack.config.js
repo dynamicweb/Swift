@@ -17,10 +17,10 @@ module.exports = [
         name: 'scripts',
         mode: mode,
         entry: {
-            'scripts': './R4/Files/Templates/Designs/R4/Assets/_src/js/r4.js'
+            'scripts': './Swift/Files/Templates/Designs/Swift/Assets/_src/js/swift.js'
         },
         output: {
-            path: path.resolve(__dirname, 'R4','Files','Templates','Designs','R4','Assets','js'),
+            path: path.resolve(__dirname, 'Swift','Files','Templates','Designs','Swift','Assets','js'),
             filename: '[name].js'
         },
         module: {
@@ -52,16 +52,16 @@ module.exports = [
         name: 'styles',
         mode: mode,
         entry: {
-            'styles': './R4/Files/Templates/Designs/R4/Assets/_src/scss/r4.scss'
+			'styles': './Swift/Files/Templates/Designs/Swift/Assets/_src/scss/swift.scss'
         },
         output: {
-            path: path.resolve(__dirname, 'R4','Files','Templates','Designs','R4','Assets','css'),
+            path: path.resolve(__dirname, 'Swift','Files','Templates','Designs','Swift','Assets','css'),
             filename: '[name].js'
         },
         plugins: [
             new StylelintPlugin({
                 configFile: '.stylelintrc.json',
-                files: 'R4/Files/Templates/Designs/R4/Assets/_src/scss/**/*.scss',
+                files: 'Swift/Files/Templates/Designs/Swift/Assets/_src/scss/**/*.scss',
             }),
             new MiniCssExtractPlugin({
                 filename: '[name].css'

@@ -1,0 +1,182 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using Dynamicweb
+@using System.IO
+@{ 
+	string negativMargin = Model.Parameters["mx-n3"].ToString();
+	string navOrientation = Model.Parameters["navOrientation"].ToString();
+	string navAlignment = Model.Parameters["navAlignment"].ToString();
+	string theme = Model.Parameters["theme"].ToString();
+}
+
+<nav class="d-none d-lg-flex nav flex-nowrap nav-wrapper @negativMargin @navOrientation @navAlignment">
+	@RenderFirstLevelNodes(Model.Nodes, theme)
+</nav>
+
+<nav class="d-flex d-lg-none nav flex-nowrap nav-wrapper @negativMargin @navOrientation @navAlignment">
+	@RenderFirstLevelNodesMobile(Model.Nodes)
+</nav>
+
+@helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string theme)
+{
+	string linkFontSize = Model.Parameters["LinkFontSize"].ToString();
+	string linkFontWeight = Model.Parameters["LinkFontWeight"].ToString();
+	string linkCasing = Model.Parameters["LinkCasing"].ToString();
+
+	foreach (var node in nodes)
+	{
+		var hasChildren = node.Nodes.Count() > 0;
+		string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
+
+		if (node.IsClickable)
+		{
+			<a class="nav-link nav-link-clean text-nowrap nav-link-underline @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" @dropdownAttributes@(node.IsActive ? " aria-current='page'" : "")>
+				@RenderNavigationItem(node)
+			</a>
+		}
+		else
+		{
+			<span class="nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing" @dropdownAttributes>
+				@RenderNavigationItem(node)
+			</span>
+		}
+
+		if (hasChildren)
+		{
+			var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+			string pageType = page.ItemType;
+			<ul class="dropdown-menu@(theme)">
+				@foreach (var subnode in node.Nodes)
+				{
+					<li>
+						<a href="@subnode.Link" class="dropdown-item py-2 nav-link-underline @linkFontSize @linkFontWeight @linkCasing" @(subnode.IsActive ? " aria-current='page'" : "")>@subnode.Name</a>
+					</li>
+				}
+				@if (pageType == "Swift_SignIn")
+				{
+					if (Pageview.User != null)
+					{
+						<li>
+							<a href="/Admin/Public/ExtranetLogoff.aspx?ID=@Pageview.Page.ID" class="dropdown-item py-2 nav-link-underline @linkFontSize @linkFontWeight @linkCasing">@Translate("Sign out")</a>
+						</li>
+					}
+				}
+			</ul>
+		}
+	}
+}
+
+@helper RenderFirstLevelNodesMobile(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
+{
+	string linkFontSize = Model.Parameters["LinkFontSize"].ToString();
+	string linkFontWeight = Model.Parameters["LinkFontWeight"].ToString();
+	string linkCasing = Model.Parameters["LinkCasing"].ToString();
+
+	foreach (var node in nodes)
+	{
+		var hasChildren = node.Nodes.Count() > 0;
+
+		if (node.IsClickable)
+		{
+			<a class="nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize @(node.IsActive ? " active" : "")" href="@node.Link" title="@node.Name">
+				@RenderNavigationItem(node)
+			</a>
+		}
+		else
+		{
+			<span class="nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize" title="@node.Name">
+				@RenderNavigationItem(node)
+			</span>
+		}
+	}
+}
+
+@helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node)
+{
+	var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+	string pageType = page.ItemType;
+	string linkFontSize = Model.Parameters["LinkFontSize"].ToString();
+	string layout = Model?.Parameters["Layout"].ToString();
+	string icon = page.Item["Icon"] != null ? page.Item["Icon"].ToString() : "";
+	string iconSize = "icon-3";
+
+	if (linkFontSize == "fs-7")
+	{
+		iconSize = "icon-2";
+	}
+	if (linkFontSize == "fs-5")
+	{
+		iconSize = "icon-4";
+	}
+
+	if (page.PropertyItem != null) {
+        icon = page.PropertyItem["Icon"] != null ? page.PropertyItem["Icon"].ToString() : "";
+    }
+	if (pageType == "Swift_Cart")
+	{
+		double totalProducts = 0;
+
+		if (Dynamicweb.Ecommerce.Common.Context.Cart != null)
+		{
+			totalProducts = Dynamicweb.Ecommerce.Common.Context.Cart.GetParentProductLineQuantityCount(Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines);
+		}
+
+		switch (layout)
+		{
+			case "linksOnly":
+				<span class="align-middle">@node.Name</span>
+				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
+			break;
+
+			case "iconsOnly":
+				@RenderIcon(icon, iconSize)
+				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
+				break;
+			case "iconsAndLinks":
+				@RenderIcon(icon, iconSize)
+				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
+				<span class="align-middle">@node.Name</span>
+				break;
+			case "linksAndIcons":
+				<span class="align-middle">@node.Name</span>
+				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
+				@RenderIcon(icon, iconSize)
+				break;
+		}
+	}
+	else
+	{
+
+		switch (layout)
+		{
+			case "linksOnly":
+				<span class="align-middle">@node.Name</span>
+				break;
+
+			case "iconsOnly":
+				<span class="visually-hidden">@node.Name</span>
+				@RenderIcon(icon, iconSize)
+				break;
+			case "iconsAndLinks":
+				@RenderIcon(icon, iconSize)
+				<span class="align-middle">@node.Name</span>
+				break;
+			case "linksAndIcons":
+				<span class="align-middle">@node.Name</span>
+				@RenderIcon(icon, iconSize)
+				break;
+		}
+	}
+}
+
+@helper RenderIcon(string icon, string iconSize)
+{
+	if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none"))
+	{
+		string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
+
+
+		<span class="@iconSize">
+			@ReadFile(iconPath)
+		</span>
+	}
+}
