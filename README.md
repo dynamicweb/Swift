@@ -51,7 +51,7 @@ Swift uses webpack to calculate dependencies and bundle scripts, images and othe
 2. Open a command prompt and navigate to folder Swift is cloned to
 3. Run *npm install*
 4. Run *npm run build:webpack*
-5. Run *nmp run start*
+5. Run *npm run start*
 
 ## Restore database and connect with solution
 
@@ -72,6 +72,7 @@ To solve this issue consider creating a *GlobalSettings.database.config* file in
 ```xml
 <?xml version="1.0"?>
 <Globalsettings>
+<System>
     <Database>
       <Password>yourpassword</Password>
       <Type>ms_sqlserver</Type>
@@ -94,6 +95,7 @@ To solve this issue consider creating a *GlobalSettings.database.config* file in
       <ConnectionString2>
       </ConnectionString2>
     </Database>
+</System>
 </Globalsettings>
 ```
 
