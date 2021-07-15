@@ -8,17 +8,26 @@ It is installed on top of a [Dynamicweb application](https://doc.dynamicweb.com/
 This repository contains:
 
 1. A folder with design files, images, and other static resources
-2. A folder with database files - .bak or .bacpac - with demo data such as pages, users, products, etc.
 
 # Installation
 
 The basic install procedure is:
 
-1. Prepare the hosting environment and install the Dynamicweb application
-2. Set up a website in IIS Manager and add the Swift-folder as a virtual directory
-3. Build the Swift design
-4. Install the Swift database & connect solution to it
-5. Log in and install a license
+1. Prepare the hosting environment
+2. Install the Dynamicweb application
+3. Set up a website in IIS Manager and add the Swift-folder as a virtual directory
+4. Download the Product image folder Swift_20211507_Products.zip
+	- 'Products image folder' insert the folder here Swift/Files/Files/Images/Products
+5. Build the Swift design
+6. Install the Swift database & connect solution to it
+7. Log in and install a license
+
+## Requirements
+
+1. Swift 0.9 requires Dynamicweb version 9.10.12 or newer
+2. Dynamicweb.Ecommerce version 1.10.87 or newer
+
+ The baseline database is a bacpac file created using the MS SQL Server 2016 standard (version SQL server 15.0.2080.9) using SQL Server Management Studio 2019 version 15.018040.0.
 
 ## Hosting environment & Dynamicweb install
 
@@ -27,9 +36,11 @@ Swift must be installed on a server or local machine running Windows & a recent 
 * [Software/Hardware requirements for Dynamicweb 9](https://doc.dynamicweb.com/get-started/introduction/requirements/requirements-dw9#2171)
 * [Preparing the hosting environment](https://doc.dynamicweb.com/get-started/introduction/installation/hosting-environment "Preparing the hosting environment")
 * [Install Dynamicweb](https://doc.dynamicweb.com/get-started/introduction/installation/installing-dynamicweb "Install Dynamicweb")
-* [Download Swift database](https://doc.dynamicweb.com/Files/Files/Downloads/Rapido/swift_07_07.zip "Download Swift database")
+* [Download Swift database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-0.9-Beta/Swift_All/Swift_20211507_Database.zip "Download Swift database")
+* [Download Swift Product Image folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-0.9-Beta/Swift_All/Swift_20211507_DemoProductImages.zip "Download Swift Product Image folder")
 
 After following these guides you will have a freshly installed Dynamicweb solution, which is ready to run Swift.
+
 
 ## Add Swift-folder as virtual directory
 
