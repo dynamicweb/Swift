@@ -1,5 +1,5 @@
 import "regenerator-runtime/runtime";
-import { Collapse, Dropdown, Modal, Offcanvas } from 'bootstrap';
+import { Alert, Button, Carousel, Collapse, Dropdown, Modal, Offcanvas, Popover, ScrollSpy, Tab, Toast, Tooltip } from 'bootstrap';
 import { tns } from 'tiny-slider/src/tiny-slider';
 import { Sliders } from './_sliders';
 import { Cart } from './_cart';
@@ -9,8 +9,18 @@ import { PageUpdater } from './_pageupdater';
 import { VariantSelector } from './_variantselector';
 import { Typeahead } from './_typeahead';
 
-window.Modal = Modal;
+window.Alert = Alert;
+window.Button = Button;
+window.Carousel = Carousel;
 window.Collapse = Collapse;
+window.Dropdown = Dropdown;
+window.Modal = Modal;
+window.Offcanvas = Offcanvas;
+window.Popover = Popover;
+window.ScrollSpy = ScrollSpy;
+window.Tab = Tab;
+window.Toast = Toast;
+window.Tooltip = Tooltip;
 window.tns = tns;
 window.Sliders = Sliders;
 window.Cart = Cart;
