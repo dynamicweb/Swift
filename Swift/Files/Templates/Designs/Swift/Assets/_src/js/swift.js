@@ -1,4 +1,3 @@
-import "regenerator-runtime/runtime";
 import { Alert, Button, Carousel, Collapse, Dropdown, Modal, Offcanvas, Popover, ScrollSpy, Tab, Toast, Tooltip } from 'bootstrap';
 import { tns } from 'tiny-slider/src/tiny-slider';
 import { Sliders } from './_sliders';
