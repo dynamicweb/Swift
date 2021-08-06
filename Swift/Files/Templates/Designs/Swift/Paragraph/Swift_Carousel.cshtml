@@ -1,0 +1,105 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using System.Web
+
+@{ 
+	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+
+	var imagesMap = Model.Item.GetRawValueString("Images_Map", "");
+	var imagesList = Model.Item.GetList("Images_List").SelectedOptions;
+	var uniqueId = Pageview.CurrentParagraph.ID.ToString();
+
+}
+@imagesMap
+
+<pre>
+
+@Newtonsoft.Json.JsonConvert.SerializeObject(imagesList, Newtonsoft.Json.Formatting.Indented)
+</pre>
+
+<div id="carousel_@uniqueId" class="carousel slide" data-bs-ride="carousel">
+
+	@RenderIndicators(imagesList.Count(), uniqueId)
+    
+    <div class="carousel-inner">
+
+		@for (int i = 0; i < imagesList.Count(); i++)
+		{
+			var item = imagesList.ElementAt(i);
+
+			<div class="carousel-item @(i == 0 ? "active" : "")">
+				@RenderImage(HttpContext.Current.Server.UrlEncode(item.Value))
+			</div>
+		}
+
+		@RenderCaption()
+    </div>
+
+	@RenderControls(uniqueId)
+    
+</div>
+
+@helper RenderImage(string imagePath)
+{
+	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
+	ratio = ratio != "0" ? ratio : "";
+	string ratioCssClass = ratio != "" && ratio != "fill" ? " ratio" : "";
+	string ratioVariable = ratio != "" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : "";
+
+	<figure class="m-0@(ratioCssClass)" @ratioVariable>
+		<img src="@imagePath" class="d-block w-100" style="object-fit: cover" />
+	</figure>
+}
+
+@helper RenderCaption()
+{
+	<div class="carousel-caption d-none d-md-block">
+		@RenderTitle()
+		@RenderText()
+	</div>
+}
+
+@helper RenderIndicators(int itemCount, string id)
+{
+	<div class="carousel-indicators">
+		
+		@for (int i = 0; i < itemCount; i++)
+		{
+			<button type="button" data-bs-target="#carousel_@id" data-bs-slide-to="@i" @(i == 0 ? "class=\"active\" aria-current=\"true\" " : "") aria-label="Slide @i"></button>
+		}
+    </div>
+}
+
+@helper RenderControls(string id)
+{
+	<button class="carousel-control-prev" type="button" data-bs-target="#carousel_@id" data-bs-slide="prev">
+		<span class="carousel-control-prev-icon" aria-hidden="true"></span>
+		<span class="visually-hidden">Previous</span>
+	</button>
+	<button class="carousel-control-next" type="button" data-bs-target="#carousel_@id" data-bs-slide="next">
+		<span class="carousel-control-next-icon" aria-hidden="true"></span>
+		<span class="visually-hidden">Next</span>
+	</button>
+}
+
+@helper RenderTitle()
+{
+	if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
+	{
+		string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-6");
+
+		<h2 class="@titleFontSize">
+			@Model.Item.GetString("Title")
+		</h2>
+	}
+}
+
+@helper RenderText()
+{
+	if (!string.IsNullOrEmpty(Model.Item.GetString("Text")))
+	{
+		string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
+
+		<p class="@subtitleFontSize lead">@Model.Item.GetString("Text")</p>
+	}
+}
