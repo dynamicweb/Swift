@@ -60,7 +60,8 @@ const Sliders = function() {
 								}
 							},
 							mouseDrag: true,
-							navPosition: 'bottom'
+							navPosition: 'bottom',
+							preventScrollOnTouch: 'force'
 						});
 					}
 				}
