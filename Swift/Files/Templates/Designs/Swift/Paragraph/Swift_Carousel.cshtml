@@ -1,67 +1,200 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using System.Web
+@using Dynamicweb.Frontend
 
 @{ 
 	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
-
-	var imagesMap = Model.Item.GetRawValueString("Images_Map", "");
-	var imagesList = Model.Item.GetList("Images_List").SelectedOptions;
 	var uniqueId = Pageview.CurrentParagraph.ID.ToString();
-
+	string title = Model.Item.GetString("Title");
+	var carouselItems = Model.Item?.GetItems("Carousel_Items") ?? Enumerable.Empty<Dynamicweb.Frontend.ItemViewModel>().ToList();
+	bool enableControls = Model.Item.GetBoolean("EnableControls");
+	bool enableIndcators = Model.Item.GetBoolean("EnableIndicators");
+	bool autoplay = Model.Item.GetBoolean("Autoplay");
+	string enableAutoplay = autoplay == true ? "carousel" : "false";
+	string animation = Model.Item.GetRawValueString("Animation", "");
+	string carouselHeight = Model.Item.GetRawValueString("CarouselHeight", "h-100 min-vh-75 min-vh-md-100");
+	carouselHeight = carouselHeight == "small" ? "min-vh-25 min-vh-md-50" : carouselHeight;
+	carouselHeight = carouselHeight == "medium" ? "min-vh-50 min-vh-md-75" : carouselHeight;
+	carouselHeight = carouselHeight == "large" ? "min-vh-75 min-vh-md-100" : carouselHeight;
+	string buttonSize = Model.Item.GetRawValueString("buttonSize", "regular");
+	buttonSize = buttonSize == "small" ? " btn-sm" : buttonSize;
+	buttonSize = buttonSize == "regular" ? "" : buttonSize;
+	buttonSize = buttonSize == "large" ? " btn-lg" : buttonSize;
+	string posterPadding = Model.Item.GetRawValueString("ContentPadding", "");
+	posterPadding = posterPadding == "none" ? "p-3 px-xl-3 py-xl-4" : posterPadding;
+	posterPadding = posterPadding == "small" ? "p-3 p-xl-4" : posterPadding;
+	posterPadding = posterPadding == "large" ? "p-4 p-xl-5" : posterPadding;
+	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-1");
+	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
 }
-@imagesMap
 
-<pre>
+<div id="carousel_@uniqueId" class="carousel @(animation)" data-bs-ride="@(enableAutoplay)">
 
-@Newtonsoft.Json.JsonConvert.SerializeObject(imagesList, Newtonsoft.Json.Formatting.Indented)
-</pre>
-
-<div id="carousel_@uniqueId" class="carousel slide" data-bs-ride="carousel">
-
-	@RenderIndicators(imagesList.Count(), uniqueId)
+	@if(enableIndcators && carouselItems.Count > 1){
+		@RenderIndicators(carouselItems.Count, uniqueId)
+	}
     
     <div class="carousel-inner">
-
-		@for (int i = 0; i < imagesList.Count(); i++)
-		{
-			var item = imagesList.ElementAt(i);
-
-			<div class="carousel-item @(i == 0 ? "active" : "")">
-				@RenderImage(HttpContext.Current.Server.UrlEncode(item.Value))
-			</div>
+		@{
+			bool isFirst = true;
 		}
+		
+		@foreach (var item in carouselItems)
+        {   
+			@RenderItem(item, isFirst, carouselHeight, posterPadding, buttonSize, titleFontSize, subtitleFontSize)
 
-		@RenderCaption()
+			isFirst = false;
+        }
+
     </div>
 
-	@RenderControls(uniqueId)
+	@if(enableControls && carouselItems.Count > 1){
+		@RenderControls(uniqueId)
+	}
     
 </div>
 
-@helper RenderImage(string imagePath)
+@helper RenderItem(ItemViewModel item, bool isFirst, string carouselHeight, string posterPadding, string buttonSize, string titleFontSize, string subtitleFontSize)
 {
-	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
-	ratio = ratio != "0" ? ratio : "";
-	string ratioCssClass = ratio != "" && ratio != "fill" ? " ratio" : "";
-	string ratioVariable = ratio != "" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : "";
+		string layout = item.GetRawValueString("Layout", "align-middle-center-text-center");
+		
+		string posterWidth = "container-xl";
+		int xPos = item?.GetFile("Image")?.FocalPositionFromLeft ?? 50;
+		int yPos = item?.GetFile("Image")?.FocalPositionFromTop ?? 50;
+		string theme = !string.IsNullOrWhiteSpace(item.GetRawValueString("Theme")) ? " theme " + item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+		string active = isFirst ? "active" : ""; 
 
-	<figure class="m-0@(ratioCssClass)" @ratioVariable>
-		<img src="@imagePath" class="d-block w-100" style="object-fit: cover" />
-	</figure>
+	<div class="carousel-item @(active)">
+		<div class="position-relative h-100@(theme)">
+			@RenderImage(item)
+
+			@switch (layout)
+			{
+				case "align-top-left-text-left":
+					<div class="@(posterWidth) h-100 @posterPadding">
+						<div class="h-100 position-relative d-flex flex-column text-start justify-content-start align-items-start @(carouselHeight)">
+							<div class="grid gap-3 gap-md-4" style="--bs-columns: 1;">
+								@RenderTitle(item,titleFontSize)
+								@RenderText(item,subtitleFontSize)
+								@RenderButton(item,buttonSize)
+							</div>
+						</div>
+					</div>
+					break;
+				case "align-top-center-text-center":
+					<div class="@(posterWidth) h-100 @posterPadding">
+						<div class="h-100 position-relative d-flex flex-column text-center justify-content-start align-items-center @(carouselHeight)">
+							<div class="grid gap-3 gap-md-4" style="--bs-columns: 1;">
+								@RenderTitle(item,titleFontSize)
+								@RenderText(item,subtitleFontSize)
+								@RenderButton(item,buttonSize)
+							</div>
+						</div>
+					</div>
+					break;
+				case "align-top-right-text-right":
+					<div class="@(posterWidth) h-100 @posterPadding">
+						<div class="h-100 position-relative d-flex flex-column text-end justify-content-start align-items-end @(carouselHeight)">
+							<div class="grid gap-3 gap-md-4" style="--bs-columns: 1;">
+								@RenderTitle(item,titleFontSize)
+								@RenderText(item,subtitleFontSize)
+								@RenderButton(item,buttonSize)
+							</div>
+						</div>
+					</div>
+					break;
+				case "align-middle-left-text-left":
+					<div class="@(posterWidth) h-100 @posterPadding">
+						<div class="h-100 position-relative d-flex flex-column text-start justify-content-center align-items-start @(carouselHeight)">
+							<div class="grid gap-3 gap-md-4" style="--bs-columns: 1;">
+								@RenderTitle(item,titleFontSize)
+								@RenderText(item,subtitleFontSize)
+								@RenderButton(item,buttonSize)
+							</div>
+						</div>
+					</div>
+					break;
+				case "align-middle-center-text-center":
+					<div class="@(posterWidth) h-100 @posterPadding">
+						<div class="h-100 position-relative d-flex flex-column text-center justify-content-center align-items-center @(carouselHeight)">
+							<div class="grid gap-3 gap-md-4" style="--bs-columns: 1;">
+								@RenderTitle(item,titleFontSize)
+								@RenderText(item,subtitleFontSize)
+								@RenderButton(item,buttonSize)
+							</div>
+						</div>
+					</div>
+					break;
+				case "align-middle-right-text-right":
+					<div class="@(posterWidth) h-100 @posterPadding">
+						<div class="h-100 position-relative d-flex flex-column text-end justify-content-center align-items-end @(carouselHeight)">
+							<div class="grid gap-3 gap-md-4" style="--bs-columns: 1;">
+								@RenderTitle(item,titleFontSize)
+								@RenderText(item,subtitleFontSize)
+								@RenderButton(item,buttonSize)
+							</div>
+						</div>
+					</div>
+					break;
+				case "align-bottom-left-text-left":
+					<div class="@(posterWidth) h-100 @posterPadding">
+						<div class="h-100 position-relative d-flex flex-column text-start justify-content-end align-items-start @(carouselHeight)">
+							<div class="grid gap-3 gap-md-4" style="--bs-columns: 1;">
+								@RenderTitle(item,titleFontSize)
+								@RenderText(item,subtitleFontSize)
+								@RenderButton(item,buttonSize)
+							</div>
+						</div>
+					</div>
+					break;
+				case "align-bottom-center-text-center":
+					<div class="@(posterWidth) h-100 @posterPadding">
+						<div class="h-100 position-relative d-flex flex-column text-center justify-content-end align-items-center @(carouselHeight)">
+							<div class="grid gap-3 gap-md-4" style="--bs-columns: 1;">
+								@RenderTitle(item,titleFontSize)
+								@RenderText(item,subtitleFontSize)
+								@RenderButton(item,buttonSize)
+							</div>
+						</div>
+					</div>
+					break;
+				case "align-bottom-right-text-right":
+					<div class="@(posterWidth) h-100 @posterPadding">
+						<div class="h-100 position-relative d-flex flex-column text-end justify-content-end align-items-end @(carouselHeight)">
+							<div class="grid gap-3 gap-md-4" style="--bs-columns: 1;">
+								@RenderTitle(item,titleFontSize)
+								@RenderText(item,subtitleFontSize)
+								@RenderButton(item,buttonSize)
+							</div>
+						</div>
+					</div>
+					break;
+			}
+		</div>
+	</div>
 }
 
-@helper RenderCaption()
+@helper RenderImage(ItemViewModel item)
 {
-	<div class="carousel-caption d-none d-md-block">
-		@RenderTitle()
-		@RenderText()
-	</div>
+	if (!string.IsNullOrEmpty(item.GetString("Image")))
+	{
+		var parms = new Dictionary<string, object>();
+		parms.Add("cssClass", "card-img rounded-0 h-100 w-100");
+
+		string imageFilter = item.GetRawValueString("ImageFilter", "");
+		imageFilter = imageFilter == "no-filter" ? "" : imageFilter;
+		imageFilter = imageFilter == "filter" ? " image-filter" : imageFilter;
+
+		<div class="position-absolute top-0 bottom-0 end-0 start-0@(imageFilter)">
+			@RenderPartial("Components/Image.cshtml", item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+		</div>
+	}
 }
 
 @helper RenderIndicators(int itemCount, string id)
 {
-	<div class="carousel-indicators">
+	<div class="carousel-indicators mb-0 mb-md-3">
 		
 		@for (int i = 0; i < itemCount; i++)
 		{
@@ -82,24 +215,81 @@
 	</button>
 }
 
-@helper RenderTitle()
+@helper RenderTitle(ItemViewModel item, string titleFontSize)
 {
-	if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
-	{
-		string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-6");
 
-		<h2 class="@titleFontSize">
-			@Model.Item.GetString("Title")
+	if (!string.IsNullOrEmpty(item.GetString("Title")) && !item.GetBoolean("HideTitle"))
+	{
+		<h2 class="@titleFontSize m-0">
+			@item.GetString("Title")
 		</h2>
 	}
 }
 
-@helper RenderText()
+@helper RenderText(ItemViewModel item, string subtitleFontSize)
 {
-	if (!string.IsNullOrEmpty(Model.Item.GetString("Text")))
-	{
-		string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
 
-		<p class="@subtitleFontSize lead">@Model.Item.GetString("Text")</p>
+	if (!string.IsNullOrEmpty(item.GetString("Text")))
+	{
+		<p class="@subtitleFontSize lead m-0 max-w-75ch">@item.GetString("Text")</p>
+	}
+}
+
+@helper RenderButton(ItemViewModel item, string buttonSize)
+{
+	string linkType = item.GetRawValueString("LinkType", "page");
+	Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
+
+	if (linkType == "page" && item.GetLink("ButtonLink") != null) {
+		link = item.GetLink("ButtonLink");
+	}
+
+	if (linkType == "product-group") {
+		IList<ProductGroupViewModel> selectedGroups = item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
+		IList<string> groupIds = new List<string>{};
+
+		if (selectedGroups != null) {
+			foreach (var fromGroup in selectedGroups)
+			{
+				groupIds.Add(fromGroup.Id);
+			}
+		}
+
+		link = new Dynamicweb.Frontend.LinkViewModel() {
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
+			IsExternal = false
+		};
+	}
+
+	if (linkType == "product") {
+		ProductListViewModel products = item.GetValue<ProductListViewModel>("ProductLink");
+		IList<string> productIds = new List<string>{};
+
+		if (products != null) {
+			foreach (var product in products.Products)
+			{
+				productIds.Add(product.Id);
+			}
+		}
+
+		string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
+		string pageTag = productIds.Count == 1 ? "ProductDetailPage" : "Shop";
+		link = new Dynamicweb.Frontend.LinkViewModel() {
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds).Trim(),
+			IsExternal = false
+		};
+	}
+
+	if (link != null && !string.IsNullOrEmpty(item.GetString("ButtonLabel")))
+	{
+		string target = link.IsExternal ? "target=\"_blank\"" : "";
+
+		string buttonStyle = item.GetRawValueString("ButtonStyle", "primary");
+		buttonStyle = buttonStyle == "primary" ? "btn-primary" : buttonStyle;
+		buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
+
+		<div class="mt-3 mt-md-4">
+			<a href="@link.Url" class="btn @buttonStyle @(buttonSize) stretched-link">@item.GetString("ButtonLabel")</a>
+		</div>
 	}
 }
