@@ -125,12 +125,20 @@ const VariantSelector = function () {
 			var productElement = variantSelectorElement.closest(".js-product");
 			if (productElement) {
 				var addToCartElement = variantSelectorElement.querySelector(".js-add-to-cart");
-
 				if (addToCartElement) {
 					if (selectionCount == totalGroups) {
 						addToCartElement.classList.remove("disabled");
 					} else {
 						addToCartElement.classList.add("disabled");
+					}
+				}
+
+				var stockStateElement = variantSelectorElement.querySelector(".js-stock-state");
+				if (stockStateElement) {
+					if (selectionCount == totalGroups) {
+						stockStateElement.classList.remove("d-none");	 
+					} else {
+						stockStateElement.classList.add("d-none");
 					}
 				}
 			}
