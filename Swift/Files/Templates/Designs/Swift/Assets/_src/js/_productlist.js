@@ -81,7 +81,7 @@ const ProductList = function () {
 			responseTargetElement.innerHTML = html;
 
 			//Initialize all the sliders
-			Sliders.init();
+			swift.Sliders.init();
 
 			//Modal
 			var requestType = formData.get("RequestType");
