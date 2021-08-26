@@ -2,7 +2,7 @@
 const Cart = function () {
 	return {
 		Update: async function (e) {
-			var clickedButton = e.currentTarget;
+			var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
 
 			//Setup the form data
 			var form = clickedButton.closest("form");
@@ -41,14 +41,14 @@ const Cart = function () {
 				let response = await fetch(form.action, fetchOptions);
 
 				if (response.ok) {
-					Cart.Success(response, clickedButton);
+					Cart.Success(response, clickedButton, formData);
 				} else {
 					Cart.Error(response, clickedButton);
 				}
 			}
 		},
 
-		Success: async function (response, clickedButton) {
+		Success: async function (response, clickedButton, formData) {
 			let html = await response.text().then(function (text) {
 				return text;
 			});
@@ -56,7 +56,10 @@ const Cart = function () {
 			//Fire the 'updated'´event
 			let event = new CustomEvent("updated.swift.cart", {
 				cancelable: true,
-				detail: { html: html }
+				detail: {
+					formData: formData,
+					html: html
+				}
 			});
 			var globalDispatcher = document.dispatchEvent(event);
 			var localDispatcher = clickedButton.dispatchEvent(event);

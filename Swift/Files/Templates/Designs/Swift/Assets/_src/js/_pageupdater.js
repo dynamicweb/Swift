@@ -70,7 +70,10 @@ const PageUpdater = function () {
 				cancelable: true,
 				detail: {
 					cancelable: true,
-					detail: { html: html }
+					detail: {
+						formData: formData,
+						html: html
+					}
 				}
 			});
 			var globalDispatcher = document.dispatchEvent(event);

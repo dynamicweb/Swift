@@ -14,85 +14,114 @@ const ProductList = function () {
 			var responseTargetElement = document.querySelector("#" + form.getAttribute("data-response-target-element"));
 			var preloader = form.getAttribute("data-preloader");
 
-			if (preloader != "inline") {
-				var addPreloaderTimer = setTimeout(function () {
-					var overlayElement = document.createElement('div');
-					overlayElement.className = "preloader-overlay";
-					overlayElement.setAttribute('id', "overlay");
-					var overlayElementIcon = document.createElement('div');
-					overlayElementIcon.className = "spinner-border";
-					overlayElementIcon.style.top = window.pageYOffset + "px";
-					overlayElement.appendChild(overlayElementIcon);
-
-					if (form) {
-						form.parentNode.insertBefore(overlayElement, form);
-					}
-				}, 200); //Small delay to secure that the preloader is not loaded all the time
-			} else {
-				var addPreloaderTimer = setTimeout(function () {
-					var preloaderElement = document.createElement('div');
-					preloaderElement.className = "preloader";
-					responseTargetElement.appendChild(preloaderElement);
-				}, 200); //Small delay to secure that the preloader is not loaded all the time
-			}
-
 			let formData = new FormData(form);
 			var fetchOptions = {
 				method: 'POST',
 				body: formData
 			};
-			let response = await fetch(form.action, fetchOptions);
 
-			if (response.ok) {
-				//Update URL
-				let url = window.location.origin + window.location.pathname;
-				const newParams = new URLSearchParams(formData);
-				let updateUrl = "true";
+			//Fire the 'update' event
+			let event = new CustomEvent("update.swift.productlist", {
+				cancelable: true,
+				detail: {
+					formData: formData,
+					parentEvent: e
+				}
+			});
+			var globalDispatcher = document.dispatchEvent(event);
+			var localDispatcher = clickedButton.dispatchEvent(event);
 
-				if (form.getAttribute("data-update-url") != undefined) {
-					updateUrl = form.getAttribute("data-update-url"); 
+			if (globalDispatcher != false && localDispatcher != false) {
+				if (preloader != "inline") {
+					var addPreloaderTimer = setTimeout(function () {
+						var overlayElement = document.createElement('div');
+						overlayElement.className = "preloader-overlay";
+						overlayElement.setAttribute('id', "overlay");
+						var overlayElementIcon = document.createElement('div');
+						overlayElementIcon.className = "spinner-border";
+						overlayElementIcon.style.top = window.pageYOffset + "px";
+						overlayElement.appendChild(overlayElementIcon);
+
+						if (form) {
+							form.parentNode.insertBefore(overlayElement, form);
+						}
+					}, 200); //Small delay to secure that the preloader is not loaded all the time
+				} else {
+					var addPreloaderTimer = setTimeout(function () {
+						var preloaderElement = document.createElement('div');
+						preloaderElement.className = "preloader";
+						responseTargetElement.appendChild(preloaderElement);
+					}, 200); //Small delay to secure that the preloader is not loaded all the time
 				}
 
-				if (updateUrl != "false") {
-					url += "?" + newParams.toString();
-					window.history.replaceState({}, '', decodeURI(url));
-				}
+				let response = await fetch(form.action, fetchOptions);
 
-				//Success
-				ProductList.Success(response, responseTargetElement, addPreloaderTimer, formData);
-			} else {
-				ProductList.Error(response, responseTargetElement, addPreloaderTimer);
+				if (response.ok) {
+					//Update URL
+					let url = window.location.origin + window.location.pathname;
+					const newParams = new URLSearchParams(formData);
+					let updateUrl = "true";
+
+					if (form.getAttribute("data-update-url") != undefined) {
+						updateUrl = form.getAttribute("data-update-url");
+					}
+
+					if (updateUrl != "false") {
+						url += "?" + newParams.toString();
+						window.history.replaceState({}, '', decodeURI(url));
+					}
+
+					ProductList.Success(response, responseTargetElement, addPreloaderTimer, formData);
+				} else {
+					ProductList.Error(response, responseTargetElement, addPreloaderTimer);
+				}
 			}
 		},
 
 		Success: async function (response, responseTargetElement, addPreloaderTimer, formData) {
 			clearTimeout(addPreloaderTimer);
 
-			//Remove preloader
-			if (document.querySelector("#overlay")) {
-				document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
-			}
-
 			//Replace content
 			let html = await response.text().then(function (text) {
 				return text;
 			});
 
-			responseTargetElement.innerHTML = html;
+			//Fire the 'updated' event
+			let event = new CustomEvent("updated.swift.pageupdater", {
+				cancelable: true,
+				detail: {
+					cancelable: true,
+					detail: {
+						formData: formData,
+						html: html
+					}
+				}
+			});
+			var globalDispatcher = document.dispatchEvent(event);
 
-			//Initialize all the sliders
-			swift.Sliders.init();
+			if (globalDispatcher != false) {
+				//Remove preloader
+				if (document.querySelector("#overlay")) {
+					document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
+				}
 
-			//Modal
-			var requestType = formData.get("RequestType");
+				//Replace the markup
+				responseTargetElement.innerHTML = html;
 
-			if (screen.width < 768 && document.querySelector('#FacetsModal') && requestType != "UpdateList") {
-				var facetsModal = new Modal(document.querySelector('#FacetsModal'), { backdrop: false });
-				facetsModal.show();
+				//Initialize all the sliders
+				swift.Sliders.init();
 
-				var backdrop = document.querySelector('.modal-backdrop');
-				if (backdrop) {
-					backdrop.parentElement.removeChild(backdrop);
+				//Modal
+				var requestType = formData.get("RequestType");
+
+				if (screen.width < 768 && document.querySelector('#FacetsModal') && requestType != "UpdateList") {
+					var facetsModal = new Modal(document.querySelector('#FacetsModal'), { backdrop: false });
+					facetsModal.show();
+
+					var backdrop = document.querySelector('.modal-backdrop');
+					if (backdrop) {
+						backdrop.parentElement.removeChild(backdrop);
+					}
 				}
 			}
 		},
@@ -108,12 +137,26 @@ const ProductList = function () {
 		ResetFacets: async function (e) {
 			var clickedButton = e.currentTarget;
 			var form = clickedButton.closest("form");
+			let formData = new FormData(form);
 
-			form.querySelectorAll("input[type='checkbox']").forEach(function (el) {
-				el.checked = false;
+			//Fire the 'resetfacets' event
+			let event = new CustomEvent("resetfacets.swift.productlist", {
+				cancelable: true,
+				detail: {
+					formData: formData,
+					parentEvent: e
+				}
 			});
+			var globalDispatcher = document.dispatchEvent(event);
+			var localDispatcher = clickedButton.dispatchEvent(event);
 
-			ProductList.Update(e);
+			if (globalDispatcher != false && localDispatcher != false) {
+				form.querySelectorAll("input[type='checkbox']").forEach(function (el) {
+					el.checked = false;
+				});
+
+				ProductList.Update(e);
+			}
 		}
 	}
 

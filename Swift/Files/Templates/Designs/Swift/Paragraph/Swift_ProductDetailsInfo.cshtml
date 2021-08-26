@@ -129,9 +129,7 @@
 				<input type="hidden" name="redirect" value="false" />
 				<input type="hidden" name="ProductId" value="@product.Id" />
 				<input type="hidden" name="ProductName" value="@product.Name" />
-				@if (product.DefaultImage != null) {
-					<input type="hidden" name="Thumbnail" value="/Admin/Public/GetImage.ashx?image=@(product.DefaultImage.Value)&width=80&format=webp" />
-				}
+				<input type="hidden" name="StockQuantity" value="@product.StockLevel" />
 				<input type="hidden" name="cartcmd" value="add" />
 
 				@if (!string.IsNullOrEmpty(product.VariantId)) {
@@ -218,51 +216,46 @@
 	</script>
 }
 
-<div aria-live="polite" aria-atomic="true">
-	<div class="toast-container position-fixed bottom-0 end-0 p-3">
-		<div id="cartNotificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-			<div class="toast-header">
-				<strong id="cartNotificationToastHeader" class="me-auto">@Translate("Added to cart")</strong>
-				<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-			</div>
-			<div class="toast-body d-flex gap-3 theme theme-gray">
-				<img id="cartNotificationToast_Image" src="" />
-				<div id="cartNotificationToast_Text"></div>
-			</div>
-		</div>
-	</div>
+<div id="cartNotificationModal" class="modal" tabindex="-1">
+  <div class="modal-dialog theme light">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">@Translate("We do not have the selected quantity in stock")</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div id="cartNotificationModalBody" class="modal-body"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Translate("Cancel")</button>
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="ConfirmNewQuantity()">@Translate("Confirm")</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 
 <script>
-	var cartNotification = document.querySelector("#cartNotificationToast");
-
 	document.addEventListener("update.swift.cart", function (event) {
+		var cartNotification = document.querySelector("#cartNotificationModal");
+		var modal = new Modal(cartNotification);
+
 		var data = Object.fromEntries(event.detail.formData.entries());
-		var toast = new Toast(cartNotification);
 
-		event.detail.formData.set("Quantity", "2");
+		if (data.Quantity > data.StockQuantity) {
+			event.preventDefault();
+			document.querySelector("#cartNotificationModalBody").innerHTML =  data.StockQuantity + " " + "@Translate("is available in stock")" + ". " + "@Translate("Do you want to add them to the cart?")";
 
-		if (data.Quantity == "1") {
-			document.querySelector("#cartNotificationToastHeader").innerHTML = data.Quantity + " " + '@Translate("Product added to cart")';
-		} else {
-			document.querySelector("#cartNotificationToastHeader").innerHTML = data.Quantity + " " + '@Translate("Products added to cart")';
+			var quantitySelector = document.querySelector("#Quantity_@(product.Id)");
+			quantitySelector.value = data.StockQuantity;
+
+			modal.show();
 		}
-
-		if (data.Thumbnail != "") {
-			document.querySelector("#cartNotificationToast_Image").src = data.Thumbnail;
-		}
-		document.querySelector("#cartNotificationToast_Text").innerHTML = data.ProductName;
-
-		toast.show();
-
-		console.log("Data " + JSON.stringify(data));
-		console.log("ProductID " + data.ProductId);
-		console.log("Button " + event.detail.parentEvent);
-		event.preventDefault();
 	});
 
-	document.addEventListener("updated.swift.cart", function(event) { 
-		console.log("Updated " + event.detail.html);
-	});
+	ConfirmNewQuantity = function () {
+		var cartNotification = document.querySelector("#cartNotificationModal");
+		var modal = new Modal(cartNotification);
+		var addToCartButton = document.querySelector("#AddToCartButton@(product.Id)");
+		
+		swift.Cart.Update(addToCartButton);
+	}
 </script>
