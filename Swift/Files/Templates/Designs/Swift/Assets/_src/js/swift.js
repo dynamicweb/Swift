@@ -9,18 +9,37 @@ import { VariantSelector } from './_variantselector';
 import { Typeahead } from './_typeahead';
 
 //Bootstrap modules
-window.Alert = Alert;
-window.Button = Button;
-window.Carousel = Carousel;
-window.Collapse = Collapse;
-window.Dropdown = Dropdown;
-window.Modal = Modal;
-window.Offcanvas = Offcanvas;
-window.Popover = Popover;
-window.ScrollSpy = ScrollSpy;
-window.Tab = Tab;
-window.Toast = Toast;
-window.Tooltip = Tooltip;
+const bootstrap = function () {
+	return {
+		Alert: Alert,
+		Button: Button,
+		Carousel: Carousel,
+		Collapse: Collapse,
+		Dropdown: Dropdown,
+		Modal: Modal,
+		Offcanvas: Offcanvas,
+		Popover: Popover,
+		ScrollSpy: ScrollSpy,
+		Tab: Tab,
+		Toast: Toast,
+		Tooltip: Tooltip
+	}
+}();
+export { bootstrap };
+
+window.bootstrap = bootstrap;
+window.bootstrap.Alert = Alert;
+window.bootstrap.Button = Button;
+window.bootstrap.Carousel = Carousel;
+window.bootstrap.Collapse = Collapse;
+window.bootstrap.Dropdown = Dropdown;
+window.bootstrap.Modal = Modal;
+window.bootstrap.Offcanvas = Offcanvas;
+window.bootstrap.Popover = Popover;
+window.bootstrap.ScrollSpy = ScrollSpy;
+window.bootstrap.Tab = Tab;
+window.bootstrap.Toast = Toast;
+window.bootstrap.Tooltip = Tooltip;
 
 //Tiny slider
 window.tns = tns;
