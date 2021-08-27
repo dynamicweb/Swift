@@ -8,6 +8,7 @@ import { PageUpdater } from './_pageupdater';
 import { VariantSelector } from './_variantselector';
 import { Typeahead } from './_typeahead';
 
+//Bootstrap modules
 window.Alert = Alert;
 window.Button = Button;
 window.Carousel = Carousel;
@@ -20,15 +21,35 @@ window.ScrollSpy = ScrollSpy;
 window.Tab = Tab;
 window.Toast = Toast;
 window.Tooltip = Tooltip;
-window.tns = tns;
-window.Sliders = Sliders;
-window.Cart = Cart;
-window.Scroll = Scroll;
-window.ProductList = ProductList;
-window.PageUpdater = PageUpdater;
-window.VariantSelector = VariantSelector;
-window.Typeahead = Typeahead;
 
+//Tiny slider
+window.tns = tns;
+
+//Swift modules
+const swift = function () {
+	return {
+		Cart: Cart,
+		Sliders: Sliders,
+		Scroll: Scroll,
+		ProductList: ProductList,
+		PageUpdater: PageUpdater,
+		VariantSelector: VariantSelector,
+		Typeahead: Typeahead
+	}
+}();
+export { swift };
+
+window.swift = swift;
+window.swift.Cart = Cart;
+window.swift.Sliders = Sliders;
+window.swift.Scroll = Scroll;
+window.swift.ProductList = ProductList;
+window.swift.PageUpdater = PageUpdater;
+window.swift.VariantSelector = VariantSelector;
+window.swift.Typeahead = Typeahead;
+
+
+//Popstate
 window.onpopstate = function (event) {
 	Typeahead.navigateToPage(document.location.href);
 };

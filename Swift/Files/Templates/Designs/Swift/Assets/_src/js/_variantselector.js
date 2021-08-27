@@ -12,9 +12,21 @@ const VariantSelector = function () {
 			var clickedButton = e.currentTarget;
 			var variantSelectorElement = clickedButton.closest(".js-variant-selector");
 
-			VariantSelector.ToggleActiveState(clickedButton);
-			VariantSelector.UpdateAllVariants(variantSelectorElement);
-			VariantSelector.CheckSelectionComplete(variantSelectorElement);
+			//Fire the 'optionclick' event
+			let event = new CustomEvent("optionclick.swift.variantselector", {
+				cancelable: true,
+				detail: {
+					parentEvent: e
+				}
+			});
+			var globalDispatcher = document.dispatchEvent(event);
+			var localDispatcher = clickedButton.dispatchEvent(event);
+
+			if (globalDispatcher != false && localDispatcher != false) {
+				VariantSelector.ToggleActiveState(clickedButton);
+				VariantSelector.UpdateAllVariants(variantSelectorElement);
+				VariantSelector.CheckSelectionComplete(variantSelectorElement);
+			}
 		},	    
 
 		UpdateAllVariants: function (variantSelectorElement) {
@@ -114,12 +126,25 @@ const VariantSelector = function () {
 			});
 
 			if (selectionCount == totalGroups) {
-				var url = new URL(window.location);
-				var searchParams = url.searchParams;
+				//Fire the 'selectioncomplete' event
+				let event = new CustomEvent("selectioncomplete.swift.variantselector", {
+					cancelable: true,
+					detail: {
+						selections: selections
+					}
+				});
+				var globalDispatcher = document.dispatchEvent(event);
+				var localDispatcher = variantSelectorElement.dispatchEvent(event);
 
-				searchParams.set('variantid', selections.join("."));
-				url.search = searchParams.toString();
-				window.location = url.toString();
+				//Update the url
+				if (globalDispatcher != false && localDispatcher != false) {
+					var url = new URL(window.location);
+					var searchParams = url.searchParams;
+
+					searchParams.set('variantid', selections.join("."));
+					url.search = searchParams.toString();
+					window.location = url.toString();
+				}
 			}
 
 			var productElement = variantSelectorElement.closest(".js-product");
