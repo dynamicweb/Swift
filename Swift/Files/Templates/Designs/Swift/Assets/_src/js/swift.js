@@ -7,6 +7,7 @@ import { ProductList } from './_productlist';
 import { PageUpdater } from './_pageupdater';
 import { VariantSelector } from './_variantselector';
 import { Typeahead } from './_typeahead';
+import * as Plyr from 'plyr';
 
 window.Alert = Alert;
 window.Button = Button;
@@ -28,9 +29,8 @@ window.ProductList = ProductList;
 window.PageUpdater = PageUpdater;
 window.VariantSelector = VariantSelector;
 window.Typeahead = Typeahead;
+window.Plyr = Plyr;
 
 window.onpopstate = function (event) {
 	Typeahead.navigateToPage(document.location.href);
 };
-
-
