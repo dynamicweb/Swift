@@ -32,7 +32,10 @@
 	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
 	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
 	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
+
+	string layout = Model.Item.GetRawValueString("Layout", "list");
 }
+
 
 <div class="@(contentPadding)@(theme) h-100">
 	@if ((product.ProductFields != null && Model.Item.GetBoolean("ProductFields")) || (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields")) || (displayGroups.Count != 0)) {
@@ -52,21 +55,13 @@
 				<h4 class="h4 mb-4">@group.Name</h4>
 			}
 
-			<dl>
-				@foreach (var field in group.Fields) {
-					@RenderField(field.Value)  
-				}  
-			</dl>
+			@RenderFieldsFromList(group.Fields, layout);
 		}
 	}
 
 	@if (product.ProductFields != null && Model.Item.GetBoolean("ProductFields")) {
 		if (product.ProductFields.Count > 0) {
-			<dl>
-				@foreach (var field in product.ProductFields) {
-					@RenderField(field.Value)  
-				}  
-			</dl>
+			@RenderFieldsFromList(product.ProductFields, layout);
 		}
 	}
 
@@ -80,74 +75,136 @@
 					<h4 class="h4 mb-4">@group.Key</h4>
 				}
 
-				<dl>
-					@foreach (var field in category.Fields) {
-						@RenderField(field.Value)  
-					}  
-				</dl>
+				@RenderFieldsFromList(category.Fields, layout);
 			}
 		}
 	}
 </div>
 
-@helper RenderField(FieldValueViewModel field) { 
+@helper RenderFieldsFromList(Dictionary<string, FieldValueViewModel> fields, string layout) { 
+	<div class="mb-5">
+		@if (layout == "columns") {
+			<dl class="grid">
+				@foreach (var field in fields) {
+					@RenderField(field.Value, layout)  
+				}  
+			</dl>
+		}
+		@if (layout == "list") {
+			<dl>
+				@foreach (var field in fields) {
+					@RenderField(field.Value, layout)  
+				}  
+			</dl>
+		}
+		@if (layout == "table") {
+			<table class="table table-striped">
+				@foreach (var field in fields) {
+					@RenderField(field.Value, layout)  
+				}  
+			</table>
+		}
+		@if (layout == "bullets") {
+			<ul>
+				@foreach (var field in fields) {
+					@RenderField(field.Value, layout)  
+				}  
+			</ul>
+		}
+	</div>
+}
+
+@helper RenderField(FieldValueViewModel field, string layout) { 
 	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
 	bool noValues = false;
 
-	if (field.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
-		System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
-		noValues = values.Count > 0 ? false : true;
+	if (!string.IsNullOrEmpty(fieldValue)) {
+		if (field.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+			System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
+			noValues = values.Count > 0 ? false : true;
+		}
 	}
 
 	if (!string.IsNullOrEmpty(fieldValue) && noValues == false) {
-		fieldValue = fieldValue == "False" ? Translate("No") : fieldValue;
-		fieldValue = fieldValue == "True" ? Translate("Yes") : fieldValue;
-
-		bool isColor = false;
-
-		<div class="row">
-			<dt class="col-4 py-2 fw-bold">@field.Name</dt>
-			<dd class="col-8 py-2 mb-0">
-				@if (field.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>))
-				{
-					int valueCount = 0;
-					System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
-					int totalValues = values.Count;
-
-					foreach (FieldOptionValueViewModel option in values)
-					{
-						if (option.Value.Substring(0,1) == "#") {
-							isColor = true;   
-						}
-
-						@RenderFieldValue(option.Name, isColor);
-						if (valueCount != totalValues && valueCount < (totalValues - 1)) {
-							if (isColor) {
-<text> </text>
-							} else {
-<text>, </text>
-							}
-						}
-						valueCount++;
-					}
-				}
-				else
-				{
-					if (fieldValue.Substring(0,1) == "#") {
-						isColor = true;   
-					}
-
-					@RenderFieldValue(fieldValue, isColor);
-				}
-			</dd>
-		</div>
+		if (layout == "columns") {
+			<div class="g-col-6 g-col-lg-4">
+				<div class="grid">
+					<dt class="g-col-4 py-2 fw-bold">@field.Name</dt>
+					<dd class="g-col-8 py-2 mb-0">
+						@RenderFieldValue(field)
+					</dd>
+				</div>
+			</div>
+		}
+		if (layout == "list") {
+			<div class="grid">
+				<dt class="g-col-4 py-2 fw-bold">@field.Name</dt>
+				<dd class="g-col-8 py-2 mb-0">
+					@RenderFieldValue(field)
+				</dd>
+			</div>
+		}
+		if (layout == "table") {
+			<tr>
+				<td class="fw-bold">@field.Name</td>
+				<td>@RenderFieldValue(field)</td>
+			</tr>
+		}
+		if (layout == "bullets") {
+			<li>
+				<span class="fw-bold">@field.Name</span>
+				<span>@RenderFieldValue(field)</span>
+			</li>
+		}
 	}
 }
 
-@helper RenderFieldValue(string fieldValue, bool isColor) { 
-	if (!isColor) {
-		@fieldValue
-	} else {
-		<span class="colorbox-sm" style="background-color: @fieldValue" title="@fieldValue"></span>
+@helper RenderFieldValue(FieldValueViewModel field) { 
+	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
+
+	fieldValue = fieldValue == "False" ? Translate("No") : fieldValue;
+	fieldValue = fieldValue == "True" ? Translate("Yes") : fieldValue;
+
+	bool isColor = false;
+
+	if (field.Value.GetType() == typeof(System.Collections.Generic.List<Dynamicweb.Ecommerce.ProductCatalog.FieldOptionValueViewModel>))
+	{
+		int valueCount = 0;
+		System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
+		int totalValues = values.Count;
+
+		foreach (FieldOptionValueViewModel option in values)
+		{
+			if (option.Value.Substring(0,1) == "#") {
+				isColor = true;   
+			}
+
+			if (!isColor) {
+				@option.Name
+			} else {
+				<span class="colorbox-sm" style="background-color: @option.Value" title="@option.Value"></span>
+			}
+			
+			if (valueCount != totalValues && valueCount < (totalValues - 1)) {
+				if (isColor) {
+<text> </text>
+				} else {
+<text>, </text>
+				}
+			}
+			valueCount++;
+		}
+	}
+	else
+	{
+		if (fieldValue.Substring(0,1) == "#") {
+			isColor = true;   
+		}
+
+		if (!isColor) {
+			@fieldValue
+		} else {
+			<span class="colorbox-sm" style="background-color: @fieldValue" title="@fieldValue"></span>
+		}
 	}
 }

@@ -65,16 +65,17 @@
 {
 	@* Show image + thumbs on large screens *@
 	<div class="d-none d-lg-block @(padding)@(theme) h-100">
-		<div class="row g-3">
+		<div class="grid gap-3">
 			@* Main image *@
-			<div class="col-12">
-				<div class="mb-3">
-					<a href="@mainImagePath" class="btn @mainRatioCssClass js-product-image" style="@(mainRatioVariable);" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
+			<div class="g-col-12">
+				<div class="">
+					<a href="@mainImagePath" id="FullImageToggle_@Model.ID" class="btn @mainRatioCssClass" style="@(mainRatioVariable);" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
 						<div class="d-flex align-items-center justify-content-center">
 							@{
 								var parms = new Dictionary<string, object>();
 								parms.Add("id", "MainImage_" +  Model.ID);
 								parms.Add("cssClass", "mh-100 mw-100");
+								parms.Add("itemprop", "image");
 							}
 							@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = mainImagePath }, parms)
 						</div>
@@ -85,7 +86,7 @@
 			@* Thumbnails *@
 			@if (totalImages > 1)
 			{
-				<div class="col-12">
+				<div class="g-col-12">
 					<div id="LargeScreenImages_@Model.ID">
 						@{ 
 							int thumbNumber = 0;
@@ -117,7 +118,8 @@
 					loop: false,
 					controls: false,
 					mouseDrag: true,
-					lazyload: true
+					lazyload: true,
+					preventScrollOnTouch: 'force'
 				});
 			}
 		</script>
@@ -152,18 +154,17 @@
 							arrowKeys: true,
 							nav: false,
 							loop: false,
+							speed: 10,
 							controls: false,
+							preventScrollOnTouch: 'force'
 						});
 
-						document.addEventListener('DOMContentLoaded', function (event) {
-							document.querySelectorAll('.js-product-image').forEach(function (imageElement) {
-								imageElement.onclick = function (e) {
-									var clickedButton = e.currentTarget;
-									var slideNumber = clickedButton.querySelector("img").getAttribute("data-image-number");
-									sliderFull_@(Model.ID).goTo(slideNumber);
-								};
+						if (document.getElementById('ImageModal_@Model.ID')) {
+							document.getElementById('ImageModal_@Model.ID').addEventListener('show.bs.modal', function (event) {
+								var slideNumber = event.relatedTarget.getAttribute("data-image-number");
+								sliderFull_@(Model.ID).goTo(slideNumber);
 							});
-						});
+						}
 					</script>
 				</div>
 			</div>
@@ -202,6 +203,7 @@
 				loop: false,
 				rewind: false,
 				controls: false,
+				preventScrollOnTouch: 'force'
 			});
 		</script>
 	</div>
@@ -210,7 +212,7 @@
 @helper RenderThumbnail(MediaViewModel asset, ProductViewModel product, int imageNumber) {
 	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
 
-	<a href="@imagePath" class="btn p-0 border ratio ratio-16x9 me-2" onclick="document.querySelector('#MainImage_@Model.ID').srcset = this.querySelector('img').srcset; document.querySelector('#MainImage_@Model.ID').setAttribute('data-image-number', '@imageNumber')">
+	<a href="@imagePath" class="p-0 border ratio ratio-16x9 me-2" onclick="event.preventDefault(); document.querySelector('#MainImage_@Model.ID').srcset = this.querySelector('img').srcset; document.querySelector('#FullImageToggle_@Model.ID').setAttribute('data-image-number', '@imageNumber')">
 		<span class="btn p-0 d-flex align-items-center justify-content-center">
 			@{
 				var parms = new Dictionary<string, object>();
@@ -232,7 +234,7 @@
 	ratioCssClass = ratio != "" && ratio == "fill" && screenSize == "small" ? " ratio" : ratioCssClass;
 	ratioVariable = ratio != "" && ratio == "fill" && screenSize == "small" ? "--bs-aspect-ratio: 66%" : ratioVariable;
 
-	<a href="@imagePath" class="btn @ratioCssClass js-product-image" style="@(ratioVariable); cursor: pointer;" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID">
+	<a href="@imagePath" class="d-block @ratioCssClass" style="@(ratioVariable); cursor: pointer;" data-bs-toggle="modal" data-bs-target="#ImageModal_@Model.ID" data-image-number="@number">
 		<div class="d-flex align-items-center justify-content-center">
 			@{
 				var parms = new Dictionary<string, object>();
