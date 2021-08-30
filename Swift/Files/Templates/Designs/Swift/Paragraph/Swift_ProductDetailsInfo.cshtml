@@ -75,7 +75,7 @@
 
 		@if (mainFeatures.Count > 0)
 		{
-			<dl class="d-flex flex-column gap-3 m-0">
+			<div class="grid gap-0">
 				@foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
 				{
 					foreach (var field in mainFeatureGroup.Fields)
@@ -83,7 +83,7 @@
 					@RenderField(field.Value)
 					}
 				}
-			</dl>
+			</div>
 		}
 
 		@if (product.VariantInfo.VariantInfo != null) {
@@ -165,42 +165,72 @@
 	</div>
 </div>
 
-
 @helper RenderField(FieldValueViewModel field) { 
 	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
+	bool noValues = false;
 
-	if (fieldValue != "") {
-		fieldValue = fieldValue == "False" ? Translate("No") : fieldValue;
-		fieldValue = fieldValue == "True" ? Translate("Yes") : fieldValue;
-
+	if (!string.IsNullOrEmpty(fieldValue)) {
 		if (field.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
-			fieldValue = "";
-
-			foreach (FieldOptionValueViewModel option in field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>) {
-				fieldValue = option.Value;
-			}
+			System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
+			noValues = values.Count > 0 ? false : true;
 		}
+	}
 
-		bool isColor = false;
-		if (fieldValue.Contains("#") && (Translate(field.Name) == Translate("Color") || Translate(field.Name) == Translate("Colour"))) {
+	if (!string.IsNullOrEmpty(fieldValue) && noValues == false) {
+		<dt class="g-col-12 g-col-sm-4 g-col-lg-12 fw-bold m-0">@field.Name</dt>
+		<dd class="g-col-12 g-col-sm-8 g-col-lg-12 mb-3">
+			@RenderFieldValue(field)
+		</dd>
+	}
+}
+
+@helper RenderFieldValue(FieldValueViewModel field) { 
+	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
+
+	fieldValue = fieldValue == "False" ? Translate("No") : fieldValue;
+	fieldValue = fieldValue == "True" ? Translate("Yes") : fieldValue;
+
+	bool isColor = false;
+
+	if (field.Value.GetType() == typeof(System.Collections.Generic.List<Dynamicweb.Ecommerce.ProductCatalog.FieldOptionValueViewModel>))
+	{
+		int valueCount = 0;
+		System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
+		int totalValues = values.Count;
+
+		foreach (FieldOptionValueViewModel option in values)
+		{
+			if (option.Value.Substring(0,1) == "#") {
+				isColor = true;   
+			}
+
+			if (!isColor) {
+				@option.Name
+			} else {
+				<span class="colorbox-sm" style="background-color: @option.Value" title="@option.Value"></span>
+			}
+			
+			if (valueCount != totalValues && valueCount < (totalValues - 1)) {
+				if (isColor) {
+<text> </text>
+				} else {
+<text>, </text>
+				}
+			}
+			valueCount++;
+		}
+	}
+	else
+	{
+		if (fieldValue.Substring(0,1) == "#") {
 			isColor = true;   
 		}
 
-		if (!string.IsNullOrEmpty(fieldValue)) {
-			<div class="grid" style="row-gap: 0;">
-				<dt class="g-col-12 g-col-sm-4 g-col-lg-12 fw-bold m-0">@field.Name</dt>
-				@if (!isColor) {
-					<dd class="g-col-12 g-col-sm-8 g-col-lg-12 m-0">@fieldValue</dd>
-				} else {
-					<dd class="g-col-12 g-col-sm-8 g-col-lg-12 m-0">
-						<div class="position-relative">
-							<span class="colorbox-small" style="background-color: @fieldValue"></span>
-						</div>
-					</dd>
-				}
-			</div>				
-
-		} 
+		if (!isColor) {
+			@fieldValue
+		} else {
+			<span class="colorbox-sm" style="background-color: @fieldValue" title="@fieldValue"></span>
+		}
 	}
 }
 
