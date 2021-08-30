@@ -1,23 +1,24 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using System.Globalization
+@using System.Drawing
 
 @functions{
 	// Get Hex Color from color picker and translate to RGB color
 	public static string HexToRGB(string hexString)
 	{
-		if (hexString.Equals("none") || string.IsNullOrEmpty(hexString)) 
-			return hexString; 
+		if (hexString.Equals("none") || string.IsNullOrEmpty(hexString))
+			return hexString;
 
 		//replace # occurences
-		if (hexString.IndexOf('#') != -1) 
-			hexString = hexString.Replace("#", "");	
+		if (hexString.IndexOf('#') != -1)
+			hexString = hexString.Replace("#", "");
 		try
 		{
 			int r,g,b = 0;
 			r = int.Parse(hexString.Substring(0, 2), NumberStyles.AllowHexSpecifier);
 			g = int.Parse(hexString.Substring(2, 2), NumberStyles.AllowHexSpecifier);
-			b = int.Parse(hexString.Substring(4, 2), NumberStyles.AllowHexSpecifier);			
-			
+			b = int.Parse(hexString.Substring(4, 2), NumberStyles.AllowHexSpecifier);
+
 			string rgb = r + "," + g + "," + b;
 			return rgb;
 		}
@@ -25,6 +26,190 @@
 		{
 			return hexString;
 		}
+	}
+
+	public class HSL {
+		public double h { get; set; }
+		public double s { get; set; }
+		public double l { get; set; }
+	}
+
+	//Convert HEX to HSL
+	public static HSL HexToHsl(string hexString)
+	{
+		System.Drawing.Color color = System.Drawing.ColorTranslator.FromHtml(hexString);
+
+		float _R = (color.R / 255f);
+		float _G = (color.G / 255f);
+		float _B = (color.B / 255f);
+
+		float _Min = Math.Min(Math.Min(_R, _G), _B);
+		float _Max = Math.Max(Math.Max(_R, _G), _B);
+		float _Delta = _Max - _Min;
+
+		float S = 0;
+		float L = (float)((_Max + _Min) / 2.0f);
+
+		if (_Delta != 0)
+		{
+			if (L < 0.5f)
+			{
+				S = (float)(_Delta / (_Max + _Min));
+			}
+			else
+			{
+				S = (float)(_Delta / (2.0f - _Max - _Min));
+			}
+		}
+
+		HSL hsl = new HSL();
+		hsl.h = Math.Round(color.GetHue(), 2);
+		hsl.s = Math.Round(S, 2)*100;
+		hsl.l = Math.Round(L, 2)*100;
+
+		return hsl;
+	}
+
+	public string GetColorVariation(string hexString) {
+		var contrast = GetContrastColor(hexString);
+		HSL hslColor = HexToHsl(hexString);
+
+		if (contrast == Color.Black)
+		{
+			hslColor.l = 85;
+		}
+		else
+		{
+			hslColor.l = 30;
+		}
+
+		var color = ColorFromHsl(hslColor.h, hslColor.s/100, hslColor.l/100);
+		return ColorTranslator.ToHtml(color);
+	}
+
+	//Find contrast color (white, black)
+	public static Color GetContrastColor(string hexString)
+	{
+		System.Drawing.Color bg = System.Drawing.ColorTranslator.FromHtml(hexString);
+
+		int nThreshold = 105;
+		int bgDelta = Convert.ToInt32((bg.R * 0.299) + (bg.G * 0.587) +
+									  (bg.B * 0.114));
+
+		Color foreColor = (255 - bgDelta < nThreshold) ? Color.Black : Color.White;
+		return foreColor;
+	}
+
+	public static System.Drawing.Color ColorFromHsl(double h, double s, double l)
+    {
+        double v = 0;
+        double r = 0;
+        double g = 0;
+        double b = 0;
+
+        while (h < 0)
+        {
+            h += 360;
+        }
+
+        while (h >= 360)
+        {
+            h -= 360;
+        }
+
+        h = h / 360;
+
+        if (s < 0)
+        {
+            s = 0;
+        }
+
+        if (s > 1)
+        {
+            s = 1;
+        }
+
+        if (l < 0)
+        {
+            l = 0;
+        }
+
+        if (l > 1)
+        {
+            l = 1;
+        }
+
+        r = l;
+        // default to gray
+        g = l;
+        b = l;
+
+        v = (l <= 0.5) ? (l * (1.0 + s)) : (l + s - l * s);
+        if (v > 0)
+        {
+            double m = 0;
+            double sv = 0;
+            int sextant = 0;
+            double fract = 0;
+            double vsf = 0;
+            double mid1 = 0;
+            double mid2 = 0;
+            m = l + l - v;
+            sv = (v - m) / v;
+            h *= 6.0;
+            sextant = Convert.ToInt32(Math.Truncate(h));
+            fract = h - sextant;
+            vsf = v * sv * fract;
+            mid1 = m + vsf;
+            mid2 = v - vsf;
+
+            switch (sextant)
+            {
+                case 0:
+                    r = v;
+                    g = mid1;
+                    b = m;
+                    break;
+                case 1:
+                    r = mid2;
+                    g = v;
+                    b = m;
+                    break;
+                case 2:
+                    r = m;
+                    g = v;
+                    b = mid1;
+                    break;
+                case 3:
+                    r = m;
+                    g = mid2;
+                    b = v;
+                    break;
+                case 4:
+                    r = mid1;
+                    g = m;
+                    b = v;
+                    break;
+                case 5:
+                    r = v;
+                    g = m;
+                    b = mid2;
+                    break;
+            }
+        }
+
+        return System.Drawing.Color.FromArgb(Convert.ToInt32(r * 255.0F), Convert.ToInt32(g * 255.0F), Convert.ToInt32(b * 255.0F));
+    }
+
+	private static double QqhToRgb(double q1, double q2, double hue)
+	{
+		if (hue > 360) hue -= 360;
+		else if (hue < 0) hue += 360;
+
+		if (hue < 60) return q1 + (q2 - q1) * hue / 60;
+		if (hue < 180) return q2;
+		if (hue < 240) return q1 + (q2 - q1) * (240 - hue) / 60;
+		return q1;
 	}
 }
 
@@ -44,10 +229,16 @@
 	string buttonPrimaryBackgroundColor = Model.Item.GetString("ButtonPrimaryBackgroundColor") != null ? Model.Item.GetString("ButtonPrimaryBackgroundColor") : "";
 	string buttonPrimaryForegroundColor = Model.Item.GetString("ButtonPrimaryForegroundColor") != null ? Model.Item.GetString("ButtonPrimaryForegroundColor") : "";
 	string buttonPrimaryBorderColor = Model.Item.GetString("ButtonPrimaryBorderColor") != null ? Model.Item.GetString("ButtonPrimaryBorderColor") : "";
+	string buttonPrimaryHoverBackgroundColor = Model.Item.GetString("ButtonPrimaryHoverBackgroundColor") != null ? Model.Item.GetString("ButtonPrimaryHoverBackgroundColor") : GetColorVariation(buttonPrimaryBackgroundColor);
+	string buttonPrimaryHoverForegroundColor = Model.Item.GetString("ButtonPrimaryHoverForegroundColor") != null ? Model.Item.GetString("ButtonPrimaryHoverForegroundColor") : buttonPrimaryForegroundColor;
+	string buttonPrimaryHoverBorderColor = Model.Item.GetString("ButtonPrimaryHoverBorderColor") != null ? Model.Item.GetString("ButtonPrimaryHoverBorderColor") : "";
 
 	string buttonSecondaryBackgroundColor = Model.Item.GetString("ButtonSecondaryBackgroundColor") != null ? Model.Item.GetString("ButtonSecondaryBackgroundColor") : "";
 	string buttonSecondaryForegroundColor = Model.Item.GetString("ButtonSecondaryForegroundColor") != null ? Model.Item.GetString("ButtonSecondaryForegroundColor") : "";
 	string buttonSecondaryBorderColor = Model.Item.GetString("ButtonSecondaryBorderColor") != null ? Model.Item.GetString("ButtonSecondaryBorderColor") : "";
+	string buttonSecondaryHoverBackgroundColor = Model.Item.GetString("ButtonSecondaryHoverBackgroundColor") != null ? Model.Item.GetString("ButtonSecondaryHoverBackgroundColor") : GetColorVariation(buttonSecondaryBackgroundColor);
+	string buttonSecondaryHoverForegroundColor = Model.Item.GetString("ButtonSecondaryHoverForegroundColor") != null ? Model.Item.GetString("ButtonSecondaryHoverForegroundColor") : buttonSecondaryForegroundColor;
+	string buttonSecondaryHoverBorderColor = Model.Item.GetString("ButtonSecondaryHoverBorderColor") != null ? Model.Item.GetString("ButtonSecondaryHoverBorderColor") : "";
 
 	string accessibilityOutlineColor = Model.Item.GetString("OutlineColor") != null ? Model.Item.GetString("OutlineColor") : "";
 
@@ -87,6 +278,22 @@
 			sb.AppendLine($"--swift-button-primary-border-color-rgb: {HexToRGB(buttonPrimaryBorderColor)};");
 		}
 
+		if (!string.IsNullOrEmpty(buttonPrimaryHoverBackgroundColor))
+		{
+			sb.AppendLine($"--swift-button-primary-hover-background-color: {buttonPrimaryHoverBackgroundColor};");
+			sb.AppendLine($"--swift-button-primary-hover-background-color-rgb: {HexToRGB(buttonPrimaryHoverBackgroundColor)};");
+		} 
+		if (!string.IsNullOrEmpty(buttonPrimaryHoverForegroundColor))
+		{
+			sb.AppendLine($"--swift-button-primary-hover-foreground-color: {buttonPrimaryHoverForegroundColor};");
+			sb.AppendLine($"--swift-button-primary-hover-foreground-color-rgb: {HexToRGB(buttonPrimaryHoverForegroundColor)};");
+		} 
+		if (!string.IsNullOrEmpty(buttonPrimaryHoverBorderColor))
+		{
+			sb.AppendLine($"--swift-button-primary-hover-border-color: {buttonPrimaryHoverBorderColor};");
+			sb.AppendLine($"--swift-button-primary-hover-border-color-rgb: {HexToRGB(buttonPrimaryHoverBorderColor)};");
+		}
+
 		if (!string.IsNullOrEmpty(buttonSecondaryBackgroundColor))
 		{
 			sb.AppendLine($"--swift-button-secondary-background-color: {buttonSecondaryBackgroundColor};");
@@ -101,6 +308,21 @@
 		{
 			sb.AppendLine($"--swift-button-secondary-border-color: {buttonSecondaryBorderColor};");
 			sb.AppendLine($"--swift-button-secondary-border-color-rgb: {HexToRGB(buttonSecondaryBorderColor)};");
+		}
+		if (!string.IsNullOrEmpty(buttonSecondaryHoverBackgroundColor))
+		{
+			sb.AppendLine($"--swift-button-secondary-hover-background-color: {buttonSecondaryHoverBackgroundColor};");
+			sb.AppendLine($"--swift-button-secondary-hover-background-color-rgb: {HexToRGB(buttonSecondaryHoverBackgroundColor)};");
+		}
+		if (!string.IsNullOrEmpty(buttonSecondaryHoverForegroundColor))
+		{
+			sb.AppendLine($"--swift-button-secondary-hover-foreground-color: {buttonSecondaryHoverForegroundColor};");
+			sb.AppendLine($"--swift-button-secondary-hover-foreground-color-rgb: {HexToRGB(buttonSecondaryHoverForegroundColor)};");
+		}
+		if (!string.IsNullOrEmpty(buttonSecondaryHoverBorderColor))
+		{
+			sb.AppendLine($"--swift-button-secondary-hover-border-color: {buttonSecondaryHoverBorderColor};");
+			sb.AppendLine($"--swift-button-secondary-hover-border-color-rgb: {HexToRGB(buttonSecondaryHoverBorderColor)};");
 		}
 		if (!string.IsNullOrEmpty(accessibilityOutlineColor))
 		{
@@ -180,6 +402,27 @@
 							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonPrimaryBorderColor');">@buttonPrimaryBorderColor</a></td>
 						</tr>
 					}
+					@if (!string.IsNullOrEmpty(buttonPrimaryHoverForegroundColor))
+					{
+						<tr>
+							<td>@Translate("Hover foreg.")</td>
+							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonPrimaryHoverForegroundColor');">@buttonPrimaryHoverForegroundColor</a></td>
+						</tr>
+					}
+					@if (!string.IsNullOrEmpty(buttonPrimaryHoverBackgroundColor))
+					{
+						<tr>
+							<td>@Translate("Hover backg.")</td>
+							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonPrimaryHoverBackgroundColor');">@buttonPrimaryHoverBackgroundColor DDD</a></td>
+						</tr>
+					}
+					@if (!string.IsNullOrEmpty(buttonPrimaryHoverBorderColor))
+					{
+						<tr>
+							<td>@Translate("Hover border")</td>
+							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonPrimaryHoverBorderColor');">@buttonPrimaryHoverBorderColor</a></td>
+						</tr>
+					}
 				</table>
 			</div>
 			<div class="g-col-12 g-col-lg-3">
@@ -202,6 +445,27 @@
 						<tr>
 							<td>@Translate("Border")</td>
 							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonSecondaryBorderColor');">@buttonSecondaryBorderColor</a></td>
+						</tr>
+					}
+					@if (!string.IsNullOrEmpty(buttonSecondaryHoverForegroundColor))
+					{
+						<tr>
+							<td>@Translate("Hover foreg.")</td>
+							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonSecondaryHoverForegroundColor');">@buttonSecondaryHoverForegroundColor</a></td>
+						</tr>
+					}
+					@if (!string.IsNullOrEmpty(buttonSecondaryHoverBackgroundColor))
+					{
+						<tr>
+							<td>@Translate("Hover backg.")</td>
+							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonSecondaryHoverBackgroundColor');">@buttonSecondaryHoverBackgroundColor</a></td>
+						</tr>
+					}
+					@if (!string.IsNullOrEmpty(buttonSecondaryHoverBorderColor))
+					{
+						<tr>
+							<td>@Translate("Hover border")</td>
+							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonSecondaryHoverBorderColor');">@buttonSecondaryHoverBorderColor</a></td>
 						</tr>
 					}
 					@if (!string.IsNullOrEmpty(accessibilityOutlineColor))
@@ -272,3 +536,4 @@
 	  });
 	}
 </script>
+
