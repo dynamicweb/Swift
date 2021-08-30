@@ -7,6 +7,7 @@ import { ProductList } from './_productlist';
 import { PageUpdater } from './_pageupdater';
 import { VariantSelector } from './_variantselector';
 import { Typeahead } from './_typeahead';
+import * as Plyr from 'plyr';
 
 //Bootstrap
 window.bootstrap = bootstrap;
@@ -29,17 +30,8 @@ const swift = function () {
 export { swift };
 
 window.swift = swift;
-window.swift.Cart = Cart;
-window.swift.Sliders = Sliders;
-window.swift.Scroll = Scroll;
-window.swift.ProductList = ProductList;
-window.swift.PageUpdater = PageUpdater;
-window.swift.VariantSelector = VariantSelector;
-window.swift.Typeahead = Typeahead;
 
 //Popstate
 window.onpopstate = function (event) {
-	Typeahead.navigateToPage(document.location.href);
+	swift.Typeahead.navigateToPage(document.location.href);
 };
-
-
