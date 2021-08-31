@@ -1,0 +1,187 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	string ratioCssClass = Model.Item.GetRawValueString("AspectRatio") != "0" && Model.Item.GetRawValueString("AspectRatio") != "" ? "ratio" : "";
+	string ratioVariable = Model.Item.GetRawValueString("AspectRatio") != "0" && Model.Item.GetRawValueString("AspectRatio") != "" ? "style=\"--bs-aspect-ratio: " + Model.Item.GetRawValueString("AspectRatio") + "\"" : "";
+
+	string visual = Model.Item.GetRawValueString("Visual", "inline");
+
+	string provider = Model.Item.GetRawValueString("VideoSourceProvider", "none");
+	string videoId = Model.Item.GetString("VideoSourceID");
+	
+	Dynamicweb.Frontend.FileViewModel video = Model.Item.GetFile("VideoPath");
+	string videoPath = video?.Path ?? "";
+
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/play.svg";
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	string alignment = Model.Item.GetRawValueString("Alignment", "align-items-center");
+}
+
+@switch(visual) {
+	case "inline" : 
+
+		<div class="h-100 position-relative grid grid-1 @(alignment)">
+		
+			@switch (provider)
+			{
+				case "youtube" :
+				case "vimeo" :
+
+					<div 
+						id="player_@Pageview.CurrentParagraph.ID" 
+						class="player plyr__video-embed @(theme) h-100 w-100" 
+						data-plyr-provider="@provider" 
+						data-plyr-embed-id="@videoId" 
+						style="--plyr-color-main: var(--swift-foreground-color); "
+					>
+					</div>
+					
+					break;
+
+				case "self-hosted" :
+
+					<video 
+						id="player_@Pageview.CurrentParagraph.ID" 
+						class="player plyr__video-embed @(theme) h-100 w-100"
+						src="@videoPath"
+						style="--plyr-color-main: var(--swift-foreground-color);"
+						>
+					</video>
+					
+					break;
+			}
+
+			<script type="module">
+				const player = new Plyr('#player_@Pageview.CurrentParagraph.ID', {
+					type: 'video',
+					youtube: {
+						noCookie: true,
+						showinfo: 0
+					},
+					fullscreen: {
+						enabled: true,
+						iosNative: true,
+					}
+				});
+			</script>
+
+		</div>
+
+		break;
+
+	case "poster-modal" : 
+
+		<div class="h-100 position-relative@(theme) grid grid-1 @(alignment)">
+
+			<div class="player h-100 w-100" data-player="{'src': @videoId'}">
+				@RenderImage()
+				
+				<div class="position-absolute top-0 bottom-0 end-0 start-0 h-100 d-flex align-items-center justify-content-center">
+					<button type="button" class="btn btn-primary rounded-circle lh-1 p-3" data-bs-toggle="modal" data-bs-target="#modal_@Pageview.CurrentParagraph.ID">
+						<div class="icon-3">
+							@ReadFile(iconPath)
+						</div>
+					</button>
+				</div>
+			</div>
+
+		</div>
+
+		<div class="modal fade" id="modal_@Pageview.CurrentParagraph.ID" tabindex="-1" aria-hidden="true">
+			<div class="modal-dialog modal-xl modal-dialog-centered">
+				<div class="modal-content">
+					<div class="modal-body p-0">
+
+						@switch (provider)
+						{
+							case "youtube" :
+							case "vimeo" :
+
+								<div 
+									id="player_@Pageview.CurrentParagraph.ID" 
+									class="player plyr__video-embed @(theme) h-100 w-100" 
+									data-plyr-provider="@provider" 
+									data-plyr-embed-id="@videoId" 
+									style="--plyr-color-main: var(--swift-foreground-color); "
+								>
+								</div>
+
+								break;
+
+							case "self-hosted" :
+
+								<video 
+									id="player_@Pageview.CurrentParagraph.ID" 
+									class="player plyr__video-embed @(theme) h-100 w-100"
+									src="@videoPath"
+									style="--plyr-color-main: var(--swift-foreground-color);"
+									>
+								</video>
+								
+								break;
+						}
+						
+						<script type="module">
+							var player = new Plyr('#player_@Pageview.CurrentParagraph.ID', {
+								youtube: {
+									noCookie: true,
+									showinfo: 0
+								},
+								fullscreen: {
+									enabled: true,
+									iosNative: true,
+								}
+							});
+							
+							document.querySelector('#modal_@Pageview.CurrentParagraph.ID').addEventListener('show.bs.modal', function (event) {
+								player.togglePlay();
+								
+								player.on('ready', event => {
+									player.play();
+								});									
+							});
+							
+							document.querySelector('#modal_@Pageview.CurrentParagraph.ID').addEventListener('hide.bs.modal', function (event) {
+								player.pause();										
+							});
+						</script>
+
+					</div>
+				</div>
+			</div>
+		</div>
+
+		break;
+}
+
+
+@helper RenderImage()
+{
+	if (!string.IsNullOrEmpty(Model.Item.GetString("VideoPoster")))
+	{
+
+		string ratio = Model.Item.GetRawValueString("AspectRatio", "");
+		ratio = ratio != "0" ? ratio : "";
+		string ratioCssClass = ratio != "" && ratio != "fill" ? " ratio" : "";
+		string ratioVariable = ratio != "" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : "";
+		string fillClass = ratio == "fill" ? " h-100" : "";
+
+		var parms = new Dictionary<string, object>();
+		parms.Add("loading", "lazy");
+		if (ratio == "fill") {
+			parms.Add("cssClass", "w-100 h-100");
+		}
+		else
+		{
+			parms.Add("cssClass", "mw-100 mh-100");
+		}
+		parms.Add("style","");
+		parms.Add("alt", Model.Item.GetString("ImageAltText"));
+		parms.Add("columns", Model.GridRowColumnCount);
+
+		<figure class="m-0@(ratioCssClass)@(fillClass)" @ratioVariable>
+			@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("VideoPoster") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+		</figure>
+	}
+}
