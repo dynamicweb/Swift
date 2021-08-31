@@ -62,7 +62,23 @@ const Scroll = function() {
 					});
 				}
 			});
-        }
+		},
+
+		setContentPosition() {
+
+			const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+			var headerHeight = 100;
+			var desktopHeader = document.querySelector("#page-header-dekstop");
+			var mobileHeader = document.querySelector("#page-header-mobile");
+
+			if (viewportWidth > 992 && desktopHeader) {
+				headerHeight = desktopHeader.clientHeight;
+			} else if (mobileHeader) {
+				headerHeight = mobileHeader.clientHeight;
+			}
+			document.documentElement.style.setProperty('--header-height', headerHeight + 'px');
+
+		}
     }
 }();
 
