@@ -115,7 +115,7 @@ const ProductList = function () {
 				var requestType = formData.get("RequestType");
 
 				if (screen.width < 768 && document.querySelector('#FacetsModal') && requestType != "UpdateList") {
-					var facetsModal = new Modal(document.querySelector('#FacetsModal'), { backdrop: false });
+					var facetsModal = new bootstrap.Modal(document.querySelector('#FacetsModal'), { backdrop: false });
 					facetsModal.show();
 
 					var backdrop = document.querySelector('.modal-backdrop');
