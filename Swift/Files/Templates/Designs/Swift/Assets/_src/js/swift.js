@@ -15,6 +15,9 @@ window.bootstrap = bootstrap;
 //Tiny slider
 window.tns = tns;
 
+//Plyr video
+window.Plyr = Plyr;
+
 //Swift modules
 const swift = function () {
 	return {
