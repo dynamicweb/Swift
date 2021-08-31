@@ -24,7 +24,7 @@ The basic install procedure is:
 
 ## Requirements
 
-1. Swift ´1.0 requires Dynamicweb version 9.10.14 or newer
+1. Swift 1.0 requires Dynamicweb version 9.10.14 or newer
 
  The baseline database is a bacpac file created using the MS SQL Server 2016 standard (version SQL server 15.0.2080.9) using SQL Server Management Studio 2019 version 15.018040.0.
 
