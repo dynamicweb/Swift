@@ -24,8 +24,7 @@ The basic install procedure is:
 
 ## Requirements
 
-1. Swift 0.9 requires Dynamicweb version 9.10.12 or newer
-2. Dynamicweb.Ecommerce version 1.10.87 or newer
+1. Swift ´1.0 requires Dynamicweb version 9.10.14 or newer
 
  The baseline database is a bacpac file created using the MS SQL Server 2016 standard (version SQL server 15.0.2080.9) using SQL Server Management Studio 2019 version 15.018040.0.
 
@@ -36,8 +35,8 @@ Swift must be installed on a server or local machine running Windows & a recent 
 * [Software/Hardware requirements for Dynamicweb 9](https://doc.dynamicweb.com/get-started/introduction/requirements/requirements-dw9#2171)
 * [Preparing the hosting environment](https://doc.dynamicweb.com/get-started/introduction/installation/hosting-environment "Preparing the hosting environment")
 * [Install Dynamicweb](https://doc.dynamicweb.com/get-started/introduction/installation/installing-dynamicweb "Install Dynamicweb")
-* [Download Swift database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-0.9-Beta/Swift_All/Swift_20211507_Database.zip "Download Swift database")
-* [Download Swift Product Image folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-0.9-Beta/Swift_All/Swift_20211507_DemoProductImages.zip "Download Swift Product Image folder")
+* [Download Swift database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-1.0/Swift_All/Swift_20210831_Database.zip "Download Swift database")
+* [Download Swift Product Image folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-1.0/Swift_All/Swift_20210831_DemoProductImages.zip "Download Swift Product Image folder")
 
 After following these guides you will have a freshly installed Dynamicweb solution, which is ready to run Swift.
 
