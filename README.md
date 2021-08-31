@@ -16,7 +16,7 @@ The basic install procedure is:
 1. Prepare the hosting environment
 2. Install the Dynamicweb application
 3. Set up a website in IIS Manager and add the Swift-folder as a virtual directory
-4. Download the Product image folder Swift_20211507_Products.zip
+4. Download the Product image folder Swift_20210831_DemoProductImages.zip
 	- 'Products image folder' insert the folder here Swift/Files/Files/Images/Products
 5. Build the Swift design
 6. Install the Swift database & connect solution to it
@@ -24,7 +24,7 @@ The basic install procedure is:
 
 ## Requirements
 
-1. Swift ´1.0 requires Dynamicweb version 9.10.14 or newer
+1. Swift 1.0 requires Dynamicweb version 9.10.14 or newer
 
  The baseline database is a bacpac file created using the MS SQL Server 2016 standard (version SQL server 15.0.2080.9) using SQL Server Management Studio 2019 version 15.018040.0.
 
