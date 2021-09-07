@@ -1,11 +1,12 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
 @using Dynamicweb
 @using System.IO
+@using System.Text.RegularExpressions
 @{ 
 	string negativMargin = Model.Parameters["mx-n3"].ToString();
 	string navOrientation = Model.Parameters["navOrientation"].ToString();
 	string navAlignment = Model.Parameters["navAlignment"].ToString();
-	string theme = Model.Parameters["theme"].ToString();
+	string theme = !string.IsNullOrEmpty(Model.Parameters["theme"].ToString()) ? Model.Parameters["theme"].ToString() : "theme light";
 }
 
 <nav class="d-none d-lg-flex nav flex-nowrap nav-wrapper @negativMargin @navOrientation @navAlignment">
@@ -24,7 +25,11 @@
 
 	foreach (var node in nodes)
 	{
-		var hasChildren = node.Nodes.Count() > 0;
+		var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+		string pageType = page.ItemType;
+		string languageLayout = page.Item["LanguagesLayout"] != null ? page.Item["LanguagesLayout"].ToString() : "";
+
+		var hasChildren = node.Nodes.Count() > 0 || pageType == "Swift_SignIn" || (pageType == "Swift_LanguageSelector" && Pageview.Page.Languages != null && languageLayout == "dropdown");
 		string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
 
 		if (node.IsClickable)
@@ -42,16 +47,43 @@
 
 		if (hasChildren)
 		{
-			var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
-			string pageType = page.ItemType;
-			<ul class="dropdown-menu@(theme)">
+			<ul class="dropdown-menu @(theme)">
+				@if (pageType == "Swift_LanguageSelector" && Pageview.Page.Languages != null) { //Languange selector
+					Uri url = Dynamicweb.Context.Current.Request.Url;
+					string currentFriendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(Pageview.ID);
+					string currentHref = $"{url.Scheme}://{url.Host}{currentFriendlyUrl}";
+
+					string iconFolder = "/Files/FlagIcons/";
+					string icon = iconFolder + Pageview.Area.CultureInfo.Name.ToLower() + ".svg";
+
+					Regex reg = new Regex(@"\(([^\)]+)\)");
+					string name = reg.Replace(Pageview.Area.CultureInfo.DisplayName, "");
+
+					<li>
+						<a href="@currentHref" class="dropdown-item nav-link-underline">@RenderIcon(icon, "icon-2") <span class="align-middle">@name</span></a>
+					</li>
+
+					foreach (var language in Pageview.Page.Languages)
+					{
+						string hostName = !string.IsNullOrEmpty(language.Area.DomainLock) ? language.Area.DomainLock : url.Host;
+						string friendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(language.ID);
+						string href = $"{url.Scheme}://{hostName}{friendlyUrl}";
+
+						icon = iconFolder + language.Area.CultureInfo.Name.ToLower() + ".svg";
+						name = reg.Replace(language.Area.CultureInfo.DisplayName, "");
+
+						<li>
+							<a href="@href" class="dropdown-item nav-link-underline">@RenderIcon(icon, "icon-2") <span class="align-middle">@name</span></a>
+						</li>
+					}
+				}
 				@foreach (var subnode in node.Nodes)
 				{
 					<li>
 						<a href="@subnode.Link" class="dropdown-item py-2 nav-link-underline @linkFontSize @linkFontWeight @linkCasing" @(subnode.IsActive ? " aria-current='page'" : "")>@subnode.Name</a>
 					</li>
 				}
-				@if (pageType == "Swift_SignIn")
+				@if (pageType == "Swift_SignIn") //Sign out link
 				{
 					if (Pageview.User != null)
 					{
@@ -61,7 +93,7 @@
 					}
 				}
 			</ul>
-		}
+		} 
 	}
 }
 
@@ -111,7 +143,8 @@
 	if (page.PropertyItem != null) {
         icon = page.PropertyItem["Icon"] != null ? page.PropertyItem["Icon"].ToString() : "";
     }
-	if (pageType == "Swift_Cart")
+
+	if (pageType == "Swift_Cart") //Mini cart
 	{
 		double totalProducts = 0;
 
@@ -142,26 +175,38 @@
 				@RenderIcon(icon, iconSize)
 				break;
 		}
-	}
-	else
-	{
+	} else {
+		string name = node.Name;
+
+		if (pageType == "Swift_LanguageSelector") { //Languange
+			string iconFolder = "/Files/FlagIcons/";
+			icon = iconFolder + Pageview.Area.CultureInfo.Name.ToLower() + ".svg";
+			Regex reg = new Regex(@"\(([^\)]+)\)");
+			name = reg.Replace(Pageview.Area.CultureInfo.DisplayName, "");
+
+			layout = layout == "linksOnly" ? "iconsAndLinks" : layout;
+			bool hideIcon = page.Item["HideIcon"] != null ? Convert.ToBoolean(page.Item["HideIcon"].ToString()) : false;
+			bool hideName = page.Item["HideName"] != null ? Convert.ToBoolean(page.Item["HideName"].ToString()) : false;
+			layout = hideIcon ? "linksOnly" : layout;
+			layout = hideName ? "iconsOnly" : layout;
+		}
 
 		switch (layout)
 		{
 			case "linksOnly":
-				<span class="align-middle">@node.Name</span>
+				<span class="align-middle">@name</span>
 				break;
 
 			case "iconsOnly":
-				<span class="visually-hidden">@node.Name</span>
+				<span class="visually-hidden">@name</span>
 				@RenderIcon(icon, iconSize)
 				break;
 			case "iconsAndLinks":
 				@RenderIcon(icon, iconSize)
-				<span class="align-middle">@node.Name</span>
+				<span class="align-middle">@name</span>
 				break;
 			case "linksAndIcons":
-				<span class="align-middle">@node.Name</span>
+				<span class="align-middle">@name</span>
 				@RenderIcon(icon, iconSize)
 				break;
 		}
