@@ -3,7 +3,6 @@
 @using Dynamicweb
 @using Dynamicweb.Environment
 @using Dynamicweb.Frontend 
-@using System.Text.RegularExpressions
 
 @{
 	bool renderAsResponsive = Model.Area.Item.GetString("DeviceRendering", "responsive").Equals("responsive", StringComparison.OrdinalIgnoreCase);
@@ -72,6 +71,26 @@
 	//Dynamicweb.Context.Current.Response.Flush(); //This sends the headers where we are now in the rendering making the TTFB faster
 
 	SetMetaTags();
+
+	List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
+
+	if (Pageview.Area.IsMaster) {
+		languages.Add(Pageview.Page);
+		if (Pageview.Page.Languages != null) {
+			foreach (var language in Pageview.Page.Languages) {
+				languages.Add(language);
+			}
+		}
+	} else {
+		languages.Add(Pageview.Page.MasterPage);
+		foreach (var language in Pageview.Page.MasterPage.Languages) {
+			languages.Add(language);
+		}
+	}
+
+	string siteLanguage = Pageview.Area.CultureInfo.Name;
+	Uri url = Dynamicweb.Context.Current.Request.Url;
+	string hostName = url.Host; // domain.com/da-dk or domain.com/en-us
 }
 <!doctype html>
 <html lang="@Pageview.Area.CultureInfo.TwoLetterISOLanguageName">
@@ -87,26 +106,6 @@
 
 	@{ 
 		@* Languages meta data *@
-		List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
-
-		if (Pageview.Area.IsMaster) {
-			languages.Add(Pageview.Page);
-			if (Pageview.Page.Languages != null) {
-				foreach (var language in Pageview.Page.Languages) {
-					languages.Add(language);
-				}
-			}
-		} else {
-			languages.Add(Pageview.Page.MasterPage);
-			foreach (var language in Pageview.Page.MasterPage.Languages) {
-				languages.Add(language);
-			}
-		}
-
-		string siteLanguage = Pageview.Area.CultureInfo.Name;
-		Uri url = Dynamicweb.Context.Current.Request.Url;
-		string hostName = url.Host; // domain.com/da-dk or domain.com/en-us
-
 		foreach (var language in languages)
 		{
 			if (!string.IsNullOrEmpty(language.Area.DomainLock))
@@ -189,8 +188,6 @@
 	@* Language selector modal *@
 	@if (languages.Count > 1)
 	{
-		Regex reg = new Regex(@"\(([^\)]+)\)");
-
 		<div class="modal fade" id="LanguageSelectorModal" tabindex="-1" aria-labelledby="LanguageSelectorModalLabel" aria-hidden="true">
 			<div class="modal-dialog modal-sm">
 				<form action="">
@@ -199,20 +196,8 @@
 							<h5 class="modal-title" id="LanguageSelectorModalLabel">@Translate("Preferences")</h5>
 							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 						</div>
-						<div class="modal-body">
-							<select class="form-select" aria-label="@Translate("Select language")" onchange="this.closest('form').action = this.value">
-								@foreach (var language in languages)
-								{
-									hostName = !string.IsNullOrEmpty(language.Area.DomainLock) ? language.Area.DomainLock : url.Host;
-									string friendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(language.ID);
-									string href = $"{url.Scheme}://{hostName}{friendlyUrl}";
-
-									string name = reg.Replace(language.Area.CultureInfo.DisplayName, "");
-									string selectedLanguage = language.Area.ID == Pageview.Area.ID ? "selected" : "";
-
-									<option lang="@language.Area.CultureInfo.TwoLetterISOLanguageName" value="@href" @selectedLanguage>@name</option>
-								}
-							</select>
+						<div class="modal-body d-grid gap-3" id="LanguageSelectorModalBody">
+							@* The content here comes from an external request *@
 						</div>
 						<div class="modal-footer">
 							<button type="submit" class="btn btn-primary w-100">@Translate("Update preferences")</button>

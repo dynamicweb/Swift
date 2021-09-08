@@ -1,0 +1,58 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
+@using System
+@using System.Text.RegularExpressions
+
+@MasterPageFile("Swift_MasterClean.cshtml")
+
+@{ 
+	Regex reg = new Regex(@"\(([^\)]+)\)");
+	List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
+
+	if (Pageview.Area.IsMaster) {
+		languages.Add(Pageview.Page);
+		if (Pageview.Page.Languages != null) {
+			foreach (var language in Pageview.Page.Languages) {
+				languages.Add(language);
+			}
+		}
+	} else {
+		languages.Add(Pageview.Page.MasterPage);
+		foreach (var language in Pageview.Page.MasterPage.Languages) {
+			languages.Add(language);
+		}
+	}
+
+	string siteLanguage = Pageview.Area.CultureInfo.Name;
+	Uri url = Dynamicweb.Context.Current.Request.Url;
+	string hostName = url.Host; // domain.com/da-dk or domain.com/en-us
+
+	var currencies = Dynamicweb.Ecommerce.Services.Currencies.GetAllCurrencies();
+
+	string layout = Model.Item.GetRawValueString("LanguagesLayout", "modal");
+}
+
+@if (languages.Count() > 1) { 
+	<select class="form-select d-col-12" aria-label="@Translate("Select language")" onchange="this.closest('form').action = this.value">
+		@foreach (var language in languages)
+		{
+			hostName = !string.IsNullOrEmpty(language.Area.DomainLock) ? language.Area.DomainLock : url.Host;
+			string friendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(language.ID);
+			string href = $"{url.Scheme}://{hostName}{friendlyUrl}";
+
+			string name = reg.Replace(language.Area.CultureInfo.DisplayName, "");
+			string selectedLanguage = language.Area.ID == Pageview.Area.ID ? "selected" : "";
+
+			<option lang="@language.Area.CultureInfo.TwoLetterISOLanguageName" value="@href" @selectedLanguage>@name</option>
+		}
+	</select>
+}
+
+@if (currencies.Count() > 1 && layout == "modal-language-currency") { 
+	<select name="CurrencyCode" class="form-select d-col-12" aria-label="@Translate("Select currency")">
+		@foreach (var currency in currencies)
+		{
+			string selectedCurrency = currency.Code == Dynamicweb.Ecommerce.Common.Context.Currency.Code ? "selected" : "";	
+			<option value="@currency.Code" @selectedCurrency>@currency.Name</option>
+		}
+	</select>
+}

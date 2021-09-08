@@ -5,9 +5,11 @@ const PageUpdater = function () {
 			var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
 			var form = clickedButton.closest("form");
 			var preloader = form.getAttribute("data-preloader");
+			var responseTargetElement = form.getAttribute("data-response-target-element") ? "#" + form.getAttribute("data-response-target-element") : "#content";
+			var layoutTemplate = form.getAttribute("data-layout-template") ? form.getAttribute("data-layout-template") : "Swift_PageClean.cshtml";
 
 			let formData = new FormData(form);
-			formData.set("LayoutTemplate", "Swift_PageClean.cshtml");
+			formData.set("LayoutTemplate", layoutTemplate);
 			var fetchOptions = {
 				method: 'POST',
 				body: formData
@@ -51,14 +53,14 @@ const PageUpdater = function () {
 				let response = await fetch(form.action, fetchOptions);
 
 				if (response.ok) {
-					PageUpdater.Success(response, addPreloaderTimer, formData);
+					PageUpdater.Success(response, addPreloaderTimer, formData, responseTargetElement);
 				} else {
 					PageUpdater.Error(response, addPreloaderTimer);
 				}
 			}
 		},
 		
-		Success: async function (response, addPreloaderTimer, formData) {
+		Success: async function (response, addPreloaderTimer, formData, responseTargetElement) {
 			clearTimeout(addPreloaderTimer);
 
 			let html = await response.text().then(function (text) {
@@ -84,9 +86,11 @@ const PageUpdater = function () {
 					document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
 				}
 
+				console.log(html);
+
 				//Replace content
-				if (document.querySelector("#content")) {
-					document.querySelector("#content").innerHTML = html;
+				if (document.querySelector(responseTargetElement)) {
+					document.querySelector(responseTargetElement).innerHTML = html;
 				}
 			}
 		},
