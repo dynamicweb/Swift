@@ -3,7 +3,6 @@
 @using Dynamicweb
 @using Dynamicweb.Environment
 @using Dynamicweb.Frontend 
-@using Dynamicweb.Content
 
 @{
 	bool renderAsResponsive = Model.Area.Item.GetString("DeviceRendering", "responsive").Equals("responsive", StringComparison.OrdinalIgnoreCase);
@@ -87,26 +86,36 @@
 
 	@{ 
 		@* Languages meta data *@
-		if (Pageview.Page.Languages != null) {
-			string siteLanguage = Pageview.Area.CultureInfo.Name;
-			Uri url = Dynamicweb.Context.Current.Request.Url;
-			string currentAreafriendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(Model.ID);
-			string currentAreaHref = $"{url.Scheme}://{url.Host}{currentAreafriendlyUrl}";
+		List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
 
-			<link rel="alternate" hreflang="@siteLanguage.ToLower()" href="@currentAreaHref" />
-
-			string hostName = url.Host; // domain.com/da-dk or domain.com/en-us
-			foreach (var language in Pageview.Page.Languages)
-			{
-				if (!string.IsNullOrEmpty(language.Area.DomainLock))
-				{
-					hostName = language.Area.DomainLock; //dk.domain.com or dk-domain.dk
+		if (Pageview.Area.IsMaster) {
+			languages.Add(Pageview.Page);
+			if (Pageview.Page.Languages != null) {
+				foreach (var language in Pageview.Page.Languages) {
+					languages.Add(language);
 				}
-				string friendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(language.ID);
-				string href = $"{url.Scheme}://{hostName}{friendlyUrl}";
-
-				<link rel="alternate" hreflang="@language.Area.CultureInfo.Name.ToLower()" href="@href" />
 			}
+		} else {
+			languages.Add(Pageview.Page.MasterPage);
+			foreach (var language in Pageview.Page.MasterPage.Languages) {
+				languages.Add(language);
+			}
+		}
+
+		string siteLanguage = Pageview.Area.CultureInfo.Name;
+		Uri url = Dynamicweb.Context.Current.Request.Url;
+		string hostName = url.Host; // domain.com/da-dk or domain.com/en-us
+
+		foreach (var language in languages)
+		{
+			if (!string.IsNullOrEmpty(language.Area.DomainLock))
+			{
+				hostName = language.Area.DomainLock; //dk.domain.com or dk-domain.dk
+			}
+			string friendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(language.ID);
+			string href = $"{url.Scheme}://{hostName}{friendlyUrl}";
+
+			<link rel="alternate" hreflang="@language.Area.CultureInfo.Name.ToLower()" href="@href" />
 		}
 	}
 
@@ -136,7 +145,8 @@
 			{
 				@RenderGrid(@Model.Area.Item.GetLink("HeaderDesktop").PageId)
 			}
-		</header>}
+		</header>
+	}
 
 	@if (renderAsResponsive || renderMobile)
 	{
@@ -145,7 +155,8 @@
 			{
 				@RenderGrid(@Model.Area.Item.GetLink("HeaderMobile").PageId)
 			}
-		</header>}
+		</header>
+	}
 
 	<main id="content" class="overflow-hidden" @productDetailPageSchemaOrg>
 		@ContentPlaceholder()
@@ -168,7 +179,8 @@
 			{
 				@RenderGrid(@Model.Area.Item.GetLink("FooterMobile").PageId)
 			}
-		</footer> }
+		</footer> 
+	}
 
 	@* Render any offcanvas menu here *@
 	@RenderSnippet("offcanvas")

@@ -19,6 +19,22 @@
 
 @helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string theme)
 {
+	List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
+
+	if (Pageview.Area.IsMaster) {
+		languages.Add(Pageview.Page);
+		if (Pageview.Page.Languages != null) {
+			foreach (var language in Pageview.Page.Languages) {
+				languages.Add(language);
+			}
+		}
+	} else {
+		languages.Add(Pageview.Page.MasterPage);
+		foreach (var language in Pageview.Page.MasterPage.Languages) {
+			languages.Add(language);
+		}
+	}
+
 	string linkFontSize = Model.Parameters["LinkFontSize"].ToString();
 	string linkFontWeight = Model.Parameters["LinkFontWeight"].ToString();
 	string linkCasing = Model.Parameters["LinkCasing"].ToString();
@@ -29,7 +45,7 @@
 		string pageType = page.ItemType;
 		string languageLayout = page.Item["LanguagesLayout"] != null ? page.Item["LanguagesLayout"].ToString() : "";
 
-		var hasChildren = node.Nodes.Count() > 0 || pageType == "Swift_SignIn" || (pageType == "Swift_LanguageSelector" && Pageview.Page.Languages != null && languageLayout == "dropdown");
+		var hasChildren = node.Nodes.Count() > 0 || pageType == "Swift_SignIn" || (pageType == "Swift_LanguageSelector" && languages.Count > 1 && languageLayout == "dropdown");
 		string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
 
 		if (node.IsClickable)
@@ -48,48 +64,40 @@
 		if (hasChildren)
 		{
 			<ul class="dropdown-menu @(theme)">
-				@if (pageType == "Swift_LanguageSelector" && Pageview.Page.Languages != null) { //Languange selector
-					Uri url = Dynamicweb.Context.Current.Request.Url;
-					string currentFriendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(Pageview.ID);
-					string currentHref = $"{url.Scheme}://{url.Host}{currentFriendlyUrl}";
+				@{ 
+					if (pageType == "Swift_LanguageSelector" && languages.Count > 1) { //Languange selector
+						Uri url = Dynamicweb.Context.Current.Request.Url;
+						string iconFolder = "/Files/FlagIcons/";
+						Regex reg = new Regex(@"\(([^\)]+)\)");
 
-					string iconFolder = "/Files/FlagIcons/";
-					string icon = iconFolder + Pageview.Area.CultureInfo.Name.ToLower() + ".svg";
+						foreach (var language in languages)
+						{
+							string hostName = !string.IsNullOrEmpty(language.Area.DomainLock) ? language.Area.DomainLock : url.Host;
+							string friendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(language.ID);
+							string href = $"{url.Scheme}://{hostName}{friendlyUrl}";
 
-					Regex reg = new Regex(@"\(([^\)]+)\)");
-					string name = reg.Replace(Pageview.Area.CultureInfo.DisplayName, "");
+							string icon = iconFolder + language.Area.CultureInfo.Name.ToLower() + ".svg";
+							string name = reg.Replace(language.Area.CultureInfo.DisplayName, "");
 
-					<li>
-						<a href="@currentHref" class="dropdown-item nav-link-underline">@RenderIcon(icon, "icon-2") <span class="align-middle">@name</span></a>
-					</li>
-
-					foreach (var language in Pageview.Page.Languages)
+							<li>
+								<a href="@href" class="dropdown-item nav-link-underline">@RenderIcon(icon, "icon-2") <span class="align-middle">@name</span></a>
+							</li>
+						}
+					}
+					foreach (var subnode in node.Nodes)
 					{
-						string hostName = !string.IsNullOrEmpty(language.Area.DomainLock) ? language.Area.DomainLock : url.Host;
-						string friendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(language.ID);
-						string href = $"{url.Scheme}://{hostName}{friendlyUrl}";
-
-						icon = iconFolder + language.Area.CultureInfo.Name.ToLower() + ".svg";
-						name = reg.Replace(language.Area.CultureInfo.DisplayName, "");
-
 						<li>
-							<a href="@href" class="dropdown-item nav-link-underline">@RenderIcon(icon, "icon-2") <span class="align-middle">@name</span></a>
+							<a href="@subnode.Link" class="dropdown-item py-2 nav-link-underline @linkFontSize @linkFontWeight @linkCasing" @(subnode.IsActive ? " aria-current='page'" : "")>@subnode.Name</a>
 						</li>
 					}
-				}
-				@foreach (var subnode in node.Nodes)
-				{
-					<li>
-						<a href="@subnode.Link" class="dropdown-item py-2 nav-link-underline @linkFontSize @linkFontWeight @linkCasing" @(subnode.IsActive ? " aria-current='page'" : "")>@subnode.Name</a>
-					</li>
-				}
-				@if (pageType == "Swift_SignIn") //Sign out link
-				{
-					if (Pageview.User != null)
+					if (pageType == "Swift_SignIn") //Sign out link
 					{
-						<li>
-							<a href="/Admin/Public/ExtranetLogoff.aspx?redirect=no" class="dropdown-item py-2 nav-link-underline @linkFontSize @linkFontWeight @linkCasing">@Translate("Sign out")</a>
-						</li>
+						if (Pageview.User != null)
+						{
+							<li>
+								<a href="/Admin/Public/ExtranetLogoff.aspx?redirect=no" class="dropdown-item py-2 nav-link-underline @linkFontSize @linkFontWeight @linkCasing">@Translate("Sign out")</a>
+							</li>
+						}
 					}
 				}
 			</ul>
@@ -218,7 +226,6 @@
 	if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none"))
 	{
 		string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
-
 
 		<span class="@iconSize">
 			@ReadFile(iconPath)
