@@ -9,12 +9,8 @@
 	string theme = !string.IsNullOrEmpty(Model.Parameters["theme"].ToString()) ? Model.Parameters["theme"].ToString() : "theme light";
 }
 
-<nav class="d-none d-lg-flex nav flex-nowrap nav-wrapper @negativMargin @navOrientation @navAlignment">
+<nav class="d-flex nav flex-nowrap nav-wrapper @negativMargin @navOrientation @navAlignment">
 	@RenderFirstLevelNodes(Model.Nodes, theme)
-</nav>
-
-<nav class="d-flex d-lg-none nav flex-nowrap nav-wrapper @negativMargin @navOrientation @navAlignment">
-	@RenderFirstLevelNodesMobile(Model.Nodes)
 </nav>
 
 @helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string theme)
@@ -43,57 +39,68 @@
 	{
 		var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
 		string pageType = page.ItemType;
-		string languageLayout = page.Item["LanguagesLayout"] != null ? page.Item["LanguagesLayout"].ToString() : "";
 
-		var hasChildren = node.Nodes.Count() > 0 || pageType == "Swift_SignIn" || (pageType == "Swift_LanguageSelector" && languages.Count > 1 && languageLayout == "dropdown");
+		string preferencesLayout = page.Item["PreferencesLayout"] != null ? page.Item["PreferencesLayout"].ToString() : "";
+		string preferencesType = "language";
+		bool countrySelector = page.Item["CountrySelector"] != null ? Convert.ToBoolean(page.Item["CountrySelector"].ToString()) : false;
+		bool languageSelector = page.Item["LanguageSelector"] != null ? Convert.ToBoolean(page.Item["LanguageSelector"].ToString()) : false;
+		bool currencySelector = page.Item["CurrencySelector"] != null ? Convert.ToBoolean(page.Item["CurrencySelector"].ToString()) : false;
+
+		var hasChildren = node.Nodes.Count() > 0 || pageType == "Swift_SignIn";
 		string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
 
-		if (languageLayout == "" || languageLayout == "dropdown") { 
+		if (pageType != "Swift_Preferences") { 
 			if (node.IsClickable)
 			{
-				<a class="nav-link nav-link-clean text-nowrap nav-link-underline @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" @dropdownAttributes@(node.IsActive ? " aria-current='page'" : "")>
+				//Desktop with dropdown
+				<a class="d-none d-lg-block nav-link nav-link-clean text-nowrap nav-link-underline @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" @dropdownAttributes@(node.IsActive ? " aria-current='page'" : "")>
+					@RenderNavigationItem(node)
+				</a>
+
+				//Mobile no dropdown
+				<a class="d-block d-lg-none nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize @(node.IsActive ? " active" : "")" href="@node.Link" title="@node.Name">
 					@RenderNavigationItem(node)
 				</a>
 			}
 			else
 			{
-				<span class="nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing" @dropdownAttributes>
+				//Desktop with dropdown
+				<span class="d-none d-lg-block nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing" @dropdownAttributes>
+					@RenderNavigationItem(node)
+				</span>
+
+				//Mobile no dropdown
+				<span class="d-block d-lg-none nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize" title="@node.Name">
 					@RenderNavigationItem(node)
 				</span>
 			}
 		} else {
-			<form action="/Default.aspx?ID=@node.PageId" data-response-target-element="LanguageSelectorModalBody" data-layout-template="Swift_LanguageSelector.cshtml">
-				<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#LanguageSelectorModal">
-					@RenderNavigationItem(node)
-				</button>
-			</form>
+			if (preferencesLayout == "modal") {
+				<form action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalBody" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+					<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+						@RenderNavigationItem(node, "language")
+					</button>
+				</form>
+			} else {
+				if (countrySelector) {
+					preferencesType = "country";
+					@RenderPreferencesDropdown(node, preferencesType, linkFontSize, linkFontWeight, linkCasing, theme)
+				}
+				if (languageSelector) {
+					preferencesType = "language";
+					@RenderPreferencesDropdown(node, preferencesType, linkFontSize, linkFontWeight, linkCasing, theme)
+				}
+				if (currencySelector) {
+					preferencesType = "currency";
+					@RenderPreferencesDropdown(node, preferencesType, linkFontSize, linkFontWeight, linkCasing, theme)
+				}
+			}
 		}
 
 		if (hasChildren)
 		{
 			<ul class="dropdown-menu @(theme)">
 				@{ 
-					//Languages
-					if (pageType == "Swift_LanguageSelector" && languages.Count > 1) { //Languange selector
-						Uri url = Dynamicweb.Context.Current.Request.Url;
-						string iconFolder = "/Files/FlagIcons/";
-						Regex reg = new Regex(@"\(([^\)]+)\)");
-
-						foreach (var language in languages)
-						{
-							string hostName = !string.IsNullOrEmpty(language.Area.DomainLock) ? language.Area.DomainLock : url.Host;
-							string friendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(language.ID);
-							string href = $"{url.Scheme}://{hostName}{friendlyUrl}";
-
-							string icon = iconFolder + language.Area.CultureInfo.Name.ToLower() + ".svg";
-							string name = reg.Replace(language.Area.CultureInfo.DisplayName, "");
-
-							<li>
-								<a lang="@language.Area.CultureInfo.TwoLetterISOLanguageName" href="@href" class="dropdown-item nav-link-underline">@RenderIcon(icon, "icon-2") <span class="align-middle">@name</span></a>
-							</li>
-						}
-					}
-
 					//Standard pages
 					foreach (var subnode in node.Nodes)
 					{
@@ -118,32 +125,7 @@
 	}
 }
 
-@helper RenderFirstLevelNodesMobile(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
-{
-	string linkFontSize = Model.Parameters["LinkFontSize"].ToString();
-	string linkFontWeight = Model.Parameters["LinkFontWeight"].ToString();
-	string linkCasing = Model.Parameters["LinkCasing"].ToString();
-
-	foreach (var node in nodes)
-	{
-		var hasChildren = node.Nodes.Count() > 0;
-
-		if (node.IsClickable)
-		{
-			<a class="nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize @(node.IsActive ? " active" : "")" href="@node.Link" title="@node.Name">
-				@RenderNavigationItem(node)
-			</a>
-		}
-		else
-		{
-			<span class="nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize" title="@node.Name">
-				@RenderNavigationItem(node)
-			</span>
-		}
-	}
-}
-
-@helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node)
+@helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node, string preferencesType = "")
 {
 	var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
 	string pageType = page.ItemType;
@@ -199,7 +181,11 @@
 	} else {
 		string name = node.Name;
 
-		if (pageType == "Swift_LanguageSelector") { //Languange
+		if (preferencesType == "country") { //Country
+			name = Translate("Deliver to") + ": " + Dynamicweb.Ecommerce.Common.Context.Country.Name;
+		}
+
+		if (preferencesType == "language") { //Languange
 			string iconFolder = "/Files/FlagIcons/";
 			icon = iconFolder + Pageview.Area.CultureInfo.Name.ToLower() + ".svg";
 			Regex reg = new Regex(@"\(([^\)]+)\)");
@@ -210,6 +196,10 @@
 			bool hideName = page.Item["HideName"] != null ? Convert.ToBoolean(page.Item["HideName"].ToString()) : false;
 			layout = hideIcon ? "linksOnly" : layout;
 			layout = hideName ? "iconsOnly" : layout;
+		}
+
+		if (preferencesType == "currency") { //Country
+			name = Dynamicweb.Ecommerce.Common.Context.Currency.Name;
 		}
 
 		switch (layout)
@@ -232,6 +222,20 @@
 				break;
 		}
 	}
+}
+
+@helper RenderPreferencesDropdown (Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node, string preferencesType, string linkFontSize, string linkFontWeight, string linkCasing, string theme) { 
+	<form action="/Default.aspx?ID=@node.PageId" data-response-target-element="@(preferencesType)Dropdown_@Pageview.CurrentParagraph.ID" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+		<input type="hidden" name="Type" value="@preferencesType" />
+
+		<a onclick="swift.PageUpdater.Update(event)" class="nav-link nav-link-clean text-nowrap nav-link-underline @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "") dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(node.IsActive ? " aria-current='page'" : "")>
+			@RenderNavigationItem(node, preferencesType)
+		</a>
+					
+		<ul class="dropdown-menu @(theme)" id="@(preferencesType)Dropdown_@Pageview.CurrentParagraph.ID">
+			@* The content here comes from an external request *@
+		</ul>
+	</form>
 }
 
 @helper RenderIcon(string icon, string iconSize)

@@ -1,0 +1,141 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
+@using System
+@using System.Text.RegularExpressions
+@using System.IO
+@using System.Web
+
+@MasterPageFile("Swift_MasterClean.cshtml")
+
+@{ 
+	string type = HttpContext.Current.Request["Type"] != null ? HttpContext.Current.Request["Type"] : "language";
+
+	Regex reg = new Regex(@"\(([^\)]+)\)");
+	List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
+
+	if (Pageview.Area.IsMaster) {
+		languages.Add(Pageview.Page);
+		if (Pageview.Page.Languages != null) {
+			foreach (var language in Pageview.Page.Languages) {
+				languages.Add(language);
+			}
+		}
+	} else {
+		languages.Add(Pageview.Page.MasterPage);
+		foreach (var language in Pageview.Page.MasterPage.Languages) {
+			languages.Add(language);
+		}
+	}
+
+	string siteLanguage = Pageview.Area.CultureInfo.Name;
+	Uri url = Dynamicweb.Context.Current.Request.Url;
+	string hostName = url.Host; // domain.com/da-dk or domain.com/en-us
+
+	var ecomCountries = Dynamicweb.Ecommerce.Services.Countries.GetCountries();
+	var currencies = Dynamicweb.Ecommerce.Services.Currencies.GetAllCurrencies();
+
+	string layout = Model.Item.GetRawValueString("PreferencesLayout", "modal");
+}
+
+
+@if (layout == "modal")
+{
+	if (ecomCountries.Count() > 1 && Model.Item.GetBoolean("CountrySelector"))
+	{
+		<div class="form-floating">
+			<select name="CountryCode" id="CountryCodeSelect" class="form-select d-col-12" aria-label="@Translate("Select country")">
+				@foreach (var country in ecomCountries)
+				{
+					var selectedCountry = country.Code2 == Dynamicweb.Ecommerce.Common.Context.Country.Code2 ? "selected" : "";
+					<option value="@country.Code2" @selectedCountry>@country.Name</option>
+				}
+			</select>
+			<label for="CountryCodeSelect">@Translate("Delivery country")</label>
+		</div>
+	}
+
+	if (languages.Count() > 1 && Model.Item.GetBoolean("LanguageSelector"))
+	{
+		<div class="form-floating">
+			<select id="LanguageSelect" name="AreaID" class="form-select d-col-12" aria-label="@Translate("Select language")">
+				@foreach (var language in languages)
+				{
+					hostName = !string.IsNullOrEmpty(language.Area.DomainLock) ? language.Area.DomainLock : url.Host;
+					string href = $"{url.Scheme}://{hostName}?AreaID={language.Area.ID}";
+
+					string name = reg.Replace(language.Area.CultureInfo.DisplayName, "");
+					string selectedLanguage = language.Area.ID == Pageview.Area.ID ? "selected" : "";
+
+					<option lang="@language.Area.CultureInfo.TwoLetterISOLanguageName" value="@language.Area.ID" @selectedLanguage>@name</option>
+				}
+			</select>
+			<label for="LanguageSelect">@Translate("Language")</label>
+		</div>
+	}
+
+	if (currencies.Count() > 1 && Model.Item.GetBoolean("CurrencySelector"))
+	{
+		<div class="form-floating">
+			<select name="CurrencyCode" id="CurrencySelect" class="form-select d-col-12" aria-label="@Translate("Select currency")">
+				@foreach (var currency in currencies)
+				{
+					string selectedCurrency = currency.Code == Dynamicweb.Ecommerce.Common.Context.Currency.Code ? "selected" : "";
+					<option value="@currency.Code" @selectedCurrency>@currency.Name</option>
+				}
+			</select>
+			<label for="CurrencySelect">@Translate("Currency")</label>
+		</div>
+	}
+}
+
+@if (layout == "dropdown" && type == "country") {
+	foreach (var country in ecomCountries)
+	{
+		string href = $"{url.Scheme}://{hostName}?AreaID={Pageview.Area.ID}&CountryCode={country.Code2}";
+
+		<li>
+			<a href="@href" class="dropdown-item nav-link-underline">@country.Name</a>
+		</li>
+	}
+}
+
+@if (layout == "dropdown" && type == "language") {
+	string iconFolder = "/Files/FlagIcons/";
+
+	foreach (var language in languages)
+	{
+		hostName = !string.IsNullOrEmpty(language.Area.DomainLock) ? language.Area.DomainLock : url.Host;
+		string href = $"{url.Scheme}://{hostName}?AreaID={language.Area.ID}";
+
+		string icon = iconFolder + language.Area.CultureInfo.Name.ToLower() + ".svg";
+		string name = reg.Replace(language.Area.CultureInfo.DisplayName, "");
+
+		<li>
+			<a lang="@language.Area.CultureInfo.TwoLetterISOLanguageName" href="@href" class="dropdown-item nav-link-underline">@RenderIcon(icon, "icon-2") <span class="align-middle">@name</span></a>
+		</li>
+	}
+}
+
+@if (layout == "dropdown" && type == "currency") {
+	foreach (var currency in currencies)
+	{
+		string href = $"{url.Scheme}://{hostName}?AreaID={Pageview.Area.ID}&CurrencyCode={currency.Code}";
+
+		<li>
+			<a href="@href" class="dropdown-item nav-link-underline">@currency.Name</a>
+		</li>
+	}
+}
+
+
+
+@helper RenderIcon(string icon, string iconSize)
+{
+	if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none"))
+	{
+		string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
+
+		<span class="@iconSize">
+			@ReadFile(iconPath)
+		</span>
+	}
+}

@@ -1,4 +1,5 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using System.IO
 
 @{
 	string navType = Model?.Parameters["NavType"] != null ? Model.Parameters["NavType"].ToString() : "first-nav";
@@ -13,30 +14,82 @@
 {
 	foreach (var node in nodes)
 	{
+		var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+		string pageType = page.ItemType;
+
 		var hasChildren = node.Nodes.Count() > 0;
 		var nodeId = !string.IsNullOrEmpty(node.GroupId) ? node.GroupId : node.PageId.ToString();
 		var inPathChecked = node.InPath ? "checked" : "";
 		var inPathClass = node.InPath ? "in-path" : "";
 		var activeClass = node.IsActive ? "active fw-bold" : "";
-		<div class="nav-item d-flex align-items-center w-100 py-1">
-            <a class="nav-link position-relative flex-fill @activeClass @inPathClass" @(node.IsActive ? "aria-current='page'" : "") href="@node.Link">@node.Name</a>
-            @if (hasChildren) {
-				<label class="nav-link position-relative" for="nav_@nodeId">
-					@RenderStaticIcon("arrow-right")
-				</label>
-				<input type="checkbox" class="visually-hidden sub-nav-check" id="nav_@nodeId" @inPathChecked>
-				<div class="nav sub-nav position-absolute h-100 opacity-0 pe-none invisible w-100 left-0 top-0">
-					<div class="h-100 w-100 overflow-y-auto overflow-x-hidden">
-						<div class="nav-header position-relative d-flex align-items-center py-1">
-							<label class="nav-link position-relative" for="nav_@nodeId">
-								@RenderStaticIcon("arrow-left")
-							</label>
-							<div class="nav-link position-relative ps-0 flex-fill"><span>@node.Name</span></div>
-						</div>
 
-						@RenderNodes(node.Nodes)
+		<div class="nav-item d-flex align-items-center w-100 py-1">
+			@if (pageType != "Swift_Preferences") { 
+				<a class="nav-link position-relative flex-fill @activeClass @inPathClass" @(node.IsActive ? "aria-current='page'" : "") href="@node.Link">@node.Name</a>
+				if (hasChildren) {
+					<label class="nav-link position-relative" for="nav_@nodeId">
+						@RenderStaticIcon("arrow-right")
+					</label>
+					<input type="checkbox" class="visually-hidden sub-nav-check" id="nav_@nodeId" @inPathChecked>
+					<div class="nav sub-nav position-absolute h-100 opacity-0 pe-none invisible w-100 left-0 top-0">
+						<div class="h-100 w-100 overflow-y-auto overflow-x-hidden">
+							<div class="nav-header position-relative d-flex align-items-center py-1">
+								<label class="nav-link position-relative" for="nav_@nodeId">
+									@RenderStaticIcon("arrow-left")
+								</label>
+								<div class="nav-link position-relative ps-0 flex-fill"><span>@node.Name</span></div>
+							</div>
+
+							@RenderNodes(node.Nodes)
+						</div>
 					</div>
-				</div>
+				}
+			} else {
+				List<string> preferences = new List<string>();
+
+				bool countrySelector = page.Item["CountrySelector"] != null ? Convert.ToBoolean(page.Item["CountrySelector"].ToString()) : false;
+				bool languageSelector = page.Item["LanguageSelector"] != null ? Convert.ToBoolean(page.Item["LanguageSelector"].ToString()) : false;
+				bool currencySelector = page.Item["CurrencySelector"] != null ? Convert.ToBoolean(page.Item["CurrencySelector"].ToString()) : false;
+				string name = Translate("Preferences");
+				string icon = "";
+
+				if (countrySelector) {
+					string countryName = Translate("Deliver to") + ": " + Dynamicweb.Ecommerce.Common.Context.Country.Name;
+					preferences.Add(countryName);
+				}
+
+				if (languageSelector) {
+					bool hideIcon = page.Item["HideIcon"] != null ? Convert.ToBoolean(page.Item["HideIcon"].ToString()) : false;
+
+					if (!hideIcon) {
+						string iconFolder = "/Files/FlagIcons/";
+						icon = iconFolder + Pageview.Area.CultureInfo.Name.ToLower() + ".svg";
+					}
+				}
+
+				if (currencySelector) {
+					string currencyName = Dynamicweb.Ecommerce.Common.Context.Currency.Code;
+					preferences.Add(currencyName);
+				}
+
+				if (preferences.Count != 0) {
+					name = (string.Join(" / ", preferences.Select(x => x.ToString()).ToArray()));
+				}
+
+				<form action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalBody" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+					<a href="#" type="button" onclick="swift.PageUpdater.Update(event)" class="btn nav-link position-relative flex-fill @activeClass @inPathClass" @(node.IsActive ? "aria-current='page'" : "") data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+						@if (icon != "") { 
+							if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none")) {
+								string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
+
+								<span class="icon-2">
+									@ReadFile(iconPath)
+								</span>
+							}
+						}
+						<span class="align-middle">@name</span>
+					</a>
+				</form>
 			}
 		</div>
 	}

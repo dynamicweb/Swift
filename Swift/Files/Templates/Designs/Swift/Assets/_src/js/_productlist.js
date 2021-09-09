@@ -49,7 +49,12 @@ const ProductList = function () {
 				} else {
 					var addPreloaderTimer = setTimeout(function () {
 						var preloaderElement = document.createElement('div');
-						preloaderElement.className = "preloader";
+						preloaderElement.className = "spinner-border";
+						preloaderElement.style.margin = "auto";
+						var helper = document.createElement('span');
+						helper.className = "visually-hidden";
+						helper.innerHTML = "Loading...";
+						preloaderElement.appendChild(helper);
 						responseTargetElement.appendChild(preloaderElement);
 					}, 200); //Small delay to secure that the preloader is not loaded all the time
 				}
