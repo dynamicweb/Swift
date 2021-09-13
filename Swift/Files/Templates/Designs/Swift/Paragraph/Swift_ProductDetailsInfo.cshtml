@@ -6,6 +6,11 @@
 @{ 
 	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
 
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+
 	ProductViewModel product = new ProductViewModel();
 
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
@@ -53,18 +58,20 @@
 				<div class="opacity-85">@product.Number</div>
 			}
 		</div>
-		<div>
-			<div class="h4" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
-				<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
-				<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
-				<span class="text-price">@product.Price.PriceFormatted</span>
-			</div>
-			@if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-				<div class="text-decoration-line-through opacity-85">
-					@product.PriceBeforeDiscount.PriceFormatted
+		@if (!hidePrice) {
+			<div>
+				<div class="h4" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+					<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
+					<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
+					<span class="text-price">@product.Price.PriceFormatted</span>
 				</div>
-			}
-		</div>
+				@if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+					<div class="text-decoration-line-through opacity-85">
+						@product.PriceBeforeDiscount.PriceFormatted
+					</div>
+				}
+			</div>
+		}
 
 		@if (!string.IsNullOrEmpty(product.ShortDescription))
 		{
@@ -125,28 +132,30 @@
 		}
 
 		<form method="post" action="@url">
-			<div class="d-flex flex-row">
-				<input type="hidden" name="redirect" value="false" />
-				<input type="hidden" name="ProductId" value="@product.Id" />
-				<input type="hidden" name="cartcmd" value="add" />
+			@if (!hideAddToCart) { 
+				<div class="d-flex flex-row">
+					<input type="hidden" name="redirect" value="false" />
+					<input type="hidden" name="ProductId" value="@product.Id" />
+					<input type="hidden" name="cartcmd" value="add" />
 
-				@if (!string.IsNullOrEmpty(product.VariantId)) {
-					<input type="hidden" name="VariantId" value="@product.VariantId" />
-				}
+					@if (!string.IsNullOrEmpty(product.VariantId)) {
+						<input type="hidden" name="VariantId" value="@product.VariantId" />
+					}
 
-				@if (!Model.Item.GetBoolean("QuantitySelector"))
-				{
-					<div class="flex-fill">
-						<input id="Quantity_@product.Id" name="Quantity" value="1" type="hidden">
-						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary js-add-to-cart-button w-100 @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
-					</div>
-				} else {
-					<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
-						<input id="Quantity_@product.Id" name="Quantity" value="1" class="form-control" style="max-width: 100px" type="number">
-						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
-					</div>
-				}
-			</div>
+					@if (!Model.Item.GetBoolean("QuantitySelector"))
+					{
+						<div class="flex-fill">
+							<input id="Quantity_@product.Id" name="Quantity" value="1" type="hidden">
+							<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary js-add-to-cart-button w-100 @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
+						</div>
+					} else {
+						<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
+							<input id="Quantity_@product.Id" name="Quantity" value="1" class="form-control" style="max-width: 100px" type="number">
+							<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
+						</div>
+					}
+				</div>
+			}
 
 			@if (!Model.Item.GetBoolean("HideStockState")) {
 				<div class="mt-3 js-stock-state @hideStockState">
