@@ -9,21 +9,28 @@
 @{ 
 	string type = HttpContext.Current.Request["Type"] != null ? HttpContext.Current.Request["Type"] : "language";
 
+	string groupId = HttpContext.Current.Request["GroupID"] != null ? HttpContext.Current.Request["GroupID"].ToString() : "";
+	string productId = HttpContext.Current.Request["ProductID"] != null ? HttpContext.Current.Request["ProductID"].ToString() : "";
+	string variantId = HttpContext.Current.Request["VariantID"] != null ? HttpContext.Current.Request["VariantID"].ToString() : "";
+
 	Regex reg = new Regex(@"\(([^\)]+)\)");
 	List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
 
-	if (Pageview.Area.IsMaster) {
-		languages.Add(Pageview.Page);
-		if (Pageview.Page.Languages != null) {
-			foreach (var language in Pageview.Page.Languages) {
+	int pageId = HttpContext.Current.Request["CurrentPageID"] != null ? Convert.ToInt32(HttpContext.Current.Request["CurrentPageID"]) : Pageview.ID;
+	var currentPage = Dynamicweb.Services.Pages.GetPage(pageId); //Get the correct page instance
+
+	if (currentPage.Area.IsMaster) {
+		languages.Add(currentPage);
+		if (currentPage.Languages != null) {
+			foreach (var language in currentPage.Languages) {
 				languages.Add(language);
 			}
 		}
 	} else {
-		languages.Add(Pageview.Page.MasterPage);
-		if (Pageview.Page.MasterPage != null) {
-			if (Pageview.Page.MasterPage.Languages != null) {
-				foreach (var language in Pageview.Page.MasterPage.Languages) {
+		languages.Add(currentPage.MasterPage);
+		if (currentPage.MasterPage != null) {
+			if (currentPage.MasterPage.Languages != null) {
+				foreach (var language in currentPage.MasterPage.Languages) {
 					languages.Add(language);
 				}
 			}
@@ -43,6 +50,18 @@
 
 @if (layout == "modal")
 {
+	if (groupId != "") {
+		<input type="hidden" name="GroupID" value="@groupId" />
+	}
+
+	if (productId != "") {
+		<input type="hidden" name="ProductID" value="@productId" />
+	}
+
+	if (variantId != "") {
+		<input type="hidden" name="VariantID" value="@variantId" />
+	}
+
 	if (ecomCountries.Count() > 1 && Model.Item.GetBoolean("CountrySelector"))
 	{
 		<div class="form-floating">
@@ -60,16 +79,13 @@
 	if (languages.Count() > 1 && Model.Item.GetBoolean("LanguageSelector"))
 	{
 		<div class="form-floating">
-			<select id="LanguageSelect" name="AreaID" class="form-select d-col-12" aria-label="@Translate("Select language")">
+			<select id="LanguageSelect" name="ID" class="form-select d-col-12" aria-label="@Translate("Select language")">
 				@foreach (var language in languages)
 				{
-					hostName = !string.IsNullOrEmpty(language.Area.DomainLock) ? language.Area.DomainLock : url.Host;
-					string href = $"{url.Scheme}://{hostName}?AreaID={language.Area.ID}";
-
 					string name = reg.Replace(language.Area.CultureInfo.DisplayName, "");
 					string selectedLanguage = language.Area.ID == Pageview.Area.ID ? "selected" : "";
 
-					<option lang="@language.Area.CultureInfo.TwoLetterISOLanguageName" value="@language.Area.ID" @selectedLanguage>@name</option>
+					<option lang="@language.Area.CultureInfo.TwoLetterISOLanguageName" value="@language.ID" @selectedLanguage>@name</option>
 				}
 			</select>
 			<label for="LanguageSelect">@Translate("Language")</label>
@@ -94,10 +110,10 @@
 @if (layout == "dropdown" && type == "country") {
 	foreach (var country in ecomCountries)
 	{
-		string href = $"{url.Scheme}://{hostName}?AreaID={Pageview.Area.ID}&CountryCode={country.Code2}";
+		var friendlyUrl = $"{url.Scheme}://{hostName}?AreaID={Pageview.Area.ID}&CountryCode={country.Code2}";
 
 		<li>
-			<a href="@href" class="dropdown-item nav-link-underline">@country.Name</a>
+			<a href="@friendlyUrl" class="dropdown-item nav-link-underline">@country.Name</a>
 		</li>
 	}
 }
@@ -108,13 +124,18 @@
 	foreach (var language in languages)
 	{
 		hostName = !string.IsNullOrEmpty(language.Area.DomainLock) ? language.Area.DomainLock : url.Host;
-		string href = $"{url.Scheme}://{hostName}?AreaID={language.Area.ID}";
+		string link = $"Default.aspx?ID={language.ID}";
+		link += groupId != "" ? $"&GroupID={groupId}" : "";
+		link += productId != "" ? $"&ProductID={productId}" : "";
+		link += variantId != "" ? $"&VariantID={variantId}" : "";
+
+		var friendlyUrl = $"{url.Scheme}://{hostName}{Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link)}";
 
 		string icon = iconFolder + language.Area.CultureInfo.Name.ToLower() + ".svg";
 		string name = reg.Replace(language.Area.CultureInfo.DisplayName, "");
 
 		<li>
-			<a lang="@language.Area.CultureInfo.TwoLetterISOLanguageName" href="@href" class="dropdown-item nav-link-underline">@RenderIcon(icon, "icon-2") <span class="align-middle">@name</span></a>
+			<a lang="@language.Area.CultureInfo.TwoLetterISOLanguageName" href="@friendlyUrl" class="dropdown-item nav-link-underline">@RenderIcon(icon, "icon-2") <span class="align-middle">@name</span></a>
 		</li>
 	}
 }
@@ -122,10 +143,10 @@
 @if (layout == "dropdown" && type == "currency") {
 	foreach (var currency in currencies)
 	{
-		string href = $"{url.Scheme}://{hostName}?AreaID={Pageview.Area.ID}&CurrencyCode={currency.Code}";
+		var friendlyUrl = $"{url.Scheme}://{hostName}?AreaID={Pageview.Area.ID}&CurrencyCode={currency.Code}";
 
 		<li>
-			<a href="@href" class="dropdown-item nav-link-underline">@currency.Name</a>
+			<a href="@friendlyUrl" class="dropdown-item nav-link-underline">@currency.Name</a>
 		</li>
 	}
 }
