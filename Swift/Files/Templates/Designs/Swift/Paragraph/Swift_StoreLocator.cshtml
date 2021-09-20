@@ -1,57 +1,156 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 
-<div class="grid position-relative">
-	<div class="g-col-12 g-col-lg-4">
-		<h1>Store Locator</h1>
-		<div class="list-group">
-			<button type="button" class="list-group-item list-group-item-action active" aria-current="true">The current button</button>
-			<button type="button" class="list-group-item list-group-item-action">A second item</button>
-			<button type="button" class="list-group-item list-group-item-action">A third button item</button>
-			<button type="button" class="list-group-item list-group-item-action">A fourth button item</button>
-		</div>
-	</div>
+@{ 
+	string apiKey = !string.IsNullOrEmpty(Pageview.AreaSettings.GetString("Google_APIKey")) ? Pageview.AreaSettings.GetString("Google_APIKey") : "";
 
-	<div class="g-col-12 g-col-lg-8">
-		<div id="storelocator"></div>
-		<div id="storelocator__info"></div>
-	</div>
-</div>
+	var locationList = Model.Item.GetUsers("UserGroup");
+	var locationCounter = 0;
+
+    string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+}
+
+@if (apiKey != "") {
+    <div class="grid position-relative">
+	    @if (locationList.Count() > 1) {
+		    <div class="g-col-12 g-col-lg-4">
+                <div style="height: 750px">
+			        @if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
+				        <h1>@Model.Item.GetString("Title")</h1>
+			        }
+
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="mapSearch" placeholder="@Translate("Search location")">
+                        <button class="btn btn-outline-secondary" type="button" id="mapSearchButton">@ReadFile(iconPath+"search.svg")</button>
+                    </div>
+                    
+                    <div class="d-none" id="emptyMapList">
+                        <div class="alert alert-info" role="alert">
+                            <span>@Translate("There are no options in the selected area")</span>
+                        </div>
+                    </div>
+
+			        <ul class="list-group" id="mapList" style="height: 100%; overflow-y: auto; height:620px">
+				        @foreach (var location in locationList)
+				        {
+                            string title = !string.IsNullOrEmpty(location.Company) ? location.Company : location.Name;
+                            List<string> addressLineTwo = new List<string>();
+                            if (!string.IsNullOrEmpty(location.Zip)) {
+		                        addressLineTwo.Add(location.Zip);
+	                        }
+                            if (!string.IsNullOrEmpty(location.City)) {
+		                        addressLineTwo.Add(location.City);
+	                        }
+                            if (!string.IsNullOrEmpty(location.State)) {
+		                        addressLineTwo.Add(location.State);
+	                        }
+                            if (!string.IsNullOrEmpty(location.Country)) {
+		                        addressLineTwo.Add(location.Country);
+	                        }
+                            string addressLineTwoString = (string.Join(",", addressLineTwo.Select(x => x.ToString()).ToArray())).Replace(",", ", ");
+
+                            List<string> addressLineThree = new List<string>();
+                            if (!string.IsNullOrEmpty(location.Email)) {
+		                        addressLineThree.Add(location.Email);
+	                        }
+                            if (!string.IsNullOrEmpty(location.Phone)) {
+		                        addressLineThree.Add(location.Phone);
+	                        }
+                            string addressLineThreeString = (string.Join(",", addressLineThree.Select(x => x.ToString()).ToArray())).Replace(",", ", ");
+
+					        <li class="list-group-item d-none" data-location-number="@locationCounter" style="cursor: pointer">
+                                <div class="d-flex">
+                                    <div class="flex-fill">
+                                        @if (!string.IsNullOrEmpty(title)) {
+                                            <h6 class="h6">@title</h6>
+                                        }
+                                        @if (!string.IsNullOrEmpty(location.Address)) {
+                                            <div>@location.Address</div>
+							            }
+                                        @if (addressLineTwo.Count > 0) {
+                                            <div>@addressLineTwoString</div>
+							            }
+                                        @if (addressLineThree.Count > 0) {
+                                            <div>@addressLineThreeString</div>
+							            }
+                                    </div>
+                                    <div>
+                                        <a href="https://www.google.dk/maps/dir//@(addressLineTwoString.Replace(", ", "+"))" class="btn icon-2" target="_blank">
+                                            @ReadFile(iconPath+"corner-up-right.svg")
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="d-none js-address-info">
+                                    @if (!string.IsNullOrEmpty(title)) {
+                                        <h6 class="h6">@title</h6>
+                                    }
+                                    @if (!string.IsNullOrEmpty(location.Address)) {
+                                        <div>@location.Address</div>
+							        }
+                                    @if (addressLineTwo.Count > 0) {
+                                        <div>@addressLineTwoString</div>
+							        }
+                                    @if (addressLineThree.Count > 0) {
+                                        <div>@addressLineThreeString</div>
+							        }
+                                    
+                                    <a href="https://www.google.dk/maps/dir//@(addressLineTwoString.Replace(", ", "+"))" class="btn btn-primary w-100 mt-3" target="_blank">
+                                        @Translate("Directions")
+                                    </a>
+                                </div>
+                            </li>
+
+					        locationCounter++;
+				        }
+			        </ul>
+
+		        </div>
+            </div>
+	    } else if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
+		    <div class="g-col-12">
+			    <h1>@Model.Item.GetString("Title")</h1>
+		    </div>
+	    }
+
+	    <div class="d-none d-lg-block g-col-12 g-col-lg-8">
+		    <div id="map"></div>
+	    </div>
+    </div>
+} else {
+    <div class="alert alert-info" role="alert">
+        @Translate("Google maps API key is missing")
+    </div>
+}
 
 <style>
-	#storelocator {
+	#map {
 		background-color: #eee;
 		height: 750px;
 		width: 100%;
 	}
-
-	#storelocator__info {
-		background-color: #fff;
-		clip-path: polygon(
-			0% 0%, 
-			100% 0%, 
-			100% 75%, 
-			75% 75%, 
-			75% 100%, 
-			50% 75%, 
-			0% 75%
-		);
-		left: 50%;
-		opacity: 0;
-		padding: 1rem 1rem 2rem;
-		position: absolute;
-		top: 50%;
-		transform: translateX(50%) translateY(-50%);
-		transition: opacity 0.2s ease-in-out;
-		z-index: 1;
-	}
-
-	#storelocator__info.show {
-		opacity: 1;
-	}
 </style>
 
 <script>
+    var locations = [
+        @foreach (var location in locationList) {
+            <text>{
+                name: "@(location.Name)",
+                company: "@(location.Company)",
+                address: "@(location.Address)",
+                city: "@(location.City)",
+                zip: "@(location.Zip)",
+                state: "@(location.State)",
+                country: "@(location.Country)",
+                location: {
+                    lat: @(location.Latitude),
+                    lng: @(location.Longitude)
+                }
+            },</text>
+        }
+    ];
+
 	function initMap() {
+        // Set the geocoder
+        geocoder = new google.maps.Geocoder();
 
 		// Set initial map center
 		var myMapCenter = {
@@ -59,62 +158,160 @@
 			lng: 10.1682465
 		};
 
+        // Create the geocoder
+        var geocoder;
+
 		// Create the map
-		var map = new google.maps.Map(document.getElementById('storelocator'), {
+		var map = new google.maps.Map(document.getElementById('map'), {
 			center: myMapCenter,
-			zoom: 14
-		});
+            zoom: 4
+        });
 
-		// Store locations
-		var stores = [
-			{
-				name: 'Gensam Data',
-				location: {
-					lat: 56.13902654161855, 
-					lng: 10.171100386851705
-				},
-				hours: '8AM to 10PM'
-			},
-			{
-				name: 'Livedition ApS',
-				location: {
-					lat: 56.13837494622596, 
-					lng: 10.170821437113604
-				},
-				hours: '9AM to 9PM'
-			}
-		];
-
-		// Create a marker and set its position.
-		function markStore(storeInfo){
-
-			var marker = new google.maps.Marker({
-				map: map,
-				position: storeInfo.location,
-				title: storeInfo.name
-			});
-
-			// show store info when marker is clicked
-			marker.addListener('click', function(){
-				showStoreInfo(storeInfo);
-			});
-		}
-
-		// show store info in text box
-		function showStoreInfo(storeInfo){
-			var info = document.getElementById('storelocator__info');
-			// TODO: Center map to current
-			info.classList.add("show");
-			info.innerHTML = 'Store name: '
-				+ storeInfo.name
-				+ '<br>Hours: ' + storeInfo.hours;
-		}
+        // Markers array
+        var markers = [];
+        var markersCount = 0;
 
 		// Markup map
-		stores.forEach(function(store){
-			markStore(store);
-		});
+		locations.forEach(function(location){
+            marklocation(location);
+            markersCount++;
+        });
+
+        // Create InfoWindow
+        var infoWindow = new google.maps.InfoWindow({
+            maxWidth: 300,
+            minWidth: 220
+        });
+
+        // Create a marker and set its position.
+		function marklocation(location){
+
+            var marker = new google.maps.Marker({
+                icon: {
+                    path: "M4,6C2.9,6,2,5.1,2,4s0.9-2,2-2s2,0.9,2,2S5.1,6,4,6 M4,0C1.8,0,0,1.8,0,4c0,3,4,7.4,4,7.4S8,7,8,4C8,1.8,6.2,0,4,0z",
+                    fillColor: "black",
+                    fillOpacity: 1,
+                    strokeWeight: 0,
+                    scale: 2
+                },
+				map: map,
+				position: location.location,
+                title: location.name,
+                id: markersCount
+			});
+
+            markers.push(marker); // Keep marker instances in a global array
+
+			// show location info when marker is clicked
+			marker.addListener('click', function(){
+				openInfo(location, marker);
+			});
+		}
+
+        // Map is idle
+        google.maps.event.addListener(map, 'idle', function () {
+            showVisibleMarkers();
+        });
+
+        function showVisibleMarkers() {
+            var bounds = map.getBounds();
+            var markersFound = 0;
+
+            for (var i = 0; i < markers.length; i++) {
+                var marker = markers[i],
+                    infoPanel = document.querySelector('[data-location-number="' + i + '"]'); 
+                                           
+                if (bounds.contains(marker.getPosition()) === true) {
+                    infoPanel.classList.remove("d-none");
+                    markersFound++;
+                }
+                else {
+                    infoPanel.classList.add("d-none");
+                }
+
+                document.querySelector("#emptyMapList").classList.add("d-none");
+            }
+
+            console.log(markersFound);
+
+            if (markersFound == 0) {                   
+                document.querySelector("#emptyMapList").classList.remove("d-none");
+			}
+        }
+
+        //Click on list item
+        document.querySelectorAll("[data-location-number]").forEach(function (locationItem) {
+            locationItem.addEventListener("click", focusOnMarker);
+        });
+
+        function focusOnMarker(event) {
+            infoWindow.close();
+
+            var markerId = event.currentTarget.getAttribute("data-location-number");
+            var selectedMarker = markers[markerId];
+
+            map.setZoom(7);
+            map.panTo(selectedMarker.getPosition());
+
+            clearListItemSelection();
+            
+            event.currentTarget.classList.add("active");
+		}
+
+        //Click on marker
+        function openInfo(location, marker) {
+            var listItemId = marker.id;
+            var listItem = document.querySelector('[data-location-number="' + listItemId + '"]');
+
+            var contentString = listItem.querySelector(".js-address-info").innerHTML;
+
+            infoWindow.setContent(contentString);
+            infoWindow.open(map, marker);
+
+            map.panTo(marker.getPosition());
+        }
+
+		function focusOnListItem(location, marker){
+            var listItemId = marker.id;
+            var listItem = document.querySelector('[data-location-number="' + listItemId + '"]');
+
+            clearListItemSelection();
+
+            map.setZoom(14);
+            map.panTo(marker.getPosition());
+
+            listItem.classList.add("active");
+        }
+
+        //Clear list item selection
+        function clearListItemSelection() {
+            document.querySelectorAll("[data-location-number]").forEach(function (locationItem) {
+                locationItem.classList.remove("active");
+            });
+        }
+
+        //Search on map (geocode)
+        document.querySelector("#mapSearchButton").addEventListener("click", function (event) {
+            geocode({ address: event.currentTarget.value })
+        });
+
+        function geocode(request) {
+            var geocoder = new google.maps.Geocoder();
+            var address = document.querySelector("#mapSearch").value;
+
+            geocoder.geocode({ 'address': address }, function (results, status) {
+                if (status == google.maps.GeocoderStatus.OK) {
+                    map.setZoom(14);
+                    map.panTo(results[0].geometry.location);
+                } else {
+                    console.log('Geocode was not successful for the following reason: ' + status);
+                }
+            });
+        }
 	}
 </script>
 
-<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCH_d7_t8XMaa-Cu1_kO8j_SnIG7krlFgc&libraries=places&callback=initMap"></script>
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)&libraries=places&callback=initMap"></script>
+
+
+
