@@ -233,7 +233,6 @@ const Typeahead = function() {
 		},
 
 		init: function(){
-			//document.body.addEventListener('click', Typeahead.hideSearchResults);
 			document.querySelectorAll(".js-type-ahead-field").forEach(function (field) {
 				field.addEventListener('keyup', (e) => Typeahead.suggest(e, field))
 				field.addEventListener('keydown', (e) => Typeahead.handleTab(e));
