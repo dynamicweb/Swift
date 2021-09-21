@@ -43,10 +43,14 @@ const PageUpdater = function () {
 						}
 					}, 200); //Small delay to secure that the preloader is not loaded all the time
 				} else {
+					document.querySelector(responseTargetElement).innerHTML = "";
+
 					var addPreloaderTimer = setTimeout(function () {
 						var preloaderElement = document.createElement('div');
-						preloaderElement.className = "spinner-border";
-						preloaderElement.style.margin = "auto";
+						preloaderElement.className = "d-flex p-4";
+						var preloaderSpinner = document.createElement('div');
+						preloaderSpinner.className = "spinner-border m-auto";
+						preloaderElement.appendChild(preloaderSpinner);
 						var helper = document.createElement('span');
 						helper.className = "visually-hidden";
 						helper.innerHTML = "Loading...";
