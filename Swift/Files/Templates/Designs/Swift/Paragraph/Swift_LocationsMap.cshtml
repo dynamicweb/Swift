@@ -4,471 +4,498 @@
 	string apiKey = !string.IsNullOrEmpty(Pageview.AreaSettings.GetString("Google_APIKey")) ? Pageview.AreaSettings.GetString("Google_APIKey") : "";
 	var locationList = Model.Item.GetUsers("UserGroup");
     string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+    int initialZoomLevel = !string.IsNullOrEmpty(Model.Item.GetString("InitialZoomLevel")) ? Model.Item.GetInt32("InitialZoomLevel") : 4;
+    initialZoomLevel = initialZoomLevel == 0 ? 4 : initialZoomLevel;
+    string regionCode = !string.IsNullOrEmpty(Model.Item.GetString("RegionCode")) ? Model.Item.GetString("RegionCode") : "DK";
 }
 
-<style>
-	.map {
-		background-color: #eee;
-        min-height: 360px;
-		width: 100%;
-	}
-
-	.locations-list {
-        height: 100%;
-	}
-
-	@@media (orientation: portrait) {
-		.map {
-			height: 40vh;
-		}
-	}
-
-	@@media (orientation: landscape) {
-		.map {
-			height: 50vh;
-		}
-    }
-
-	@@media (min-width: 992px) {
-		.map {
-			height: 80vh;
-		}
-
-		.locations-list {
-            overflow-y: auto;
-			height: 80vh;
-		}
-	}
-</style>
-
-@if (apiKey != "") {
-    <div class="grid position-relative">
-        @if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
-            <div class="g-col-12 g-col-lg-8 order-1">
-				<h1 class="mb-0">@Model.Item.GetString("Title")</h1>
-            </div>
-		}
-
-        <div class="g-col-12 g-col-lg-4 input-group order-2 order-lg-2">
-            <input type="text" class="form-control" id="mapSearch" placeholder="@Translate("Search location")">
-            <button class="btn btn-outline-secondary" type="button" id="mapSearchButton">@ReadFile(iconPath+"search.svg")</button>
-        </div>
-
-        <div class="g-col-12 g-col-lg-8 order-1 order-lg-4">
-		    <div class="map" id="map"></div>
-	    </div>
-
-	    @if (locationList.Count() > 1) {
-		    <div class="g-col-12 g-col-lg-4 order-2 order-lg-3">
-                <div class="locations-list">
-                    <ul class="list-group" id="locationsList"></ul>
-		        </div>
-            </div>
-	    } else if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
-		    <div class="g-col-12 order-5 order-lg-3">
-			    <h1>@Model.Item.GetString("Title")</h1>
-		    </div>
+@if (Model.Item.GetGeolocation("DefaultMapCenter").Latitude != 0 && Model.Item.GetGeolocation("DefaultMapCenter").Longitude != 0) { 
+    <style>
+	    .map {
+		    background-color: #eee;
+            min-height: 360px;
+		    width: 100%;
 	    }
 
-	    
-    </div>
-} else {
-    <div class="alert alert-info" role="alert">
-        @Translate("Google maps API key is missing")
-    </div>
-}
+	    .locations-list {
+            height: 100%;
+	    }
 
-<script>
-    var locations = [
-        @foreach (var location in locationList) {
-            <text>{
-                name: "@(location.Name)",
-                company: "@(location.Company)",
-                address: "@(location.Address)",
-                city: "@(location.City)",
-                zip: "@(location.Zip)",
-                state: "@(location.State)",
-                country: "@(location.Country)",
-                phone: "@(location.Phone)",
-                email: "@(location.Email)",
-                location: {
-                    lat: @(location.Latitude),
-                    lng: @(location.Longitude)
-                }
-            },</text>
+	    @@media (orientation: portrait) {
+		    .map {
+			    height: 40vh;
+		    }
+	    }
+
+	    @@media (orientation: landscape) {
+		    .map {
+			    height: 50vh;
+		    }
         }
+
+	    @@media (min-width: 992px) {
+		    .map {
+			    height: 80vh;
+		    }
+
+		    .locations-list {
+                overflow-y: auto;
+			    height: 80vh;
+		    }
+	    }
+    </style>
+
+    if (apiKey != "") {
+        <div class="grid position-relative">
+            @if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
+                <div class="g-col-12 g-col-lg-8 order-1">
+				    <h1 class="mb-0">@Model.Item.GetString("Title")</h1>
+                </div>
+		    }
+
+            <div class="g-col-12 g-col-lg-4 input-group order-2 order-lg-2">
+                <input type="text" class="form-control" id="mapSearch" placeholder="@Translate("Search location")">
+                <button class="btn btn-outline-secondary" type="button" id="mapSearchButton">@ReadFile(iconPath+"search.svg")</button>
+            </div>
+
+            <div class="g-col-12 g-col-lg-8 order-1 order-lg-4">
+		        <div class="map" id="map"></div>
+	        </div>
+
+	        @if (locationList.Count() > 1) {
+		        <div class="g-col-12 g-col-lg-4 order-2 order-lg-3">
+                    <div class="locations-list">
+                        <ul class="list-group" id="locationsList"></ul>
+		            </div>
+                </div>
+	        } else if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
+		        <div class="g-col-12 order-5 order-lg-3">
+			        <h1>@Model.Item.GetString("Title")</h1>
+		        </div>
+	        }
+
+	    
+        </div>
+    } else {
+        <div class="alert alert-info" role="alert">
+            @Translate("Google maps API key is missing")
+        </div>
+    }
+
+    <script>
+        var locations = [
+            @foreach (var location in locationList) {
+                <text>{
+                    name: "@(location.Name)",
+                    company: "@(location.Company)",
+                    address: "@(location.Address)",
+                    city: "@(location.City)",
+                    zip: "@(location.Zip)",
+                    state: "@(location.State)",
+                    country: "@(location.Country)",
+                    phone: "@(location.Phone)",
+                    email: "@(location.Email)",
+                    location: {
+                        lat: @(location.Latitude),
+                        lng: @(location.Longitude)
+                    }
+                },</text>
+            }
+        ];
+
+        var mapStyle = [
+      {
+        "featureType": "administrative.land_parcel",
+        "elementType": "labels",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "landscape.man_made",
+        "elementType": "geometry.fill",
+        "stylers": [
+          {
+            "color": "#b0afb6"
+          }
+        ]
+      },
+      {
+        "featureType": "landscape.natural",
+        "elementType": "geometry.fill",
+        "stylers": [
+          {
+            "color": "#d7d7da"
+          }
+        ]
+      },
+      {
+        "featureType": "landscape.natural.terrain",
+        "elementType": "geometry.fill",
+        "stylers": [
+          {
+            "color": "#7ba78b"
+          }
+        ]
+      },
+      {
+        "featureType": "poi",
+        "elementType": "labels.text",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "poi.business",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "poi.park",
+        "elementType": "geometry.fill",
+        "stylers": [
+          {
+            "color": "#659577"
+          }
+        ]
+      },
+      {
+        "featureType": "road",
+        "elementType": "labels.icon",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "road.highway",
+        "elementType": "geometry.fill",
+        "stylers": [
+          {
+            "color": "#f5f5f5"
+          }
+        ]
+      },
+      {
+        "featureType": "road.highway",
+        "elementType": "geometry.stroke",
+        "stylers": [
+          {
+            "color": "#f0f0f0"
+          }
+        ]
+      },
+      {
+        "featureType": "road.local",
+        "elementType": "labels",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "transit",
+        "stylers": [
+          {
+            "visibility": "off"
+          }
+        ]
+      },
+      {
+        "featureType": "water",
+        "elementType": "geometry.fill",
+        "stylers": [
+          {
+            "color": "#8ea5c2"
+          }
+        ]
+      }
     ];
 
-    var mapStyle = [
-  {
-    "featureType": "administrative.land_parcel",
-    "elementType": "labels",
-    "stylers": [
-      {
-        "visibility": "off"
-      }
-    ]
-  },
-  {
-    "featureType": "landscape.man_made",
-    "elementType": "geometry.fill",
-    "stylers": [
-      {
-        "color": "#b0afb6"
-      }
-    ]
-  },
-  {
-    "featureType": "landscape.natural",
-    "elementType": "geometry.fill",
-    "stylers": [
-      {
-        "color": "#d7d7da"
-      }
-    ]
-  },
-  {
-    "featureType": "landscape.natural.terrain",
-    "elementType": "geometry.fill",
-    "stylers": [
-      {
-        "color": "#7ba78b"
-      }
-    ]
-  },
-  {
-    "featureType": "poi",
-    "elementType": "labels.text",
-    "stylers": [
-      {
-        "visibility": "off"
-      }
-    ]
-  },
-  {
-    "featureType": "poi.business",
-    "stylers": [
-      {
-        "visibility": "off"
-      }
-    ]
-  },
-  {
-    "featureType": "poi.park",
-    "elementType": "geometry.fill",
-    "stylers": [
-      {
-        "color": "#659577"
-      }
-    ]
-  },
-  {
-    "featureType": "road",
-    "elementType": "labels.icon",
-    "stylers": [
-      {
-        "visibility": "off"
-      }
-    ]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "geometry.fill",
-    "stylers": [
-      {
-        "color": "#f5f5f5"
-      }
-    ]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "geometry.stroke",
-    "stylers": [
-      {
-        "color": "#f0f0f0"
-      }
-    ]
-  },
-  {
-    "featureType": "road.local",
-    "elementType": "labels",
-    "stylers": [
-      {
-        "visibility": "off"
-      }
-    ]
-  },
-  {
-    "featureType": "transit",
-    "stylers": [
-      {
-        "visibility": "off"
-      }
-    ]
-  },
-  {
-    "featureType": "water",
-    "elementType": "geometry.fill",
-    "stylers": [
-      {
-        "color": "#8ea5c2"
-      }
-    ]
-  }
-];
+	    function initMap() {
+            // Set the geocoder
+            geocoder = new google.maps.Geocoder();
 
-	function initMap() {
-        // Set the geocoder
-        geocoder = new google.maps.Geocoder();
+            // Set initial map center
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(showPosition);
+            } else {
+                console.log("Geolocation is not supported by this browser");
+            }
 
-		// Set initial map center
-		var myMapCenter = {
-			lat: 56.1394749, 
-			lng: 10.1682465
-		};
+            function showPosition(position) {
+                const pos = {
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude,
+                };
 
-		// Create the map
-		var map = new google.maps.Map(document.getElementById('map'), {
-			center: myMapCenter,
-            zoom: 4,
-            disableDefaultUI: true,
-            zoomControl: true,
-            zoomControlOptions: {
-                position: google.maps.ControlPosition.RIGHT_TOP,
-            },
-            styles: mapStyle
-        });
+                map.setCenter(pos);
+            }
 
-        // Markers array
-        var markers = [];
-        var markersCount = 0;
+		    const myMapCenter = {
+			    lat: @Model.Item.GetGeolocation("DefaultMapCenter").Latitude,
+                lng: @Model.Item.GetGeolocation("DefaultMapCenter").Longitude
+		    };
 
-		// Markup map
-		locations.forEach(function(location){
-            marklocation(location);
-            markersCount++;
-        });
-
-        // Create InfoWindow
-        var infoWindow = new google.maps.InfoWindow({
-            maxWidth: 300,
-            minWidth: 220
-        });
-
-        // Create a marker and set its position.
-		function marklocation(location){
-
-            var marker = new google.maps.Marker({
-                icon: {
-                    path: "M4,6C2.9,6,2,5.1,2,4s0.9-2,2-2s2,0.9,2,2S5.1,6,4,6 M4,0C1.8,0,0,1.8,0,4c0,3,4,7.4,4,7.4S8,7,8,4C8,1.8,6.2,0,4,0z",
-                    fillColor: "black",
-                    fillOpacity: 1,
-                    strokeWeight: 0,
-                    scale: 2
+		    // Create the map
+		    var map = new google.maps.Map(document.getElementById('map'), {
+			    center: myMapCenter,
+                zoom: @initialZoomLevel,
+                disableDefaultUI: true,
+                zoomControl: true,
+                zoomControlOptions: {
+                    position: google.maps.ControlPosition.RIGHT_TOP,
                 },
-				map: map,
-				position: location.location,
-                title: location.name,
-                id: markersCount
-			});
+                styles: mapStyle
+            });
 
-            markers.push(marker); // Keep marker instances in a global array
+            // Markers array
+            var markers = [];
+            var markersCount = 0;
 
-			// show location info when marker is clicked
-			marker.addListener('click', function(){
-				openInfo(location, marker);
-			});
-		}
+		    // Markup map
+		    locations.forEach(function(location){
+                marklocation(location);
+                markersCount++;
+            });
 
-        // Map is idle
-        google.maps.event.addListener(map, 'idle', function () {
-            var locationsListElement = document.querySelector("#locationsList");
-            locationsListElement.innerHTML = "";
+            // Create InfoWindow
+            var infoWindow = new google.maps.InfoWindow({
+                maxWidth: 300,
+                minWidth: 220
+            });
 
-            updateLocationsList();
-        });
+            // Create a marker and set its position.
+		    function marklocation(location){
+                var marker = new google.maps.Marker({
+                    icon: {
+                        path: "M4,6C2.9,6,2,5.1,2,4s0.9-2,2-2s2,0.9,2,2S5.1,6,4,6 M4,0C1.8,0,0,1.8,0,4c0,3,4,7.4,4,7.4S8,7,8,4C8,1.8,6.2,0,4,0z",
+                        fillColor: "black",
+                        fillOpacity: 1,
+                        strokeWeight: 0,
+                        scale: 2
+                    },
+				    map: map,
+				    position: location.location,
+                    title: location.name,
+                    id: markersCount
+			    });
 
-        function updateLocationsList() {
-            var bounds = map.getBounds();
-            var markersFound = 0;
+                markers.push(marker); // Keep marker instances in a global array
 
-            for (var i = 0; i < markers.length; i++) {
-                var marker = markers[i]; 
-                                           
-                if (bounds.contains(marker.getPosition()) === true) {
-                    renderLocationListItem(i, "AddToList");
-                    markersFound++;
-                }
-            }
+			    // show location info when marker is clicked
+			    marker.addListener('click', function(){
+				    openInfo(marker);
+			    });
+		    }
 
-            if (markersFound == 0) {   
+            // Map is idle
+            google.maps.event.addListener(map, 'idle', function () {
                 var locationsListElement = document.querySelector("#locationsList");
+                locationsListElement.innerHTML = "";
 
-                var notificationElement = document.createElement('div');
-                notificationElement.classList.add("alert");
-                notificationElement.classList.add("alert-info");
-                notificationElement.setAttribute("role", "alert");
-                notificationElement.innerHTML = "@Translate("There are no options in the selected area")";
-                locationsListElement.appendChild(notificationElement);
-			}
-        }
-
-        //Render the list item
-        function renderLocationListItem(id, type) {
-            var target = document.querySelector("#locationsList"); 
-
-            //Data
-            var location = locations[id];
-            var name = location.company != "" ? location.company : location.name;
-            var addressLineOne = location.address;
-            var addressLineTwoArr = [];
-            if (location.zip != "") {
-                addressLineTwoArr.push(location.zip);
-	        }
-            if (location.city != "") {
-                addressLineTwoArr.push(location.city);
-            }
-            if (location.state != "") {
-                addressLineTwoArr.push(location.state);
-            }
-            if (location.country != "") {
-                addressLineTwoArr.push(location.country);
-	        }
-            var addressLineTwo = addressLineTwoArr.join(", ");
-
-            var addressLineThreeArr = [];
-            if (location.email != "") {
-                addressLineThreeArr.push(location.email);
-            }
-            if (location.phone != "") {
-                addressLineThreeArr.push(location.phone);
-            }
-            var addressLineThree = addressLineThreeArr.join(", ");
-
-            //List element
-            var listÌtemElement = document.createElement('div');
-            listÌtemElement.style.cursor = "pointer";
-            listÌtemElement.className = "list-group-item";
-
-            var containerElement = document.createElement('div');
-			containerElement.className = "d-flex";
-            listÌtemElement.appendChild(containerElement);
-
-            //Left column
-            var columnOneElement = document.createElement('div');
-            columnOneElement.className = "flex-fill";
-
-            var headerElement = document.createElement('h6');
-            headerElement.className = "h6";
-            headerElement.innerHTML = name;
-            columnOneElement.appendChild(headerElement);
-
-            if (addressLineOne != "") {
-                var addressLineElement = document.createElement('div');
-                addressLineElement.innerHTML = addressLineOne;
-                columnOneElement.appendChild(addressLineElement);
-            }
-
-            if (addressLineTwo != "") {
-                var addressLineElement = document.createElement('div');
-                addressLineElement.innerHTML = addressLineTwo;
-                columnOneElement.appendChild(addressLineElement);
-            }
-
-            if (addressLineThree != "") {
-                var addressLineElement = document.createElement('div');
-                addressLineElement.innerHTML = addressLineThree;
-                columnOneElement.appendChild(addressLineElement);
-			}
-
-            containerElement.appendChild(columnOneElement);
-
-            //Directions - In list
-            if (type == "AddToList" && addressLineTwo != "") {
-                var columnTwoElement = document.createElement('div');
-
-                var directionsElement = document.createElement('a');
-                directionsElement.className = "btn icon-2 pe-0 pt-0";
-                directionsElement.innerHTML = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"feather feather-corner-up-right\"><polyline points=\"15 14 20 9 15 4\"></polyline><path d=\"M4 20v-7a4 4 0 0 1 4-4h12\"></path></svg>";
-                directionsElement.title = "@Translate("Directions")";
-                directionsElement.href = "https://www.google.dk/maps/dir//" + addressLineTwoArr.join("+");
-                directionsElement.target = "_blank";
-                columnTwoElement.appendChild(directionsElement);
-
-                containerElement.appendChild(columnTwoElement);
-            }
-
-            //Directions in info
-            if (type == "UpdateInfo" && addressLineTwo != "") {
-                var directionsElement = document.createElement('a');
-                directionsElement.className = "btn btn-primary w-100 mt-3";
-                directionsElement.innerHTML = "@Translate("Directions")";
-                directionsElement.title = "@Translate("Directions")";
-                directionsElement.href = "https://www.google.dk/maps/dir//" + addressLineTwoArr.join("+");
-                directionsElement.target = "_blank";
-                listÌtemElement.appendChild(directionsElement);
-            }
-
-            if (type == "AddToList") {
-                target.addEventListener("click", focusOnMarker);
-                target.appendChild(listÌtemElement);
-            } else if (type == "UpdateInfo") {
-                var contentString = listÌtemElement.innerHTML;
-                infoWindow.setContent(contentString);
-			}
-		}
-
-        function focusOnMarker(event) {
-            infoWindow.close();
-
-            var markerId = event.currentTarget.getAttribute("data-location-number");
-            var selectedMarker = markers[markerId];
-
-            map.setZoom(7);
-            map.panTo(selectedMarker.getPosition());
-
-            clearListItemSelection();
-            
-            event.currentTarget.classList.add("active");
-		}
-
-        //Click on marker
-        function openInfo(location, marker) {
-            renderLocationListItem(marker.id, "UpdateInfo");
-            infoWindow.open(map, marker);
-
-            map.panTo(marker.getPosition());
-        }
-
-        //Clear list item selection
-        function clearListItemSelection() {
-            document.querySelectorAll("[data-location-number]").forEach(function (locationItem) {
-                locationItem.classList.remove("active");
+                updateLocationsList();
             });
-        }
 
-        //Search on map (geocode)
-        document.querySelector("#mapSearchButton").addEventListener("click", function (event) {
-            geocode({ address: event.currentTarget.value })
-        });
+            function updateLocationsList() {
+                var bounds = map.getBounds();
+                var markersFound = 0;
 
-        function geocode(request) {
-            var geocoder = new google.maps.Geocoder();
-            var address = document.querySelector("#mapSearch").value;
-
-            geocoder.geocode({ 'address': address }, function (results, status) {
-                if (status == google.maps.GeocoderStatus.OK) {
-                    map.setZoom(14);
-                    map.panTo(results[0].geometry.location);
-                } else {
-                    console.log('Geocode was not successful for the following reason: ' + status);
+                for (var i = 0; i < markers.length; i++) {
+                    var marker = markers[i]; 
+                                           
+                    if (bounds.contains(marker.getPosition()) === true) {
+                        renderLocationListItem(i, "AddToList");
+                        markersFound++;
+                    }
                 }
-            });
-        }
-	}
-</script>
 
-<script async defer src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)&libraries=places&callback=initMap"></script>
+                if (markersFound == 0) {   
+                    var locationsListElement = document.querySelector("#locationsList");
+
+                    var notificationElement = document.createElement('div');
+                    notificationElement.classList.add("alert");
+                    notificationElement.classList.add("alert-info");
+                    notificationElement.setAttribute("role", "alert");
+                    notificationElement.innerHTML = "@Translate("No options available in the selected area")";
+                    locationsListElement.appendChild(notificationElement);
+			    }
+            }
+
+            //Render the list item
+            function renderLocationListItem(id, type) {
+                var target = document.querySelector("#locationsList"); 
+
+                //Data
+                var location = locations[id];
+                var name = location.company != "" ? location.company : location.name;
+                var addressLineOne = location.address;
+                var addressLineTwoArr = [];
+                if (location.zip != "") {
+                    addressLineTwoArr.push(location.zip);
+	            }
+                if (location.city != "") {
+                    addressLineTwoArr.push(location.city);
+                }
+                if (location.state != "") {
+                    addressLineTwoArr.push(location.state);
+                }
+                if (location.country != "") {
+                    addressLineTwoArr.push(location.country);
+	            }
+                var addressLineTwo = addressLineTwoArr.join(", ");
+
+                var addressLineThreeArr = [];
+                if (location.email != "") {
+                    addressLineThreeArr.push(location.email);
+                }
+                if (location.phone != "") {
+                    addressLineThreeArr.push(location.phone);
+                }
+                var addressLineThree = addressLineThreeArr.join(", ");
+
+                //List element
+                var listÌtemElement = document.createElement('div');
+                listÌtemElement.style.cursor = "pointer";
+                listÌtemElement.className = "list-group-item";
+
+                var containerElement = document.createElement('div');
+			    containerElement.className = "d-flex";
+                listÌtemElement.appendChild(containerElement);
+
+                //Left column
+                var columnOneElement = document.createElement('div');
+                columnOneElement.className = "flex-fill";
+
+                var headerElement = document.createElement('h6');
+                headerElement.className = "h6";
+                headerElement.innerHTML = name;
+                columnOneElement.appendChild(headerElement);
+
+                if (addressLineOne != "") {
+                    var addressLineElement = document.createElement('div');
+                    addressLineElement.innerHTML = addressLineOne;
+                    columnOneElement.appendChild(addressLineElement);
+                }
+
+                if (addressLineTwo != "") {
+                    var addressLineElement = document.createElement('div');
+                    addressLineElement.innerHTML = addressLineTwo;
+                    columnOneElement.appendChild(addressLineElement);
+                }
+
+                if (addressLineThree != "") {
+                    var addressLineElement = document.createElement('div');
+                    addressLineElement.innerHTML = addressLineThree;
+                    columnOneElement.appendChild(addressLineElement);
+			    }
+
+                containerElement.appendChild(columnOneElement);
+
+                //Directions - In list
+                if (type == "AddToList" && addressLineTwo != "") {
+                    var columnTwoElement = document.createElement('div');
+
+                    var directionsElement = document.createElement('a');
+                    directionsElement.className = "btn icon-2 pe-0 pt-0";
+                    directionsElement.innerHTML = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"feather feather-corner-up-right\"><polyline points=\"15 14 20 9 15 4\"></polyline><path d=\"M4 20v-7a4 4 0 0 1 4-4h12\"></path></svg>";
+                    directionsElement.title = "@Translate("Directions")";
+                    directionsElement.href = "https://www.google.dk/maps/dir//" + addressLineTwoArr.join("+");
+                    directionsElement.target = "_blank";
+                    columnTwoElement.appendChild(directionsElement);
+
+                    containerElement.appendChild(columnTwoElement);
+                }
+
+                //Directions in info
+                if (type == "UpdateInfo" && addressLineTwo != "") {
+                    var directionsElement = document.createElement('a');
+                    directionsElement.className = "btn btn-primary w-100 mt-3";
+                    directionsElement.innerHTML = "@Translate("Directions")";
+                    directionsElement.title = "@Translate("Directions")";
+                    directionsElement.href = "https://www.google.dk/maps/dir//" + addressLineTwoArr.join("+");
+                    directionsElement.target = "_blank";
+                    listÌtemElement.appendChild(directionsElement);
+                }
+
+                if (type == "AddToList") {
+                    listÌtemElement.setAttribute("data-location-number", id);
+                    listÌtemElement.addEventListener("click", focusOnMarker);
+                    target.appendChild(listÌtemElement);
+                } else if (type == "UpdateInfo") {
+                    var contentString = listÌtemElement.innerHTML;
+                    infoWindow.setContent(contentString);
+			    }
+		    }
+
+            function focusOnMarker(event) {
+                infoWindow.close();
+
+                var markerId = event.currentTarget.getAttribute("data-location-number");
+                var selectedMarker = markers[markerId];
+
+                map.setZoom(7);
+                map.panTo(selectedMarker.getPosition());
+
+                clearListItemSelection();
+            
+                event.currentTarget.classList.add("active");
+
+                openInfo(selectedMarker)
+		    }
+
+            //Click on marker
+            function openInfo(marker) {
+                renderLocationListItem(marker.id, "UpdateInfo");
+                infoWindow.open(map, marker);
+
+                map.panTo(marker.getPosition());
+            }
+
+            //Clear list item selection
+            function clearListItemSelection() {
+                document.querySelectorAll("[data-location-number]").forEach(function (locationItem) {
+                    locationItem.classList.remove("active");
+                });
+            }
+
+            //Search on map (geocode)
+            document.querySelector("#mapSearchButton").addEventListener("click", function (event) {
+                geocode({ address: event.currentTarget.value })
+            });
+
+            function geocode(request) {
+                var geocoder = new google.maps.Geocoder();
+                var address = document.querySelector("#mapSearch").value;
+                encodeURI(address.replace(" ", "+"));
+
+                geocoder.geocode({ 'address': address, 'region': '@(regionCode)' }, function (results, status) {
+                    if (status == google.maps.GeocoderStatus.OK) {
+                        map.setZoom(14);
+                        map.panTo(results[0].geometry.location);
+                    } else {
+                        console.log('Geocode was not successful for the following reason: ' + status);
+                    }
+                });
+            }
+	    }
+    </script>
+
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)&libraries=places&callback=initMap"></script>
+} else {
+    <div class="alert alert-info" role="alert">
+        @Translate("The map is not proberly configured")
+    </div>
+}
 
 
 
