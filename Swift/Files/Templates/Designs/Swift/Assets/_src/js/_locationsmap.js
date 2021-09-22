@@ -6,6 +6,7 @@ const LocationsMap = function () {
 	var initialZoomLevel = 4;
 
 	var directionsLabel = "Directions";
+	var noLocationsLabel = "No options available in the selected area";
 
 	var infoWindow = new google.maps.InfoWindow({
 		maxWidth: 300,
@@ -116,7 +117,7 @@ const LocationsMap = function () {
 				notificationElement.classList.add("alert");
 				notificationElement.classList.add("alert-info");
 				notificationElement.setAttribute("role", "alert");
-				notificationElement.innerHTML = "@Translate("No options available in the selected area")";
+				notificationElement.innerHTML = noLocationsLabel;
 				locationsListElement.appendChild(notificationElement);
 			}
 		},
