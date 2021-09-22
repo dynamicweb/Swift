@@ -1,7 +1,7 @@
 
 ![alt text](https://github.com/dynamicweb/Swift/blob/main/Swift/Files/Images/Logos/Logo_Swift_transparent-background-black.png?raw=true)
 
-[![GitHub Release](https://img.shields.io/badge/Release-Swift%20v1.0-orange)](https://github.com/dynamicweb/Swift/releases) [![GitHub DW](https://img.shields.io/badge/Release-Dynamicweb%20v9.10.14-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub Bootstrap](https://img.shields.io/badge/Framework-Bootstrap%20v5.1.0-green)](https://getbootstrap.com/)
+[![GitHub Release](https://img.shields.io/badge/Release-Swift%20v1.0.0-orange)](https://github.com/dynamicweb/Swift/releases) [![GitHub DW](https://img.shields.io/badge/Release-Dynamicweb%20v9.10.14-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub Bootstrap](https://img.shields.io/badge/Framework-Bootstrap%20v5.1.0-green)](https://getbootstrap.com/)
 
 
 ![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Swift-laptop-tablet-2.png?raw=true")
@@ -17,8 +17,6 @@ Dynamicweb Swift is a **plug-and-play standard solution** which allows you to cr
 *  **Build designed pages** :art: using visual drag and drop to create your content
 * **Web Accessibility Guidelines (WCAG)** :trophy: Level AA compliance, make web content more accessible
 * **World Wide Web (W3C)** :globe_with_meridians: validated following website formatting standards
-
-![alt text](https://doc.dynamicweb.com/Files/Images/Swift/SwiftReleasev1-03.gif?raw=true")
 
 # Installation
 
