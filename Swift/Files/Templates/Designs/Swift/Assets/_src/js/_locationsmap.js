@@ -5,6 +5,8 @@ const LocationsMap = function () {
 	var defaultLng = 0;
 	var initialZoomLevel = 4;
 
+	var directionsLabel = "Directions";
+
 	var infoWindow = new google.maps.InfoWindow({
 		maxWidth: 300,
 		minWidth: 220
@@ -84,12 +86,13 @@ const LocationsMap = function () {
 				id: markersCount
 			});
 
-			markers.push(marker); // Keep marker instances in a global array
-
 			// show location info when marker is clicked
 			marker.addListener('click', function () {
 				openInfo(marker);
 			});
+
+			markers.push(marker); // Keep marker instances in a global array
+
 		},
 
 		//Update the location list based on the visible area on the map
@@ -195,7 +198,7 @@ const LocationsMap = function () {
 				var directionsElement = document.createElement('a');
 				directionsElement.className = "btn icon-2 pe-0 pt-0";
 				directionsElement.innerHTML = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"feather feather-corner-up-right\"><polyline points=\"15 14 20 9 15 4\"></polyline><path d=\"M4 20v-7a4 4 0 0 1 4-4h12\"></path></svg>";
-				directionsElement.title = "@Translate("Directions")";
+				directionsElement.title = directionsLabel;
 				directionsElement.href = "https://www.google.dk/maps/dir//" + addressLineTwoArr.join("+");
 				directionsElement.target = "_blank";
 				columnTwoElement.appendChild(directionsElement);
@@ -207,8 +210,8 @@ const LocationsMap = function () {
 			if (type == "UpdateInfo" && addressLineTwo != "") {
 				var directionsElement = document.createElement('a');
 				directionsElement.className = "btn btn-primary w-100 mt-3";
-				directionsElement.innerHTML = "@Translate("Directions")";
-				directionsElement.title = "@Translate("Directions")";
+				directionsElement.innerHTML = directionsLabel;
+				directionsElement.title = directionsLabel;
 				directionsElement.href = "https://www.google.dk/maps/dir//" + addressLineTwoArr.join("+");
 				directionsElement.target = "_blank";
 				listÌtemElement.appendChild(directionsElement);
