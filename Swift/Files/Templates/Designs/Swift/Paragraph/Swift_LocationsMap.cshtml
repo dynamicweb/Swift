@@ -2,17 +2,14 @@
 
 @{ 
 	string apiKey = !string.IsNullOrEmpty(Pageview.AreaSettings.GetString("Google_APIKey")) ? Pageview.AreaSettings.GetString("Google_APIKey") : "";
-
 	var locationList = Model.Item.GetUsers("UserGroup");
-	var locationCounter = 0;
-
     string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 }
 
 <style>
 	.map {
 		background-color: #eee;
-		height: 50vh;
+        min-height: 360px;
 		width: 100%;
 	}
 
@@ -20,13 +17,25 @@
         height: 100%;
 	}
 
+	@@media (orientation: portrait) {
+		.map {
+			height: 40vh;
+		}
+	}
+
+	@@media (orientation: landscape) {
+		.map {
+			height: 50vh;
+		}
+    }
+
 	@@media (min-width: 992px) {
 		.map {
 			height: 80vh;
 		}
 
 		.locations-list {
-            overflow: hidden;
+            overflow-y: auto;
 			height: 80vh;
 		}
 	}
@@ -34,110 +43,29 @@
 
 @if (apiKey != "") {
     <div class="grid position-relative">
-        <div class="g-col-12 grid">
-			@if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
-                <div class="g-col-12 g-col-lg-8">
-				    <h1 class="mb-0">@Model.Item.GetString("Title")</h1>
-                </div>
-			}
-
-            <div class="g-col-12 g-col-lg-4 input-group">
-                <input type="text" class="form-control" id="mapSearch" placeholder="@Translate("Search location")">
-                <button class="btn btn-outline-secondary" type="button" id="mapSearchButton">@ReadFile(iconPath+"search.svg")</button>
+        @if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
+            <div class="g-col-12 g-col-lg-8 order-1">
+				<h1 class="mb-0">@Model.Item.GetString("Title")</h1>
             </div>
+		}
+
+        <div class="g-col-12 g-col-lg-4 input-group order-2 order-lg-2">
+            <input type="text" class="form-control" id="mapSearch" placeholder="@Translate("Search location")">
+            <button class="btn btn-outline-secondary" type="button" id="mapSearchButton">@ReadFile(iconPath+"search.svg")</button>
         </div>
-        
-        <div class="g-col-12 g-col-lg-8 order-1 order-lg-2">
+
+        <div class="g-col-12 g-col-lg-8 order-1 order-lg-4">
 		    <div class="map" id="map"></div>
 	    </div>
 
 	    @if (locationList.Count() > 1) {
-		    <div class="g-col-12 g-col-lg-4 order-2 order-lg-1">
+		    <div class="g-col-12 g-col-lg-4 order-2 order-lg-3">
                 <div class="locations-list">
-                    <div class="d-none" id="emptyMapList">
-                        <div class="alert alert-info" role="alert">
-                            <span>@Translate("There are no options in the selected area")</span>
-                        </div>
-                    </div>
-
-			        <ul class="list-group" id="mapList">
-				        @foreach (var location in locationList)
-				        {
-                            string title = !string.IsNullOrEmpty(location.Company) ? location.Company : location.Name;
-                            List<string> addressLineTwo = new List<string>();
-                            if (!string.IsNullOrEmpty(location.Zip)) {
-		                        addressLineTwo.Add(location.Zip);
-	                        }
-                            if (!string.IsNullOrEmpty(location.City)) {
-		                        addressLineTwo.Add(location.City);
-	                        }
-                            if (!string.IsNullOrEmpty(location.State)) {
-		                        addressLineTwo.Add(location.State);
-	                        }
-                            if (!string.IsNullOrEmpty(location.Country)) {
-		                        addressLineTwo.Add(location.Country);
-	                        }
-                            string addressLineTwoString = (string.Join(",", addressLineTwo.Select(x => x.ToString()).ToArray())).Replace(",", ", ");
-
-                            List<string> addressLineThree = new List<string>();
-                            if (!string.IsNullOrEmpty(location.Email)) {
-		                        addressLineThree.Add(location.Email);
-	                        }
-                            if (!string.IsNullOrEmpty(location.Phone)) {
-		                        addressLineThree.Add(location.Phone);
-	                        }
-                            string addressLineThreeString = (string.Join(",", addressLineThree.Select(x => x.ToString()).ToArray())).Replace(",", ", ");
-
-					        <li class="list-group-item d-none" data-location-number="@locationCounter" style="cursor: pointer">
-                                <div class="d-flex">
-                                    <div class="flex-fill">
-                                        @if (!string.IsNullOrEmpty(title)) {
-                                            <h6 class="h6">@title</h6>
-                                        }
-                                        @if (!string.IsNullOrEmpty(location.Address)) {
-                                            <div>@location.Address</div>
-							            }
-                                        @if (addressLineTwo.Count > 0) {
-                                            <div>@addressLineTwoString</div>
-							            }
-                                        @if (addressLineThree.Count > 0) {
-                                            <div>@addressLineThreeString</div>
-							            }
-                                    </div>
-                                    <div>
-                                        <a href="https://www.google.dk/maps/dir//@(addressLineTwoString.Replace(", ", "+"))" class="btn icon-2 pe-0 pt-0" target="_blank" title="@Translate("Directions")">
-                                            @ReadFile(iconPath+"corner-up-right.svg")
-                                        </a>
-                                    </div>
-                                </div>
-                                <div class="d-none js-address-info">
-                                    @if (!string.IsNullOrEmpty(title)) {
-                                        <h6 class="h6">@title</h6>
-                                    }
-                                    @if (!string.IsNullOrEmpty(location.Address)) {
-                                        <div>@location.Address</div>
-							        }
-                                    @if (addressLineTwo.Count > 0) {
-                                        <div>@addressLineTwoString</div>
-							        }
-                                    @if (addressLineThree.Count > 0) {
-                                        <div>@addressLineThreeString</div>
-							        }
-                                    
-                                    <a href="https://www.google.dk/maps/dir//@(addressLineTwoString.Replace(", ", "+"))" class="btn btn-primary w-100 mt-3" target="_blank">
-                                        @Translate("Directions")
-                                    </a>
-                                </div>
-                            </li>
-
-					        locationCounter++;
-				        }
-			        </ul>
-
+                    <ul class="list-group" id="locationsList"></ul>
 		        </div>
             </div>
 	    } else if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
-		    <div class="g-col-12 order-2 order-lg-1">
+		    <div class="g-col-12 order-5 order-lg-3">
 			    <h1>@Model.Item.GetString("Title")</h1>
 		    </div>
 	    }
@@ -161,6 +89,8 @@
                 zip: "@(location.Zip)",
                 state: "@(location.State)",
                 country: "@(location.Country)",
+                phone: "@(location.Phone)",
+                email: "@(location.Email)",
                 location: {
                     lat: @(location.Latitude),
                     lng: @(location.Longitude)
@@ -297,9 +227,6 @@
 			lng: 10.1682465
 		};
 
-        // Create the geocoder
-        var geocoder;
-
 		// Create the map
 		var map = new google.maps.Map(document.getElementById('map'), {
 			center: myMapCenter,
@@ -355,37 +282,141 @@
 
         // Map is idle
         google.maps.event.addListener(map, 'idle', function () {
-            showVisibleMarkers();
+            var locationsListElement = document.querySelector("#locationsList");
+            locationsListElement.innerHTML = "";
+
+            updateLocationsList();
         });
 
-        function showVisibleMarkers() {
+        function updateLocationsList() {
             var bounds = map.getBounds();
             var markersFound = 0;
 
             for (var i = 0; i < markers.length; i++) {
-                var marker = markers[i],
-                    infoPanel = document.querySelector('[data-location-number="' + i + '"]'); 
+                var marker = markers[i]; 
                                            
                 if (bounds.contains(marker.getPosition()) === true) {
-                    infoPanel.classList.remove("d-none");
+                    renderLocationListItem(i, "AddToList");
                     markersFound++;
                 }
-                else {
-                    infoPanel.classList.add("d-none");
-                }
-
-                document.querySelector("#emptyMapList").classList.add("d-none");
             }
 
-            if (markersFound == 0) {                   
-                document.querySelector("#emptyMapList").classList.remove("d-none");
+            if (markersFound == 0) {   
+                var locationsListElement = document.querySelector("#locationsList");
+
+                var notificationElement = document.createElement('div');
+                notificationElement.classList.add("alert");
+                notificationElement.classList.add("alert-info");
+                notificationElement.setAttribute("role", "alert");
+                notificationElement.innerHTML = "@Translate("There are no options in the selected area")";
+                locationsListElement.appendChild(notificationElement);
 			}
         }
 
-        //Click on list item
-        document.querySelectorAll("[data-location-number]").forEach(function (locationItem) {
-            locationItem.addEventListener("click", focusOnMarker);
-        });
+        //Render the list item
+        function renderLocationListItem(id, type) {
+            var target = document.querySelector("#locationsList"); 
+
+            //Data
+            var location = locations[id];
+            var name = location.company != "" ? location.company : location.name;
+            var addressLineOne = location.address;
+            var addressLineTwoArr = [];
+            if (location.zip != "") {
+                addressLineTwoArr.push(location.zip);
+	        }
+            if (location.city != "") {
+                addressLineTwoArr.push(location.city);
+            }
+            if (location.state != "") {
+                addressLineTwoArr.push(location.state);
+            }
+            if (location.country != "") {
+                addressLineTwoArr.push(location.country);
+	        }
+            var addressLineTwo = addressLineTwoArr.join(", ");
+
+            var addressLineThreeArr = [];
+            if (location.email != "") {
+                addressLineThreeArr.push(location.email);
+            }
+            if (location.phone != "") {
+                addressLineThreeArr.push(location.phone);
+            }
+            var addressLineThree = addressLineThreeArr.join(", ");
+
+            //List element
+            var listÌtemElement = document.createElement('div');
+            listÌtemElement.style.cursor = "pointer";
+            listÌtemElement.className = "list-group-item";
+
+            var containerElement = document.createElement('div');
+			containerElement.className = "d-flex";
+            listÌtemElement.appendChild(containerElement);
+
+            //Left column
+            var columnOneElement = document.createElement('div');
+            columnOneElement.className = "flex-fill";
+
+            var headerElement = document.createElement('h6');
+            headerElement.className = "h6";
+            headerElement.innerHTML = name;
+            columnOneElement.appendChild(headerElement);
+
+            if (addressLineOne != "") {
+                var addressLineElement = document.createElement('div');
+                addressLineElement.innerHTML = addressLineOne;
+                columnOneElement.appendChild(addressLineElement);
+            }
+
+            if (addressLineTwo != "") {
+                var addressLineElement = document.createElement('div');
+                addressLineElement.innerHTML = addressLineTwo;
+                columnOneElement.appendChild(addressLineElement);
+            }
+
+            if (addressLineThree != "") {
+                var addressLineElement = document.createElement('div');
+                addressLineElement.innerHTML = addressLineThree;
+                columnOneElement.appendChild(addressLineElement);
+			}
+
+            containerElement.appendChild(columnOneElement);
+
+            //Directions - In list
+            if (type == "AddToList" && addressLineTwo != "") {
+                var columnTwoElement = document.createElement('div');
+
+                var directionsElement = document.createElement('a');
+                directionsElement.className = "btn icon-2 pe-0 pt-0";
+                directionsElement.innerHTML = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"feather feather-corner-up-right\"><polyline points=\"15 14 20 9 15 4\"></polyline><path d=\"M4 20v-7a4 4 0 0 1 4-4h12\"></path></svg>";
+                directionsElement.title = "@Translate("Directions")";
+                directionsElement.href = "https://www.google.dk/maps/dir//" + addressLineTwoArr.join("+");
+                directionsElement.target = "_blank";
+                columnTwoElement.appendChild(directionsElement);
+
+                containerElement.appendChild(columnTwoElement);
+            }
+
+            //Directions in info
+            if (type == "UpdateInfo" && addressLineTwo != "") {
+                var directionsElement = document.createElement('a');
+                directionsElement.className = "btn btn-primary w-100 mt-3";
+                directionsElement.innerHTML = "@Translate("Directions")";
+                directionsElement.title = "@Translate("Directions")";
+                directionsElement.href = "https://www.google.dk/maps/dir//" + addressLineTwoArr.join("+");
+                directionsElement.target = "_blank";
+                listÌtemElement.appendChild(directionsElement);
+            }
+
+            if (type == "AddToList") {
+                target.addEventListener("click", focusOnMarker);
+                target.appendChild(listÌtemElement);
+            } else if (type == "UpdateInfo") {
+                var contentString = listÌtemElement.innerHTML;
+                infoWindow.setContent(contentString);
+			}
+		}
 
         function focusOnMarker(event) {
             infoWindow.close();
@@ -403,27 +434,10 @@
 
         //Click on marker
         function openInfo(location, marker) {
-            var listItemId = marker.id;
-            var listItem = document.querySelector('[data-location-number="' + listItemId + '"]');
-
-            var contentString = listItem.querySelector(".js-address-info").innerHTML;
-
-            infoWindow.setContent(contentString);
+            renderLocationListItem(marker.id, "UpdateInfo");
             infoWindow.open(map, marker);
 
             map.panTo(marker.getPosition());
-        }
-
-		function focusOnListItem(location, marker){
-            var listItemId = marker.id;
-            var listItem = document.querySelector('[data-location-number="' + listItemId + '"]');
-
-            clearListItemSelection();
-
-            map.setZoom(14);
-            map.panTo(marker.getPosition());
-
-            listItem.classList.add("active");
         }
 
         //Clear list item selection
