@@ -1,5 +1,11 @@
 # Changelog
 
+## [v1.0.1] - 23-09-2021
+
+### Bugfixes
+
+### Added
+
 ## [v1.0.0] - 31-08-2021
 
 This is our first release of Dynamicweb Swift. It's fast and easy to build ecommerce sites for both B2C and B2B with personalized prices, self service, customer center, fantastic search and a lot more. All this using only configuration and no coding.
