@@ -1,5 +1,22 @@
 # Changelog
 
+## [v1.0.1] - 23-09-2021
+
+### Bugfixes
+* Checkout: Aligned checkout summary item
+* Cookies: Cookie notice responsive fixes and button style bug
+* General: Translations
+* Itemtype: Updated Feature field descriptions
+* Itemtype: Remove unused fields from page item types
+* Itemtype: Video player (field descriptions)
+* Newsletter: Use the new page properties theme, instead of page theme
+* Newsletter: Fixed product images alt text
+* Order Email: Clean up order email + fix missing product image
+* Product Detail Page: Fixed scroll position is not remembered after selecting a variant
+
+### Added
+* Itemtype: Video player (support for provided thumbnail)
+
 ## [v1.0.0] - 31-08-2021
 
 This is our first release of Dynamicweb Swift. It's fast and easy to build ecommerce sites for both B2C and B2B with personalized prices, self service, customer center, fantastic search and a lot more. All this using only configuration and no coding.
