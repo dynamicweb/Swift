@@ -125,6 +125,9 @@ const Typeahead = function() {
 
 				var formElm = field.closest(".js-suggest-form");
 				var parm = formElm.querySelector(".js-type-ahead-parameter");
+
+				console.log(parm);
+
 				if (elm.getAttribute("data-param") && elm.getAttribute("data-paramvalue")) {
 					parm.setAttribute("name", elm.getAttribute("data-param"));
 					parm.setAttribute("value", elm.getAttribute("data-paramvalue"));
@@ -139,6 +142,9 @@ const Typeahead = function() {
 				} else {
 					parm.removeAttribute("name");
 					parm.removeAttribute("value");
+
+					var productListPage = formElm.getAttribute("data-product-list-page");
+					formElm.setAttribute("action", productListPage);
 				}
 			});
 		},
