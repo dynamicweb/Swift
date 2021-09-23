@@ -88,6 +88,7 @@ const LocationsMap = function () {
 				icon: {
 					path: "M4,6C2.9,6,2,5.1,2,4s0.9-2,2-2s2,0.9,2,2S5.1,6,4,6 M4,0C1.8,0,0,1.8,0,4c0,3,4,7.4,4,7.4S8,7,8,4C8,1.8,6.2,0,4,0z",
 					fillColor: "black",
+					anchor: new google.maps.Point(0, 4),
 					fillOpacity: 1,
 					strokeWeight: 0,
 					scale: 2
@@ -272,12 +273,54 @@ const LocationsMap = function () {
 			var geocoder = new google.maps.Geocoder();
 			geocoder.geocode(request, function (results, status) {
 				if (status == google.maps.GeocoderStatus.OK) {
-					map.setZoom(14);
-					map.panTo(results[0].geometry.location);
+					map.setZoom(7);
+					//map.panTo(results[0].geometry.location);
+
+					//searchResultMarker.setPosition(results[0].geometry.location);
+
+					LocationsMap.findNearestMarker(results[0].geometry.location);
 				} else {
 					console.log('Geocode was not successful for the following reason: ' + status);
 				}
 			});
+		},
+
+		// Find the nearest marker to a position
+		findNearestMarker: function (location) {
+			var lat = location.lat();
+			var lng = location.lng();
+
+			var R = 6371; // radius of earth in km
+			var distances = [];
+			var closest = -1;
+			var counter = 0;
+
+			markers.forEach(function (marker) {
+				var mlat = marker.position.lat();
+				var mlng = marker.position.lng();
+				var dLat = (mlat - lat) * Math.PI / 180;
+				var dLong = (mlng - lng) * Math.PI / 180;
+				var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+					Math.cos(lat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * Math.sin(dLong / 2) * Math.sin(dLong / 2);
+				var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+				var d = R * c;
+				distances[counter] = d;
+				if (closest == -1 || d < distances[closest]) {
+					closest = counter;
+				}
+
+				counter++;
+			});
+
+			LocationsMap.calcRoute(location, markers[closest].getPosition());
+		},
+
+		// Calculate route
+		calcRoute: function (start, end) {
+			var bounds = new google.maps.LatLngBounds();
+			bounds.extend(start);
+			bounds.extend(end);
+			map.fitBounds(bounds);
 		}
 	}
 }();
