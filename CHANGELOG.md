@@ -1,5 +1,18 @@
 # Changelog
 
+## [v1.0.2] - 24-09-2021
+
+### Bugfixes
+* Customer Center Order Details: Total discount in receipt 
+* Itemtype: Carousel, Poster, VideoPoster grid unify
+* Itemtype: Vertical align text
+* Newsletter: Gmail theme fix
+* Product List Page: Improve product images
+* Product List Page: Use "Get" instead of "Post"
+
+### Added
+* Product Detail Page: Show error message on a PDP with no product
+
 ## [v1.0.1] - 23-09-2021
 
 ### Bugfixes
