@@ -1,8 +1,13 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 @using Dynamicweb
 
+@{
+	string checkoutSignedInPageId = Pageview.CurrentParagraph.Item["CheckoutSignedInPageLink"] != null ? Pageview.CurrentParagraph.Item["CheckoutSignedInPageLink"].ToString() : "";
+	bool disableVouchers = (Boolean)Pageview.CurrentParagraph.Item["DisableVouchers"];
+}
+
 <div class="grid gap-0">
-	
+
 	<header class="g-col-12">
 		@RenderPageHeader()
 	</header>
@@ -12,7 +17,7 @@
 		@RenderErrors()
 
 		<form name="ordersubmit" id="ordersubmit" method="post" autocomplete="off">
-			
+
 			<header class="py-2 pt-lg-5 border-bottom d-none d-lg-block">
 				<div class="grid" style="line-height: 1;">
 					<div class="g-col-2">@Translate("Product")</div>
@@ -32,8 +37,8 @@
 		</form>
 	</section>
 
-	<aside class="g-col-12 g-col-lg-4 position-relative d-flex flex-column gap-4">
-		
+	<aside class="g-col-12 g-col-lg-4 position-relative d-flex flex-column gap-3 gap-lg-4">
+
 		<div class="p-3 p-lg-5 bg-light">
 			<header>
 				<h4 class="fs-6 fw-normal mb-2">@Translate("Order summary")</h4>
@@ -44,77 +49,89 @@
 			</div>
 		</div>
 
-		@RenderPartial("Partials/Voucher.cshtml")
+		@if (!disableVouchers)
+		{ 
+			<div class="bg-light order-first order-lg-last p-3 p-lg-5 mb-lg-4 mb-lg-4">
+				<header>
+					<h4 class="fs-6 fw-normal mb-2">@Translate("Add voucher") <span class="opacity-85">(@Translate("Optional"))</span></h4>
+				</header>
+
+				@RenderVoucherForm()
+
+			</div>
+		}
 
 	</aside>
 
 </div>
 
-@helper RenderPageHeader() {
+@helper RenderPageHeader()
+{
 	<div class="pb-3 pb-lg-0 pt-3 pt-lg-5">
 		<h1 class="h3 mb-2">@Translate("Shopping Cart")</h1>
 		<p class="mb-0"><span>@Translate("Items in your shopping cart"):</span> <span>@GetString("Ecom:Order.OrderLines.TotalProductQuantity")</span></p>
 	</div>
 }
 
-@helper RenderOrderLines() {
-	foreach (LoopItem orderline in GetLoop("OrderLines")) {
-		@RenderOrderLineItem(orderline)
-	}
+@helper RenderOrderLines()
+{foreach (LoopItem orderline in GetLoop("OrderLines"))
+	{
+@RenderOrderLineItem(orderline) }
 
-	<script>
-		function debounce(func, wait, immediate) {
-			var timeout;
-			return function() {
-				var context = this, args = arguments;
-				var later = function() {
-					timeout = null;
-					if (!immediate) func.apply(context, args);
-				};
-				var callNow = immediate && !timeout;
-				clearTimeout(timeout);
-				timeout = setTimeout(later, wait);
-				if (callNow) func.apply(context, args);
+<script>
+	function debounce(func, wait, immediate) {
+		var timeout;
+		return function () {
+			var context = this, args = arguments;
+			var later = function () {
+				timeout = null;
+				if (!immediate) func.apply(context, args);
 			};
+			var callNow = immediate && !timeout;
+			clearTimeout(timeout);
+			timeout = setTimeout(later, wait);
+			if (callNow) func.apply(context, args);
 		};
+	};
 
-		var UpdateQuantity = debounce(function() {
-			document.querySelector("#ordersubmit").submit();
-		}, 300);
-	</script>
+	var UpdateQuantity = debounce(function () {
+		document.querySelector("#ordersubmit").submit();
+	}, 300);
+</script>
 }
 
-@helper RenderCartNavigation() {
-	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+@helper RenderCartNavigation()
+{string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 	int currentUserId = Dynamicweb.Core.Converter.ToInt32(GetGlobalValue("Global:Extranet.UserID"));
 	string shopPageId = Pageview.CurrentParagraph.Item["ShopPageLink"] != null ? Pageview.CurrentParagraph.Item["ShopPageLink"].ToString() : "";
 	string checkoutAnonymousPageId = Pageview.CurrentParagraph.Item["CheckoutAnonymousPageLink"] != null ? Pageview.CurrentParagraph.Item["CheckoutAnonymousPageLink"].ToString() : "";
 	string checkoutSignedInPageId = Pageview.CurrentParagraph.Item["CheckoutSignedInPageLink"] != null ? Pageview.CurrentParagraph.Item["CheckoutSignedInPageLink"].ToString() : "";
 	string checkoutPageId = currentUserId == 0 ? checkoutAnonymousPageId : checkoutSignedInPageId;
 
-	<div class="align-items-center d-grid d-lg-flex gap-2 justify-content-lg-end my-3 mt-lg-4 mb-lg-0">
-	
-		<a href="Default.aspx?ID=@shopPageId" class="btn btn-link link-secondary text-decoration-none me-lg-3 order-last order-lg-first">
-			<div class="d-flex align-items-center justify-content-center position-relative">
-				<span class="icon-2 me-1 position-absolute position-lg-static start-0">
-					@ReadFile(iconPath+"chevron-left.svg")
-				</span>
-				<span>@Translate("Continue shopping")</span>
-			</div>
-		</a>
+<div class="align-items-center d-grid d-lg-flex gap-2 justify-content-lg-end my-3 mt-lg-4 mb-lg-0">
 
-		<a href="Default.aspx?ID=@checkoutPageId" class="btn btn-primary">
-			<div class="d-flex align-items-center justify-content-center position-relative">
-				<span>@Translate("Checkout")</span>
-				<span class="icon-2 ms-1 position-absolute position-lg-static end-0">
-					@ReadFile(iconPath+"chevron-right.svg")
-				</span>
-			</div>
-		</a>
+	<a href="Default.aspx?ID=@shopPageId" class="btn btn-link link-secondary text-decoration-none me-lg-3 order-last order-lg-first">
+		<div class="d-flex align-items-center justify-content-center position-relative">
+			<span class="icon-2 me-1 position-absolute position-lg-static start-0">
+				@ReadFile(iconPath + "chevron-left.svg")
+			</span>
+			<span>@Translate("Continue shopping")</span>
+		</div>
+	</a>
 
-	</div>
+	<a href="Default.aspx?ID=@checkoutPageId" class="btn btn-primary">
+		<div class="d-flex align-items-center justify-content-center position-relative">
+			<span>@Translate("Checkout")</span>
+			<span class="icon-2 ms-1 position-absolute position-lg-static end-0">
+				@ReadFile(iconPath + "chevron-right.svg")
+			</span>
+		</div>
+	</a>
+
+</div>
 }
 
 @Include("Helpers/Errors.cshtml")
 @Include("Helpers/OrderLineItem.cshtml")
 @Include("Helpers/OrderSummary.cshtml")
+@Include("Helpers/VoucherForm.cshtml")

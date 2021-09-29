@@ -1,0 +1,164 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb.Ecommerce.Orders
+@using Dynamicweb.Ecommerce.Orders.SalesDiscounts
+
+@helper RenderVoucherForm() { 
+	
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	<div id="orderVoucherForm">
+		
+		<form method="post" id="VoucherForm">
+			@*<input type="hidden" name="EcomOrderVoucherCode" id="EcomOrderVoucherCode" value="@GetString("Ecom:Order.Customer.VoucherCode")">*@
+			<div class="input-group">
+				<input type="text" class="form-control" name="EcomOrderVoucherCode" placeholder="@Translate("Add voucher here")" id="EcomOrderVoucherCode" value="@GetString("Ecom:Order.Customer.VoucherCode")" aria-label="@Translate("Voucher input")" aria-describedby="voucherSubmit">
+				<button class="btn btn-sm btn-primary d-inline-flex align-items-center justify-content-center" type="submit" id="EcomOrderVoucherApply" style="min-width: 100px;">
+					<span>@Translate("Apply")</span>
+				</button>
+			</div>
+		</form>
+	
+		
+		@*@GetString("Ecom:Cart.ValidationError.EcomOrderVoucherCode.ErrorMessage")*@
+		
+		@*@GetString("Ecom:Order.Customer.VoucherCode")*@
+
+		@*foreach(LoopItem result in GetLoop("DiscountValidationResults")) 
+		{
+			<h3>@result.GetString("Ecom:DiscountValidationResult.VoucherCode")</h3>
+			@result.TemplateTags();
+
+			foreach(LoopItem reason in result.GetLoop("DiscountValidationReasons")) 
+			{
+				@reason.TemplateTags();
+			}
+		}*@
+
+		@*@TemplateTags()*@
+		
+		@{
+			var errors = new List<string>();
+			string voucherCode = GetString("Ecom:Order.Customer.VoucherCode");
+			
+
+			if (!string.IsNullOrWhiteSpace(voucherCode))
+			{
+				Order order = new OrderService().GetById(GetString("Ecom:Order.ID"));
+
+				IEnumerable<string> codes = new List<string>();
+				bool vouchersAppliedAsDiscounts = false;
+
+				if (order.VoucherUseType.HasFlag(VoucherUseCategoryType.Discount))
+				{
+					codes = voucherCode.Split(new string[] { ",", ";", " " }, StringSplitOptions.RemoveEmptyEntries);
+					vouchersAppliedAsDiscounts = true;
+				}
+				else
+				{
+					codes = new string[] { voucherCode.Trim() };
+				}
+
+				if (vouchersAppliedAsDiscounts)
+				{
+					<div class="d-flex flex-wrap gap-2 pt-3">
+					@foreach (string code in codes)
+					{
+						<span class="badge fw-normal bg-primary d-inline-flex align-items-center justify-content-center opacity-50 opacity-100-hover">
+							<span class="icon-2">
+								@ReadFile(iconPath + "tag.svg")
+							</span>
+							<span class="mx-2">@code</span>
+							<button type="button" class="bg-transparent border-0 btn-close-white p-0" aria-label="@Translate("Close")" onclick="removeVoucher('@code')">
+								@*<span aria-hidden="true">×</span>*@
+								<span class="icon-2">
+									@ReadFile(iconPath + "x.svg")
+								</span>
+							</button>
+						</span>
+					}
+					</div>
+				}
+				else
+				{
+					foreach (string code in codes)
+					{
+						Voucher vouch = Voucher.GetVoucherByCode(code);
+						if (vouch == null)
+						{
+							errors.Add(Translate("Voucher") + " <span class='fw-bold'>" + code + "</span> " + Translate("not found"));
+							continue;
+						}
+						if (vouch.DateUsed.HasValue)
+						{
+							errors.Add(Translate("Voucher") + " <span class='fw-bold'>" + code + "</span> " + Translate("already used"));
+							continue;
+						}
+						VoucherList voucherList = VoucherList.GetListById(vouch.ListId);
+						if (!voucherList.ListActive)
+						{
+							errors.Add(Translate("Voucher") + " <span class='fw-bold'>" + code + "</span> " + Translate("is not active"));
+							continue;
+						}
+					}
+				}
+
+				<div class="toast-container position-fixed bottom-0 end-0 p-3">
+					@foreach (string error in errors)
+					{
+						<div class="toast show" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="true">
+							<div class="toast-header">
+								<strong class="me-auto">Voucher</strong>
+								<button type="button" class="btn" data-bs-dismiss="toast" aria-label="Close">
+									<span class="icon-2">
+										@ReadFile(iconPath + "x.svg")
+									</span>
+								</button>
+							</div>
+							<div class="toast-body">
+								@error
+							</div>
+						</div>
+					}
+				</div>			
+			} 
+		}
+
+		<script>
+			let form = document.getElementById("VoucherForm");
+			let voucherField = form.querySelector('#EcomOrderVoucherCode');
+			let voucherFieldArray = voucherField.value.split(',');
+		
+			submitForm = function () {
+				form.submit();
+			}
+
+			Array.prototype.remove = function (elem) {
+				var indexElement = this.findIndex(el => el === elem);
+				if (indexElement != -1)
+					this.splice(indexElement, 1);
+				return this;
+			};
+
+			removeVoucher = function (code) {
+				voucherFieldArray.remove(code);
+				voucherField.value = voucherFieldArray.join();
+				submitForm();
+			}
+
+			putValueInHidden = function () {
+				voucherField.value = form.querySelector('#EcomOrderVoucherCodeField').value;
+				submitForm();
+			}
+
+			updateVoucher = function (event) {
+				event.preventDefault();
+				putValueInHidden();
+			};
+
+			//form.addEventListener("submit", updateVoucher, true);
+
+
+		</script>
+
+	</div>
+}
