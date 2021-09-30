@@ -4,8 +4,19 @@
 @using Dynamicweb.Environment
 @using Dynamicweb.Frontend
 @{
+	bool isVisualEdit = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+
 	bool renderAsResponsive = Model.Area.Item.GetString("DeviceRendering", "responsive").Equals("responsive", StringComparison.OrdinalIgnoreCase);
 	bool renderMobile = Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Mobile || Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Tablet;
+	string responsiveHeaderClassDesktop = string.Empty;
+	string responsiveHeaderClassMobile = string.Empty;
+	if (renderAsResponsive)
+	{
+		responsiveHeaderClassDesktop = " d-none d-xl-block";
+		responsiveHeaderClassMobile = " d-block d-xl-none";
+
+	}
+
 	var brandingPageId = Model.Area.Item.GetLink("BrandingPage") != null ? Model.Area.Item.GetLink("BrandingPage").PageId : 0;
 	var themePageId = Model.Area.Item.GetLink("ThemesPage") != null ? Model.Area.Item.GetLink("ThemesPage").PageId : 0;
 	string customHeaderInclude = Model.Area.Item.GetFile("CustomHeaderInclude") != null ? Model.Area.Item.GetFile("CustomHeaderInclude").Name : string.Empty;
@@ -56,10 +67,10 @@
 	if (Pageview.Page.PropertyItem != null)
 	{
 		headerCssClass = Pageview.Page.PropertyItem["MoveThisPageBehindTheHeader"] != null ? Pageview.Page.PropertyItem["MoveThisPageBehindTheHeader"].ToString() : "sticky-top";
-		movePageBehind = headerCssClass == "fixed-top" ? true : false;
+		movePageBehind = headerCssClass == "fixed-top" && !isVisualEdit ? true : false;
 	}
-
 	headerCssClass = headerCssClass == "" ? "sticky-top" : headerCssClass;
+	headerCssClass = isVisualEdit ? "" : headerCssClass;
 
 	string googleAnalyticsTrackingID = Model.Area.Item.GetString("GoogleAnalyticsTrackingID");
 	bool allowCookies = CookieManager.GetCookieOptInLevel() == 0 || !CookieManager.CookieOptInLevelExists ? false : true;
@@ -102,23 +113,25 @@
 	}
 </head>
 <body class="d-flex flex-column brand @(masterTheme)" id="page@(Model.ID)" onload="@scrollInitScript">
-	@if (renderAsResponsive || !renderMobile)
+	@if ((renderAsResponsive || !renderMobile))
 	{
-		<header class="page-header @headerCssClass top-0 d-none d-lg-block" id="page-header-dekstop">
+		<header class="page-header @headerCssClass top-0@(responsiveHeaderClassDesktop)" id="page-header-desktop">
 			@if (@Model.Area.Item.GetLink("HeaderDesktop") != null)
 			{
 				@RenderGrid(@Model.Area.Item.GetLink("HeaderDesktop").PageId)
 			}
-		</header>}
+		</header>
+	}
 
-	@if (renderAsResponsive || renderMobile)
+	@if ((renderAsResponsive || renderMobile))
 	{
-		<header class="page-header @headerCssClass top-0 d-block d-lg-none" id="page-header-mobile">
+		<header class="page-header @headerCssClass top-0@(responsiveHeaderClassMobile)" id="page-header-mobile">
 			@if (@Model.Area.Item.GetLink("HeaderMobile") != null)
 			{
 				@RenderGrid(@Model.Area.Item.GetLink("HeaderMobile").PageId)
 			}
-		</header>}
+		</header>
+	}
 
 	<main id="content" class="overflow-hidden" @productDetailPageSchemaOrg>
 		@ContentPlaceholder()
@@ -126,7 +139,7 @@
 
 	@if (renderAsResponsive || !renderMobile)
 	{
-		<footer class="page-footer d-none d-lg-block mt-auto" id="page-footer-desktop">
+		<footer class="page-footer d-none d-xl-block mt-auto" id="page-footer-desktop">
 			@if (@Model.Area.Item.GetLink("FooterDesktop") != null)
 			{
 				@RenderGrid(@Model.Area.Item.GetLink("FooterDesktop").PageId)
@@ -136,7 +149,7 @@
 
 	@if (renderAsResponsive || renderMobile)
 	{
-		<footer class="page-footer d-block d-lg-none mt-auto" id="page-footer-mobile">
+		<footer class="page-footer d-block d-xl-none mt-auto" id="page-footer-mobile">
 			@if (@Model.Area.Item.GetLink("FooterMobile") != null)
 			{
 				@RenderGrid(@Model.Area.Item.GetLink("FooterMobile").PageId)
