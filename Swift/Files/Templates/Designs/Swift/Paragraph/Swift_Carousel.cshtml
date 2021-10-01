@@ -4,13 +4,15 @@
 @using Dynamicweb.Frontend
 
 @{
+	bool isVisualEdit = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+
 	bool movePageBehind = false;
 	bool isFirstPoster = false;
 	string movePageBehindClass = "";
 	if (Pageview.Page.PropertyItem != null)
 	{
 		string headerCssClass = Pageview.Page.PropertyItem["MoveThisPageBehindTheHeader"] != null ? Pageview.Page.PropertyItem["MoveThisPageBehindTheHeader"].ToString() : "sticky-top";
-		movePageBehind = headerCssClass == "fixed-top" ? true : false;
+		movePageBehind = headerCssClass == "fixed-top" && !isVisualEdit ? true : false;
 		if (movePageBehind)
 		{
 			movePageBehindClass = " poster-behind";
@@ -45,7 +47,7 @@
 	carouselPadding = carouselPadding == "small" ? "p-3 p-xl-4" : carouselPadding;
 	carouselPadding = carouselPadding == "large" ? "p-4 p-xl-5" : carouselPadding;
 	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-1");
-	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
+	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5"); 
 }
 
 <div id="carousel_@uniqueId" class="js-slider">
@@ -66,13 +68,15 @@
 @helper RenderItem(ItemViewModel item, bool isFirst, string carouselHeight, string carouselPadding, string buttonSize, string titleFontSize, string subtitleFontSize, string movePageBehindClass)
 {
 	string layout = item.GetRawValueString("Layout", "align-middle-center-text-center");
-
 	string carouselWidth = "container-xl";
 	int xPos = item?.GetFile("Image")?.FocalPositionFromLeft ?? 50;
 	int yPos = item?.GetFile("Image")?.FocalPositionFromTop ?? 50;
 	string theme = !string.IsNullOrWhiteSpace(item.GetRawValueString("Theme")) ? " theme " + item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 	string active = isFirst ? "active" : "";
 	string alignment = "";
+	string maxWidth = item.GetRawValueString("TextReadability", "max-width-on");
+	maxWidth = maxWidth == "max-width-on" ? "mw-75ch d-inline-block" : maxWidth;
+	maxWidth = maxWidth == "max-width-off" ? "" : maxWidth;
 
 	<div class="@(active)">
 		<div class="position-relative h-100@(theme)@(movePageBehindClass)">
@@ -81,38 +85,38 @@
 			@switch (layout)
 			{
 				case "align-top-left-text-left":
-				alignment = "text-start justify-content-start align-items-start";
+					alignment = "text-start justify-content-start align-items-start";
 					break;
 				case "align-top-center-text-center":
-				alignment = "text-center justify-content-start align-items-start";
+					alignment = "text-center justify-content-start align-items-start";
 					break;
 				case "align-top-right-text-right":
-				alignment = "text-end justify-content-start align-items-start";
+					alignment = "text-end justify-content-start align-items-start";
 					break;
 				case "align-middle-left-text-left":
-				alignment = "text-start justify-content-center align-items-center";
+					alignment = "text-start justify-content-center align-items-center";
 					break;
 				case "align-middle-center-text-center":
-				alignment = "text-center justify-content-center align-items-center";
+					alignment = "text-center justify-content-center align-items-center";
 					break;
 				case "align-middle-right-text-right":
-				alignment = "text-end justify-content-center align-items-center";
+					alignment = "text-end justify-content-center align-items-center";
 					break;
 				case "align-bottom-left-text-left":
-				alignment = "text-start justify-content-end align-items-end";
+					alignment = "text-start justify-content-end align-items-end";
 					break;
 				case "align-bottom-center-text-center":
-				alignment = "text-center justify-content-end align-items-end";
+					alignment = "text-center justify-content-end align-items-end";
 					break;
 				case "align-bottom-right-text-right":
-				alignment = "text-end justify-content-end align-items-end";
+					alignment = "text-end justify-content-end align-items-end";
 					break;
 			}
 			<div class="@(carouselWidth) h-100 @carouselPadding">
 				<div class="h-100 position-relative grid grid-1 @(alignment) @(carouselHeight)">
 					<div class="grid grid-1 gap-3 gap-md-4">
-						@RenderTitle(item, titleFontSize)
-						@RenderText(item, subtitleFontSize)
+						@RenderTitle(item, titleFontSize, maxWidth)
+						@RenderText(item, subtitleFontSize, maxWidth)
 						@RenderButton(item, buttonSize)
 					</div>
 				</div>
@@ -139,27 +143,23 @@
 	}
 }
 
-@helper RenderTitle(ItemViewModel item, string titleFontSize)
+@helper RenderTitle(ItemViewModel item, string titleFontSize, string maxWidth)
 {
-
 	if (!string.IsNullOrEmpty(item.GetString("Title")) && !item.GetBoolean("HideTitle"))
 	{
 		<h2 class="@titleFontSize m-0">
-			@item.GetString("Title")
+			<span class="@maxWidth">@item.GetString("Title")</span>
 		</h2>
 	}
 }
 
-@helper RenderText(ItemViewModel item, string subtitleFontSize)
+@helper RenderText(ItemViewModel item, string subtitleFontSize, string maxWidth)
 {
-
-	string maxWidth = Model.Item.GetRawValueString("TextReadability", "max-width-on");
-	maxWidth = maxWidth == "max-width-on" ? " max-w-75ch" : maxWidth;
-	maxWidth = maxWidth == "max-width-off" ? "" : maxWidth;
-
 	if (!string.IsNullOrEmpty(item.GetString("Text")))
 	{
-		<p class="@subtitleFontSize lead m-0@(maxWidth)">@item.GetString("Text")</p>
+		<p class="@subtitleFontSize lead m-0">
+			<span class="@maxWidth">@item.GetString("Text")</span>
+		</p>
 	}
 }
 
@@ -167,6 +167,10 @@
 {
 	string linkType = item.GetRawValueString("LinkType", "page");
 	Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
+
+	string StretchedLink = item.GetRawValueString("StretchedLink", "");
+	StretchedLink = StretchedLink == "item-not-clickable" ? "" : StretchedLink;
+	StretchedLink = StretchedLink == "item-clickable" ? " stretched-link" : StretchedLink;
 
 	if (linkType == "page" && item.GetLink("ButtonLink") != null)
 	{
@@ -224,7 +228,7 @@
 		buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
 
 		<div class="m-0">
-			<a href="@link.Url" class="btn @buttonStyle @(buttonSize) stretched-link">@item.GetString("ButtonLabel")</a>
+			<a href="@link.Url" class="btn @buttonStyle@(buttonSize)@(StretchedLink)">@item.GetString("ButtonLabel")</a>
 		</div>
 	}
 }
