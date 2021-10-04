@@ -15,10 +15,6 @@ const ProductList = function () {
 			var preloader = form.getAttribute("data-preloader");
 
 			let formData = new FormData(form);
-			var fetchOptions = {
-				method: 'POST',
-				body: formData
-			};
 
 			//Fire the 'update' event
 			let event = new CustomEvent("update.swift.productlist", {
@@ -54,21 +50,30 @@ const ProductList = function () {
 					}, 200); //Small delay to secure that the preloader is not loaded all the time
 				}
 
-				let response = await fetch(form.action, fetchOptions);
+				const newParams = new URLSearchParams(formData); //Get parameters from the form
+				var url = new URL(form.action);	//Get the url from the form
+				var pageId = url.searchParams.get("ID");
 
+				if (pageId) {
+					newParams.set("ID", pageId);
+				}
+				newParams.set("LayoutTemplate", "Swift_PageClean.cshtml"); //Set template to not include header and footer
+
+				var newUrl = url.origin + url.pathname + "?" + newParams.toString(); //Create url with the new parameters 
+
+				let response = await fetch(newUrl);
 				if (response.ok) {
 					//Update URL
-					let url = window.location.origin + window.location.pathname;
-					const newParams = new URLSearchParams(formData);
 					let updateUrl = "true";
-
 					if (form.getAttribute("data-update-url") != undefined) {
 						updateUrl = form.getAttribute("data-update-url");
 					}
 
 					if (updateUrl != "false") {
-						url += "?" + newParams.toString();
-						window.history.replaceState({}, '', decodeURI(url));
+						newParams.delete("LayoutTemplate");
+
+						var updatedUrl = window.location.origin + window.location.pathname + "?" + newParams;
+						window.history.replaceState({}, '', decodeURI(updatedUrl));
 					}
 
 					ProductList.Success(response, responseTargetElement, addPreloaderTimer, formData);
