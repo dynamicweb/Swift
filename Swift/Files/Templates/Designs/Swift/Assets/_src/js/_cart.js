@@ -100,13 +100,10 @@ const Cart = function () {
 
 		QuantityValidate: function (event) {
 			var quantityField = event.target;
-			var value = quantityField.value;
-			var stepSize = quantityField.getAttribute("step");
-			var number = value / stepSize;
-
 			var feedbackElement = quantityField.closest(".js-input-group").querySelector(".invalid-feedback");
+			var isValid = quantityField.checkValidity();
 
-			if (number % 1 != 0) {
+			if (!isValid) {
 				quantityField.classList.add("is-invalid");
 				feedbackElement.classList.remove("d-none");
 			} else {
