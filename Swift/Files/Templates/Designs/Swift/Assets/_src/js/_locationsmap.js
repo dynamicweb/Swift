@@ -12,12 +12,44 @@ const LocationsMap = function () {
 		initialZoomLevel: 4,
 		regionCode: "DK",
 		directionsLabel: "Directions",
-		noLocationsFoundLabel: "No options available in the selected area"
+		noLocationsFoundLabel: "No options available in the selected area",
+		mapElement: null,
+		locationsListElement: null,
+		searchbarElement: null,
+		mapHeaderElement: null
 	};
 
 	return {
 		init: function (mapSettings) {
 			settings = mapSettings;
+
+			var mapElement = settings.mapElement != null ? document.querySelector(settings.mapElement) : document.querySelector("#Map");
+			var locationsListElement = settings.locationsListElement !== null ? document.querySelector(settings.locationsListElement) : document.querySelector("#LocationsList");
+			var searchbarElement = settings.searchbarElement != null ? document.querySelector(settings.searchbarElement) : document.querySelector("#MapSearch");
+			var mapHeaderElement = settings.mapHeaderElement != null ? document.querySelector(settings.mapHeaderElement) : document.querySelector("#MapHeader");
+
+			//Fintune to the column that contains the map
+			var colSize = mapElement.closest("[data-col-size]") ? mapElement.closest("[data-col-size]").getAttribute("data-col-size") : 12; 
+
+			if (colSize < 12) {
+				mapElement.closest(".js-map-column").classList.remove("g-col-lg-8");
+				mapElement.closest(".js-map-column").classList.add("g-col-lg-12");
+
+				if (locationsListElement) {
+					locationsListElement.closest(".js-locations-list-column").classList.add("d-lg-none");
+				}
+			}
+
+			if (colSize < 6) {
+				if (searchbarElement) {
+					searchbarElement.closest(".js-map-search-column").classList.remove("g-col-lg-4");
+					searchbarElement.closest(".js-map-search-column").classList.add("g-col-lg-12");
+				}
+				if (mapHeaderElement) {
+					mapHeaderElement.classList.remove("g-col-lg-8");
+					mapHeaderElement.classList.add("g-col-lg-12");
+				}
+			}
 
 			// Set initial map center
 			if (navigator.geolocation) {
@@ -27,7 +59,7 @@ const LocationsMap = function () {
 			}
 
 			// Create the map instance
-			map = new google.maps.Map(document.getElementById('map'), {
+			map = new google.maps.Map(mapElement, {
 				center: {
 					lat: settings.defaultLat,
 					lng: settings.defaultLng
@@ -49,7 +81,7 @@ const LocationsMap = function () {
 
 			// Map is idle
 			google.maps.event.addListener(map, 'idle', function () {
-				var locationsListElement = document.querySelector("#locationsList");
+				var locationsListElement = document.querySelector("#LocationsList");
 				locationsListElement.innerHTML = "";
 
 				LocationsMap.updateLocationsList();
@@ -62,14 +94,12 @@ const LocationsMap = function () {
 			});
 
 			// Search on map (geocode)
-			document.querySelectorAll(".js-map-search-bar").forEach(function (searchBar) {
-				searchBar.addEventListener("submit", function (event) {
-					event.preventDefault();
+			searchbarElement.addEventListener("submit", function (event) {
+				event.preventDefault();
 
-					var searchField = event.currentTarget.querySelector("[type=\"text\"]");
+				var searchField = event.currentTarget.querySelector("[type=\"text\"]");
 
-					LocationsMap.geocode({ 'address': searchField.value.replace(" ", "+"), 'region': settings.regionCode });
-				});
+				LocationsMap.geocode({ 'address': searchField.value.replace(" ", "+"), 'region': settings.regionCode });
 			});
 		},
 
@@ -122,7 +152,7 @@ const LocationsMap = function () {
 			}
 
 			if (markersFound == 0) {
-				var locationsListElement = document.querySelector("#locationsList");
+				var locationsListElement = document.querySelector("#LocationsList");
 
 				var notificationElement = document.createElement('div');
 				notificationElement.classList.add("alert");
@@ -135,7 +165,7 @@ const LocationsMap = function () {
 
 		// Render the list item
 		renderLocationListItem: function(id, type) {
-			var target = document.querySelector("#locationsList");
+			var target = document.querySelector("#LocationsList");
 
 			// Data
 			var location = settings.locations[id];
@@ -275,7 +305,6 @@ const LocationsMap = function () {
 				if (status == google.maps.GeocoderStatus.OK) {
 					map.setZoom(7);
 					//map.panTo(results[0].geometry.location);
-
 					//searchResultMarker.setPosition(results[0].geometry.location);
 
 					LocationsMap.findNearestMarker(results[0].geometry.location);
