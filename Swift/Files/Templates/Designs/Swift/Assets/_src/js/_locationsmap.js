@@ -16,7 +16,8 @@ const LocationsMap = function () {
 		mapElement: null,
 		locationsListElement: null,
 		searchbarElement: null,
-		mapHeaderElement: null
+		mapHeaderElement: null,
+		mapIcon: { }
 	};
 
 	return {
@@ -113,21 +114,25 @@ const LocationsMap = function () {
 		},
 
 		// Create a marker and set its position
-		markLocation: function(location){
-			var marker = new google.maps.Marker({
-				icon: {
-					path: "M4,6C2.9,6,2,5.1,2,4s0.9-2,2-2s2,0.9,2,2S5.1,6,4,6 M4,0C1.8,0,0,1.8,0,4c0,3,4,7.4,4,7.4S8,7,8,4C8,1.8,6.2,0,4,0z",
-					fillColor: "black",
-					anchor: new google.maps.Point(0, 4),
-					fillOpacity: 1,
-					strokeWeight: 0,
-					scale: 2
-				},
-				map: map,
-				position: location.location,
-				title: location.name,
-				id: markersCount
-			});
+		markLocation: function (location) {
+			if (settings.mapIcon.path || settings.mapIcon.url) {
+				settings.mapIcon.scaledSize = new google.maps.Size(35, 35);
+
+				var marker = new google.maps.Marker({
+					icon: settings.mapIcon,
+					map: map,
+					position: location.location,
+					title: location.name,
+					id: markersCount
+				});
+			} else {
+				var marker = new google.maps.Marker({
+					map: map,
+					position: location.location,
+					title: location.name,
+					id: markersCount
+				});
+			}
 
 			// show location info when marker is clicked
 			marker.addListener('click', function () {
