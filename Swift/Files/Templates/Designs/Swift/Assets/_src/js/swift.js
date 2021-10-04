@@ -7,9 +7,8 @@ import { ProductList } from './_productlist';
 import { PageUpdater } from './_pageupdater';
 import { VariantSelector } from './_variantselector';
 import { Typeahead } from './_typeahead';
-import { AOS } from 'aos';
 import * as Plyr from 'plyr';
-
+import * as aos from 'aos';
 
 //Bootstrap
 window.bootstrap = bootstrap;
@@ -41,4 +40,4 @@ window.onpopstate = function (event) {
 	swift.Typeahead.navigateToPage(document.location.href);
 };
 
-AOS.init();
+aos.init()
