@@ -121,7 +121,8 @@ const Typeahead = function() {
 			var suggestionElement = elm.querySelector(".js-suggestion");
 
 			document.querySelectorAll(".js-type-ahead-field").forEach(function (field) {
-				field.value = suggestionElement.innerText;
+				field.value = suggestionElement.innerText + " ";
+				field.focus();
 
 				var formElm = field.closest(".js-suggest-form");
 				var parm = formElm.querySelector(".js-type-ahead-parameter");
