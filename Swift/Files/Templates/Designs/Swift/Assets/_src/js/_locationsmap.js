@@ -25,7 +25,7 @@ const LocationsMap = function () {
 			settings = mapSettings;
 
 			var mapElement = settings.mapElement != null ? document.querySelector(settings.mapElement) : document.querySelector("#Map");
-			var locationsListElement = settings.locationsListElement !== null ? document.querySelector(settings.locationsListElement) : document.querySelector("#LocationsList");
+			var locationsListElement = settings.locationsListElement != null ? document.querySelector(settings.locationsListElement) : document.querySelector("#LocationsList");
 			var searchbarElement = settings.searchbarElement != null ? document.querySelector(settings.searchbarElement) : document.querySelector("#MapSearch");
 			var mapHeaderElement = settings.mapHeaderElement != null ? document.querySelector(settings.mapHeaderElement) : document.querySelector("#MapHeader");
 
@@ -36,12 +36,12 @@ const LocationsMap = function () {
 				mapElement.closest(".js-map-column").classList.remove("g-col-lg-8");
 				mapElement.closest(".js-map-column").classList.add("g-col-lg-12");
 
-				if (locationsListElement) {
+				if (locationsListElement != null) {
 					locationsListElement.closest(".js-locations-list-column").classList.add("d-lg-none");
 				}
 			}
 
-			if (colSize < 6) {
+			if (colSize < 6) {	 
 				if (searchbarElement) {
 					searchbarElement.closest(".js-map-search-column").classList.remove("g-col-lg-4");
 					searchbarElement.closest(".js-map-search-column").classList.add("g-col-lg-12");
