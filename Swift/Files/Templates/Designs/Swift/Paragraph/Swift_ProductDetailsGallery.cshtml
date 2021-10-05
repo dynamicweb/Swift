@@ -10,34 +10,39 @@
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
 
+	@* Supported formats *@
+	string[] supportedFormats = { ".jpg", ".webp", ".png", ".gif", "youtu.be", "vimeo" };
+
 	@* Collect the images *@
 	var selectedImageCategories = Model.Item.GetList("ImageAssets").SelectedValues;
 	bool includeImagePatternImages = Model.Item.GetBoolean("ImagePatternImages"); 
 	
 	@* Needed image data collection to support both DefaultImage, ImagePatterns and Image Assets *@
 	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
-	IEnumerable<MediaViewModel> images = new MediaViewModel[]{};
-	images = includeImagePatternImages && assetsImages.Count() == 0 ? images.Append(product.DefaultImage) : images;
-	images = images.Union(assetsImages);
-	images = includeImagePatternImages ? images.Union(product.ImagePatternImages) : images;
+	IEnumerable<MediaViewModel> assetsList = new MediaViewModel[]{};
+	assetsList = includeImagePatternImages && assetsImages.Count() == 0 ? assetsList.Append(product.DefaultImage) : assetsList;
+	assetsList = assetsList.Union(assetsImages);
+	assetsList = includeImagePatternImages ? assetsList.Union(product.ImagePatternImages) : assetsList;
 
 	bool defaultImageFallback = Model.Item.GetBoolean("DefaultImageFallback"); 
 
 	int totalImages = 0;
-	foreach (MediaViewModel asset in images) {
+	foreach (MediaViewModel asset in assetsList) {
 		var assetName = asset.Value.ToLower(); 
-		if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
-			totalImages++;
-		} 
+		foreach (string format in supportedFormats) {
+			if (assetName.Contains(format) ) {
+				totalImages++;
+			}
+		}
 	}
 
 	if (totalImages == 0)
 	{
 		if (defaultImageFallback) {
-			images = new List<MediaViewModel>(){ product.DefaultImage };
+			assetsList = new List<MediaViewModel>(){ product.DefaultImage };
 			totalImages = 1;
 		} else {
-			images = new List<MediaViewModel>(){ };
+			assetsList = new List<MediaViewModel>(){ };
 			totalImages = 0;
 		}
 	}
@@ -52,7 +57,7 @@
 }
 
 @* Get images from selected categories or get all images *@
-@if (totalImages != 0 && images.Count() != 0)
+@if (totalImages != 0 && assetsList.Count() != 0)
 {
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 
@@ -62,29 +67,31 @@
 			@{ 
 				int imageNumber = 0;
 
-				foreach (MediaViewModel asset in images) {
+				foreach (MediaViewModel asset in assetsList) {
 					var assetName = asset.Value.ToLower(); 
 
-					if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
-						string colClass = totalImages > 1 ? "g-col-lg-6" : "g-col-12";
-						colClass = layout == "full-first" && imageNumber == 0 ? "g-col-12" : colClass;
-						colClass = layout == "full-last" && imageNumber == (totalImages - 1) ? "g-col-12" : colClass;
-						colClass = layout == "advanced-grid" && imageNumber > 1 ? "g-col-4" : colClass;
+					foreach (string format in supportedFormats) {
+						if (assetName.Contains(format) ) {
+							string colClass = totalImages > 1 ? "g-col-lg-6" : "g-col-12";
+							colClass = layout == "full-first" && imageNumber == 0 ? "g-col-12" : colClass;
+							colClass = layout == "full-last" && imageNumber == (totalImages - 1) ? "g-col-12" : colClass;
+							colClass = layout == "advanced-grid" && imageNumber > 1 ? "g-col-4" : colClass;
 
-						colClass = layout == "advanced-grid" && totalImages == 1 ? "g-col-12" : colClass;
-						colClass = layout == "advanced-grid" && totalImages == 3 && imageNumber == 2 ? "g-col-12" : colClass;
-						colClass = layout == "advanced-grid" && totalImages == 4 && imageNumber == 2 ? "g-col-6" : colClass;
-						colClass = layout == "advanced-grid" && totalImages == 4 && imageNumber == 3 ? "g-col-6" : colClass;
-						colClass = layout == "advanced-grid" && totalImages == 6 && imageNumber == 5 ? "g-col-12" : colClass;
-						colClass = layout == "advanced-grid" && totalImages == 7 && imageNumber == 5 ? "g-col-6" : colClass;
-						colClass = layout == "advanced-grid" && totalImages == 7 && imageNumber == 6 ? "g-col-6" : colClass;
-						colClass = layout == "advanced-grid" && totalImages == 9 && imageNumber == 8 ? "g-col-12" : colClass;
+							colClass = layout == "advanced-grid" && totalImages == 1 ? "g-col-12" : colClass;
+							colClass = layout == "advanced-grid" && totalImages == 3 && imageNumber == 2 ? "g-col-12" : colClass;
+							colClass = layout == "advanced-grid" && totalImages == 4 && imageNumber == 2 ? "g-col-6" : colClass;
+							colClass = layout == "advanced-grid" && totalImages == 4 && imageNumber == 3 ? "g-col-6" : colClass;
+							colClass = layout == "advanced-grid" && totalImages == 6 && imageNumber == 5 ? "g-col-12" : colClass;
+							colClass = layout == "advanced-grid" && totalImages == 7 && imageNumber == 5 ? "g-col-6" : colClass;
+							colClass = layout == "advanced-grid" && totalImages == 7 && imageNumber == 6 ? "g-col-6" : colClass;
+							colClass = layout == "advanced-grid" && totalImages == 9 && imageNumber == 8 ? "g-col-12" : colClass;
 
-						<div class="@colClass">
-							@RenderImage(asset, product, imageNumber)
-						</div>
+							<div class="@colClass">
+								@RenderImage(asset, product, imageNumber)
+							</div>
 
-						imageNumber++;
+							imageNumber++;
+						}
 					}
 				}
 			}
@@ -100,7 +107,7 @@
 				</div>
 				<div class="modal-body">
 					<div id="FullImages_@Model.ID" class="d-flex align-items-center justify-content-center">
-						@foreach (MediaViewModel asset in images) {
+						@foreach (MediaViewModel asset in assetsList) {
 							var assetName = asset.Value.ToLower();
 							if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
 								string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
@@ -144,14 +151,15 @@
 			@{
 				var smallImageNumber = 0;
 
-				foreach (MediaViewModel asset in images)
+				foreach (MediaViewModel asset in assetsList)
 				{
 					var assetName = asset.Value.ToLower();
 
-					if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif"))
-					{
-						@RenderImage(asset, product, smallImageNumber, "small")
-						smallImageNumber++;
+					foreach (string format in supportedFormats) {
+						if (assetName.Contains(format) ) {
+							@RenderImage(asset, product, smallImageNumber, "small")
+							smallImageNumber++;
+						}
 					}
 				}
 			}
@@ -159,14 +167,16 @@
 
 		<div id="SmallScreenImagesThumbnails_@Model.ID" class="tns-nav-thumbnails grid gap-2 overflow-x-scroll my-3">
 			@{
-				foreach (MediaViewModel asset in images) {
-					var assetName = asset.Value.ToLower();
-					if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
-						
-						string imagePath = Dynamicweb.Context.Current.Server.UrlEncode(assetName);
-						string imagePathThumb = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=160&format=webp";
+				foreach (MediaViewModel asset in assetsList) {
+					var assetName = asset.Value;
+					foreach (string format in supportedFormats) {
+						if (assetName.Contains(format) ) {
+							string imagePath = Dynamicweb.Context.Current.Server.UrlEncode(assetName);
+							imagePath = assetName.Contains("youtu.be") ? "https://img.youtube.com/vi/" + assetName.Substring(assetName.LastIndexOf('/') + 1) + "/default.jpg" : imagePath;
+							string imagePathThumb = !imagePath.Contains("youtube") ? $"/Admin/Public/GetImage.ashx?image={imagePath}&width=160&format=webp" : imagePath;
 
-						<div class="tns-nav-thumbnail-item ratio ratio-4x3 border outline-none" style="width:80px;"><img src="@imagePathThumb" class="p-2" style="object-fit: cover;"></div>
+							<div class="tns-nav-thumbnail-item ratio ratio-4x3 border outline-none" style="width:80px;"><img src="@imagePathThumb" class="p-2" style="object-fit: cover;"></div>
+						}
 					}
 				}
 			}
@@ -195,23 +205,22 @@
 
 @helper RenderImage(MediaViewModel asset, ProductViewModel product, int number, string screenSize = "large") { 
 	string layout = Model.Item.GetRawValueString("Layout", "grid");
-	string padding = "";
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
+	string padding = "";
+	padding = theme != "" ? "p-3" : padding;
 
-	if (theme != "")
-	{
-		padding = "p-3";
-	} 
+	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+	imagePath = imagePath.Contains("youtu.be") ? "https://img.youtube.com/vi/" + imagePath.Substring(imagePath.LastIndexOf('/') + 1) + "/maxresdefault.jpg" : imagePath;
 
 	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
 	ratio = ratio != "0" ? ratio : "";
+	ratio = imagePath.Contains("youtube") ? "56%" : ratio;
 	string ratioCssClass = ratio != "" && ratio != "fill" ? " ratio" : "";
 	string ratioVariable = ratio != "" && ratio != "fill" ? "--bs-aspect-ratio: " + ratio : "";
 	ratioCssClass = ratio != "" && ratio == "fill" && screenSize == "small" ? " ratio" : ratioCssClass;
 	ratioVariable = ratio != "" && ratio == "fill" && screenSize == "small" ? "--bs-aspect-ratio: 66%" : ratioVariable;
 	string fillClass = ratio == "fill" ? " h-100" : "";
 
-	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
 	string imageLinkPath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
 	string productName = product.Name;
 
@@ -228,11 +237,14 @@
 		parms.Add("cssClass", "mw-100 mh-100");
 	}
 
-
 	<div class="h-100 @(padding)@(theme)">
 		<a href="@imageLinkPath" class="d-block @(ratioCssClass)@(fillClass)" style="@(ratioVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
 			<span class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-				@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+				@if (imagePath.Contains("youtube")) {
+					<img src="@imagePath" loading="lazy" decoding="async" alt="@asset.Name" />
+				} else {
+					@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+				}
 			</span>
 		</a>
 	</div>
