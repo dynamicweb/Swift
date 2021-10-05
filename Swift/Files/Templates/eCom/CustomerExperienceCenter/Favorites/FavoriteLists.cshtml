@@ -4,6 +4,8 @@
 
 @{
 	string currentPageUrl = "/Default.aspx?ID=" + Pageview.Page.ID;
+	int listsCount = Model.TotalFavoriteListsCount;
+	int pageSize = Model.PageSize;
 }
 
 @Include("../PaginationHelper.cshtml")
@@ -11,6 +13,12 @@
 <header class="p-3 border-bottom">
 	<div class="d-flex flex-row align-items-center gap-3">
 		<h1 class="h6 m-0 flex-fill text-muted">@Translate("Favorite lists")</h1>
+		@if (Model.FavoriteLists != null)
+		{
+			if(Model.FavoriteLists.Count > 0) {
+				<button type="button" class="btn btn-sm btn-link" data-bs-toggle="modal" data-bs-target="#createFavoriteListModal">@Translate("Create favorite list")</button>
+			}
+		}
 	</div>
 </header>
 
@@ -21,37 +29,198 @@
 			<h2 class="h5 m-0">@Translate("It looks like you do not have any favorites yet!")</h2>
 			<p class="m-0">@Translate("Save and arrange the best things for your bike here until you are ready for them.")</p>
 
-			<div class="grid grid-1 grid-sm-2">
-				<div class="text-sm-end">
-					<a href="#" class="btn btn-secondary">@Translate("Go exploring")</a>
-				</div>
-				<div class="text-sm-start">
-					<button class="btn btn-primary">@Translate("Create favorite list")</button>
-				</div>
+			<div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+				<a href="#" class="btn btn-secondary">@Translate("Go exploring")</a>
+				<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createFavoriteListModal">@Translate("Create favorite list")</button>
 			</div>
 		</div>
 	</div>
 }
 else
 {
-	<table class="lists">
-		<tr>
-			<th>List ID</th>
-			<th>List name</th>
-			<th>Is default list</th>
-			<th>Owner ID</th>
-		</tr>
-		@foreach (var theList in Model.FavoriteLists)
-		{
-			string favoriteLink = currentPageUrl + "&amp;FavoriteListId=" + theList.Id;
-			<tr>
-				<td><a href="@favoriteLink">@theList.Id</a></td>
-				<td><a href="@favoriteLink">@theList.Name</a></td>
-				<td>@theList.IsDefault</td>
-				<td>@theList.UserId</td>
-			</tr>
-		}
-	</table>
+	foreach (var theList in Model.FavoriteLists)
+	{
+		string favoriteLink = currentPageUrl + "&amp;FavoriteListId=" + theList.Id;
 
-	@RenderPagination(currentPageUrl, Model.PageCount, Model.CurrentPage, Model.PageSize)	
+		<article class="d-flex flex-column gap-2 p-3 border-bottom">
+
+			<header class="d-flex flex-row align-items-end lh-1">
+				<h3 class="flex-fill h6 fw-normal m-0">
+					<a href="@favoriteLink">@theList.Name</a>
+				</h3>
+				<span class="small">0 products in this list</span>
+			</header>
+
+			<div class="grid grid-5">
+				@foreach (var item in theList.ProductList.Products.Take(5))
+				{
+					string productImage = "/Admin/Public/GetImage.ashx?Image=" + @item.DefaultImage.Value + "&Format=webp&Width=200&Height=200";
+
+					<div class="ratio ratio-1x1">
+						<div class="d-flex justify-content-center align-items-center">
+							<img
+								src="@productImage"
+								width="200"
+								loading="lazy"
+								decoding="async"
+								class="mw-100 mh-100"
+								alt="@item.Name" />
+						</div>
+					</div>
+				}
+			</div>
+
+			<footer class="d-flex flex-row gap-3 align-items-center">
+				@if(theList.IsDefault) {
+				<div class="form-check flex-fill m-0">
+					<input class="form-check-input" type="radio" name="setListAsDefault" id="setListAsDefault_@theList.Id" checked>
+					<label class="form-check-label" for="setListAsDefault_@theList.Id">@Translate("This is your default list")</label>
+				</div>
+				}
+				else
+				{
+				<div class="form-check flex-fill m-0">
+					<input class="form-check-input" type="radio" name="setListAsDefault" id="setListAsDefault_@theList.Id">
+					<label class="form-check-label" for="setListAsDefault_@theList.Id">@Translate("Set as default list")</label>
+				</div>
+				}
+
+				<button 
+					type="button" 
+					class="btn btn-sm btn-link renameFavoriteListModal" 
+					data-bs-toggle="modal" 
+					data-bs-target="#renameFavoriteListModal" 
+					data-list-id="@theList.Id" 
+					data-list-name="@theList.Name">@Translate("Rename")</button>
+				<button 
+					type="button" 
+					class="btn btn-sm btn-link renameFavoriteNameButton"
+					data-bs-toggle="modal"
+					data-bs-target="#deleteFavoriteListModal"
+					data-list-id="@theList.Id"
+					data-list-name="@theList.Name">Delete</button>
+			</footer>
+		</article>
+	}
 }
+
+@if (listsCount > pageSize)
+{
+	<div class="p-3">
+		@RenderPagination(currentPageUrl, Model.PageCount, Model.CurrentPage, Model.PageSize)	
+	</div>
+}
+
+<div class="modal fade" tabindex="-1" id="createFavoriteListModal">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">@Translate("Create favorite list")</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body d-flex flex-column gap-3">
+				<div>
+					<label for="createFavoriteListInputName" class="form-label">@Translate("Name the favorite list")</label>
+					<input type="text" class="form-control" id="createFavoriteListInputName" placeholder="Name">
+				</div>
+				<div class="alert alert-danger m-0 d-none" role="alert" id="createFavoriteListError">@Translate("A Favorite List must have a name")</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Translate("Cancel")</button>
+				<button type="button" class="btn btn-primary" id="createFavoriteListButton">@Translate("Create list")</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" tabindex="-1" id="renameFavoriteListModal">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">@Translate("Rename favorite list")</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<div>
+					<label for="renameFavoriteListInputName" class="form-label">@Translate("Rename favorite list:")</label>
+					<input type="text" class="form-control" id="renameFavoriteListInputName" placeholder="Name">
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Translate("Cancel")</button>
+				<button type="button" class="btn btn-primary" id="renameFavoriteListButton">@Translate("Update list")</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" tabindex="-1" id="deleteFavoriteListModal">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">@Translate("Delete favorite list")</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<p>@Translate("You are about to delete"): <strong id="deleteFavoriteName"></strong>.</p>
+				<p>@Translate("Are you sure you want to delete it?")</p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Translate("Cancel")</button>
+				<button type="button" class="btn btn-primary" id="deleteFavoriteListButton">@Translate("Delete list")</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+	let userId = @Pageview.User.ID;
+	let renameFavoriteListModal = document.getElementById('renameFavoriteListModal')
+	let deleteFavoriteListModal = document.getElementById('deleteFavoriteListModal')
+
+	renameFavoriteListModal.addEventListener('show.bs.modal', function (event) {
+		let button = event.relatedTarget
+		let renameFavoriteListId = button.getAttribute('data-list-id');
+		let renameFromName = button.getAttribute('data-list-name')
+		let renameFavoriteListInputName = document.getElementById('renameFavoriteListInputName');
+
+		renameFavoriteListInputName.value = renameFromName;
+
+		document.getElementById("renameFavoriteListButton").addEventListener("click", function () {
+			let favoriteListId = renameFavoriteListId;
+
+			// Rename Favorite List
+			document.location.href = "/?favoritecmd=renamefavoritelist&userId=" + userId + "&favoriteListId=" + favoriteListId + "&name=" + renameFavoriteListInputName.value;
+		});
+	})
+
+	deleteFavoriteListModal.addEventListener('show.bs.modal', function (event) {
+		let button = event.relatedTarget;
+		let deleteFavoriteListId = button.getAttribute('data-list-id');
+		let deleteFavoriteListName = button.getAttribute('data-list-name');
+		let deleteFavoriteName = document.getElementById('deleteFavoriteName');
+
+		// Update label to confirm before deletion
+		deleteFavoriteName.innerHTML = deleteFavoriteListName;
+
+		// Delete Favorite List
+		document.getElementById("deleteFavoriteListButton").addEventListener("click", function () {
+			let favoriteListId = deleteFavoriteListId;
+
+			document.location.href = "/?favoritecmd=removefavoritelist&userId=" + userId + "&favoriteListId=" + favoriteListId;
+		});
+	})
+
+	// Create new Favorite List
+	document.getElementById("createFavoriteListButton").addEventListener("click", function () {
+		let createFavoriteListName = document.getElementById("createFavoriteListInputName").value;
+
+		if (createFavoriteListName != "") {
+			document.location.href = "/?favoritecmd=createfavoritelist&userId=" + userId + "&name=" + createFavoriteListName;
+		}
+		else
+		{
+			document.getElementById("createFavoriteListError").classList.remove("d-none");
+		}
+	});
+</script>

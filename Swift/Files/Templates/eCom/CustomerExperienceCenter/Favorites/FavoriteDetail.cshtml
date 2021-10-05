@@ -4,49 +4,91 @@
 @inherits ViewModelTemplate<FavoriteListViewModel>
 
 @{
-    string currentPageUrl = "/Default.aspx?ID=" + Pageview.Page.ID + "&FavoriteListId=" + Model.Id;
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	string currentPageUrl = "/Default.aspx?ID=" + Pageview.Page.ID + "&FavoriteListId=" + Model.Id;
+	int listItemsCount = Model.ProductList.TotalProductsCount;
+	int pageSize = Model.ProductList.PageSize;
 }
 
 @Include("../PaginationHelper.cshtml")
 
-<h1>Favorite list products</h1>
-
-<div>
-	<div>Id: @Model.Id</div>
-	<div>Name: @Model.Name</div>
-    @if(Model.IsDefault){
-		<div><b>Default</b></div>
-    }
-</div>
+<header class="p-3 border-bottom">
+	<div class="d-flex flex-row align-items-center gap-3">
+		<h1 class="h6 m-0 flex-fill text-muted">
+			@Model.Name
+			@if(Model.IsDefault){
+				<small class="badge rounded-pill bg-info text-dark">@Translate("default")</small>
+			}
+		</h1>
+		<span class="small">@listItemsCount products in this list</span>
+	</div>
+</header>
 
 @if (Model.ProductList != null)
 {
-	<div>
-		<table class="lists favorite-products">
-			<tr>
-				<th>Id</th>
-				<th>Variant Id</th>
-				<th>Product name</th>				
-				<th>Price</th>
-				<th style="width:200px">Image</th>
-			</tr>
-			@foreach (var product in Model.ProductList.Products)
-			{
-				<tr>
-					<td>@product.Id</td>
-					<td>@product.VariantId</td>
-					<td>@product.Name</td>
-					<td>@product.Price.PriceFormatted</td>
-					<td>
-					@if (product.DefaultImage.Value != "")
-					{
-						<img src="/Admin/Public/GetImage.ashx?Image=@product.DefaultImage.Value&Format=jpg&Width=200&Height=100&Crop=0" />
-					}
-					</td>
-				</tr>
-			}
-		</table>
+		string detailsPageLink = Dynamicweb.Context.Current.Items["DetailsPageLink"] != null ? Dynamicweb.Context.Current.Items["DetailsPageLink"].ToString() : "";
+
+	<div class="grid grid-2 grid-lg-3 p-3">
+	@foreach (var product in Model.ProductList.Products)
+	{
+		string productLink = product.Id;
+
+		string link = "/Default.aspx?ID=" + detailsPageLink + "&amp;ProductID=" + product.Id;
+		link += !string.IsNullOrEmpty(product.VariantId) ? "&amp;VariantID=" + product.VariantId : "";
+
+		string productImage = "/Admin/Public/GetImage.ashx?Image=" + @product.DefaultImage.Value + "&Format=webp&Width=300&Height=300";
+
+		<article class="">
+			<div class="position-relative d-flex flex-column gap-3 d-block h-100 text-decoration-none">
+
+				<div class="image">
+					<div class="ratio ratio-1x1">
+						@if (product.DefaultImage.Value != "")
+						{
+							<a href="@link" class="d-flex justify-content-center align-items-center">
+								<img
+									src="@productImage"
+									width="300"
+									loading="lazy"
+									decoding="async"
+									class="mw-100 mh-100"
+									alt="@product.Name">
+							</a>
+						}
+						else
+						{
+							<a href="@productLink" class="d-block h-100 w-100">
+								<div class="d-block h-100 w-100" style="background-color: var(--bs-gray-200);"></div>
+							</a>
+						}
+					</div>
+				</div>
+
+				<div class="details flex-fill d-flex flex-row gap-3">
+					<div class="flex-fill d-flex flex-column gap-3">
+						<div class="name flex-fill">@product.Name</div>
+						<div class="price">@RenderPartial("Components/ProductPrice.cshtml", product)</div>
+					</div>
+					<div class="add">
+						@RenderPartial("Components/AddToCart.cshtml", product)
+					</div>
+				</div>
+
+				<div class="add-to-favorites position-absolute top-0 end-0">
+					<button type="button" class="btn btn-light rounded-circle">
+						<span class="icon-2">
+							@ReadFile(iconPath + "heart.svg")
+						</span>
+					</button>
+				</div>
+			</div>
+		</article>
+	}
+	</div>
+
+	if (listItemsCount > pageSize) {
+	<div class="p-3">
 		@RenderPagination(currentPageUrl, Model.ProductList.PageCount, Model.ProductList.CurrentPage, Model.ProductList.PageSize)	
 	</div>
+	}
 }
-<button class="button-back" onclick="location.href='/Default.aspx?ID=@Pageview.Page.ID'">Back</button>
