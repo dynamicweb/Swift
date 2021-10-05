@@ -108,12 +108,42 @@
 				<div class="modal-body">
 					<div id="FullImages_@Model.ID" class="d-flex align-items-center justify-content-center">
 						@foreach (MediaViewModel asset in assetsList) {
-							var assetName = asset.Value.ToLower();
-							if (assetName.Contains(".jpg") || assetName.Contains(".webp") || assetName.Contains(".png") || assetName.Contains(".gif")) {
-								string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
-								var parms = new Dictionary<string, object>();
-								parms.Add("columns", Model.GridRowColumnCount);
-								@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+							var assetName = asset.Value;
+							foreach (string format in supportedFormats) {
+								if (assetName.Contains(format) ) {
+									string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+									var parms = new Dictionary<string, object>();
+									parms.Add("columns", Model.GridRowColumnCount);
+
+									if (!assetName.Contains("youtu.be")) {
+										@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+									} else {
+										string videoId = assetName.Substring(imagePath.LastIndexOf('/') + 1);
+
+										<div>
+											<div 
+												id="modalPlayer_@(Pageview.CurrentParagraph.ID)_@videoId" 
+												class="player plyr__video-embed @(theme) h-100 w-100" 
+												data-plyr-provider="youtube" 
+												data-plyr-embed-id="@videoId" 
+												style="--plyr-color-main: var(--swift-foreground-color); ">
+											</div>
+											<script type="module">
+												const player = new Plyr('#modalPlayer_@(Pageview.CurrentParagraph.ID)_@videoId', {
+													type: 'video',
+													youtube: {
+														noCookie: true,
+														showinfo: 0
+													},
+													fullscreen: {
+														enabled: true,
+														iosNative: true,
+													}
+												});
+											</script>
+										</div>
+									}
+								}
 							}
 						}
 					</div>
@@ -174,6 +204,11 @@
 							string imagePath = Dynamicweb.Context.Current.Server.UrlEncode(assetName);
 							imagePath = assetName.Contains("youtu.be") ? "https://img.youtube.com/vi/" + assetName.Substring(assetName.LastIndexOf('/') + 1) + "/default.jpg" : imagePath;
 							string imagePathThumb = !imagePath.Contains("youtube") ? $"/Admin/Public/GetImage.ashx?image={imagePath}&width=160&format=webp" : imagePath;
+							string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+							if (assetName.Contains("youtu.be")) {
+								<div class="icon-1 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath+"play-circle.svg")</div>
+							}
 
 							<div class="tns-nav-thumbnail-item ratio ratio-4x3 border outline-none" style="width:80px;"><img src="@imagePathThumb" class="p-2" style="object-fit: cover;"></div>
 						}
@@ -238,14 +273,49 @@
 	}
 
 	<div class="h-100 @(padding)@(theme)">
-		<a href="@imageLinkPath" class="d-block @(ratioCssClass)@(fillClass)" style="@(ratioVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
-			<span class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-				@if (imagePath.Contains("youtube")) {
-					<img src="@imagePath" loading="lazy" decoding="async" alt="@asset.Name" />
-				} else {
+		@if (!imagePath.Contains("youtube")) {
+			<a href="@imageLinkPath" class="d-block @(ratioCssClass)@(fillClass)" style="@(ratioVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
+				<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
 					@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
-				}
-			</span>
-		</a>
+				</div>
+			</a>
+		} else if (imagePath.Contains("youtube")) {
+			bool openVideoInModal = Model.Item.GetBoolean("OpenVideoInModal");
+
+			if (openVideoInModal)
+			{
+				string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+				<div class="d-block @(ratioCssClass)@(fillClass)" style="@(ratioVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
+					<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+						<div class="icon-5 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
+						<img src="@imagePath" loading="lazy" decoding="async" alt="@asset.Name" />
+					</div>
+				</div>
+			} else {
+				string videoId = asset.Value.Substring(asset.Value.LastIndexOf('/') + 1);
+
+				<div 
+					id="inlinePlayer_@(Pageview.CurrentParagraph.ID)_@videoId" 
+					class="player plyr__video-embed @(theme) h-100 w-100" 
+					data-plyr-provider="youtube" 
+					data-plyr-embed-id="@videoId" 
+					style="--plyr-color-main: var(--swift-foreground-color); ">
+				</div>
+				<script type="module">
+					const player = new Plyr('#inlinePlayer_@(Pageview.CurrentParagraph.ID)_@videoId', {
+						type: 'video',
+						youtube: {
+							noCookie: true,
+							showinfo: 0
+						},
+						fullscreen: {
+							enabled: true,
+							iosNative: true,
+						}
+					});
+				</script>
+}
+		}
 	</div>
 }
