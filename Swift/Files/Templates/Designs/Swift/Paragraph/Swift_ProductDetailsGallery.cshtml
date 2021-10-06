@@ -1,8 +1,7 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Frontend
-@using System.IO;
-@using System.Net;
+@using System.IO
 
 @functions {
 	public ProductViewModel product { get; set; } = new ProductViewModel();
@@ -66,7 +65,7 @@
 
 	@* Supported formats *@
 	supportedImageFormats = new string[] { ".jpg", ".webp", ".png", ".gif" };
-	supportedVideoFormats = new string[] { "youtu.be", "youtube", "vimeo" };
+	supportedVideoFormats = new string[] { "youtu.be", "youtube", "vimeo", ".mp4" };
 	allSupportedFormats = supportedImageFormats.Concat(supportedVideoFormats).ToArray();
 
 	@* Collect the assets *@
@@ -110,11 +109,11 @@
 	spacing = spacing == "large" ? "gap-4" : spacing;
 
 	galleryLayout = Model.Item.GetRawValueString("Layout", "grid");
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 }
 
 @* Get assets from selected categories or get all assets *@
 @if (totalAssets != 0 && assetsList.Count() != 0) {
-	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 	int desktopAssetNumber = 0;
 	int mobileAssetNumber = 0;
 
@@ -155,17 +154,22 @@
 				foreach (string format in allSupportedFormats) {
 					if (assetValue.Contains(format) ) {
 						string imagePath = Dynamicweb.Context.Current.Server.UrlEncode(assetValue);
-						imagePath = assetValue.Contains("youtu.be") ? "https://img.youtube.com/vi/" + assetValue.Substring(assetValue.LastIndexOf('/') + 1) + "/default.jpg" : imagePath;
+						imagePath = assetValue.Contains("youtu.be") || assetValue.Contains("youtube") ? "https://img.youtube.com/vi/" + assetValue.Substring(assetValue.LastIndexOf('/') + 1) + "/default.jpg" : imagePath;
 						string imagePathThumb = !imagePath.Contains("youtube") ? $"/Admin/Public/GetImage.ashx?image={imagePath}&width=160&format=webp" : imagePath;
 						string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 
+						string videoId = assetValue.Substring(assetValue.LastIndexOf('/') + 1);
+						string vimeoJsClass = assetValue.Contains("vimeo") ? "js-vimeo-video-thumbnail" : "";
+
 						<div class="tns-nav-thumbnail-item ratio ratio-4x3 border outline-none" style="width:80px;">
 							<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-								@if (assetValue.Contains("youtu.be")) {
-									<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath+"play-circle.svg")</div>
+								@foreach (string videoFormat in supportedVideoFormats) {
+									if (assetValue.Contains(videoFormat)) {
+										<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath+"play-circle.svg")</div>
+									}
 								}
 							</div>
-								<img src="@imagePathThumb" class="p-2" style="object-fit: cover;">
+							<img src="@imagePathThumb" class="p-2 @vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
 						</div>
 					}
 				}
@@ -254,8 +258,10 @@
 } else if (isVisualEdit) {
 	RatioSettings ratioSettings = GetRatioSettings("desktop");
 
-	<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
-		<img src="~/Files/Images/missing_image.jpg" loading="lazy" decoding="async" style="object-fit: cover;" />
+	<div class="h-100 @theme">
+		<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
+			<img src="~/Files/Images/missing_image.jpg" loading="lazy" decoding="async" class="mh-100 mw-100" style="object-fit: cover;" />
+		</div>
 	</div>
 }
 
@@ -317,7 +323,9 @@
 	string vimeoJsClass = videoScreendumpPath.Contains("vimeo") ? "js-vimeo-video-thumbnail" : "";
 	videoScreendumpPath = videoScreendumpPath.Contains("vimeo") ? "" : videoScreendumpPath;
 
-	<div class="ratio" style="--bs-aspect-ratio: 56%; cursor: pointer" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
+	RatioSettings ratioSettings = GetRatioSettings(size);
+
+	<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" cursor: pointer" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
 		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
 			<div class="icon-5 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
 			<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@asset.Name" class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;" />
@@ -329,28 +337,58 @@
 	string assetValue = asset.Value;
 	string videoId = asset.Value.Substring(asset.Value.LastIndexOf('/') + 1);
 	string type = assetValue.Contains("youtu.be") || assetValue.Contains("youtube") ? "youtube" : "";
-	type = assetValue.Contains("vimeo.com") ? "vimeo" : type;
+	type = assetValue.Contains("vimeo") ? "vimeo" : type;
+	type = assetValue.Contains(".mp4") ? "selfhosted" : type;
+
+	bool openInModal = Model.Item.GetBoolean("OpenVideoInModal");
+	bool autoPlay = Model.Item.GetBoolean("VideoAutoPlay");
 
 	<div> 
-		<div
-			id="player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size"
-			class="player plyr__video-embed h-100 w-100" 
-			data-plyr-provider="@(type)" 
-			data-plyr-embed-id="@videoId" 
-			style="--plyr-color-main: var(--swift-foreground-color); ">
-		</div>
-		<script type="module">
-			const player = new Plyr('#player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size', {
-				type: 'video',
-				youtube: {
-					noCookie: true,
-					showinfo: 0
-				},
-				fullscreen: {
-					enabled: true,
-					iosNative: true,
+		@if (type != "selfhosted") { 
+			<div
+				id="player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size"
+				class="player plyr__video-embed h-100 w-100" 
+				data-plyr-provider="@(type)" 
+				data-plyr-embed-id="@videoId" 
+				style="--plyr-color-main: var(--swift-foreground-color); ">
+			</div>
+
+			<script type="module">
+				var player = new Plyr('#player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size', {
+					type: 'video',
+					youtube: {
+						noCookie: true,
+						showinfo: 0
+					},
+					fullscreen: {
+						enabled: true,
+						iosNative: true,
+					}
+				});
+
+				@if (autoPlay && !openInModal) {
+					<text>
+					player.config.autoplay = true;
+					player.config.muted = true;
+					player.config.volume = 0;
+					player.media.loop = true;
+
+					player.on('ready', () => {
+						if (player.config.autoplay === true) {
+							player.media.play();
+						}
+					});
+					</text>
 				}
-			});
-		</script>
+			</script>
+		} else {
+			string autoPlayAttributes = (autoPlay && !openInModal) ? "loop autoplay muted playsinline" : "";
+			string videoType = Path.GetExtension(assetValue).ToLower();
+
+			<video preload="true" @autoPlayAttributes class="h-100 w-100" style="object-fit: cover;">
+				<source src="@assetValue"
+						type="video/@videoType.Replace(".", "")">
+			</video>
+		}
 	</div>
 }
