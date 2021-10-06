@@ -1,6 +1,8 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Frontend
+@using System.IO;
+@using System.Net;
 
 @functions {
 	public ProductViewModel product { get; set; } = new ProductViewModel();
@@ -64,7 +66,7 @@
 
 	@* Supported formats *@
 	supportedImageFormats = new string[] { ".jpg", ".webp", ".png", ".gif" };
-	supportedVideoFormats = new string[] { "youtu.be", "vimeo" };
+	supportedVideoFormats = new string[] { "youtu.be", "youtube", "vimeo" };
 	allSupportedFormats = supportedImageFormats.Concat(supportedVideoFormats).ToArray();
 
 	@* Collect the assets *@
@@ -215,30 +217,7 @@
 
 									foreach (string videoFormat in supportedVideoFormats) {
 										if (assetValue.Contains(videoFormat)) {
-											string videoId = assetValue.Substring(assetValue.LastIndexOf('/') + 1);
-
-											<div>
-												<div 
-													id="modalPlayer_@(Pageview.CurrentParagraph.ID)_@videoId" 
-													class="player plyr__video-embed h-100 w-100" 
-													data-plyr-provider="youtube" 
-													data-plyr-embed-id="@videoId" 
-													style="--plyr-color-main: var(--swift-foreground-color); ">
-												</div>
-												<script type="module">
-													const player = new Plyr('#modalPlayer_@(Pageview.CurrentParagraph.ID)_@videoId', {
-														type: 'video',
-														youtube: {
-															noCookie: true,
-															showinfo: 0
-														},
-														fullscreen: {
-															enabled: true,
-															iosNative: true,
-														}
-													});
-												</script>
-											</div>
+											@RenderVideoPlayer(asset, "modal")
 										}
 									}
 								}
@@ -296,7 +275,7 @@
 				if (Model.Item.GetBoolean("OpenVideoInModal")) {
 					@RenderVideoScreendump(asset, assetNumber, size)
 				} else {
-					@RenderVideoPlayer(asset, assetNumber, size)
+					@RenderVideoPlayer(asset, size)
 				}
 			}
 		}
@@ -332,29 +311,36 @@
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 
 	string videoScreendumpPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : "";
-	videoScreendumpPath = videoScreendumpPath.Contains("youtu.be") ? "https://img.youtube.com/vi/" + videoScreendumpPath.Substring(videoScreendumpPath.LastIndexOf('/') + 1) + "/maxresdefault.jpg" : videoScreendumpPath;
+	string videoId = videoScreendumpPath.Substring(videoScreendumpPath.LastIndexOf('/') + 1);
+	videoScreendumpPath = videoScreendumpPath.Contains("youtu.be") || videoScreendumpPath.Contains("youtube") ? "https://img.youtube.com/vi/" + videoId + "/maxresdefault.jpg" : videoScreendumpPath;
+
+	string vimeoJsClass = videoScreendumpPath.Contains("vimeo") ? "js-vimeo-video-thumbnail" : "";
+	videoScreendumpPath = videoScreendumpPath.Contains("vimeo") ? "" : videoScreendumpPath;
 
 	<div class="ratio" style="--bs-aspect-ratio: 56%; cursor: pointer" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
 		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
 			<div class="icon-5 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
-			<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@asset.Name" />
+			<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@asset.Name" class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;" />
 		</div>
 	</div>
 }
 
-@helper RenderVideoPlayer(MediaViewModel asset, int number, string size = "desktop") { 
+@helper RenderVideoPlayer(MediaViewModel asset, string size = "desktop") { 
+	string assetValue = asset.Value;
 	string videoId = asset.Value.Substring(asset.Value.LastIndexOf('/') + 1);
+	string type = assetValue.Contains("youtu.be") || assetValue.Contains("youtube") ? "youtube" : "";
+	type = assetValue.Contains("vimeo.com") ? "vimeo" : type;
 
-	<div>
-		<div 
-			id="inlinePlayer_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size" 
+	<div> 
+		<div
+			id="player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size"
 			class="player plyr__video-embed h-100 w-100" 
-			data-plyr-provider="youtube" 
+			data-plyr-provider="@(type)" 
 			data-plyr-embed-id="@videoId" 
 			style="--plyr-color-main: var(--swift-foreground-color); ">
 		</div>
 		<script type="module">
-			const player = new Plyr('#inlinePlayer_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size', {
+			const player = new Plyr('#player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size', {
 				type: 'video',
 				youtube: {
 					noCookie: true,
