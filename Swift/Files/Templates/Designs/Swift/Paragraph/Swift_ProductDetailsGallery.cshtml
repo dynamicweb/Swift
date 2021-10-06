@@ -2,23 +2,77 @@
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Frontend
 
-@{ 
-	ProductViewModel product = new ProductViewModel();
+@functions {
+	public ProductViewModel product { get; set; } = new ProductViewModel();
+	public string galleryLayout { get; set; }
+	public string[] supportedImageFormats { get; set; }
+	public string[] supportedVideoFormats { get; set; }
+	public string[] allSupportedFormats { get; set; }
 
+	public class RatioSettings {
+		public string Ratio { get; set; }
+		public string CssClass { get; set; }
+		public string CssVariable { get; set; }
+		public string Fill { get; set; }
+	}
+
+	public RatioSettings GetRatioSettings(string size = "desktop") {
+		var ratioSettings = new RatioSettings();
+
+		string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
+		ratio = ratio != "0" ? ratio : "";
+		string cssClass = ratio != "" && ratio != "fill" ? " ratio" : "";
+		string cssVariable = ratio != "" && ratio != "fill" ? "--bs-aspect-ratio: " + ratio : "";
+		cssClass = ratio != "" && ratio == "fill" && size == "mobile" ? " ratio" : cssClass;
+		cssVariable = ratio != "" && ratio == "fill" && size == "mobile" ? "--bs-aspect-ratio: 66%" : cssVariable;
+
+		ratioSettings.Ratio = ratio;
+		ratioSettings.CssClass = cssClass;
+		ratioSettings.CssVariable = cssVariable;
+		ratioSettings.Fill = ratio == "fill" ? " h-100" : "";
+
+		return ratioSettings;
+	}
+
+	public string GetColumnClass(int total, int assetNumber) {
+		string colClass = total > 1 ? "g-col-lg-6" : "g-col-12";
+		colClass = galleryLayout == "full-first" && assetNumber == 0 ? "g-col-12" : colClass;
+		colClass = galleryLayout == "full-last" && assetNumber == (total - 1) ? "g-col-12" : colClass;
+		colClass = galleryLayout == "advanced-grid" && assetNumber > 1 ? "g-col-4" : colClass;
+
+		colClass = galleryLayout == "advanced-grid" && total == 1 ? "g-col-12" : colClass;
+		colClass = galleryLayout == "advanced-grid" && total == 3 && assetNumber == 2 ? "g-col-12" : colClass;
+		colClass = galleryLayout == "advanced-grid" && total == 4 && assetNumber == 2 ? "g-col-6" : colClass;
+		colClass = galleryLayout == "advanced-grid" && total == 4 && assetNumber == 3 ? "g-col-6" : colClass;
+		colClass = galleryLayout == "advanced-grid" && total == 6 && assetNumber == 5 ? "g-col-12" : colClass;
+		colClass = galleryLayout == "advanced-grid" && total == 7 && assetNumber == 5 ? "g-col-6" : colClass;
+		colClass = galleryLayout == "advanced-grid" && total == 7 && assetNumber == 6 ? "g-col-6" : colClass;
+		colClass = galleryLayout == "advanced-grid" && total == 9 && assetNumber == 8 ? "g-col-12" : colClass;
+
+		return colClass;
+	}
+}
+
+@{ 
+	bool isVisualEdit = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+
+	@* Get the product data *@
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
 
 	@* Supported formats *@
-	string[] supportedFormats = { ".jpg", ".webp", ".png", ".gif", "youtu.be", "vimeo" };
+	supportedImageFormats = new string[] { ".jpg", ".webp", ".png", ".gif" };
+	supportedVideoFormats = new string[] { "youtu.be", "vimeo" };
+	allSupportedFormats = supportedImageFormats.Concat(supportedVideoFormats).ToArray();
 
-	@* Collect the images *@
-	var selectedImageCategories = Model.Item.GetList("ImageAssets").SelectedValues;
+	@* Collect the assets *@
+	var selectedAssetCategories = Model.Item.GetList("ImageAssets").SelectedValues;
 	bool includeImagePatternImages = Model.Item.GetBoolean("ImagePatternImages"); 
 	
 	@* Needed image data collection to support both DefaultImage, ImagePatterns and Image Assets *@
-	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
+	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedAssetCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
 	IEnumerable<MediaViewModel> assetsList = new MediaViewModel[]{};
 	assetsList = includeImagePatternImages && assetsImages.Count() == 0 ? assetsList.Append(product.DefaultImage) : assetsList;
 	assetsList = assetsList.Union(assetsImages);
@@ -26,24 +80,24 @@
 
 	bool defaultImageFallback = Model.Item.GetBoolean("DefaultImageFallback"); 
 
-	int totalImages = 0;
+	int totalAssets = 0;
 	foreach (MediaViewModel asset in assetsList) {
-		var assetName = asset.Value.ToLower(); 
-		foreach (string format in supportedFormats) {
-			if (assetName.Contains(format) ) {
-				totalImages++;
+		var assetValue = asset.Value.ToLower(); 
+		foreach (string format in allSupportedFormats) {
+			if (assetValue.Contains(format) ) {
+				totalAssets++;
 			}
 		}
 	}
 
-	if (totalImages == 0)
+	if (totalAssets == 0)
 	{
 		if (defaultImageFallback) {
 			assetsList = new List<MediaViewModel>(){ product.DefaultImage };
-			totalImages = 1;
+			totalAssets = 1;
 		} else {
 			assetsList = new List<MediaViewModel>(){ };
-			totalImages = 0;
+			totalAssets = 0;
 		}
 	}
 
@@ -53,52 +107,90 @@
 	spacing = spacing == "small" ? "gap-3" : spacing;
 	spacing = spacing == "large" ? "gap-4" : spacing;
 
-	string layout = Model.Item.GetRawValueString("Layout", "grid");
+	galleryLayout = Model.Item.GetRawValueString("Layout", "grid");
 }
 
-@* Get images from selected categories or get all images *@
-@if (totalImages != 0 && assetsList.Count() != 0)
-{
+@* Get assets from selected categories or get all assets *@
+@if (totalAssets != 0 && assetsList.Count() != 0) {
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	int desktopAssetNumber = 0;
+	int mobileAssetNumber = 0;
 
-	@* Show the gallery on large screens *@
+	@* Desktop: Show the gallery on large screens *@
 	<div class="d-none d-lg-block h-100 @theme">
 		<div class="grid @spacing">
-			@{ 
-				int imageNumber = 0;
-
-				foreach (MediaViewModel asset in assetsList) {
-					var assetName = asset.Value.ToLower(); 
-
-					foreach (string format in supportedFormats) {
-						if (assetName.Contains(format) ) {
-							string colClass = totalImages > 1 ? "g-col-lg-6" : "g-col-12";
-							colClass = layout == "full-first" && imageNumber == 0 ? "g-col-12" : colClass;
-							colClass = layout == "full-last" && imageNumber == (totalImages - 1) ? "g-col-12" : colClass;
-							colClass = layout == "advanced-grid" && imageNumber > 1 ? "g-col-4" : colClass;
-
-							colClass = layout == "advanced-grid" && totalImages == 1 ? "g-col-12" : colClass;
-							colClass = layout == "advanced-grid" && totalImages == 3 && imageNumber == 2 ? "g-col-12" : colClass;
-							colClass = layout == "advanced-grid" && totalImages == 4 && imageNumber == 2 ? "g-col-6" : colClass;
-							colClass = layout == "advanced-grid" && totalImages == 4 && imageNumber == 3 ? "g-col-6" : colClass;
-							colClass = layout == "advanced-grid" && totalImages == 6 && imageNumber == 5 ? "g-col-12" : colClass;
-							colClass = layout == "advanced-grid" && totalImages == 7 && imageNumber == 5 ? "g-col-6" : colClass;
-							colClass = layout == "advanced-grid" && totalImages == 7 && imageNumber == 6 ? "g-col-6" : colClass;
-							colClass = layout == "advanced-grid" && totalImages == 9 && imageNumber == 8 ? "g-col-12" : colClass;
-
-							<div class="@colClass">
-								@RenderImage(asset, product, imageNumber)
-							</div>
-
-							imageNumber++;
-						}
+			@foreach (MediaViewModel asset in assetsList) {
+				var assetName = asset.Value.ToLower(); 
+				foreach (string format in allSupportedFormats) {
+					if (assetName.Contains(format) ) {
+						<div class="@GetColumnClass(totalAssets, desktopAssetNumber)">
+							@RenderAsset(asset, desktopAssetNumber)
+						</div>
+						desktopAssetNumber++;
 					}
 				}
 			}
 		</div>
 	</div>
 
-	@* Modal *@
+	@* Mobile: Show the thumbs on small screens *@
+	<div class="d-block d-lg-none mx-lg-0 @theme">
+		<div id="SmallScreenImages_@Model.ID">
+			@foreach (MediaViewModel asset in assetsList) {
+				var assetValue = asset.Value.ToLower();
+				foreach (string format in allSupportedFormats) {
+					if (assetValue.Contains(format) ) {
+						@RenderAsset(asset, mobileAssetNumber, "mobile")
+						mobileAssetNumber++;
+					}
+				}
+			}
+		</div>
+
+		<div id="SmallScreenImagesThumbnails_@Model.ID" class="tns-nav-thumbnails grid gap-2 overflow-x-scroll my-3">
+			@foreach (MediaViewModel asset in assetsList) {
+				var assetValue = asset.Value;
+				foreach (string format in allSupportedFormats) {
+					if (assetValue.Contains(format) ) {
+						string imagePath = Dynamicweb.Context.Current.Server.UrlEncode(assetValue);
+						imagePath = assetValue.Contains("youtu.be") ? "https://img.youtube.com/vi/" + assetValue.Substring(assetValue.LastIndexOf('/') + 1) + "/default.jpg" : imagePath;
+						string imagePathThumb = !imagePath.Contains("youtube") ? $"/Admin/Public/GetImage.ashx?image={imagePath}&width=160&format=webp" : imagePath;
+						string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+						<div class="tns-nav-thumbnail-item ratio ratio-4x3 border outline-none" style="width:80px;">
+							<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+								@if (assetValue.Contains("youtu.be")) {
+									<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath+"play-circle.svg")</div>
+								}
+							</div>
+								<img src="@imagePathThumb" class="p-2" style="object-fit: cover;">
+						</div>
+					}
+				}
+			}
+		</div>
+
+		@* Tiny slider *@
+		<script type="module">
+			var mobileSlider_@Model.ID = tns({
+				container: '#SmallScreenImages_@Model.ID',
+				items: 1,
+				gutter: 16,
+				mouseDrag: true,
+				touch: true,
+				arrowKeys: true,
+				nav: true,
+				navContainer: "#SmallScreenImagesThumbnails_@Model.ID",
+				navAsThumbnails: true,
+				loop: false,
+				controls: false,
+				swipeAngle: 30,
+				preventScrollOnTouch: 'auto'
+			});
+		</script>
+	</div>
+
+	@* Modal with slides *@
 	<div class="modal fade" id="modal_@Model.ID" tabindex="-1" aria-labelledby="productDetailsGalleryModalTitle" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered modal-xl">
 			<div class="modal-content">
@@ -108,40 +200,46 @@
 				<div class="modal-body">
 					<div id="FullImages_@Model.ID" class="d-flex align-items-center justify-content-center">
 						@foreach (MediaViewModel asset in assetsList) {
-							var assetName = asset.Value;
-							foreach (string format in supportedFormats) {
-								if (assetName.Contains(format) ) {
-									string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+							var assetValue = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+							foreach (string format in allSupportedFormats) {
+								if (assetValue.Contains(format) ) {
+									string imagePath = assetValue;
 									var parms = new Dictionary<string, object>();
 									parms.Add("columns", Model.GridRowColumnCount);
 
-									if (!assetName.Contains("youtu.be")) {
-										@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
-									} else {
-										string videoId = assetName.Substring(imagePath.LastIndexOf('/') + 1);
+									foreach (string imageFormat in supportedImageFormats) {
+										if (assetValue.Contains(imageFormat)) {
+											@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+										}
+									}
 
-										<div>
-											<div 
-												id="modalPlayer_@(Pageview.CurrentParagraph.ID)_@videoId" 
-												class="player plyr__video-embed @(theme) h-100 w-100" 
-												data-plyr-provider="youtube" 
-												data-plyr-embed-id="@videoId" 
-												style="--plyr-color-main: var(--swift-foreground-color); ">
+									foreach (string videoFormat in supportedVideoFormats) {
+										if (assetValue.Contains(videoFormat)) {
+											string videoId = assetValue.Substring(assetValue.LastIndexOf('/') + 1);
+
+											<div>
+												<div 
+													id="modalPlayer_@(Pageview.CurrentParagraph.ID)_@videoId" 
+													class="player plyr__video-embed h-100 w-100" 
+													data-plyr-provider="youtube" 
+													data-plyr-embed-id="@videoId" 
+													style="--plyr-color-main: var(--swift-foreground-color); ">
+												</div>
+												<script type="module">
+													const player = new Plyr('#modalPlayer_@(Pageview.CurrentParagraph.ID)_@videoId', {
+														type: 'video',
+														youtube: {
+															noCookie: true,
+															showinfo: 0
+														},
+														fullscreen: {
+															enabled: true,
+															iosNative: true,
+														}
+													});
+												</script>
 											</div>
-											<script type="module">
-												const player = new Plyr('#modalPlayer_@(Pageview.CurrentParagraph.ID)_@videoId', {
-													type: 'video',
-													youtube: {
-														noCookie: true,
-														showinfo: 0
-													},
-													fullscreen: {
-														enabled: true,
-														iosNative: true,
-													}
-												});
-											</script>
-										</div>
+										}
 									}
 								}
 							}
@@ -174,148 +272,99 @@
 			</div>
 		</div>
 	</div>
+} else if (isVisualEdit) {
+	RatioSettings ratioSettings = GetRatioSettings("desktop");
 
-	@* Show the thumbs on small screens *@
-	<div class="d-block d-lg-none mini-product-image-slider mx-lg-0 @theme">
-		<div id="SmallScreenImages_@Model.ID">
-			@{
-				var smallImageNumber = 0;
-
-				foreach (MediaViewModel asset in assetsList)
-				{
-					var assetName = asset.Value.ToLower();
-
-					foreach (string format in supportedFormats) {
-						if (assetName.Contains(format) ) {
-							@RenderImage(asset, product, smallImageNumber, "small")
-							smallImageNumber++;
-						}
-					}
-				}
-			}
-		</div>
-
-		<div id="SmallScreenImagesThumbnails_@Model.ID" class="tns-nav-thumbnails grid gap-2 overflow-x-scroll my-3">
-			@{
-				foreach (MediaViewModel asset in assetsList) {
-					var assetName = asset.Value;
-					foreach (string format in supportedFormats) {
-						if (assetName.Contains(format) ) {
-							string imagePath = Dynamicweb.Context.Current.Server.UrlEncode(assetName);
-							imagePath = assetName.Contains("youtu.be") ? "https://img.youtube.com/vi/" + assetName.Substring(assetName.LastIndexOf('/') + 1) + "/default.jpg" : imagePath;
-							string imagePathThumb = !imagePath.Contains("youtube") ? $"/Admin/Public/GetImage.ashx?image={imagePath}&width=160&format=webp" : imagePath;
-							string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
-
-							if (assetName.Contains("youtu.be")) {
-								<div class="icon-1 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath+"play-circle.svg")</div>
-							}
-
-							<div class="tns-nav-thumbnail-item ratio ratio-4x3 border outline-none" style="width:80px;"><img src="@imagePathThumb" class="p-2" style="object-fit: cover;"></div>
-						}
-					}
-				}
-			}
-		</div>
-
-		@* Tiny slider *@
-		<script type="module">
-			var slider_@Model.ID = tns({
-				container: '#SmallScreenImages_@Model.ID',
-				items: 1,
-				gutter: 16,
-				mouseDrag: true,
-				touch: true,
-				arrowKeys: true,
-				nav: true,
-				navContainer: "#SmallScreenImagesThumbnails_@Model.ID",
-				navAsThumbnails: true,
-				loop: false,
-				controls: false,
-				swipeAngle: 30,
-				preventScrollOnTouch: 'auto'
-			});
-		</script>
+	<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
+		<img src="~/Files/Images/missing_image.jpg" loading="lazy" decoding="async" style="object-fit: cover;" />
 	</div>
 }
 
-@helper RenderImage(MediaViewModel asset, ProductViewModel product, int number, string screenSize = "large") { 
-	string layout = Model.Item.GetRawValueString("Layout", "grid");
+@helper RenderAsset(MediaViewModel asset, int assetNumber, string size = "desktop") { 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
-	string padding = "";
-	padding = theme != "" ? "p-3" : padding;
+	string padding = theme != "" ? "p-3" : "";
+	string assetValue = asset.Value;
 
-	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
-	imagePath = imagePath.Contains("youtu.be") ? "https://img.youtube.com/vi/" + imagePath.Substring(imagePath.LastIndexOf('/') + 1) + "/maxresdefault.jpg" : imagePath;
+	<div class="h-100 @(padding)@(theme)">
+		@foreach (string format in supportedImageFormats) {
+			if (assetValue.Contains(format)) {
+				@RenderImage(asset, assetNumber, size)
+			}
+		}
+		@foreach (string format in supportedVideoFormats) {
+			if (assetValue.Contains(format)) {
+				if (Model.Item.GetBoolean("OpenVideoInModal")) {
+					@RenderVideoScreendump(asset, assetNumber, size)
+				} else {
+					@RenderVideoPlayer(asset, assetNumber, size)
+				}
+			}
+		}
+	</div>
+}
 
-	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
-	ratio = ratio != "0" ? ratio : "";
-	ratio = imagePath.Contains("youtube") ? "56%" : ratio;
-	string ratioCssClass = ratio != "" && ratio != "fill" ? " ratio" : "";
-	string ratioVariable = ratio != "" && ratio != "fill" ? "--bs-aspect-ratio: " + ratio : "";
-	ratioCssClass = ratio != "" && ratio == "fill" && screenSize == "small" ? " ratio" : ratioCssClass;
-	ratioVariable = ratio != "" && ratio == "fill" && screenSize == "small" ? "--bs-aspect-ratio: 66%" : ratioVariable;
-	string fillClass = ratio == "fill" ? " h-100" : "";
-
-	string imageLinkPath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
+@helper RenderImage(MediaViewModel asset, int number, string size = "desktop") { 
 	string productName = product.Name;
+	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+	string imageLinkPath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
+
+	RatioSettings ratioSettings = GetRatioSettings(size);
 
 	var parms = new Dictionary<string, object>();
-	parms.Add("alt", product.Name);
+	parms.Add("alt", productName);
 	parms.Add("itemprop", "image");
 	parms.Add("columns", Model.GridRowColumnCount);
 
-	if (ratio == "fill" && layout != "grid") {
+	if (ratioSettings.Ratio == "fill" && galleryLayout != "grid") {
 		parms.Add("cssClass", "w-100 h-100 image-zoom-lg");
-	}
-	else
-	{
+	} else {
 		parms.Add("cssClass", "mw-100 mh-100");
 	}
 
-	<div class="h-100 @(padding)@(theme)">
-		@if (!imagePath.Contains("youtube")) {
-			<a href="@imageLinkPath" class="d-block @(ratioCssClass)@(fillClass)" style="@(ratioVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
-				<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-					@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
-				</div>
-			</a>
-		} else if (imagePath.Contains("youtube")) {
-			bool openVideoInModal = Model.Item.GetBoolean("OpenVideoInModal");
-
-			if (openVideoInModal)
-			{
-				string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
-
-				<div class="d-block @(ratioCssClass)@(fillClass)" style="@(ratioVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
-					<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-						<div class="icon-5 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
-						<img src="@imagePath" loading="lazy" decoding="async" alt="@asset.Name" />
-					</div>
-				</div>
-			} else {
-				string videoId = asset.Value.Substring(asset.Value.LastIndexOf('/') + 1);
-
-				<div 
-					id="inlinePlayer_@(Pageview.CurrentParagraph.ID)_@videoId" 
-					class="player plyr__video-embed @(theme) h-100 w-100" 
-					data-plyr-provider="youtube" 
-					data-plyr-embed-id="@videoId" 
-					style="--plyr-color-main: var(--swift-foreground-color); ">
-				</div>
-				<script type="module">
-					const player = new Plyr('#inlinePlayer_@(Pageview.CurrentParagraph.ID)_@videoId', {
-						type: 'video',
-						youtube: {
-							noCookie: true,
-							showinfo: 0
-						},
-						fullscreen: {
-							enabled: true,
-							iosNative: true,
-						}
-					});
-				</script>
+	<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
+		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+			@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+		</div>
+	</a>
 }
-		}
+
+@helper RenderVideoScreendump(MediaViewModel asset, int number, string size = "desktop") { 
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	string videoScreendumpPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : "";
+	videoScreendumpPath = videoScreendumpPath.Contains("youtu.be") ? "https://img.youtube.com/vi/" + videoScreendumpPath.Substring(videoScreendumpPath.LastIndexOf('/') + 1) + "/maxresdefault.jpg" : videoScreendumpPath;
+
+	<div class="ratio" style="--bs-aspect-ratio: 56%; cursor: pointer" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
+		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+			<div class="icon-5 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
+			<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@asset.Name" />
+		</div>
+	</div>
+}
+
+@helper RenderVideoPlayer(MediaViewModel asset, int number, string size = "desktop") { 
+	string videoId = asset.Value.Substring(asset.Value.LastIndexOf('/') + 1);
+
+	<div>
+		<div 
+			id="inlinePlayer_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size" 
+			class="player plyr__video-embed h-100 w-100" 
+			data-plyr-provider="youtube" 
+			data-plyr-embed-id="@videoId" 
+			style="--plyr-color-main: var(--swift-foreground-color); ">
+		</div>
+		<script type="module">
+			const player = new Plyr('#inlinePlayer_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size', {
+				type: 'video',
+				youtube: {
+					noCookie: true,
+					showinfo: 0
+				},
+				fullscreen: {
+					enabled: true,
+					iosNative: true,
+				}
+			});
+		</script>
 	</div>
 }
