@@ -27,7 +27,7 @@
 		}
 		else
 		{
-			<h1 class="h6 mb-0">@Translate("Sign in as a customer")</h1>
+			<h1 class="h6 mb-0">@Translate("Manage customer")</h1>
 		}
 		<div class="position-relative type-ahead-dropdown">
 			<form method="get" class="suggest-form">
@@ -130,7 +130,7 @@
 					<td class="text-end">
 						<a href="@UserLink" class="d-block text-decoration-none">
 							<span class="btn btn-sm btn-secondary stretched-link opacity-0 opacity-100-hover">
-								@Translate("Sign in")
+								@Translate("Manage customer")
 							</span>
 						</a>
 					</td>
@@ -141,7 +141,7 @@
 
 	@* Bootstrap only support horizontally scrolled tables. Thus, we need to have separate designs for large and small screens.  *@
 
-	<table class="table d-table d-lg-none table-borderless table-clean align-top mb-0">
+	<table class="table d-table d-lg-none table-borderless table-clean align-top mb-lg-0">
 		@foreach (var result in queryItems)
 		{
 			string UserLink = $"/Default.aspx?ID={Pageview.Page.ID}&amp;DWExtranetSecondaryUserSelector={result.GetInteger("UserID")}&NowImpersonating=True";
@@ -206,7 +206,7 @@
 						<a href="@UserLink" class="d-block text-decoration-none">
 							<div class="d-grid">
 								<span class="btn btn-sm btn-secondary">
-									@Translate("Sign in")
+									@Translate("Manage customer")
 								</span>
 							</div>
 						</a>
@@ -215,55 +215,91 @@
 			</tbody>
 		}
 	</table> var pageLoopItem = GetLoop("DwPaging.LoopPageGroup");
-	var pageCount = GetInteger("DwPaging.PageCount");
-	var currentPage = GetInteger("DwPaging.CurrentPage");
-	var prevPage = GetInteger("DwPaging.PreviousPageNumber");
-	var nextPage = GetInteger("DwPaging.NextPageNumber");
+	int pageCount = GetInteger("DwPaging.PageCount"),
+		currentPage = GetInteger("DwPaging.CurrentPage"),
+		prevPage = GetInteger("DwPaging.PreviousPageNumber"),
+		nextPage = GetInteger("DwPaging.NextPageNumber"),
+		itemsToLoad = 10,
+		pageSize = GetInteger("DwPaging.PageSize"),
+		totalItems = GetInteger("DwPaging.TotalItems"),
+		loadMore = pageSize + itemsToLoad,
+		firstPage = 1,
+		lastPage = pageCount;
 
 	if (GetBoolean("DwPaging.Pageable") == true)
 	{
-		<form id="pagination_@Pageview.CurrentParagraph.ID">
-			<div class="p-3 mt-3">
-				<ul class="pagination m-0">
-					@if (pageCount > 5 && currentPage != 1)
-					{
-						<li class="page-item">
-							<a class="page-link" href="@prevPage" onclick="paginationSubmit(event, '@prevPage')">@Translate("Previous")</a>
+		string prevDisabled = currentPage == 1 ? "disabled" : "";
+		string nextDisabled = currentPage == pageCount ? "disabled" : "";
+		<div class="d-none d-lg-block">
+			<form id="pagination_@Pageview.CurrentParagraph.ID">
+				<div class="p-3 mt-3">
+					<ul class="pagination m-0">
+						<li class="page-item @(prevDisabled)">
+							<button type="submit" class="page-link" onclick="paginationSubmit(event, '@firstPage')">
+								<span class="icon-2">
+									@ReadFile(iconPath + "chevrons-left.svg")
+								</span>
+							</button>
 						</li>
-					}
-					else
-					{
-						<li class="page-item disabled"><span class="page-link">@Translate("Previous")</span></li>
-					}
-					@foreach (var pages in pageLoopItem)
-					{
-						var css = pages.GetBoolean("PageGroup.ActivePage") ? "page-item active" : "page-item";
+						<li class="page-item @(prevDisabled)">
+							<a class="page-link" href="@prevPage" onclick="paginationSubmit(event, '@prevPage')">
+								<span class="icon-2">
+									@ReadFile(iconPath + "chevron-left.svg")
+								</span>
+							</a>
+						</li>
+						@foreach (var pages in pageLoopItem)
+						{
+							var css = pages.GetBoolean("PageGroup.ActivePage") ? "page-item active" : "page-item";
 
-						<li class="@css">
-							<a href="@pages.GetString("PageGroup.PageLink")" class="page-link" onclick="paginationSubmit(event, '@pages.GetInteger("PageGroup.PageNumber")')">@pages.GetInteger("PageGroup.PageNumber")</a>
+							<li class="@css">
+								<a href="@pages.GetString("PageGroup.PageLink")" class="page-link" onclick="paginationSubmit(event, '@pages.GetInteger("PageGroup.PageNumber")')">@pages.GetInteger("PageGroup.PageNumber")</a>
+							</li>
+						}
+						<li class="page-item @(nextDisabled)">
+							<a class="page-link" href="@nextPage" onclick="paginationSubmit(event, '@nextPage')">
+								<span class="icon-2">
+									@ReadFile(iconPath + "chevron-right.svg")
+								</span>
+							</a>
 						</li>
-					}
-					@if (pageCount > 5 && currentPage != pageCount)
-					{
-						<li class="page-item">
-							<a class="page-link" href="@nextPage" onclick="paginationSubmit(event, '@nextPage')">@Translate("Next")</a>
+						<li class="page-item @(nextDisabled)">
+							<button type="submit" class="page-link" onclick="paginationSubmit(event, '@lastPage')">
+								<span class="icon-2">
+									@ReadFile(iconPath + "chevrons-right.svg")
+								</span>
+							</button>
 						</li>
-					}
-					else
-					{
-						<li class="page-item disabled"><span class="page-link">@Translate("Next")</span></li>
-					}
-				</ul>
-			</div>
-			<input type="hidden" name="pagenum" id="pageNumber_@Pageview.CurrentParagraph.ID" />
-		</form>
-		<script>
-			paginationSubmit = function (event, pageNumber) {
+					</ul>
+				</div>
+				<input type="hidden" name="pagenum" id="pageNumber_@Pageview.CurrentParagraph.ID" />
+			</form>
+			<script>
+				paginationSubmit = function (event, pageNumber) {
+					event.preventDefault();
+					document.querySelector('#pageNumber_@Pageview.CurrentParagraph.ID').value = pageNumber;
+					swift.PageUpdater.Update(document.querySelector("#pagination_@Pageview.CurrentParagraph.ID"));
+				}
+			</script>
+		</div>
+		<div class="d-block d-lg-none position-sticky bottom-0">
+			<form id="loadMore_@Pageview.CurrentParagraph.ID">
+				<input type="hidden" name="pagesize" id="pageSize_@Pageview.CurrentParagraph.ID" />
+				<div class="gap-2 grid grid-1 mx-3 pb-2 theme">
+					<button class="btn btn-primary w-100" type="submit" onclick="loadMore(event, '@loadMore')">
+						@Translate("Show more")
+					</button>
+					<div class="text-center fs-8">Showing @pageSize/@totalItems</div>
+				</div>
+			</form>
+			<script>
+			loadMore = function (event, pageSize) {
 				event.preventDefault();
-				document.querySelector('#pageNumber_@Pageview.CurrentParagraph.ID').value = pageNumber;
-				swift.PageUpdater.Update(document.querySelector("#pagination_@Pageview.CurrentParagraph.ID"));
+				document.querySelector('#pageSize_@Pageview.CurrentParagraph.ID').value = pageSize;
+				swift.PageUpdater.Update(document.querySelector("#loadMore_@Pageview.CurrentParagraph.ID"));
 			}
-		</script>
+			</script>
+		</div>
 	}
 }
 else
@@ -281,13 +317,6 @@ else
 		</div>
 	}
 }
-
-
-<script>
-	function submitForm() {
-		swift.PageUpdater.Update(document.querySelector("#ordersubmit"));
-	}
-</script>
 
 <script>
 	function goToPage(page) {
