@@ -1,0 +1,392 @@
+﻿@inherits RazorTemplateBase<RazorTemplateModel<Template>>
+@using Dynamicweb.Rendering;
+@using System.Linq;
+
+@helper RenderHeaderImage()
+{
+    string logoimage = Pageview.Area.Item["EmailLogoImage"].ToString();
+
+    Column header = new Column();
+    header.image = logoimage;
+    header.imageSize = "250";
+    header.align = "center";
+
+    @CreateRow(header, new RowSettings { backgroundColor = "#14304A" });
+}
+
+@helper RenderFooterSection()
+{
+    string logoimage = Pageview.Area.Item["EmailLogoImage"].ToString();
+
+    Column footerRight = new Column();
+    footerRight.textColor = "#FFF";
+    footerRight.image = logoimage;
+    footerRight.imageSize = "200";
+    footerRight.align = "right";
+
+    string footeremail = Dynamicweb.Core.Converter.ToString(Pageview.Area.Item["ContactEmail"]);
+    string footerphone = Dynamicweb.Core.Converter.ToString(Pageview.Area.Item["ContactNumber"]).Replace(" ", "");
+
+    footerRight.text.Add("<a href='tel:" + footerphone + "' style='color: white; text-decoration: none; border-bottom: 0;'>" + footerphone + "</a>");
+    footerRight.text.Add("<a href='mailto:" + footeremail + "' style='color: white; text-decoration: none; border-bottom: 0;' title='Email Us'>" + footeremail + "</a>");
+    footerRight.text.Add("");
+    /*
+    string iconsHTML = "";
+
+    var socialLinksListId = Dynamicweb.Core.Converter.ToInt32(Pageview.Area.Item["FooterSocialLinks"]);
+    if (socialLinksListId > 0)
+    {
+        var socialLinksList = Dynamicweb.Content.Items.ItemList.GetItemListById(socialLinksListId);
+        if (socialLinksList != null) { 
+            foreach (var socialLinkItem in socialLinksList.Relations)
+            {
+                var values = new Dictionary<string, object>();
+                socialLinkItem.SerializeTo(values);
+                
+                string socialLink = values["Link"].ToString();
+                string socialIconClass = values["Icon"].ToString();
+
+                iconsHTML += " <a href='" + socialLink + "' style='color: white; text-decoration: none; border-bottom: 0;'><i class='fa " + socialIconClass + " fa-2x u-color-light'></i></a>";
+            }
+        }
+        footerRight.text.Add(iconsHTML);
+    }
+    */
+    @CreateRow(footerRight, new RowSettings { backgroundColor = "#14304A" });
+}
+
+@helper RenderRecurringDetails()
+{
+    if (GetBoolean("Ecom:Order.IsRecurringOrder"))
+    {
+        Column recurringInfo = new Column();
+        recurringInfo.text.Add(Translate("You have placed a subscription. This is a confirmation of the subscription not the actual order receipt."));
+        recurringInfo.align = "center";
+
+        @CreateRow(recurringInfo);
+
+        @CreateRowDivider();
+    }
+
+    if (GetBoolean("Ecom:Order.IsBasedOnRecurringOrder"))
+    {
+        Column basedRecurringInfo = new Column();
+        basedRecurringInfo.text.Add(Translate("Your subscription order"));
+        basedRecurringInfo.align = "center";
+
+        @CreateRow(basedRecurringInfo);
+
+        @CreateRowDivider();
+    }
+}
+
+@helper RenderComments()
+{
+    if (!string.IsNullOrWhiteSpace(GetString("Ecom:Order.Customer.Comment")))
+    {
+        Column comment = new Column();
+        comment.subheader = Translate("Comment");
+        comment.text.Add(GetString("Ecom:Order.Customer.Comment"));
+        
+        @CreateRow(comment);
+
+        @CreateRowDivider();
+    } 
+}
+
+@helper RenderAddresses(string billingTitle, string deliveryTitle, string prefix)
+{ 
+    //Billing information
+    Column billingInfo = new Column();
+
+    var billingInfoList = new string[] {
+        GetString("Ecom:" + prefix + ".Customer.Name"),
+        GetString("Ecom:" + prefix + ".Customer.Address"),
+        GetString("Ecom:" + prefix + ".Customer.Address2"),
+        GetString("Ecom:" + prefix + ".Customer.Zip") + " " + GetString("Ecom:" + prefix + ".Customer.City"),
+        GetString("Ecom:" + prefix + ".Customer.Country"),
+        GetString("Ecom:" + prefix + ".Customer.Email"),
+        GetString("Ecom:" + prefix + ".Customer.Phone"),
+        GetString("Ecom:" + prefix + ".Customer.EAN"),
+        GetString("Ecom:" + prefix + ".Customer.Fax"),
+        GetString("Ecom:" + prefix + ".Customer.Cell")
+    };
+
+    foreach (var infoListObject in billingInfoList.Where(i => !string.IsNullOrEmpty(i)))
+    {
+        billingInfo.text.Add(infoListObject);
+    }
+
+    //Delivery information
+    Column shippingInfo = new Column();
+
+    var shippingInfoList = new string[] {
+        GetString("Ecom:" + prefix + ".Delivery.Name"),
+        GetString("Ecom:" + prefix + ".Delivery.Address"),
+        GetString("Ecom:" + prefix + ".Delivery.Address2"),
+        GetString("Ecom:" + prefix + ".Delivery.Zip") + " " + GetString("Ecom:" + prefix + ".Delivery.City"),
+        GetString("Ecom:" + prefix + ".Delivery.Country"),
+        GetString("Ecom:" + prefix + ".Delivery.Email"),
+        GetString("Ecom:" + prefix + ".Delivery.Phone"),
+        GetString("Ecom:" + prefix + ".Delivery.EAN"),
+        GetString("Ecom:" + prefix + ".Delivery.Fax"),
+        GetString("Ecom:" + prefix + ".Delivery.Cell")
+    };
+
+    //Reuse billing address, if there is no shipping address
+    if (!String.IsNullOrEmpty(GetString("Ecom:" + prefix + ".Delivery.Address")))
+    {
+        foreach (var infoListObject in shippingInfoList.Where(i => !string.IsNullOrEmpty(i)))
+        {
+            shippingInfo.text.Add(infoListObject);
+        }
+    }
+    else
+    {
+        foreach (var infoListObject in billingInfoList.Where(i => !string.IsNullOrEmpty(i)))
+        {
+            shippingInfo.text.Add(infoListObject);
+        }
+    }
+
+    @CreateRow(billingInfo, shippingInfo, new RowSettings { backgroundColor = "#e4e4e4" });
+}
+
+@helper RenderPaymentAndShipping()
+{ 
+    Column paymentInfo = new Column();
+    Column shippingInfo = new Column();
+
+    //Payment information
+    if (!string.IsNullOrEmpty(GetString("Ecom:Order.PaymentMethod")))
+    {
+        string image = "http://" + GetGlobalValue("Global:Request.Host") + "/Admin/Public/GetImage.ashx?width=16&crop=1&image=" + "/Files/Images/payment.png";
+        paymentInfo.text.Add(Translate("Payment method") + ": " + GetString("Ecom:Order.PaymentMethod"));
+        paymentInfo.text.Add(Translate("Card no") + ": " + GetString("Ecom:Order.TransactionCardNumber"));
+        paymentInfo.text.Add(Translate("Transaction no") + ": " + GetString("Ecom:Order.TransactionNumber"));
+        paymentInfo.text.Add(Translate("Transaction status") + ": " + GetString("Ecom:Order.TransactionStatus"));
+    }
+
+    //Shipping information
+    if (!string.IsNullOrEmpty(GetString("Ecom:Order.ShippingMethod")))
+    {
+        string image = "http://" + GetGlobalValue("Global:Request.Host") + "/Admin/Public/GetImage.ashx?width=16&crop=1&image=" + "/Files/Images/shipping.png";
+        shippingInfo.text.Add(Translate("Shipping method") + ": " + GetString("Ecom:Order.ShippingMethod"));
+    }
+
+    @CreateRow(paymentInfo, shippingInfo, new RowSettings { backgroundColor = "#e4e4e4" });
+}
+
+@helper RenderOrderline(LoopItem orderline, bool showImage = true) 
+{
+    Column orderLineLeft = new Column();
+
+    Column orderLineCenter = new Column();
+
+    Column orderLineRight = new Column();
+    orderLineRight.align = "right";
+
+    if (orderline.GetString("Ecom:Order:OrderLine.Type") == "1" || orderline.GetString("Ecom:Order:OrderLine.Type") == "3" || orderline.GetString("Ecom:Order:OrderLine.Type") == "4")
+    {
+        //Discount
+        orderLineCenter.text.Add(orderline.GetString("Ecom:Order:OrderLine.ProductName"));
+
+        orderLineRight.text.Add("<strong>" + orderline.GetString("Ecom:Order:OrderLine.TotalPrice") + "</strong>");
+
+        @CreateRow(orderLineCenter, orderLineRight);
+    }
+    else
+    {   
+        if (showImage) {
+            orderLineLeft.image = orderline.GetString("Ecom:Product.ImageSmall.Default.Clean");
+        }
+
+        //Product
+        orderLineCenter.text.Add(orderline.GetString("Ecom:Order:OrderLine.ProductName"));
+
+        orderLineCenter.text.Add("# " + orderline.GetString("Ecom:Order:OrderLine.ProductNumber"));
+
+        if (!string.IsNullOrWhiteSpace(orderline.GetString("Ecom:Order:OrderLine.ProductVariantText")))
+        {
+            orderLineCenter.text.Add(orderline.GetString("Ecom:Order:OrderLine.ProductVariantText"));
+        }
+
+        orderLineCenter.text.Add(Translate("Qty") + ": " + orderline.GetString("Ecom:Order:OrderLine.Quantity"));
+
+        orderLineRight.text.Add("<strong>" + orderline.GetString("Ecom:Order:OrderLine.TotalPrice") + "</strong>");
+        
+        if (showImage) 
+        {
+            orderLineLeft.width = "105";
+            orderLineLeft.imageSize = "105";
+            orderLineCenter.width = "165";
+            orderLineRight.width = "110";
+            @CreateRow(orderLineLeft, orderLineCenter, orderLineRight);
+        }
+        else
+        {
+            orderLineCenter.width = "270";
+            orderLineRight.width = "110";
+            @CreateRow(orderLineCenter, orderLineRight);
+        }
+        //BOM Items
+        foreach (LoopItem bomitem in orderline.GetLoop("BOMItems"))
+        {
+            var bomImage = bomitem.GetString("Ecom:Product.ImageSmall.Default.Clean");
+
+            Column bomLineLeft = new Column();
+            if (showImage) {
+                bomLineLeft.image = bomImage;
+            }
+            Column bomLineCenter = new Column();
+            bomLineCenter.text.Add(bomitem.GetString("Ecom:Order:OrderLine.ProductName"));
+            bomLineCenter.text.Add("# " + bomitem.GetString("Ecom:Order:OrderLine.ProductNumber"));
+            bomLineCenter.text.Add(Translate("Qty") + ": " + bomitem.GetString("Ecom:Order:OrderLine.Quantity"));
+                
+            Column bomLineRight = new Column();
+            bomLineRight.text.Add("<strong>" + bomitem.GetString("Ecom:Order:OrderLine.TotalPrice") + "</strong>");
+            bomLineRight.align = "right";
+
+            if (showImage) 
+            {
+                bomLineLeft.width = "105";
+                bomLineLeft.imageSize = "105";
+                bomLineCenter.width = "165";
+                bomLineRight.width = "110";
+                @CreateRow(bomLineLeft, bomLineCenter, bomLineRight, new RowSettings { backgroundColor = "#e4e4e4" });
+            } 
+            else 
+            {
+                bomLineCenter.width = "270";
+                bomLineRight.width = "110";
+                @CreateRow(bomLineCenter, bomLineRight, new RowSettings { backgroundColor = "#e4e4e4" });
+            }
+        }
+    }
+    @CreateRowDivider()
+}
+
+@helper RenderProduct(LoopItem product) 
+{
+    Column productLeft = new Column();
+
+    Column productCenter = new Column();
+
+    Column productRight = new Column();
+    productRight.align = "right";
+
+    //Product
+    productLeft.image = product.GetString("Ecom:Product.ImageLarge.Default.Clean");
+
+    productCenter.text.Add(product.GetString("Ecom:Product.Name"));
+
+    productCenter.text.Add("# " + product.GetString("Ecom:Product.Number"));
+
+    if (!string.IsNullOrWhiteSpace(product.GetString("Ecom:Product.VariantText")))
+    {
+        productCenter.text.Add(product.GetString("Ecom:Product.VariantText"));
+    }
+
+    productRight.text.Add("<strong>" + product.GetString("Ecom:Product.Price") + "</strong>");
+        
+    productLeft.width = "105";
+    productLeft.imageSize = "105";
+    productCenter.width = "165";
+    productRight.width = "110";
+
+    @CreateRow(productLeft, productCenter, productRight);
+    /*
+    //BOM Items
+    foreach (LoopItem bomitem in product.GetLoop("BOMItems"))
+    {
+        var bomImage = bomitem.GetString("Ecom:Product.ImageSmall.Default.Clean");
+
+        Column bomLineLeft = new Column();
+        bomLineLeft.image = bomImage;
+        Column bomLineCenter = new Column();
+        bomLineCenter.text.Add(bomitem.GetString("Ecom:Product.Name"));
+        bomLineCenter.text.Add("# " + bomitem.GetString("Ecom:Product.ID"));
+        bomLineCenter.text.Add(Translate("Qty") + ": " + bomitem.GetString("Ecom:Product.Quantity"));
+                
+        Column bomLineRight = new Column();
+        bomLineRight.text.Add("<strong>" + bomitem.GetString("Ecom:Product.Price") + "</strong>");
+        bomLineRight.align = "right";
+        
+        @CreateRow(bomLineLeft, bomLineCenter, bomLineRight, new RowSettings { backgroundColor = "#e4e4e4" });
+    }*/
+
+    @CreateRowDivider()
+}
+
+
+@helper RenderGiftcards()
+{ 
+    if (!string.IsNullOrWhiteSpace(GetString("Ecom:Order.HasGiftCards")))
+    {
+        Column giftcardHeader = new Column();
+        giftcardHeader.header = Translate("Giftcards bought on this order");
+        giftcardHeader.align = "center";
+
+        @CreateRow(giftcardHeader);
+
+        @CreateRowDivider();
+
+        foreach (LoopItem giftcards in GetLoop("GiftCards"))
+        {
+            Column giftcardCode = new Column();
+            giftcardCode.subheader = Translate("Gift card code") + ": " + giftcards.GetString("Ecom:Order.GiftCard.Code");
+
+            @CreateRow(giftcardCode);
+
+            Column giftcardLeft = new Column();
+            giftcardLeft.text.Add("<strong>" + giftcards.GetString("Ecom:Order.GiftCard.Name") + "</strong>");
+            giftcardLeft.text.Add(Translate("Expiry date") + ": " + giftcards.GetString("Ecom:Order.GiftCard.ExpiryDate"));
+
+            Column giftcardRight = new Column();
+            giftcardRight.subheader = giftcards.GetString("Ecom:Order.GiftCard.Amount");
+            giftcardRight.align = "right";
+
+            @CreateRow(giftcardLeft, giftcardRight);
+
+            @CreateRowDivider();
+        }
+    } 
+
+    if (!string.IsNullOrWhiteSpace(GetString("Ecom:Order.HasUsedGiftCards")))
+    {
+        Column usedGiftcardHeader = new Column();
+        usedGiftcardHeader.subheader = Translate("Order used gift cards");
+        usedGiftcardHeader.align = "center";
+
+        @CreateRow(usedGiftcardHeader);
+
+        @CreateRowDivider();
+
+        foreach (LoopItem usedgiftcards in GetLoop("UsedGiftCards"))
+        {
+            Column giftcardLeft = new Column();
+            giftcardLeft.subheader = usedgiftcards.GetString("Ecom:Order.UsedGiftCard.Code");
+            giftcardLeft.text.Add(usedgiftcards.GetString("Ecom:Order.UsedGiftCard.Name"));
+            giftcardLeft.text.Add(Translate("Expiry date") + " " + usedgiftcards.GetString("Ecom:Order.UsedGiftCard.ExpiryDate"));
+
+            Column giftcardRight = new Column();
+            giftcardRight.subheader = usedgiftcards.GetString("Ecom:Order.UsedGiftCard.InitialAmount");
+            giftcardRight.text.Add(usedgiftcards.GetString("Ecom:Order.UsedGiftCard.UsedAmountForTheOrder"));
+            giftcardRight.text.Add(usedgiftcards.GetString("Ecom:Order.UsedGiftCard.RemainingBalance"));
+            giftcardRight.align = "right";
+
+            @CreateRow(giftcardLeft, giftcardRight);
+
+            @CreateRowDivider();
+        }
+    }
+}
+
+@helper RenderButton(string link, string text)
+{
+    Column button = new Column();
+    button.link = link;
+    button.linkText = Translate(text);
+    button.align = "center";
+    @CreateRow(button);
+}

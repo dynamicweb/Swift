@@ -1,0 +1,274 @@
+﻿@inherits ViewModelTemplate<ProductListViewModel>
+@using Dynamicweb.Rendering
+@using System.Linq
+@using System.Xml.Linq
+@using System.Globalization
+@using System.Web
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Environment;
+@using Dynamicweb.Core;
+
+@functions
+{
+
+    public XElement createElement(XElement parent, string elementName, object elementValue = null, Dictionary<string, string> attributes = null)
+    {
+        var element = new XElement(elementName);
+
+        if (parent != null)
+        {
+            parent.Add(element);
+        }
+
+        if (attributes != null)
+        {
+            foreach (var attr in attributes)
+            {
+                element.Add(new XAttribute(attr.Key, Converter.ToString(attr.Value)));
+            }
+        }
+
+        if (elementValue != null)
+        {
+            element.Value = Converter.ToString(elementValue);
+        }
+
+        return element;
+    }
+
+    public string GenerateXml()
+    {
+        System.Xml.Linq.XDocument xdoc = new System.Xml.Linq.XDocument();
+        var rootElement = createElement(null, "AmazonEnvelope", null, null);
+
+        XNamespace schema = "http://www.w3.org/2001/XMLSchema-instance";
+        var xsiAttr = new XAttribute(XNamespace.Xmlns + "xsi", schema);
+        var noNaneSpaceAttr = new XAttribute(schema + "noNamespaceSchemaLocation", "amzn-envelope.xsd");
+        rootElement.Add(xsiAttr);
+        rootElement.Add(noNaneSpaceAttr);
+
+        xdoc.Add(rootElement);
+
+        var headerElement = createElement(rootElement, "Header");
+        createElement(headerElement, "DocumentVersion", "1.01");
+        createElement(rootElement, "MessageType", "Product");
+
+        var messageId = 1;
+        foreach (var product in this.Model.Products)
+        {
+            var messageElement = createElement(rootElement, "Message");
+            createElement(messageElement, "MessageID", messageId.ToString());
+            createElement(messageElement, "OperationType", "Update");
+
+            var productsRootElement = createElement(messageElement, "Product");
+            ProcessProductXml(productsRootElement, product);
+            messageId++;
+        }
+
+        return xdoc.ToString();
+    }
+
+    private void ProcessProductXml(XElement productElement, ProductViewModel product)
+    {
+        if (product == null)
+            return;
+
+        createElement(productElement, "SKU", product.Number);
+
+        var externalIdType = GetCategoryFieldValue(product, "Amazon", "IdType");
+        var externalId = GetCategoryFieldValue(product, "Amazon", "ExternalID");
+        if (externalIdType != null && externalId != null)
+        {
+            var idElement = createElement(productElement, "StandardProductID");
+            createElement(idElement, "Type", externalIdType);
+            createElement(idElement, "Value", externalId);
+        }
+
+        var taxCode = GetCategoryFieldValue(product, "Amazon", "TaxCode");
+        createElement(productElement, "ProductTaxCode", taxCode != null ? taxCode : string.Empty);
+
+        var launchDate = GetCategoryFieldValue(product, "Amazon", "LaunchDate") as DateTime?;
+        launchDate = launchDate != null ? launchDate : DateTime.Now;
+        createElement(productElement, "LaunchDate", launchDate.Value.ToString("o"));
+
+        var conditionElement = createElement(productElement, "Condition");
+
+        //ConditionType
+        //Must be one of the following: New, UsedLikeNew, UsedVeryGood, Refurbished
+        createElement(conditionElement, "ConditionType", GetCategoryFieldValue(product, "Amazon", "Condition"));
+
+        var descriptionDataElement = createElement(productElement, "DescriptionData");
+
+        createElement(descriptionDataElement, "Title", product.Name);
+
+        var brand = GetProductFieldValue(product, "Brand");
+        if(brand != null)
+        {
+            createElement(descriptionDataElement, "Brand", brand != null ? brand : string.Empty);
+        }
+
+        createElement(descriptionDataElement, "Description", product.LongDescription);
+
+        //< ItemDimensions>
+        //  <Length unitOfMeasure=”CM”>259</Length>
+        //  <Width unitOfMeasure=”CM”>167</Width>
+        //  <Height unitOfMeasure=”CM”>0</Height>
+        //  <Weight unitOfMeasure=”LB”>27.9</Weight>
+        //</ItemDimensions>
+
+        var itemDimensionsElement = createElement(descriptionDataElement, "ItemDimensions");
+
+        //Weight (with name=unitOfMeasure [LB,KG])
+        //Length(with name = unitOfMeasure[CM, M, IN, FT])
+        //Width(with name = unitOfMeasure[CM, M, IN, FT])
+        //Height(with name = unitOfMeasure[CM, M, IN, FT])
+        createElement(itemDimensionsElement, "Length", GetCategoryFieldValue(product, "Amazon", "Length"), new Dictionary<string, string>() { { "unitOfMeasure", "CM" } });
+        createElement(itemDimensionsElement, "Width", GetCategoryFieldValue(product, "Amazon", "Width"), new Dictionary<string, string>() { { "unitOfMeasure", "CM" } });
+        createElement(itemDimensionsElement, "Height", GetCategoryFieldValue(product, "Amazon", "Height"), new Dictionary<string, string>() { { "unitOfMeasure", "CM" } });
+        createElement(itemDimensionsElement, "Weight", product.Weight, new Dictionary<string, string>() { { "unitOfMeasure", "KG" } });
+
+        //MSRP(with name = currency[USD, CAD])
+        if(product.Price != null)
+        {
+            //Amazon only accept 2 decimal places
+            createElement(descriptionDataElement, "MSRP", Math.Round(product.Price.Price, 2).ToString(System.Globalization.CultureInfo.InvariantCulture), new Dictionary<string, string>() { { "currency", product.Price.CurrencyCode } });
+        }
+
+        createElement(descriptionDataElement, "Manufacturer", product.Manufacturer?.Name);
+
+        var rawKeyWords = product.Keywords;
+        if (!string.IsNullOrWhiteSpace(rawKeyWords))
+        {
+            string[] separators = { ",", ".", "!", "?", ";", ":", " " };
+            string[] keyWords = rawKeyWords.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+            var searchTermsLength = 0;
+            var searchTerms = "";
+            foreach (var keyWord in keyWords)
+            {
+                searchTermsLength += keyWord.Length;
+                if (searchTermsLength > 50)
+                {
+                    createElement(descriptionDataElement, "SearchTerms", searchTerms);
+                    searchTerms = "";
+                    searchTermsLength = 0;
+                }
+                else
+                {
+                    searchTerms += keyWord + ";";
+                }
+            }
+            createElement(descriptionDataElement, "SearchTerms", searchTerms);
+        }
+
+
+        var productDataElement = createElement(productElement, "ProductData");
+
+        //Section containing category-specific information such as variations. Reference one or more
+        //of the following XSDs to complete the ProductData section(only one category can be used
+        //for a given item).
+
+        //AutoAccessory, Beauty, CameraPhoto, CE, Clothing, Clothing Accessories,
+        //FoodAndBeverages, Gourmet,Health,Home,HomeImprovement, Jewelry, Lighting,
+        //Miscellaneous, MusicalInstruments, Office, PetSupplies, SoftwareVideoGames,
+        //Sports, TiresAndWheels, Tools, ToysBaby, Wireless,
+
+        //Keep in mind that some of these product categories might not be available for merchants on
+        //some Amazon websites.If a product category is available to merchants on a particular
+        //Amazon website, then the XSD files for that category are valid for that Amazon website as well.
+
+        var categoryElement = createElement(productDataElement, "Office", null, new Dictionary<string, string>() { });
+
+        //for each category product type defined separately, for sports it is:
+        //<xsd:enumeration value="SportingGoods"/>
+        //<xsd:enumeration value="GolfClubHybrid"/>
+        //<xsd:enumeration value="GolfClubIron"/>
+        //<xsd:enumeration value="GolfClubPutter"/>
+        //<xsd:enumeration value="GolfClubWedge"/>
+        //<xsd:enumeration value="GolfClubWood"/>
+        //<xsd:enumeration value="GolfClubs"/>
+        var productTypeElement = createElement(categoryElement, "ProductType", null);
+        createElement(productTypeElement, "OfficeProducts", null);
+
+        //var variationDataElement = createElement(categoryElement, "SportingGoods", null, new Dictionary<string, string>() { });
+
+    }
+
+    public XElement createElement(string elementName, string elementValue, Dictionary<string, string> attributes = null)
+    {
+        var element = new XElement(elementName);
+        if (attributes != null)
+        {
+            foreach (var attr in attributes)
+            {
+                element.Add(new XAttribute(attr.Key, Converter.ToString(attr.Value)));
+            }
+        }
+        if (elementValue != null)
+        {
+            element.Value = Converter.ToString(elementValue);
+        }
+
+        return element;
+    }
+
+    public object GetCategoryFieldValue(ProductViewModel product, string categorySystemName, string fieldSystemName)
+    {
+        CategoryFieldViewModel category = null;
+        if (product.ProductCategories != null && product.ProductCategories.TryGetValue(categorySystemName, out category))
+        {
+            FieldValueViewModel field = null;
+            if (category.Fields.TryGetValue(fieldSystemName, out field))
+            {
+
+                if (field.Value is List<FieldOptionValueViewModel>)
+                {
+                    var fieldValue = field.Value as List<FieldOptionValueViewModel>;
+                    return fieldValue.FirstOrDefault()?.Value;
+                }
+                else
+                {
+                    var fieldValue = field as FieldValueViewModel;
+                    return fieldValue?.Value;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    public object GetProductFieldValue(ProductViewModel product, string fieldSystemName)
+    {
+        if (product.ProductFields == null)
+        {
+            return null;
+        }
+
+        FieldValueViewModel field = null;
+
+        if (product.ProductFields.TryGetValue(fieldSystemName, out field))
+        {
+            if (field.Value is List<FieldOptionValueViewModel>)
+            {
+                var fieldValue = field.Value as List<FieldOptionValueViewModel>;
+                return fieldValue.FirstOrDefault()?.Value;
+            }
+            else
+            {
+                var fieldValue = field as FieldValueViewModel;
+                return fieldValue?.Value;
+            }
+        }
+        else
+        {
+            return null;
+        }
+
+    }
+}
+
+@{
+
+    var productContent = GenerateXml();
+}
+
+@productContent

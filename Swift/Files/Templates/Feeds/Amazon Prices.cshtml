@@ -1,0 +1,117 @@
+﻿@inherits ViewModelTemplate<ProductListViewModel>
+@using Dynamicweb.Rendering
+@using System.Globalization
+@using System.Web
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using System.Xml.Linq
+@using Dynamicweb.Environment;
+@using Dynamicweb.Core;
+
+@functions
+{
+
+    public XElement createElement(XElement parent, string elementName, object elementValue = null, Dictionary<string, string> attributes = null)
+    {
+        var element = new XElement(elementName);
+
+        if (parent != null)
+        {
+            parent.Add(element);
+        }
+
+        if (attributes != null)
+        {
+            foreach (var attr in attributes)
+            {
+                element.Add(new XAttribute(attr.Key, Converter.ToString(attr.Value)));
+            }
+        }
+
+        if (elementValue != null)
+        {
+            element.Value = Converter.ToString(elementValue);
+        }
+
+        return element;
+    }
+
+    public string GenerateXml()
+    {
+        System.Xml.Linq.XDocument xdoc = new System.Xml.Linq.XDocument();
+        var rootElement = createElement(null, "AmazonEnvelope", null, null);
+
+        XNamespace schema = "http://www.w3.org/2001/XMLSchema-instance";
+        var xsiAttr = new XAttribute(XNamespace.Xmlns + "xsi", schema);
+        var noNaneSpaceAttr = new XAttribute(schema + "noNamespaceSchemaLocation", "amzn-envelope.xsd");
+        rootElement.Add(xsiAttr);
+        rootElement.Add(noNaneSpaceAttr);
+
+        xdoc.Add(rootElement);
+
+        var headerElement = createElement(rootElement, "Header");
+        createElement(headerElement, "DocumentVersion", "1.01");
+        createElement(rootElement, "MessageType", "Price");
+
+        var messageCounter = 1;
+        foreach (var product in this.Model.Products)
+        {
+            var messageElement = createElement(rootElement, "Message");
+            createElement(messageElement, "MessageID", messageCounter.ToString());
+            createElement(messageElement, "OperationType", "Update");
+
+
+            var productsRootElement = createElement(messageElement, "Price");
+
+            ProcessProductXml(productsRootElement, product);
+            messageCounter++;
+        }
+
+        return xdoc.ToString();
+    }
+
+    private void ProcessProductXml(XElement productElement, ProductViewModel product)
+    {
+        createElement(productElement, "SKU", product.Number);
+        if(product.Price != null)
+        {
+            //Amazon only accept two decimal places
+            createElement(productElement, "StandardPrice", Math.Round(product.Price.Price, 2).ToString(System.Globalization.CultureInfo.InvariantCulture), new Dictionary<string, string>() { { "currency", product.Price.CurrencyCode } });
+        }
+
+
+
+        if(product.Discount != null && product.Discount.Price > 0)
+        {
+            var priceElement = createElement(productElement, "Sale");
+            createElement(priceElement, "StartDate", DateTime.Now.ToString("o"));
+            createElement(priceElement, "EndDate", DateTime.Now.AddDays(30).ToString("o"));
+            //Amazon only accept two decimal places
+            createElement(priceElement, "SalePrice", Math.Round(product.Discount.Price, 2).ToString(System.Globalization.CultureInfo.InvariantCulture), new Dictionary<string, string>() { { "currency", product.Discount.CurrencyCode } });
+        }
+    }
+
+    public XElement createElement(string elementName, object elementValue, Dictionary<string, string> attributes = null)
+    {
+        var element = new XElement(elementName);
+        if (attributes != null)
+        {
+            foreach (var attr in attributes)
+            {
+                element.Add(new XAttribute(attr.Key, Converter.ToString(attr.Value)));
+            }
+        }
+        if (elementValue != null)
+        {
+            element.Value = Converter.ToString(elementValue);
+        }
+
+        return element;
+    }
+}
+
+@{
+    var productContent = GenerateXml();
+}
+
+@productContent
