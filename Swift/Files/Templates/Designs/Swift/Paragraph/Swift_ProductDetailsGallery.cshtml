@@ -116,6 +116,8 @@
 @if (totalAssets != 0 && assetsList.Count() != 0) {
 	int desktopAssetNumber = 0;
 	int mobileAssetNumber = 0;
+	int mobileAssetThumbnailNumber = 0;
+	int modalAssetNumber = 0;
 
 	@* Desktop: Show the gallery on large screens *@
 	<div class="d-none d-lg-block h-100 @theme">
@@ -136,19 +138,25 @@
 
 	@* Mobile: Show the thumbs on small screens *@
 	<div class="d-block d-lg-none mx-lg-0 @theme">
-		<div id="SmallScreenImages_@Model.ID">
-			@foreach (MediaViewModel asset in assetsList) {
-				var assetValue = asset.Value.ToLower();
-				foreach (string format in allSupportedFormats) {
-					if (assetValue.Contains(format) ) {
-						@RenderAsset(asset, mobileAssetNumber, "mobile")
-						mobileAssetNumber++;
+		<div id="SmallScreenImages_@Model.ID" class="carousel" data-bs-ride="carousel">
+			<div class="carousel-inner h-100">
+				@foreach (MediaViewModel asset in assetsList) {
+					var assetValue = asset.Value.ToLower();
+					foreach (string format in allSupportedFormats) {
+						if ( assetValue.Contains(format) ) {
+							string activeSlide = mobileAssetNumber == 0 ? "active" : "";
+
+							<div class="carousel-item @activeSlide" data-bs-interval="99999">
+								@RenderAsset(asset, mobileAssetNumber, "mobile")
+							</div>
+							mobileAssetNumber++;
+						}
 					}
 				}
-			}
+			</div>
 		</div>
 
-		<div id="SmallScreenImagesThumbnails_@Model.ID" class="tns-nav-thumbnails grid gap-2 overflow-x-scroll my-3">
+		<div id="SmallScreenImagesThumbnails_@Model.ID" class="grid gap-2 overflow-x-scroll my-3">
 			@foreach (MediaViewModel asset in assetsList) {
 				var assetValue = asset.Value;
 				foreach (string format in allSupportedFormats) {
@@ -161,7 +169,7 @@
 						string videoId = assetValue.Substring(assetValue.LastIndexOf('/') + 1);
 						string vimeoJsClass = assetValue.Contains("vimeo") ? "js-vimeo-video-thumbnail" : "";
 
-						<div class="tns-nav-thumbnail-item ratio ratio-4x3 border outline-none" style="width:80px;">
+						<div class="ratio ratio-4x3 border outline-none" style="width:80px;" data-bs-target="#SmallScreenImages_@Model.ID" data-bs-slide-to="@mobileAssetThumbnailNumber">
 							<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
 								@foreach (string videoFormat in supportedVideoFormats) {
 									if (assetValue.Contains(videoFormat)) {
@@ -169,31 +177,14 @@
 									}
 								}
 							</div>
-							<img src="@imagePathThumb" class="p-2 @vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
+							<img src="@imagePathThumb" class="p-1 @vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
 						</div>
+
+						mobileAssetThumbnailNumber++;
 					}
 				}
 			}
 		</div>
-
-		@* Tiny slider *@
-		<script type="module">
-			var mobileSlider_@Model.ID = tns({
-				container: '#SmallScreenImages_@Model.ID',
-				items: 1,
-				gutter: 16,
-				mouseDrag: true,
-				touch: true,
-				arrowKeys: true,
-				nav: true,
-				navContainer: "#SmallScreenImagesThumbnails_@Model.ID",
-				navAsThumbnails: true,
-				loop: false,
-				controls: false,
-				swipeAngle: 30,
-				preventScrollOnTouch: 'auto'
-			});
-		</script>
 	</div>
 
 	@* Modal with slides *@
@@ -204,54 +195,49 @@
 					<h5 class="modal-title" id="productDetailsGalleryModalTitle">@product.Title</h5>
 					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 				</div>
-				<div class="modal-body h-100">
-					<div id="FullImages_@Model.ID">
-						@foreach (MediaViewModel asset in assetsList) {
-							var assetValue = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
-							foreach (string format in allSupportedFormats) {
-								if (assetValue.Contains(format) ) {
-									string imagePath = assetValue;
-									var parms = new Dictionary<string, object>();
-									parms.Add("columns", Model.GridRowColumnCount);
+				<div class="modal-body p-2 h-100">
+					<div id="ModalCarousel_@Model.ID" class="carousel h-100" data-bs-ride="carousel">
+						<div class="carousel-inner h-100">
+							@foreach (MediaViewModel asset in assetsList) {
+								var assetValue = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+								foreach (string format in allSupportedFormats) {
+									if (assetValue.Contains(format) ) {
+										string imagePath = assetValue;
+										string activeSlide = modalAssetNumber == 0 ? "active" : "";
 
-									foreach (string imageFormat in supportedImageFormats) {
-										if (assetValue.Contains(imageFormat)) {
-											@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
-										}
-									}
+										var parms = new Dictionary<string, object>();
+										parms.Add("cssClass", "d-block mw-100 mh-100 m-auto");
+										parms.Add("fullwidth", true);
+										parms.Add("columns", Model.GridRowColumnCount);
 
-									foreach (string videoFormat in supportedVideoFormats) {
-										if (assetValue.Contains(videoFormat)) {
-											@RenderVideoPlayer(asset, "modal")
-										}
+										<div class="carousel-item @activeSlide h-100" data-bs-interval="99999">
+											@foreach (string imageFormat in supportedImageFormats) {
+												if (assetValue.Contains(imageFormat)) {
+													@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+												}
+											}
+
+											@foreach (string videoFormat in supportedVideoFormats) {
+												if (assetValue.Contains(videoFormat)) {
+													@RenderVideoPlayer(asset, "modal")
+												}
+											}
+										</div>
+
+										modalAssetNumber++;
 									}
 								}
 							}
-						}
+							<button class="carousel-control-prev" type="button" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide="prev">
+								<span class="carousel-control-prev-icon" aria-hidden="true"></span>
+								<span class="visually-hidden">@Translate("Previous")</span>
+							</button>
+							 <button class="carousel-control-next" type="button" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide="next">
+								<span class="carousel-control-next-icon" aria-hidden="true"></span>
+								<span class="visually-hidden">@Translate("Next")</span>
+							</button>
+						</div>
 					</div>
-					<script type="module">
-						var sliderFull_@(Model.ID) = tns({
-							container: '#FullImages_@Model.ID',
-							items: 1,
-							gutter: 16,
-							mouseDrag: true,
-							touch: true,
-							arrowKeys: true,
-							nav: false,
-							loop: false,
-							speed: 10,
-							controls: false,
-							swipeAngle: 30,
-							preventScrollOnTouch: 'auto'
-						});
-
-						if (document.getElementById('modal_@Model.ID')) {
-							document.getElementById('modal_@Model.ID').addEventListener('show.bs.modal', function (event) {
-								var slideNumber = event.relatedTarget.getAttribute("data-image-number");
-								sliderFull_@(Model.ID).goTo(slideNumber);
-							});
-						}
-					</script>
 				</div>
 			</div>
 		</div>
@@ -307,8 +293,8 @@
 		parms.Add("cssClass", "mw-100 mh-100");
 	}
 
-	<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
-		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+	<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID">
+		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide-to="@number">
 			@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
 		</div>
 	</a>
@@ -326,8 +312,8 @@
 
 	RatioSettings ratioSettings = GetRatioSettings(size);
 
-	<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable); cursor: pointer" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
-		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+	<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable); cursor: pointer" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID">
+		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide-to="@number">
 			<div class="icon-5 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
 			<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@asset.Name" class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;" />
 		</div>
@@ -344,14 +330,15 @@
 	string openInModal = Model.Item.GetString("OpenVideoInModal");
 	bool autoPlay = Model.Item.GetBoolean("VideoAutoPlay");
 
-	<div> 
+	<div class="h-100"> 
 		@if (type != "selfhosted") { 
 			<div
 				id="player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size"
-				class="player plyr__video-embed h-100 w-100" 
+				class="plyr__video-embed" 
 				data-plyr-provider="@(type)" 
 				data-plyr-embed-id="@videoId" 
-				style="--plyr-color-main: var(--swift-foreground-color); ">
+				style="--plyr-color-main: var(--swift-foreground-color); height: 100%"
+				allowfullscreen>
 			</div>
 
 			<script type="module">
@@ -374,10 +361,19 @@
 					player.config.volume = 0;
 					player.media.loop = true;
 
-					player.on('ready', () => {
+					player.on('ready', function() {
 						if (player.config.autoplay === true) {
+							var playerElement = event.target;
+							playerElement.classList.add("h-100");
 							player.media.play();
 						}
+					});
+					</text>
+				} else {
+					<text>
+					player.on('ready', function(event)  {
+						var playerElement = event.target;
+						playerElement.classList.add("h-100");
 					});
 					</text>
 				}
