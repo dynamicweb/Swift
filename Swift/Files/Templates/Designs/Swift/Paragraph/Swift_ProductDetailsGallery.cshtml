@@ -198,13 +198,14 @@
 
 	@* Modal with slides *@
 	<div class="modal fade" id="modal_@Model.ID" tabindex="-1" aria-labelledby="productDetailsGalleryModalTitle" aria-hidden="true">
-		<div class="modal-dialog modal-dialog-centered modal-xl">
+		<div class="modal-dialog modal-fullscreen">
 			<div class="modal-content">
-				<div class="modal-header visually-hidden">
-					<h5 class="modal-title" id="productDetailsGalleryModalTitle">@Translate("Full image")</h5>
+				<div class="modal-header">
+					<h5 class="modal-title" id="productDetailsGalleryModalTitle">@product.Title</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 				</div>
-				<div class="modal-body">
-					<div id="FullImages_@Model.ID" class="d-flex align-items-center justify-content-center">
+				<div class="modal-body h-100">
+					<div id="FullImages_@Model.ID">
 						@foreach (MediaViewModel asset in assetsList) {
 							var assetValue = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
 							foreach (string format in allSupportedFormats) {
@@ -267,10 +268,9 @@
 
 @helper RenderAsset(MediaViewModel asset, int assetNumber, string size = "desktop") { 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
-	string padding = theme != "" ? "p-3" : "";
 	string assetValue = asset.Value;
 
-	<div class="h-100 @(padding)@(theme)">
+	<div class="h-100 @(theme)">
 		@foreach (string format in supportedImageFormats) {
 			if (assetValue.Contains(format)) {
 				@RenderImage(asset, assetNumber, size)
@@ -278,7 +278,7 @@
 		}
 		@foreach (string format in supportedVideoFormats) {
 			if (assetValue.Contains(format)) {
-				if (Model.Item.GetBoolean("OpenVideoInModal")) {
+				if (Model.Item.GetString("OpenVideoInModal") == "true") {
 					@RenderVideoScreendump(asset, assetNumber, size)
 				} else {
 					@RenderVideoPlayer(asset, size)
@@ -298,6 +298,7 @@
 	var parms = new Dictionary<string, object>();
 	parms.Add("alt", productName);
 	parms.Add("itemprop", "image");
+	parms.Add("fullwidth", true);
 	parms.Add("columns", Model.GridRowColumnCount);
 
 	if (ratioSettings.Ratio == "fill" && galleryLayout != "grid") {
@@ -325,7 +326,7 @@
 
 	RatioSettings ratioSettings = GetRatioSettings(size);
 
-	<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" cursor: pointer" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
+	<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable); cursor: pointer" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID" data-image-number="@number">
 		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
 			<div class="icon-5 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
 			<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@asset.Name" class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;" />
@@ -340,7 +341,7 @@
 	type = assetValue.Contains("vimeo") ? "vimeo" : type;
 	type = assetValue.Contains(".mp4") ? "selfhosted" : type;
 
-	bool openInModal = Model.Item.GetBoolean("OpenVideoInModal");
+	string openInModal = Model.Item.GetString("OpenVideoInModal");
 	bool autoPlay = Model.Item.GetBoolean("VideoAutoPlay");
 
 	<div> 
@@ -366,7 +367,7 @@
 					}
 				});
 
-				@if (autoPlay && !openInModal) {
+				@if (autoPlay && openInModal == "false") {
 					<text>
 					player.config.autoplay = true;
 					player.config.muted = true;
@@ -382,7 +383,7 @@
 				}
 			</script>
 		} else {
-			string autoPlayAttributes = (autoPlay && !openInModal) ? "loop autoplay muted playsinline" : "";
+			string autoPlayAttributes = (autoPlay && openInModal == "false") ? "loop autoplay muted playsinline" : "";
 			string videoType = Path.GetExtension(assetValue).ToLower();
 
 			<video preload="true" @autoPlayAttributes class="h-100 w-100" style="object-fit: cover;">
