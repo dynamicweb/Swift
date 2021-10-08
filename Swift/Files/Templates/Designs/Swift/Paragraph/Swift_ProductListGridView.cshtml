@@ -43,6 +43,10 @@
 		<div class="grid grid-2 grid-lg-3 pt-3">
 			@foreach (ProductViewModel product in productList.Products)
 			{
+				string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+				bool anonymousUser = Pageview.User == null;
+				bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+
 				string link = $"{detailsPageLink}&groupid={product.PrimaryOrDefaultGroup.Id}&productid={product.Id}";
 				link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
 				string price = product?.Price?.PriceFormatted ?? "";
@@ -77,7 +81,7 @@
 					}
 				}
 
-				<article class="product-list-item" style="grid-template-rows: auto 1fr auto">
+				<article class="product-list-item">
 
 					<a href="@link" class="d-flex flex-column gap-3 d-block h-100 text-decoration-none @(productTheme)">
 
@@ -131,8 +135,10 @@
 																{
 																	string defaultImage = Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value);
 																	string variantImage = Dynamicweb.Context.Current.Server.UrlEncode(variant.Image.Value);
+																	string defaultPrice = !hidePrice ? product.Price.PriceFormatted : "0";
+																	string variantPrice = !hidePrice ? product.Price.PriceFormatted : "0";
 
-																	<figure class="figure w-100 d-block m-0" onmouseover="switchVariantProduct('@product.Id', '@product.Price.PriceFormatted', '@variantImage')" onmouseout="switchVariantProduct('@product.Id', '@product.Price.PriceFormatted', '@defaultImage')">
+																	<figure class="figure w-100 d-block m-0" onmouseover="switchVariantProduct('@product.Id', '@defaultPrice', '@variantImage')" onmouseout="switchVariantProduct('@product.Id', '@variantPrice', '@defaultImage')">
 																		<div class="d-flex align-items-center justify-content-center">
 																			<img src="/admin/public/GetImage.ashx?image=@variantImage&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" height="75" width="75" class="p-1 text-small" loading="lazy" decoding="async" alt="@product.Name, @variant.Name">
 																		</div>
@@ -147,8 +153,10 @@
 																<div class="visually-hidden">
 																	<h4>@Translate("Variant Name")</h4>
 																	<p>@product.Name, @variant.Name</p>
-																	<h4>@Translate("Variant Price")</h4>
-																	<p><span class="text-price">@product.Price.PriceFormatted</span></p>
+																	@if (!hidePrice) { 
+																		<h4>@Translate("Variant Price")</h4>
+																		<p><span class="text-price">@product.Price.PriceFormatted</span></p>
+																	}
 																</div>
 															</article>
 														}
@@ -178,12 +186,13 @@
 							<h3 class="h6 mb-0">@product.Name @product.VariantId</h3>
 						</div>
 
-						<div class="product-list-item__price">
-							<span class="fw-bold" id="@priceId">
-								<span class="text-price">@price</span>
-							</span>
-						</div>
-
+						@if (!hidePrice) { 
+							<div class="product-list-item__price">
+								<span class="fw-bold" id="@priceId">
+									<span class="text-price">@price</span>
+								</span>
+							</div>
+						}
 					</a>
 				</article>
 
