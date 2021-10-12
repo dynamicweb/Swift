@@ -2,12 +2,100 @@
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
 
+@{ 
+	var productList = Model.Products;
 
-<h2>VARIANT PRODUCTS</h2>
+	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
+	}
 
-@foreach (var product in Model.Products)
-{
-	<div>
-		@product.Name
+	string iconPath = "/Files/icons/";
+
+	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+}
+
+@if (productList.Count > 0) {
+	<div class="table-responsive">
+		<table class="table table-striped align-middle w-100">
+			<thead>
+				<tr class="fw-bold">
+					<td scope="col">&nbsp;</td>
+					<td scope="col">@Translate("Product")</td>
+					<td scope="col">@Translate("Stock")</td>
+					<td scope="col" align="right">@Translate("Price")</td>
+					<td scope="col">@Translate("Qty")</td>
+				</tr>
+			</thead>
+		
+			<tbody>
+				@foreach (var product in productList) {
+					string image = product.DefaultImage.Value;
+					image = $"/Admin/Public/GetImage.ashx?image={image}&width=60&format=webp"; 
+
+					<tr>
+						<td width="60" scope="row">
+							<img src="@image" />
+						</td>
+						<td scope="row">@product.Name</td>
+						<td>
+							@if (@product.StockLevel > 0) {
+								<span class="text-success">@Translate("In stock")</span>
+							} else {
+								<span class="text-danger">@Translate("Out of stock")</span>
+							}
+						</td>
+						<td align="right">
+							<div itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+								<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
+				
+								@if (showPricesWithVat == "false" && !neverShowVat) {
+									<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
+									if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+										<span class="text-decoration-line-through opacity-75 me-3">
+											@product.PriceBeforeDiscount.PriceWithoutVatFormatted
+										</span>
+									}
+								} else {
+									<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
+									if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+										<span class="text-decoration-line-through opacity-75 me-3">
+											@product.PriceBeforeDiscount.PriceFormatted
+										</span>
+									}
+								}
+			
+								@if (showPricesWithVat == "false" && !neverShowVat) {
+									<span class="text-price">@product.Price.PriceWithoutVatFormatted</span>
+								} else {
+									<span class="text-price">@product.Price.PriceFormatted</span>
+								}
+							</div>
+							@if (showPricesWithVat == "false" && !neverShowVat) {
+								<small class="opacity-85 fst-normal">@product.Price.PriceWithVatFormatted @Translate("Incl. VAT")</small>
+							}
+						</td>
+						<td width="160">
+							<form method="post" action="@url">
+								<input type="hidden" name="redirect" value="false" />
+								<input type="hidden" name="ProductId" value="@product.Id" />
+								<input type="hidden" name="cartcmd" value="add" />
+
+								@if (!string.IsNullOrEmpty(product.VariantId)) {
+									<input type="hidden" name="VariantId" value="@product.VariantId" />
+								}
+
+								<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
+									<input id="Quantity_@product.Id" name="Quantity" value="1" class="form-control" style="max-width: 100px" type="number">
+									<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@ReadFile(iconPath+"shopping-cart.svg")</button>
+								</div>
+							</form>
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
 	</div>
 }
