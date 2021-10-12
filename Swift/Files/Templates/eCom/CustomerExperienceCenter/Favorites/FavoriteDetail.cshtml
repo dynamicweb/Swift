@@ -5,9 +5,11 @@
 
 @{
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
-	string currentPageUrl = "/Default.aspx?ID=" + Pageview.Page.ID + "&FavoriteListId=" + Model.Id;
+	int favoriteListId = Model.Id;
+	string currentPageUrl = "/Default.aspx?ID=" + Pageview.Page.ID + "&FavoriteListId=" + favoriteListId;
 	int listItemsCount = Model.ProductList.TotalProductsCount;
 	int pageSize = Model.ProductList.PageSize;
+	int userId = Pageview.User.ID;
 }
 
 @Include("../PaginationHelper.cshtml")
@@ -28,13 +30,13 @@
 {
 	string detailsPageLink = Pageview.CurrentParagraph.Item["ProductDetailsPage"] != null ? Pageview.CurrentParagraph.Item["ProductDetailsPage"].ToString() : "";
 
-	<div class="grid grid-2 grid-lg-3 p-3">
+	<div class="grid grid-2 grid-lg-3 grid-xxl-4 p-3">
 	@foreach (var product in Model.ProductList.Products)
 	{
 		string link = $"{detailsPageLink}&groupid={product.PrimaryOrDefaultGroup.Id}&productid={product.Id}";
 		link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
 
-		string productImage = "/Admin/Public/GetImage.ashx?Image=" + @product.DefaultImage.Value + "&Format=webp&Width=300&Height=300";
+		string productImage = "/Admin/Public/GetImage.ashx?Image=" + @product.DefaultImage.Value + "&Format=webp&Width=450&Height=450";
 
 		<article class="">
 			<div class="position-relative d-flex flex-column gap-3 d-block h-100 text-decoration-none">
@@ -46,7 +48,7 @@
 							<a href="@link" class="d-flex justify-content-center align-items-center">
 								<img
 									src="@productImage"
-									width="300"
+									width="450"
 									loading="lazy"
 									decoding="async"
 									class="mw-100 mh-100 p-2 p-lg-3"
@@ -62,23 +64,27 @@
 					</div>
 				</div>
 
-				<div class="details flex-fill d-flex flex-row gap-3">
-					<div class="flex-fill d-flex flex-column gap-3">
-						<div class="name flex-fill">@product.Name</div>
-						<div class="price">@RenderPartial("Components/ProductPrice.cshtml", product)</div>
-					</div>
-					<div class="add">
+				<div class="name flex-fill">@product.Name</div>
+				<div class="price">@RenderPartial("Components/ProductPrice.cshtml", product)</div>
+
+				<div class="d-flex flex-row gap-2">
+
+					<div class="add-to-cart flex-fill">
 						@RenderPartial("Components/AddToCart.cshtml", product)
 					</div>
+
+					<div class="add-to-favorites">
+						<button type="button" class="btn btn-secondary js-ToggleFavorite" data-product-id="@product.Id" data-variant-id="@product.VariantId" data-list-id="@favoriteListId">
+							<span class="icon-2">
+								@ReadFile(iconPath + "heart-filled.svg")
+							</span>
+						</button>
+
+						@* @RenderPartial("Components/ToggleFavorite.cshtml", product) *@
+					</div>
+
 				</div>
 
-				<div class="add-to-favorites position-absolute top-0 end-0">
-					<button type="button" class="btn btn-light rounded-circle">
-						<span class="icon-2">
-							@ReadFile(iconPath + "heart.svg")
-						</span>
-					</button>
-				</div>
 			</div>
 		</article>
 	}
@@ -90,3 +96,19 @@
 	</div>
 	}
 }
+
+<script>
+	document.querySelectorAll('.js-ToggleFavorite').forEach(item => {
+		item.addEventListener('click', event => {
+			let button = event.currentTarget;
+			let productId = button.getAttribute('data-product-id');
+			let variantId = button.getAttribute('data-variant-id');
+			let userId = @userId;
+			let favoriteListId = @favoriteListId;
+
+			document.location.href = "/?favoritecmd=removeproductfromfavoritelist&userId=" + userId + "&productId=" + productId + "&productVariantId=" + variantId + "&favoriteListId=" + favoriteListId;
+		})
+	})
+
+	// http://swift.local.dynamicweb.dk/?favoritecmd=removeproductfromfavoritelist&userId=&productId=&productVariantId=&favoriteListId=
+</script>
