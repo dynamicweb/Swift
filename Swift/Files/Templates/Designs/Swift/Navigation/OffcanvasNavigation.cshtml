@@ -1,6 +1,7 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
 @using System.IO
 @using System.Web
+@using System.Text.RegularExpressions
 
 @{
 	string navType = Model?.Parameters["NavType"] != null ? Model.Parameters["NavType"].ToString() : "first-nav";
@@ -16,6 +17,7 @@
 	string groupId = HttpContext.Current.Request["GroupID"] != null ? HttpContext.Current.Request["GroupID"].ToString() : "";
 	string productId = HttpContext.Current.Request["ProductID"] != null ? HttpContext.Current.Request["ProductID"].ToString() : "";
 	string variantId = HttpContext.Current.Request["VariantID"] != null ? HttpContext.Current.Request["VariantID"].ToString() : "";
+	Regex reg = new Regex(@"\(([^\)]+)\)");
 
 	foreach (var node in nodes)
 	{
@@ -50,18 +52,11 @@
 					</div>
 				}
 			} else {
-				List<string> preferences = new List<string>();
-
 				bool countrySelector = page.Item["CountrySelector"] != null ? Convert.ToBoolean(page.Item["CountrySelector"].ToString()) : false;
 				bool languageSelector = page.Item["LanguageSelector"] != null ? Convert.ToBoolean(page.Item["LanguageSelector"].ToString()) : false;
 				bool currencySelector = page.Item["CurrencySelector"] != null ? Convert.ToBoolean(page.Item["CurrencySelector"].ToString()) : false;
 				string name = Translate("Preferences");
 				string icon = "";
-
-				if (countrySelector) {
-					string countryName = Translate("Deliver to") + ": " + Dynamicweb.Ecommerce.Common.Context.Country.Name;
-					preferences.Add(countryName);
-				}
 
 				if (languageSelector) {
 					bool hideIcon = page.Item["HideIcon"] != null ? Convert.ToBoolean(page.Item["HideIcon"].ToString()) : false;
@@ -70,16 +65,9 @@
 						string iconFolder = "/Files/FlagIcons/";
 						icon = iconFolder + Pageview.Area.CultureInfo.Name.ToLower() + ".svg";
 					}
-				}
 
-				if (currencySelector) {
-					string currencyName = Dynamicweb.Ecommerce.Common.Context.Currency.Code;
-					preferences.Add(currencyName);
-				}
-
-				if (preferences.Count != 0) {
-					name = (string.Join(" / ", preferences.Select(x => x.ToString()).ToArray()));
-				}
+					name = reg.Replace(Pageview.Area.CultureInfo.DisplayName, "");
+				} 
 
 				<form action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
 					<input type="hidden" name="Layout" value="modal" />
@@ -87,7 +75,7 @@
 					<input type="hidden" name="GroupID" value="@groupId" />
 					<input type="hidden" name="ProductID" value="@productId" />
 					<input type="hidden" name="VariantID" value="@variantId" />
-					<a href="#" type="button" onclick="swift.PageUpdater.Update(event)" class="btn nav-link position-relative flex-fill @activeClass @inPathClass" @(node.IsActive ? "aria-current='page'" : "") data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+					<a href="#" type="button" onclick="swift.PageUpdater.Update(event)" class="nav-link position-relative flex-fill @activeClass @inPathClass" @(node.IsActive ? "aria-current='page'" : "") data-bs-toggle="modal" data-bs-target="#PreferencesModal">
 						@if (icon != "") { 
 							if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none")) {
 								string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
