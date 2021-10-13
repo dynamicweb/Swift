@@ -40,4 +40,6 @@ window.onpopstate = function (event) {
 	swift.Typeahead.navigateToPage(document.location.href);
 };
 
-aos.init()
+aos.init({
+	offset: 240
+})
