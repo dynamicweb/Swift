@@ -1,6 +1,7 @@
 @inherits ViewModelTemplate<ProductListViewModel>
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Core.Encoders
 
 @{ 
 	var productList = Model.Products;
@@ -53,8 +54,39 @@
 		}
 	}
 
+	bool facetsFound = false;
+	int selectedFacetsCount = 0;
+
+	if (Model.FacetGroups != null)
+	{
+		foreach (FacetGroupViewModel facetGroup in Model.FacetGroups)
+		{
+			foreach (FacetViewModel facet in facetGroup.Facets)
+			{
+				if (facet.Options.Count() > 0)
+				{
+					facetsFound = true;
+
+					foreach (FacetOptionViewModel option in facet.Options)
+					{
+						if (option.Selected)
+						{
+							selectedFacetsCount++;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	string selectedFacetsLabel = selectedFacetsCount > 0 ? "(" + selectedFacetsCount + ")" : "";
+	int totalGroups =  Model.FacetGroups.Count();
+
+	string requestType = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["RequestType"]) ? Dynamicweb.Context.Current.Request.Form["RequestType"].ToString() : "";
 	string title = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Title"]) ? Dynamicweb.Context.Current.Request.Form["Title"].ToString() : "";
+	string mainProductId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["MainProductID"]) ? Dynamicweb.Context.Current.Request.Form["MainProductID"].ToString() : "";
 	string paragraphID = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["ParagraphID"]) ? Dynamicweb.Context.Current.Request.Form["ParagraphID"].ToString() : "";
+	string servicePageId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["ID"]) ? Dynamicweb.Context.Current.Request.Form["ID"].ToString() : "";
 	bool hideTitle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideTitle"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideTitle"].ToString()) : false;
 	bool hideImage = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideImage"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideImage"].ToString()) : false;
 	bool hideProductNumber = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideProductNumber"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideProductNumber"].ToString()) : false;
@@ -62,9 +94,69 @@
 	bool quantitySelector = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["QuantitySelector"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["QuantitySelector"].ToString()) : false;
 }
 
-@if (productList.Count > 0) {
+@if (productList.Count > 0 && requestType != "UpdateFacets") {
+	<form action="/Default.aspx?ID=@servicePageId" id="VariantProductsListForm_@paragraphID" data-response-target-element="VariantProductsListFacets_@paragraphID">
+		<input type="hidden" name="ID" value="@servicePageId" />
+		<input type="hidden" name="ParagraphID" value="@paragraphID" />
+		<input type="hidden" name="RequestType" value="UpdateFacets" id="VariantProductsListRequestType_@paragraphID" />
+		<input type="hidden" name="PageSize" value="10" id="VariantProductsListPageSize_@paragraphID" />
+		<input type="hidden" name="MainProductID" value="@mainProductId" />
+		<input type="hidden" name="Title" value="@title" />
+		<input type="hidden" name="HideTitle" value="@hideTitle.ToString()" />
+		<input type="hidden" name="SelectedDisplayGroups" value="@selectedDisplayGroups" />
+		<input type="hidden" name="HideImage" value="@hideImage.ToString()" />
+		<input type="hidden" name="HideProductNumber" value="@hideProductNumber.ToString()" />
+		<input type="hidden" name="HideStock" value="@hideStock.ToString()" />
+		<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
+
+		<div class="modal" id="FacetsModal_@paragraphID">
+			<div class="modal-dialog modal-dialog-scrollable">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">@Translate("Filters and sorting")</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<div class="modal-body" id="VariantProductsListFacets_@paragraphID">
+						@RenderFacets()
+					</div>
+					<div class="modal-footer d-flex">
+						@if (selectedFacetsCount != 0)
+						{
+							<button type="button" class="btn btn-secondary flex-fill" onclick="location.reload()">@Translate("Clear") (@selectedFacetsCount)</button>
+						}
+						<button type="button" class="btn btn-primary flex-fill" data-bs-dismiss="modal" 
+								onclick="document.querySelector('#VariantProductsListRequestType_@paragraphID').value = 'UpdateList'; swift.PageUpdater.Update(event, '#VariantProductsListContainer_@paragraphID');">@Translate("Update")</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</form>
+
 	if (!string.IsNullOrEmpty(title) && !hideTitle) {
-		<h2>@title</h2>
+		<div class="grid">
+			<div class="d-col-12 d-col-lg-8">
+				<h2>@title</h2>
+			</div>
+			<div class="d-col-12 d-col-lg-4">
+				<button type="button" class="btn btn-primary d-flex" data-bs-toggle="modal" data-bs-target="#FacetsModal_@paragraphID" onclick="document.querySelector('#VariantProductsListRequestType_@paragraphID').value = 'UpdateFacets'; swift.PageUpdater.Update(event, '#VariantProductsListFacets_@paragraphID');">
+					<span class="flex-fill text-start me-2">
+						@Translate("Filter") @selectedFacetsLabel
+					</span>
+					<span class="icon-1 position-relative" style="top: 5px">
+						@ReadFile(iconPath+"sliders.svg")
+					</span>
+				</button>
+			</div>
+		</div>
+    } else {
+		<button type="button" class="btn btn-primary d-flex" data-bs-toggle="modal" data-bs-target="#FacetsModal_@paragraphID" onclick="document.querySelector('#VariantProductsListRequestType_@paragraphID').value = 'UpdateFacets'; swift.PageUpdater.Update(event, '#VariantProductsListFacets_@paragraphID');">
+			<span class="flex-fill text-start me-2">
+				@Translate("Filter") @selectedFacetsLabel
+			</span>
+			<span class="icon-1 position-relative" style="top: 5px">
+				@ReadFile(iconPath+"sliders.svg")
+			</span>
+		</button>
     }
 
 	<div class="table-responsive w-100">
@@ -208,7 +300,8 @@
 
 		<div class="text-center">
 			<div class="m-2">@Model.PageSize @Translate("out of") @totalProducts</div>
-			<button class="btn btn-primary" onclick="document.querySelector('#VariantProductsListPageSize_@paragraphID').value = '@pageSize'; swift.PageUpdater.Update(document.querySelector('#VariantProductsListForm_@paragraphID'))">@Translate("Load more")</button>
+			<button class="btn btn-primary" 
+					onclick="document.querySelector('#VariantProductsListPageSize_@paragraphID').value = '@pageSize'; document.querySelector('#VariantProductsListRequestType_@paragraphID').value = 'UpdateList'; swift.PageUpdater.Update(document.querySelector('#VariantProductsListForm_@paragraphID'), '#VariantProductsListContainer_@paragraphID')">@Translate("Load more")</button>
 		</div>
     }
 }
@@ -262,4 +355,101 @@
 			<span class="colorbox-sm" style="background-color: @fieldValue" title="@fieldValue"></span>
 		}
 	}
+} 
+
+@if (requestType == "UpdateFacets" && facetsFound) {
+	@RenderFacets()
+}
+
+
+@* Filters *@
+
+@helper RenderFacets() { 
+	foreach (FacetGroupViewModel facetGroup in Model.FacetGroups)
+	{
+		foreach (FacetViewModel facet in facetGroup.Facets)
+		{
+			if (facet.Options.Count() > 0)
+			{
+				<div class="border-bottom">
+					<div class="d-flex" data-bs-toggle="collapse" data-bs-target="#FacetGroup_@facet.Name.Replace(" ", "")" role="button" aria-expanded="true" aria-controls="FacetGroup_@facet.Name.Replace(" ", "")">
+						<h2 class="my-3 opacity-85 m-0 flex-fill h6">@facet.Name</h2>
+						<div class="my-auto collapse-chevron-icon"></div>
+					</div>
+					<div class="collapse show" id="FacetGroup_@facet.Name.Replace(" ", "")">
+						<div class="pb-3">
+							@foreach (FacetOptionViewModel facetOption in facet.Options)
+							{
+								string renderType = facet.RenderType;
+								
+								if (renderType == "Colors")
+								{
+									@RenderColorOption(facet, facetOption)
+								}
+								else
+								{
+									@RenderCheckboxOption(facet, facetOption)
+								}
+							}
+						</div>
+					</div>
+				</div>
+			}
+		}
+	}
+}
+
+
+@helper RenderCheckboxOption(FacetViewModel facet, FacetOptionViewModel facetOption)
+{
+	string facetLabel = HtmlEncoder.HtmlEncode(facetOption.Label);
+	string disabled = facetOption.Count <= 0 ? "disabled" : "";
+	string selected = facetOption.Selected ? "checked" : "";
+
+	if (facetLabel.ToLower() == "true")
+	{
+		facetLabel = Translate("Yes");
+	}
+
+	if (facetLabel.ToLower() == "false")
+	{
+		facetLabel = Translate("No");
+	}
+
+	<label class="form-check mb-1" @disabled>
+		<input type="checkbox" onclick="swift.PageUpdater.Update(event)" class="form-check-input" name="@facet.QueryParameter" value="[@facetOption.Value]" data-filter-value="@facetLabel" @selected>
+		<span class="form-check-label d-flex align-items-center">
+			<span class="flex-fill">@facetLabel </span>
+			<small class="opacity-85">@facetOption.Count</small>
+		</span>
+	</label>
+}
+
+@helper RenderColorOption(FacetViewModel facet, FacetOptionViewModel facetOption)
+{
+	string facetLabel = HtmlEncoder.HtmlEncode(facetOption.Label);
+	string disabled = facetOption.Count <= 0 ? "disabled" : "";
+	string selected = facetOption.Selected ? "checked" : "";
+
+	string image = facetOption.Value;
+	string colorCode = facetOption.Value;
+
+	var variantOption = Dynamicweb.Ecommerce.Services.VariantOptions.GetVariantOption(facetOption.Value.ToString(), Dynamicweb.Ecommerce.Common.Context.LanguageID);
+	if (variantOption != null)
+	{
+		image = variantOption.LargeImage;
+		colorCode = variantOption.Color;
+	}
+
+	<div class="colorbox">
+		<input type="checkbox" onclick="swift.PageUpdater.Update(event)" class="@disabled @selected" name="@facet.QueryParameter" value="[@facetOption.Value]" data-filter-value="@facetLabel" @selected title="@facetOption.Label">
+		@if (colorCode.Contains("#"))
+		{
+			<span class="colorbox-background" style="background-color: @colorCode"></span>
+		}
+		else
+		{
+			<img class="colorbox-background" src="/Admin/Public/GetImage.ashx?width=25&height=25&image=@image" />
+		}
+	</div>
 }
