@@ -43,6 +43,10 @@
 		<div class="grid grid-2 grid-lg-3 pt-3">
 			@foreach (ProductViewModel product in productList.Products)
 			{
+				string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+				bool anonymousUser = Pageview.User == null;
+				bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+
 				string link = $"{detailsPageLink}&groupid={product.PrimaryOrDefaultGroup.Id}&productid={product.Id}";
 				link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
 				string price = product?.Price?.PriceFormatted ?? "";
@@ -63,6 +67,9 @@
 
 				string imageId = "ProductImage_" + product.Id + product.VariantId;
 				string priceId = "ProductPrice_" + product.Id + product.VariantId;
+
+				string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+				bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 
 				IEnumerable<string> selectedDisplayGroups = Model.Item.GetList("MainFeatures").SelectedValues;
 				List<CategoryFieldViewModel> mainFeatures = new List<CategoryFieldViewModel>();
@@ -131,8 +138,10 @@
 																{
 																	string defaultImage = Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value);
 																	string variantImage = Dynamicweb.Context.Current.Server.UrlEncode(variant.Image.Value);
+																	string defaultPrice = !hidePrice ? product.Price.PriceFormatted : "0";
+																	string variantPrice = !hidePrice ? product.Price.PriceFormatted : "0";
 
-																	<figure class="figure w-100 d-block m-0" onmouseover="switchVariantProduct('@product.Id', '@product.Price.PriceFormatted', '@variantImage')" onmouseout="switchVariantProduct('@product.Id', '@product.Price.PriceFormatted', '@defaultImage')">
+																	<figure class="figure w-100 d-block m-0" onmouseover="switchVariantProduct('@product.Id', '@defaultPrice', '@variantImage')" onmouseout="switchVariantProduct('@product.Id', '@variantPrice', '@defaultImage')">
 																		<div class="d-flex align-items-center justify-content-center">
 																			<img src="/admin/public/GetImage.ashx?image=@variantImage&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" height="75" width="75" class="p-1 text-small" loading="lazy" decoding="async" alt="@product.Name, @variant.Name">
 																		</div>
@@ -147,8 +156,10 @@
 																<div class="visually-hidden">
 																	<h4>@Translate("Variant Name")</h4>
 																	<p>@product.Name, @variant.Name</p>
-																	<h4>@Translate("Variant Price")</h4>
-																	<p>@RenderPartial("Components/ProductPrice.cshtml", product)</p>
+																	@if (!hidePrice) { 
+																		<h4>@Translate("Variant Price")</h4>
+																		<p><span class="text-price">@product.Price.PriceFormatted</span></p>
+																	}
 																</div>
 															</article>
 														}
@@ -177,13 +188,35 @@
 						<div class="product-list-item__name flex-grow-1">
 							<h3 class="h6 mb-0">@product.Name @product.VariantId</h3>
 						</div>
+								
+						@if (!hidePrice) { 
+							<div class="product-list-item__price">
+								<div>
+									@if (showPricesWithVat == "false" && !neverShowVat) {
+										if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+											<span class="text-decoration-line-through opacity-75 me-1">
+												@product.PriceBeforeDiscount.PriceWithoutVatFormatted
+											</span>
+										}
+									} else {
+										if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+											<span class="text-decoration-line-through opacity-75 me-1">
+												@product.PriceBeforeDiscount.PriceFormatted
+											</span>
+										}
+									}
 
-						<div class="product-list-item__price">
-							<span class="fw-bold" id="@priceId">
-								@RenderPartial("Components/ProductPrice.cshtml", product)
-							</span>
-						</div>
-
+									@if (showPricesWithVat == "false" && !neverShowVat) {
+										<span class="text-price fw-bold" id="@priceId">@product.Price.PriceWithoutVatFormatted</span>
+									} else {
+										<span class="text-price fw-bold" id="@priceId">@product.Price.PriceFormatted</span>
+									}
+								</div>
+								@if (showPricesWithVat == "false" && !neverShowVat) {
+									<small class="opacity-85 fst-normal">@product.Price.PriceWithVatFormatted @Translate("Incl. VAT")</small>
+								}
+							</div>
+						}
 					</a>
 				</article>
 
