@@ -16,6 +16,43 @@
 	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
 	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 
+	string selectedDisplayGroups = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["SelectedDisplayGroups"]) ? Dynamicweb.Context.Current.Request.Form["SelectedDisplayGroups"].ToString() : "";
+	List<string> selectedDisplayGroupsList = selectedDisplayGroups != null ? selectedDisplayGroups.Split(',').ToList() : new List<string>();
+
+	//Collect the titles for all available fields
+	List<string> fieldsHeaders = new List<string>();
+
+	foreach (var product in productList)
+	{
+		foreach (var selection in selectedDisplayGroupsList)
+		{
+			foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
+			{
+				if (selection.ToString() == group.Id)
+				{
+					foreach (var field in group.Fields)
+					{
+						if (!fieldsHeaders.Contains(field.Value.Name))
+						{
+							bool noValues = false;
+							if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+								System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
+								noValues = values.Count > 0 ? false : true;
+							} else if (string.IsNullOrEmpty(field.Value.Value.ToString())) {
+								noValues = true;
+							}
+
+							if (!noValues)
+							{
+								fieldsHeaders.Add(field.Value.Name);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 	string title = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Title"]) ? Dynamicweb.Context.Current.Request.Form["Title"].ToString() : "";
 	bool hideTitle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideTitle"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideTitle"].ToString()) : false;
 	bool hideImage = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideImage"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideImage"].ToString()) : false;
@@ -40,6 +77,9 @@
 						<td scope="col">#</td>
                     }
 					<td scope="col">@Translate("Product")</td>
+					@foreach (var header in fieldsHeaders) {
+						<td scope="col">@header</td>	
+                    }
 					@if (!hideStock) {
 						<td scope="col">@Translate("Stock")</td>
 					}
@@ -53,6 +93,18 @@
 					string image = product.DefaultImage.Value;
 					image = $"/Admin/Public/GetImage.ashx?image={image}&width=60&format=webp"; 
 
+					List<CategoryFieldViewModel> categories = new List<CategoryFieldViewModel>();
+					foreach (var selection in selectedDisplayGroupsList)
+					{
+						foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
+						{
+							if (selection.ToString() == group.Id)
+							{
+								categories.Add(group);
+							}
+						}
+					}
+
 					<tr>
 						@if (!hideImage) {
 							<td width="60" scope="row">
@@ -63,6 +115,24 @@
 							<td scope="row">@product.Number</td>
 						}
 						<td scope="row">@product.Name</td>
+						@if (categories.Count > 0) {
+							foreach (CategoryFieldViewModel category in categories) {
+								foreach (var field in category.Fields)
+								{
+									bool noValues = false;
+									if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+										System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
+										noValues = values.Count > 0 ? false : true;
+									} else if (string.IsNullOrEmpty(field.Value.Value.ToString())) {
+										noValues = true;
+									}
+
+									if (!noValues) {
+										<td>@RenderFieldValue(field.Value)</td>
+                                    }
+								}
+							}
+                        }
 						@if (!hideStock) {
 							<td>
 								@if (@product.StockLevel > 0) {
@@ -128,4 +198,55 @@
 			</tbody>
 		</table>
 	</div>
+}
+
+
+@helper RenderFieldValue(FieldValueViewModel field) { 
+	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
+
+	fieldValue = fieldValue == "False" ? Translate("No") : fieldValue;
+	fieldValue = fieldValue == "True" ? Translate("Yes") : fieldValue;
+
+	bool isColor = false;
+
+	if (field.Value.GetType() == typeof(System.Collections.Generic.List<Dynamicweb.Ecommerce.ProductCatalog.FieldOptionValueViewModel>))
+	{
+		int valueCount = 0;
+		System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
+		int totalValues = values.Count;
+
+		foreach (FieldOptionValueViewModel option in values)
+		{
+			if (option.Value.Substring(0,1) == "#") {
+				isColor = true;   
+			}
+
+			if (!isColor) {
+				@option.Name
+			} else {
+				<span class="colorbox-sm" style="background-color: @option.Value" title="@option.Value"></span>
+			}
+			
+			if (valueCount != totalValues && valueCount < (totalValues - 1)) {
+				if (isColor) {
+<text> </text>
+				} else {
+<text>, </text>
+				}
+			}
+			valueCount++;
+		}
+	}
+	else if (fieldValue != "")
+	{
+		if (fieldValue.Substring(0,1) == "#") {
+			isColor = true;   
+		}
+
+		if (!isColor) {
+			@fieldValue
+		} else {
+			<span class="colorbox-sm" style="background-color: @fieldValue" title="@fieldValue"></span>
+		}
+	}
 }
