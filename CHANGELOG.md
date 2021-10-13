@@ -1,5 +1,20 @@
 # Changelog
 
+## [v1.0.3] - 05-10-2021
+
+### Bugfixes
+* Product List: Remove unused CSS from article
+* Product List: Products with variants overwrite theme
+* Itemtype: Use querystring data instead of form data on Product Slider
+* Itemtype: Hide page-header in Visual Editor, when page behind option is set
+
+### Changed
+* General: Make header work in adaptive on tablets with wrong UA and make header detection more ressilient
+* General: Remove flex, overflow, min-width from general templates
+
+### Added
+* Itemtype: Stretched link option settings
+
 ## [v1.0.2] - 24-09-2021
 
 ### Bugfixes
