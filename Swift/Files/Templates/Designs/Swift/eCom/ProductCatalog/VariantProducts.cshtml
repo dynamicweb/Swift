@@ -6,6 +6,11 @@
 @{ 
 	var productList = Model.Products;
 
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+
 	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
 	if (!url.Contains("LayoutTemplate"))
 	{
@@ -179,8 +184,12 @@
 						@if (!hideStock) {
 							<td scope="col">@Translate("Stock")</td>
 						}
-						<td scope="col" align="right">@Translate("Price")</td>
-						<td scope="col" align="right">@Translate("Qty")</td>
+						@if (!hidePrice) {
+							<td scope="col" align="right">@Translate("Price")</td>
+                        }
+						@if (!hideAddToCart) {
+							<td scope="col" align="right">@Translate("Qty")</td>
+						}
 					</tr>
 				</thead>
 		
@@ -240,57 +249,61 @@
 									}
 								</td>
 							}
-							<td align="right">
-								<div itemprop="offers" itemscope itemtype="https://schema.org/Offer">
-									<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
+							@if (!hidePrice) {
+								<td align="right">
+									<div itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+										<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
 				
-									@if (showPricesWithVat == "false" && !neverShowVat) {
-										<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
-										if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-											<span class="text-decoration-line-through opacity-75 me-3">
-												@product.PriceBeforeDiscount.PriceWithoutVatFormatted
-											</span>
+										@if (showPricesWithVat == "false" && !neverShowVat) {
+											<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
+											if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+												<span class="text-decoration-line-through opacity-75 me-3">
+													@product.PriceBeforeDiscount.PriceWithoutVatFormatted
+												</span>
+											}
+										} else {
+											<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
+											if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+												<span class="text-decoration-line-through opacity-75 me-3">
+													@product.PriceBeforeDiscount.PriceFormatted
+												</span>
+											}
 										}
-									} else {
-										<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
-										if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-											<span class="text-decoration-line-through opacity-75 me-3">
-												@product.PriceBeforeDiscount.PriceFormatted
-											</span>
-										}
-									}
 			
+										@if (showPricesWithVat == "false" && !neverShowVat) {
+											<span class="text-price">@product.Price.PriceWithoutVatFormatted</span>
+										} else {
+											<span class="text-price">@product.Price.PriceFormatted</span>
+										}
+									</div>
 									@if (showPricesWithVat == "false" && !neverShowVat) {
-										<span class="text-price">@product.Price.PriceWithoutVatFormatted</span>
-									} else {
-										<span class="text-price">@product.Price.PriceFormatted</span>
+										<small class="opacity-85 fst-normal">@product.Price.PriceWithVatFormatted @Translate("Incl. VAT")</small>
 									}
-								</div>
-								@if (showPricesWithVat == "false" && !neverShowVat) {
-									<small class="opacity-85 fst-normal">@product.Price.PriceWithVatFormatted @Translate("Incl. VAT")</small>
-								}
-							</td>
-							<td width="@addToCartColWidth" style="min-width: @(addToCartColWidth)px" align="right">
-								<form method="post" action="@url">
-									<input type="hidden" name="redirect" value="false" />
-									<input type="hidden" name="ProductId" value="@product.Id" />
-									<input type="hidden" name="cartcmd" value="add" />
+								</td>
+							}
+							@if (!hideAddToCart) { 
+								<td width="@addToCartColWidth" style="min-width: @(addToCartColWidth)px" align="right">
+									<form method="post" action="@url">
+										<input type="hidden" name="redirect" value="false" />
+										<input type="hidden" name="ProductId" value="@product.Id" />
+										<input type="hidden" name="cartcmd" value="add" />
 
-									@if (!string.IsNullOrEmpty(product.VariantId)) {
-										<input type="hidden" name="VariantId" value="@product.VariantId" />
-									}
+										@if (!string.IsNullOrEmpty(product.VariantId)) {
+											<input type="hidden" name="VariantId" value="@product.VariantId" />
+										}
 
-									@if (quantitySelector) {
-										<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
-											<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="1" class="form-control" style="max-width: 100px" type="number">
+										@if (quantitySelector) {
+											<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
+												<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="1" class="form-control" style="max-width: 100px" type="number">
+												<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)" style="max-width: 3.5rem;">@ReadFile(iconPath+"shopping-cart.svg")</button>
+											</div>
+										} else {
+											<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="1" type="hidden">
 											<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)" style="max-width: 3.5rem;">@ReadFile(iconPath+"shopping-cart.svg")</button>
-										</div>
-									} else {
-										<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="1" type="hidden">
-										<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)" style="max-width: 3.5rem;">@ReadFile(iconPath+"shopping-cart.svg")</button>
-									}
-								</form>
-							</td>
+										}
+									</form>
+								</td>
+							}
 						</tr>
 					}
 				</tbody>
