@@ -1,12 +1,11 @@
 const PageUpdater = function () {
 
 	return {
-		Update: async function (e, targetElement = null) {
+		Update: async function (e) {
 			var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
 			var form = clickedButton.closest("form");
 			var preloader = form.getAttribute("data-preloader");
 			var responseTargetElement = form.getAttribute("data-response-target-element") ? "#" + form.getAttribute("data-response-target-element") : "#content";
-			responseTargetElement = targetElement != null ? targetElement : responseTargetElement;
 			var layoutTemplate = form.getAttribute("data-layout-template") ? form.getAttribute("data-layout-template") : "Swift_PageClean.cshtml";
 
 			let formData = new FormData(form);
