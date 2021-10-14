@@ -82,6 +82,7 @@
 	string selectedFacetsLabel = selectedFacetsCount > 0 ? "(" + selectedFacetsCount + ")" : "";
 	int totalGroups =  Model.FacetGroups.Count();
 
+	int pageSizeSetting = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["PageSizeSetting"]) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.Form["PageSizeSetting"].ToString()) : 10;
 	string requestType = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["RequestType"]) ? Dynamicweb.Context.Current.Request.Form["RequestType"].ToString() : "";
 	string title = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Title"]) ? Dynamicweb.Context.Current.Request.Form["Title"].ToString() : "";
 	string mainProductId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["MainProductID"]) ? Dynamicweb.Context.Current.Request.Form["MainProductID"].ToString() : "";
@@ -93,6 +94,7 @@
 	bool hideProductName = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideProductName"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideProductName"].ToString()) : false;
 	bool hideStock = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideStock"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideStock"].ToString()) : false;
 	bool quantitySelector = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["QuantitySelector"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["QuantitySelector"].ToString()) : false;
+	string addToCartColWidth = quantitySelector ? "160" : "60";
 
 	string theme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Theme"]) ? Dynamicweb.Context.Current.Request.Form["Theme"].ToString() : "";
 	string titleFontSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["TitleFontSize"]) ? Dynamicweb.Context.Current.Request.Form["TitleFontSize"].ToString() : "";
@@ -104,7 +106,8 @@
 		<input type="hidden" name="ID" value="@servicePageId" />
 		<input type="hidden" name="ParagraphID" value="@paragraphID" />
 		<input type="hidden" name="RequestType" value="UpdateFacets" id="VariantProductsListRequestType_@paragraphID" />
-		<input type="hidden" name="PageSize" value="10" id="VariantProductsListPageSize_@paragraphID" />
+		<input type="hidden" name="PageSize" value="@pageSizeSetting" id="VariantProductsListPageSize_@paragraphID" />
+		<input type="hidden" name="PageSizeSetting" value="@pageSizeSetting" />
 		<input type="hidden" name="MainProductID" value="@mainProductId" />
 		<input type="hidden" name="Title" value="@title" />
 		<input type="hidden" name="HideTitle" value="@hideTitle.ToString()" />
@@ -143,34 +146,22 @@
 
 	<div class="h-100 @(contentPadding) @theme">
 		@if (!string.IsNullOrEmpty(title) && !hideTitle) {
-			<div class="grid">
-				<div class="g-col-12 g-col-lg-8">
-					<h2 class="@titleFontSize">@title</h2>
-				</div>
-				<div class="g-col-12 g-col-lg-4 d-flex justify-content-end align-items-start">
-					<button type="button" class="btn btn-primary d-flex" data-bs-toggle="modal" data-bs-target="#FacetsModal_@paragraphID" onclick="document.querySelector('#VariantProductsListRequestType_@paragraphID').value = 'UpdateFacets'; swift.PageUpdater.Update(event, '#VariantProductsListFacets_@paragraphID');">
-						<span class="flex-fill text-start me-2">
-							@Translate("Filter") @selectedFacetsLabel
-						</span>
-						<span class="icon-1 position-relative" style="top: 5px">
-							@ReadFile(iconPath+"sliders.svg")
-						</span>
-					</button>
-				</div>
-			</div>
-		} else {
-			<button type="button" class="btn btn-primary d-flex" data-bs-toggle="modal" data-bs-target="#FacetsModal_@paragraphID" onclick="document.querySelector('#VariantProductsListRequestType_@paragraphID').value = 'UpdateFacets'; swift.PageUpdater.Update(event, '#VariantProductsListFacets_@paragraphID');">
-				<span class="flex-fill text-start me-2">
+			<h2 class="@titleFontSize">@title</h2>
+		} 
+
+		@if (facetsFound) {
+			<button type="button" class="btn btn-primary d-flex mb-3" data-bs-toggle="modal" data-bs-target="#FacetsModal_@paragraphID" onclick="document.querySelector('#VariantProductsListRequestType_@paragraphID').value = 'UpdateFacets'; swift.PageUpdater.Update(event, '#VariantProductsListFacets_@paragraphID');">
+				<span class="flex-fill text-start me-3">
 					@Translate("Filter") @selectedFacetsLabel
 				</span>
 				<span class="icon-1 position-relative" style="top: 5px">
 					@ReadFile(iconPath+"sliders.svg")
 				</span>
 			</button>
-		}
+        }
 
 		<div class="table-responsive w-100">
-			<table class="table table-striped align-middle text-nowrap">
+			<table class="table table-sm table-striped align-middle text-nowrap">
 				<thead>
 					<tr class="fw-bold">
 						@if (!hideImage) {
@@ -196,7 +187,7 @@
 				<tbody>
 					@foreach (var product in productList) {
 						string image = product.DefaultImage.Value;
-						image = $"/Admin/Public/GetImage.ashx?image={image}&width=60&format=webp"; 
+						image = $"/Admin/Public/GetImage.ashx?image={image}&width=50&format=webp"; 
 
 						List<CategoryFieldViewModel> categories = new List<CategoryFieldViewModel>();
 						foreach (var selection in selectedDisplayGroupsList)
@@ -279,7 +270,7 @@
 									<small class="opacity-85 fst-normal">@product.Price.PriceWithVatFormatted @Translate("Incl. VAT")</small>
 								}
 							</td>
-							<td width="160" style="min-width: 160px" align="right">
+							<td width="@addToCartColWidth" style="min-width: @(addToCartColWidth)px" align="right">
 								<form method="post" action="@url">
 									<input type="hidden" name="redirect" value="false" />
 									<input type="hidden" name="ProductId" value="@product.Id" />
@@ -292,11 +283,11 @@
 									@if (quantitySelector) {
 										<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
 											<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="1" class="form-control" style="max-width: 100px" type="number">
-											<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@ReadFile(iconPath+"shopping-cart.svg")</button>
+											<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)" style="max-width: 3.5rem;">@ReadFile(iconPath+"shopping-cart.svg")</button>
 										</div>
 									} else {
 										<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="1" type="hidden">
-										<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@ReadFile(iconPath+"shopping-cart.svg")</button>
+										<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)" style="max-width: 3.5rem;">@ReadFile(iconPath+"shopping-cart.svg")</button>
 									}
 								</form>
 							</td>
@@ -308,7 +299,6 @@
 
 		@if (Model.PageCount > 1) {
 			int totalProducts = Model.TotalProductsCount;
-			int pageSizeSetting = 10;
 			int pageSize = Model.PageSize;
 			pageSize += pageSizeSetting;
 
