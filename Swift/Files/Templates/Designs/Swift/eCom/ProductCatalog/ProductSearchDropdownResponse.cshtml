@@ -12,7 +12,8 @@
 	{
 		searchTerm = Dynamicweb.Context.Current.Request["eq"].Trim();
 	}
-	Dictionary<string, string> suggestions = new Dictionary<string, string>();
+	Dictionary<string, string> suggestions = new Dictionary<string, string>(); 
+	
 }
 
 @functions{
@@ -23,27 +24,29 @@
 			return input;
 		}
 		input = fixHtmlEncoding(input.ToLower());
-		int replacementIndex = 0;
-		Dictionary<int, string> replacementValues = new Dictionary<int, string>();
 		foreach (string term in textToHighlight.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
 		{
-			int positionInInput = input.IndexOf(term, StringComparison.OrdinalIgnoreCase);
-			string originalInInput = term;
-			if (positionInInput >= 0)
-			{
-				originalInInput = input.Substring(positionInInput, term.Length);
-			}
-			input = input.Replace(originalInInput, "</$$$>{" + replacementIndex + "}<$$$>");
-			replacementValues.Add(replacementIndex, originalInInput);
-			replacementIndex++;
+			input = input.Replace(term, "</mark>" + term + "<mark>");
 		}
 
-		foreach (var replacement in replacementValues)
-		{
-			input = input.Replace("{" + replacement.Key + "}", replacement.Value);
-		}
-		return "<span class=\"js-suggestion flex-grow-1\" data-suggestion-value=\"\">" + input.Replace("$$$", "mark") + "</span>";
+		return "<span class=\"js-suggestion flex-grow-1\" data-suggestion-value=\"\"><mark>" + input + "</mark></span>";
 	}
+
+	string ProductNameHighlight(string input, string textToHighlight)
+	{
+		if (string.IsNullOrEmpty(textToHighlight))
+		{
+			return input;
+		}
+		input = fixHtmlEncoding(input.ToLower());
+		foreach (string term in textToHighlight.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries))
+		{
+			input = input.Replace(term, "<mark>" + term + "</mark>");
+		}
+
+		return "<span class=\"js-suggestion flex-grow-1\" data-suggestion-value=\"\">" + input + "</span>";
+	}
+
 	string fixHtmlEncoding(string input)
 	{
 		if (input.IndexOf("&") > 0)
@@ -149,8 +152,8 @@
 				{
 					AddSuggestion(facetOption.Label, facetItem.Name, suggestions);
 					<li class="dropdown-item @itemPadding" onclick="swift.Typeahead.selectSuggestion(this);" data-param="@queryParameter" data-paramvalue="@facetOption.Value">
-						<@Highlight(facetOption.Label, searchTerm)>
-							<div class="">@facetOption.Count</div>
+						@Highlight(facetOption.Label, searchTerm)
+						<div class="">@facetOption.Count</div>
 					</li>
 				}
 			}
@@ -186,10 +189,10 @@
 			<li class="dropdown-item d-flex flex-row flex-lg-row-reverse align-items-center text-wrap px-0 text-wrap" onclick="swift.Typeahead.selectSuggestion(this);" data-param="ProductId" data-paramvalue="@suggestion.Id">
 				<div class="d-flex align-items-center px-3 py-2">
 					<span aria-hidden="true" class="icon-2 d-lg-none">
-						@ReadFile(iconPath+"search.svg")
+						@ReadFile(iconPath + "search.svg")
 					</span>
 				</div>
-				@Highlight(suggestion.Name, searchTerm)
+				@ProductNameHighlight(suggestion.Name + " - <small class=\"fs-8\">" + suggestion.Number + "</small>", searchTerm)
 				<img class="mx-2" src="/admin/public/getimage.ashx?image=@Dynamicweb.Context.Current.Server.UrlEncode(suggestion.DefaultImage.Value)&width=32&height=32&format=webp&Crop=5&fillcanvas=true" height="32" width="32" alt="@suggestion.Name">
 			</li>
 		}
@@ -201,7 +204,7 @@
 	if (Model.TotalProductsCount > 0)
 	{
 		<li class="dropdown-item text-center text-decoration-underline text-wrap @itemPadding" onclick="swift.Typeahead.selectSuggestion(this);">
-			@Translate("View all") @Model.TotalProductsCount @Translate("products for")<mark> "<span class="js-suggestion">@searchTerm</span>"<mark>
+			@Translate("View all") @Model.TotalProductsCount @Translate("products for")<mark> "<span class="js-suggestion">@searchTerm</span>"</mark>
 		</li>
 	}
 	else
