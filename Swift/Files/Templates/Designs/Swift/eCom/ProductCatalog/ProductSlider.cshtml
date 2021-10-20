@@ -2,8 +2,7 @@
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
 
-
-@{ 
+@{
 	string linkText = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("LinkText")) ? Dynamicweb.Context.Current.Request.QueryString.Get("LinkText") : "";
 
 	string layout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Layout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Layout") : "";
@@ -16,8 +15,10 @@
 	string alignMiddle = headingTitle == "" && headingSubtitle == "" ? " justify-content-center" : "";
 }
 
-@if (layout == "" || layout == "text-top") {
-	if (headingTitle != "" && !hideTitle) {
+@if (layout == "" || layout == "text-top")
+{
+	if (headingTitle != "" && !hideTitle)
+	{
 		<div class="pb-2 pb-lg-4 d-flex">
 			<div class="flex-fill">
 				@RenderHeader(headingTitle, headingSubtitle)
@@ -30,11 +31,13 @@
 	@RenderMobileLinkButton(headingTitle, headingSubtitle)
 }
 
-@if (layout == "text-left") {
+@if (layout == "text-left")
+{
 	string sliderColSize = "col";
 
 	<div class="row g-3" data-slider-layout="left">
-		@if ((headingTitle != "" && hideTitle == false) || headingSubtitle != "" || linkText != "") {
+		@if ((headingTitle != "" && hideTitle == false) || headingSubtitle != "" || linkText != "")
+		{
 			sliderColSize = "col-12 col-lg-8";
 
 			<div class="col-12 col-lg-4">
@@ -54,11 +57,13 @@
 	@RenderMobileLinkButton(headingTitle, headingSubtitle)
 }
 
-@if (layout == "text-right") {
+@if (layout == "text-right")
+{
 	string sliderColSize = "col";
 
 	<div class="row g-3" data-slider-layout="right">
-		@if ((headingTitle != "" && !hideTitle) || headingSubtitle != "" || linkText != "") {
+		@if ((headingTitle != "" && !hideTitle) || headingSubtitle != "" || linkText != "")
+		{
 			sliderColSize = "col-12 col-lg-8";
 
 			<div class="col-12 col-lg-4 order-1 order-lg-2">
@@ -78,7 +83,13 @@
 	@RenderMobileLinkButton(headingTitle, headingSubtitle)
 }
 
-@helper RenderSlider () {
+@helper RenderSlider()
+{
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;	
+
 	string detailsPageLink = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductDetailsPage")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ProductDetailsPage") : "#";
 
 	string ratio = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ImageAspectRatio")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ImageAspectRatio") : "";
@@ -90,6 +101,9 @@
 	string imageTheme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ImageTheme")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ImageTheme") : "";
 	string contentPadding = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ContentPadding")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ContentPadding") : "";
 	string hideNavigationBar = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("HideNavigationBar")) ? Dynamicweb.Context.Current.Request.QueryString.Get("HideNavigationBar") : "false";
+
+	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 
 	<div class="js-slider d-flex @generalTheme" data-hide-navigation-bar="@hideNavigationBar.ToLower()">
 		@foreach (var product in Model.Products)
@@ -110,7 +124,35 @@
 						</div>
 						<div class="@contentPadding flex-fill d-flex flex-column justify-content-between">
 							<h3 class="h6 opacity-85">@product.Name @product.VariantId</h3>
-							<p class="h5 text-price">@product.Price.PriceFormatted</p>
+
+							@if (!hidePrice) {
+								<div>
+									<p class="h6 m-0">
+										@if (showPricesWithVat == "false" && !neverShowVat) {
+											if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+												<span class="text-decoration-line-through opacity-75 me-1">
+													@product.PriceBeforeDiscount.PriceWithoutVatFormatted
+												</span>
+											}
+										} else {
+											if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+												<span class="text-decoration-line-through opacity-75 me-1">
+													@product.PriceBeforeDiscount.PriceFormatted
+												</span>
+											}
+										}
+
+										@if (showPricesWithVat == "false" && !neverShowVat) {
+											<span class="text-price fw-bold">@product.Price.PriceWithoutVatFormatted</span>
+										} else {
+											<span class="text-price fw-bold">@product.Price.PriceFormatted</span>
+										}
+									</p>
+									@if (showPricesWithVat == "false" && !neverShowVat) {
+										<small class="opacity-85 fst-normal">@product.Price.PriceWithVatFormatted @Translate("Incl. VAT")</small>
+									}
+								</div>
+							}
 						</div>
 					</div>
 				</a>
@@ -119,41 +161,47 @@
 	</div>
 }
 
-@helper RenderHeader(string headingTitle, string headingSubtitle) { 
+@helper RenderHeader(string headingTitle, string headingSubtitle)
+{
 	string titleFontSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("TitleFontSize")) ? Dynamicweb.Context.Current.Request.QueryString.Get("TitleFontSize") : "h3";
 	string subtitleFontSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SubtitleFontSize")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SubtitleFontSize") : "fs-5";
+	string maxWidth = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("TextReadability")) ? Dynamicweb.Context.Current.Request.QueryString.Get("TextReadability") : "";
 
 	if (!string.IsNullOrEmpty(headingTitle))
 	{
-		<h2 class="@titleFontSize">@headingTitle</h2>
+		<h2 class="@titleFontSize@(maxWidth)">@headingTitle</h2>
 	}
 	if (!string.IsNullOrEmpty(headingSubtitle))
 	{
-		<p class="@subtitleFontSize mb-2 mb-md-3 max-w-75ch">@headingSubtitle</p>
+		<p class="@subtitleFontSize mb-2 mb-md-3@(maxWidth)">@headingSubtitle</p>
 	}
 }
 
-@helper RenderDesktopLinkButton(string headingTitle, string headingSubtitle) { 
+@helper RenderDesktopLinkButton(string headingTitle, string headingSubtitle)
+{
 	string layout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Layout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Layout") : "";
 	string buttonStyle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ButtonStyle")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ButtonStyle") : "btn-primary";
 	string link = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Link")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Link") : "";
 	string linkText = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("LinkText")) ? Dynamicweb.Context.Current.Request.QueryString.Get("LinkText") : "";
 	string marginTop = (headingTitle != "" || headingSubtitle != "") && layout != "" && layout != "text-top" ? " mt-4" : "";
 
-	if (!string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(linkText)) {
+	if (!string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(linkText))
+	{
 		<div class="d-none d-lg-block">
 			<a href="@(link)" class="btn @(buttonStyle) @(marginTop) mb-4">@linkText</a>
 		</div>
 	}
 }
 
-@helper RenderMobileLinkButton(string headingTitle, string headingSubtitle) { 
+@helper RenderMobileLinkButton(string headingTitle, string headingSubtitle)
+{
 	string buttonStyle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ButtonStyle")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ButtonStyle") : "btn-primary";
 	string link = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Link")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Link") : "";
 	string linkText = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("LinkText")) ? Dynamicweb.Context.Current.Request.QueryString.Get("LinkText") : "";
 	string marginTop = headingTitle != "" || headingSubtitle != "" ? " mt-4" : "";
 
-	if (!string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(linkText)) {
+	if (!string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(linkText))
+	{
 		<div class="d-block d-lg-none">
 			<a href="@(link)" class="btn @(buttonStyle) @(marginTop) mb-4 w-100">@linkText</a>
 		</div>

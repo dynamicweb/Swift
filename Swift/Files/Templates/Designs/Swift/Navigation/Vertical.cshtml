@@ -1,15 +1,19 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using Dynamicweb
 @using System.IO
 
-@{ 
+@{
 	string layoutSetting = Model.Parameters.ContainsKey("Layout") ? Model.Parameters["Layout"].ToString().ToLower() : "clean";
 	string paragraphId = Pageview.CurrentParagraph.ID.ToString();
 	string currentPageTitle = Pageview.Item["Title"] != null ? Pageview.Item["Title"].ToString() : Translate("Navigation");
 }
 
-@if (layoutSetting != "lines") {
+@if (layoutSetting != "lines")
+{
 	@RenderNodes(Model.Nodes)
-} else {
+}
+else
+{
 	@* Desktop *@
 	<div class="d-none d-lg-block">
 		@RenderNodes(Model.Nodes)
@@ -18,19 +22,19 @@
 	@* Mobile *@
 	<div class="d-block d-lg-none">
 		<div class="collapsed" data-bs-toggle="collapse" data-bs-target="#VerticalNavigation_@paragraphId" role="button" aria-expanded="true" aria-controls="Navigation">
-			<div class="d-flex p-3">
-				<h6 class="fw-bold m-0 flex-fill">
-				
-				@if (string.IsNullOrEmpty(currentPageTitle))
-				{
-					@Translate("Navigation")
-				}
-				else
-				{
-					@currentPageTitle
-				}
+			<div class="d-flex">
+				@{string contentPadding = Model.Parameters.ContainsKey("ContentPadding") ? Model.Parameters["ContentPadding"].ToString().ToLower() : "";}
+				<h6 class="fw-bold m-0 flex-fill@(contentPadding)">
+					@if (string.IsNullOrEmpty(currentPageTitle))
+					{
+						@Translate("Navigation")
+					}
+					else
+					{
+						@currentPageTitle
+					}
 				</h6>
-				<div class="my-auto collapse-chevron-icon"></div>
+				<div class="my-auto collapse-chevron-icon p-3"></div>
 			</div>
 		</div>
 		<div class="collapse hide" id="VerticalNavigation_@paragraphId">
@@ -41,82 +45,88 @@
 
 @helper RenderNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, bool isSubmenu = false)
 {
+	string contentPadding = Model.Parameters.ContainsKey("ContentPadding") ? Model.Parameters["ContentPadding"].ToString().ToLower() : "";
 	string layoutSetting = Model.Parameters.ContainsKey("Layout") ? Model.Parameters["Layout"].ToString().ToLower() : "clean";
-	string small = layoutSetting == "small" ? "small py-1" : "";
+	string small = layoutSetting == "small" ? " fs-7" : "";
 	int nodeCount = 0;
 	int totalNodes = nodes.Count();
 
-<ul class="nav flex-column">
-	@foreach (var node in nodes)
-	{
-		var hasChildren = node.Nodes.Count() > 0;
-		string groupId = !string.IsNullOrEmpty(node.GroupId) ? node.GroupId : node.PageId.ToString();
-
-		string linesLayout = layoutSetting == "lines" && isSubmenu == false ? "border-top px-3 py-2" : "";
-		linesLayout = layoutSetting == "lines" && isSubmenu == false && nodeCount == (0) ? "px-3 py-2" : linesLayout;
-
-		bool hideTexts = Model.Parameters.ContainsKey("HideTexts") ? Convert.ToBoolean(Model.Parameters["HideTexts"].ToString()) : false;
-		bool hideIcons = Model.Parameters.ContainsKey("HideIcons") ? Convert.ToBoolean(Model.Parameters["HideIcons"].ToString()) : false;
-
-		var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
-		string icon = "";
-		if (page.PropertyItem != null)
-		{
-			icon = page.PropertyItem["Icon"] != null ? page.PropertyItem["Icon"].ToString() : "";
-		}
-
-		<li class="nav-item @(node.IsActive ? "active" : "") @linesLayout">
-			<div class="d-flex align-items-center">
-				<a class="nav-link px-0 flex-fill @small" @(node.IsActive ? "aria-current='page'" : "") href="@node.Link">
-					@if (!hideIcons)
-					{
-						@RenderIcon(icon)
-					}
-					@if (!hideTexts)
-					{
-						<span class="@(node.IsActive ? "fw-bold" : "")">@node.Name</span>
-					}
-				</a>
-
-				@if (hasChildren)
-				{
-					string collapseCSS = node.InPath ? "" : "collapsed";
-
-					<div class="@collapseCSS collapse-icon @small" data-bs-toggle="collapse" data-bs-target="#NavigationGroup_@groupId" role="button" aria-expanded="true" aria-controls="NavigationGroup_@node.GroupId"></div>
-				}
-			</div>
-			@if (hasChildren)
+	<div class="navbar navbar-expand py-0">
+		<ul class="navbar-nav flex-column flex-fill">
+			@foreach (var node in nodes)
 			{
-				string collapsed = node.InPath ? "show" : "";
+				var hasChildren = node.Nodes.Count() > 0;
+				string groupId = !string.IsNullOrEmpty(node.GroupId) ? node.GroupId : node.PageId.ToString();
 
-				<div class="ms-3 collapse @collapsed" id="NavigationGroup_@groupId">
-					@RenderNodes(node.Nodes, true)
-				</div>
+				string linesLayout = layoutSetting == "lines" && isSubmenu == false ? " border-top" : "";
+				linesLayout = layoutSetting == "lines" && isSubmenu == false && nodeCount == (0) ? "" : linesLayout;
+
+				bool hideTexts = Model.Parameters.ContainsKey("HideTexts") ? Convert.ToBoolean(Model.Parameters["HideTexts"].ToString()) : false;
+				bool hideIcons = Model.Parameters.ContainsKey("HideIcons") ? Convert.ToBoolean(Model.Parameters["HideIcons"].ToString()) : false;
+
+				var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+				string icon = "";
+				if (page.PropertyItem != null)
+				{
+					icon = page.PropertyItem["Icon"] != null ? page.PropertyItem["Icon"].ToString() : "";
+				}
+
+				<li class="nav-item@(linesLayout)@(node.IsActive ? " active" : "")">
+					<div class="d-flex align-items-center">
+						<a class="nav-link flex-fill@(contentPadding)@(small)" @(node.IsActive ? "aria-current='page'" : "") href="@node.Link">
+							@if (!hideIcons)
+							{
+								@RenderIcon(icon)
+							}
+							@if (!hideTexts)
+							{
+								<span class="@(node.IsActive ? "fw-bold" : "")">@node.Name</span>
+							}
+						</a>
+
+						@if (hasChildren)
+						{
+							string collapseCSS = node.InPath ? "" : "collapsed";
+
+							<div class="@collapseCSS collapse-icon@(small)" data-bs-toggle="collapse" data-bs-target="#NavigationGroup_@groupId" role="button" aria-expanded="true" aria-controls="NavigationGroup_@node.GroupId"></div>
+						}
+					</div>
+					@if (hasChildren)
+					{
+						string collapsed = node.InPath ? "show" : "";
+
+						<div class="ms-3 collapse @collapsed" id="NavigationGroup_@groupId">
+							@RenderNodes(node.Nodes, true)
+						</div>
+					}
+				</li>
+
+				nodeCount++;
 			}
-		</li>
+			@if (Pageview.User.CurrentSecondaryUser != null)
+			{
+				string linesLayout = layoutSetting == "lines" ? " border-top" : "";
+				<li class="nav-item@(linesLayout)">
+					<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="nav-link@(contentPadding)@(small)">@Translate("Sign out as a customer")</a>
+				</li>
+			}
+			@if (Pageview.User != null)
+			{
+				string link = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
+				string linesLayout = layoutSetting == "lines" ? " border-top" : "";
 
-		nodeCount++;
-	}
-	
-	@if (Pageview.User.CurrentSecondaryUser != null)
-	{
-		<li class="nav-item border-top px-3 py-2">
-			<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="nav-link px-0 flex-fill @small">@Translate("Sign out as a customer")</a>
-		</li>
-	}
-
-	@if (Pageview.User != null)
-	{
-		string link = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
-		<li class="nav-item border-top px-3 py-2">
-			<a href="@link" class="nav-link px-0 flex-fill @small">@Translate("Sign out")</a>
-		</li>
-	}
-</ul>
+				<li class="nav-item@(linesLayout)">
+					<a href="@link" class="nav-link@(contentPadding)@(small)">@Translate("Sign out")</a>
+				</li>
+			}
+		</ul>
+	</div>
 }
 
-@helper RenderIcon(string icon) { 
-	if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none")) {
+@helper RenderIcon(string icon)
+{
+	if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none"))
+	{
 		string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
 
 		<span class="icon-3 me-1">
