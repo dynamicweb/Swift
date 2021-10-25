@@ -1,25 +1,88 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
 @using Dynamicweb
 @using System.IO
+@using System.Web
 
 @RenderFirstLevelNodes(Model.Nodes)
 
 
 @helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
 {
+	string groupId = HttpContext.Current.Request["GroupID"] != null ? HttpContext.Current.Request["GroupID"].ToString() : "";
+	string productId = HttpContext.Current.Request["ProductID"] != null ? HttpContext.Current.Request["ProductID"].ToString() : "";
+	string variantId = HttpContext.Current.Request["VariantID"] != null ? HttpContext.Current.Request["VariantID"].ToString() : "";
+
     <nav class="nav flex-nowrap" aria-label="@Translate("Utility navigation")">
         @foreach (var node in nodes)
         {
+			var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+			string pageType = page.ItemType;
+
+			var inPathClass = node.InPath ? "in-path" : "";
+			var activeClass = node.IsActive ? "active fw-bold" : "";
+
             <div class="nav-item@(node.IsActive ? " active" : "")">
-                @if (node.IsClickable)
-                {
-                    <a class="nav-link @(node.IsActive ? " active" : "")" href="@node.Link">
-                        @RenderNavigationItem(node)
-                    </a>
-                } else {
-                    <span class="nav-link">
-                        @RenderNavigationItem(node)
-                    </span>
+                @if (pageType != "Swift_Preferences") { 
+                    if (node.IsClickable)
+                    {
+                        <a class="nav-link @(activeClass)" href="@node.Link">
+                            @RenderNavigationItem(node)
+                        </a>
+                    } else {
+                        <span class="nav-link">
+                            @RenderNavigationItem(node)
+                        </span>
+                    }
+                } else { 
+                    List<string> preferences = new List<string>();
+
+					bool countrySelector = page.Item["CountrySelector"] != null ? Convert.ToBoolean(page.Item["CountrySelector"].ToString()) : false;
+					bool languageSelector = page.Item["LanguageSelector"] != null ? Convert.ToBoolean(page.Item["LanguageSelector"].ToString()) : false;
+					bool currencySelector = page.Item["CurrencySelector"] != null ? Convert.ToBoolean(page.Item["CurrencySelector"].ToString()) : false;
+					string name = Translate("Preferences");
+					string icon = "";
+
+					if (countrySelector) {
+						preferences.Add(Dynamicweb.Ecommerce.Common.Context.Country.Code2);
+					}
+
+					if (languageSelector) {
+						bool hideIcon = page.Item["HideIcon"] != null ? Convert.ToBoolean(page.Item["HideIcon"].ToString()) : false;
+
+						if (!hideIcon) {
+							string iconFolder = "/Files/FlagIcons/";
+							icon = iconFolder + Pageview.Area.CultureInfo.Name.ToLower() + ".svg";
+						}
+					}
+
+					if (currencySelector) {
+						string currencyName = Dynamicweb.Ecommerce.Common.Context.Currency.Code;
+						preferences.Add(currencyName);
+					}
+
+					if (preferences.Count != 0) {
+						name = (string.Join(" / ", preferences.Select(x => x.ToString()).ToArray()));
+					}
+
+					<form action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+						<input type="hidden" name="Layout" value="modal" />
+						<input type="hidden" name="CurrentPageID" value="@Pageview.ID" />
+						<input type="hidden" name="GroupID" value="@groupId" />
+						<input type="hidden" name="ProductID" value="@productId" />
+						<input type="hidden" name="VariantID" value="@variantId" />
+						<a href="#" type="button" onclick="swift.PageUpdater.Update(event)" class="nav-link position-relative flex-fill @activeClass @inPathClass" @(node.IsActive ? "aria-current='page'" : "") data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+							@if (icon != "") { 
+								if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none")) {
+									string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
+
+									<span class="icon-2">
+										@ReadFile(iconPath)
+									</span>
+								}
+							}
+							<span class="align-middle">@name</span>
+						</a>
+					</form>
                 }
             </div>
         }
