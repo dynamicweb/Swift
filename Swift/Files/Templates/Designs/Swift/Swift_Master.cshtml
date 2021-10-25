@@ -2,7 +2,9 @@
 @using System
 @using Dynamicweb
 @using Dynamicweb.Environment
-@using Dynamicweb.Frontend
+@using Dynamicweb.Frontend 
+@using System.Web
+
 @{
 	bool isVisualEdit = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
 
@@ -81,6 +83,33 @@
 	//Dynamicweb.Context.Current.Response.Flush(); //This sends the headers where we are now in the rendering making the TTFB faster
 
 	SetMetaTags();
+
+	List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
+
+	if (Pageview.Area.IsMaster) {
+		languages.Add(Pageview.Page);
+		if (Pageview.Page.Languages != null) {
+			foreach (var language in Pageview.Page.Languages) {
+				languages.Add(language);
+			}
+		}
+	} else {
+		languages.Add(Pageview.Page.MasterPage);
+		if (Pageview.Page.MasterPage != null) {
+			if (Pageview.Page.MasterPage.Languages != null) {
+				foreach (var language in Pageview.Page.MasterPage.Languages) {
+					languages.Add(language);
+				}
+			}
+		}
+	}
+
+	string siteLanguage = Pageview.Area.CultureInfo.Name;
+	Uri url = Dynamicweb.Context.Current.Request.Url;
+	string hostName = url.Host; // domain.com/da-dk or domain.com/en-us
+
+	var ecomCountries = Dynamicweb.Ecommerce.Services.Countries.GetCountries();
+	var ecomCurrencies = Dynamicweb.Ecommerce.Services.Currencies.GetAllCurrencies();
 }
 <!doctype html>
 <html lang="@Pageview.Area.CultureInfo.TwoLetterISOLanguageName">
@@ -92,7 +121,23 @@
 
 	<link rel="shortcut icon" href="~/Files/Templates/Designs/Swift/Assets/Images/favicon.png">
 	<link rel="apple-touch-icon" href="~/Files/Templates/Designs/Swift/Assets/Images/logo_transparent.png">
-	@Model.MetaTags.Replace("<meta name=\"robots\" content=\"noindex,nofollow\">", "") @*For lighthouse testing on *.local.dynamicweb.dk*@
+
+	@{ 
+		@* Languages meta data *@
+		foreach (var language in languages)
+		{
+			if (language != null) {
+				if (!string.IsNullOrEmpty(language.Area.DomainLock))
+				{
+					hostName = language.Area.DomainLock; //dk.domain.com or dk-domain.dk
+				}
+				string friendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(language.ID);
+				string href = $"{url.Scheme}://{hostName}{friendlyUrl}";
+
+				<link rel="alternate" hreflang="@language.Area.CultureInfo.Name.ToLower()" href="@href" />
+			}
+		}
+	}
 
 	<title>@Model.Title</title>
 	@* Bootstrap + Swift stylesheet *@
@@ -154,11 +199,23 @@
 			{
 				@RenderGrid(@Model.Area.Item.GetLink("FooterMobile").PageId)
 			}
-		</footer> }
+		</footer> 
+	}
 
 	@* Render any offcanvas menu here *@
 	@RenderSnippet("offcanvas")
 
+	@* Language selector modal *@
+	@if (languages.Count > 1 || ecomCountries.Count > 1 || ecomCurrencies.Count() > 1)
+	{
+		<div class="modal fade" id="PreferencesModal" tabindex="-1" aria-labelledby="PreferencesModalLabel" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered modal-sm">
+				<div class="modal-content" id="PreferencesModalContent">
+					@* The content here comes from an external request *@
+				</div>
+			</div>
+		</div>
+	}
 </body>
 </html>
 @functions {
