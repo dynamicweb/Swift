@@ -1,0 +1,253 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+
+@{ 
+	string apiKey = !string.IsNullOrEmpty(Pageview.AreaSettings.GetString("Google_APIKey")) ? Pageview.AreaSettings.GetString("Google_APIKey") : "";
+	var locationList = Model.Item.GetUsers("UserGroup");
+    string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+    int initialZoomLevel = !string.IsNullOrEmpty(Model.Item.GetString("InitialZoomLevel")) ? Model.Item.GetInt32("InitialZoomLevel") : 4;
+    initialZoomLevel = initialZoomLevel == 0 ? 4 : initialZoomLevel;
+    string regionCode = !string.IsNullOrEmpty(Model.Item.GetString("RegionCode")) ? Model.Item.GetString("RegionCode") : "DK";
+    bool useDefaultGoogleMapsStyling = !string.IsNullOrEmpty(Model.Item.GetString("UseDefaultGoogleMapsStyling")) ? Model.Item.GetBoolean("UseDefaultGoogleMapsStyling") : false;
+
+    var defaultLat = Model.Item?.GetGeolocation("DefaultMapCenter")?.Latitude != null ? Model.Item.GetGeolocation("DefaultMapCenter").Latitude.ToString().Replace(",", ".") : "0.000000";
+    var defaultLng = Model.Item?.GetGeolocation("DefaultMapCenter")?.Longitude != null ? Model.Item.GetGeolocation("DefaultMapCenter").Longitude.ToString().Replace(",", ".") : "0.000000";
+}
+
+@if (defaultLat != "0.000000" && defaultLng != "0.000000") { 
+    if (apiKey != "") {
+        <div class="grid position-relative">
+            @if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
+                <div class="g-col-12 g-col-lg-8 order-1" id="MapHeader">
+				    <h1 class="mb-0">@Model.Item.GetString("Title")</h1>
+                </div>
+		    } else {
+                <div class="g-col-12 g-col-lg-8 order-1" id="MapHeader"></div>
+            }
+
+            <div class="g-col-12 g-col-lg-4 order-2 order-lg-2 js-map-search-column">
+                <form class="input-group" id="MapSearch">
+                    <input type="text" class="form-control" placeholder="@Translate("Enter city state or zip")">
+                    <button type="submit" class="btn btn-outline-secondary">@ReadFile(iconPath+"search.svg")</button>
+                </form>
+            </div>
+
+            <div class="g-col-12 g-col-lg-8 order-1 order-lg-4 js-map-column">
+		        <div class="map" id="Map"></div>
+	        </div>
+
+	        @if (locationList.Count() > 1) {
+		        <div class="g-col-12 g-col-lg-4 order-2 order-lg-3 js-locations-list-column">
+                    <div class="locations-list">
+                        <ul class="list-group" id="LocationsList"></ul>
+		            </div>
+                </div>
+	        } else if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
+		        <div class="g-col-12 order-5 order-lg-3">
+			        <h1>@Model.Item.GetString("Title")</h1>
+		        </div>
+	        }
+
+	    
+        </div>
+    } else {
+        <div class="alert alert-info" role="alert">
+            @Translate("Google maps API key is missing")
+        </div>
+    }
+
+    <script type="module">
+        @if (!useDefaultGoogleMapsStyling) {
+            <text>
+                var mapIcon = {
+                    url: "@(iconPath)marker.svg"
+                }
+
+                var mapStyle = [
+                  {
+                    "featureType": "administrative.land_parcel",
+                    "elementType": "labels",
+                    "stylers": [
+                      {
+                        "visibility": "off"
+                      }
+                    ]
+                  },
+                  {
+                    "featureType": "landscape.man_made",
+                    "elementType": "geometry.fill",
+                    "stylers": [
+                      {
+                        "color": "#b0afb6"
+                      }
+                    ]
+                  },
+                  {
+                    "featureType": "landscape.natural",
+                    "elementType": "geometry.fill",
+                    "stylers": [
+                      {
+                        "color": "#d7d7da"
+                      }
+                    ]
+                  },
+                  {
+                    "featureType": "landscape.natural.terrain",
+                    "elementType": "geometry.fill",
+                    "stylers": [
+                      {
+                        "color": "#7ba78b"
+                      }
+                    ]
+                  },
+                  {
+                    "featureType": "poi",
+                    "elementType": "labels.text",
+                    "stylers": [
+                      {
+                        "visibility": "off"
+                      }
+                    ]
+                    },
+                  {
+                    "featureType": "poi",
+                    "elementType": "geometry",
+                    "stylers": [
+                      {
+                        "color": "#659577"
+                      }
+                    ]
+                  },
+                  {
+                    "featureType": "poi.business",
+                    "stylers": [
+                      {
+                        "visibility": "off"
+                      }
+                    ]
+                  },
+                  {
+                    "featureType": "poi.park",
+                    "elementType": "geometry.fill",
+                    "stylers": [
+                      {
+                        "color": "#659577"
+                      }
+                    ]
+                  },
+                  {
+                    "featureType": "road",
+                    "elementType": "labels.icon",
+                    "stylers": [
+                      {
+                        "visibility": "off"
+                      }
+                    ]
+                  },
+                  {
+                    "featureType": "road.highway",
+                    "elementType": "geometry.fill",
+                    "stylers": [
+                      {
+                        "color": "#f5f5f5"
+                      }
+                    ]
+                  },
+                  {
+                    "featureType": "road.highway",
+                    "elementType": "geometry.stroke",
+                    "stylers": [
+                      {
+                        "color": "#f0f0f0"
+                      }
+                    ]
+                  },
+                  {
+                    "featureType": "road.local",
+                    "elementType": "labels",
+                    "stylers": [
+                      {
+                        "visibility": "off"
+                      }
+                    ]
+                  },
+                  {
+                    "featureType": "transit",
+                    "stylers": [
+                      {
+                        "visibility": "off"
+                      }
+                    ]
+                  },
+                  {
+                    "featureType": "water",
+                    "elementType": "geometry.fill",
+                    "stylers": [
+                      {
+                        "color": "#8ea5c2"
+                      }
+                    ]
+                  }
+                ];
+            </text>
+	    } else {
+            <text>
+                var mapIcon = {};
+
+                var mapStyle = [{
+                  featureType: 'poi',
+                  elementType: 'labels.icon',
+                  stylers: [
+                    {
+                      visibility: 'off'
+                    }
+                  ]
+                }];
+            </text>
+	    }
+
+        var locations = [
+            @foreach (var location in locationList) {
+                <text>{
+                    name: "@(location.Name)",
+                    company: "@(location.Company)",
+                    address: "@(location.Address)",
+                    city: "@(location.City)",
+                    zip: "@(location.Zip)",
+                    state: "@(location.State)",
+                    country: "@(location.Country)",
+                    phone: "@(location.Phone)",
+                    email: "@(location.Email)",
+                    location: {
+                        lat: @(location.Location.Lat),
+                        lng: @(location.Location.Lng)
+                    }
+                },</text>
+            }
+        ];
+
+        var mapSettings = {
+            locations: locations,
+            mapStyle: mapStyle,
+            mapIcon: mapIcon,
+            initialZoomLevel: @initialZoomLevel,
+            defaultLat: @defaultLat,
+            defaultLng: @defaultLng,
+            regionCode: "@(regionCode)",
+            directionsLabel: "@Translate("Directions")",
+            noLocationsFoundLabel: "@Translate("No options available in the selected area")"
+        };
+
+        window.addEventListener('DOMContentLoaded', function (event) {
+            swift.LocationsMap.init(mapSettings);
+        });
+    </script>
+
+    <script defer src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)"></script>
+} else {
+    <div class="alert alert-info" role="alert">
+        @Translate("The map is not proberly configured")
+    </div>
+}
+
+
+
