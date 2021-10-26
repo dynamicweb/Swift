@@ -18,9 +18,9 @@ const PageUpdater = function () {
 			//Fire the 'update' event
 			let event = new CustomEvent("update.swift.pageupdater", {
 				cancelable: true,
-				detail: {
+				detail: {								 
 					formData: formData,
-					parentEvent: e
+					parentEvent: e									  
 				}
 			});
 			var globalDispatcher = document.dispatchEvent(event);
@@ -43,7 +43,9 @@ const PageUpdater = function () {
 						}
 					}, 200); //Small delay to secure that the preloader is not loaded all the time
 				} else {
-					document.querySelector(responseTargetElement).innerHTML = "";
+					if (responseTargetElement != null) {
+						responseTargetElement.innerHTML = "";
+					}
 
 					var addPreloaderTimer = setTimeout(function () {
 						var preloaderElement = document.createElement('div');
@@ -55,7 +57,10 @@ const PageUpdater = function () {
 						helper.className = "visually-hidden";
 						helper.innerHTML = "Loading...";
 						preloaderElement.appendChild(helper);
-						document.querySelector(responseTargetElement).appendChild(preloaderElement);
+
+						if (responseTargetElement != null) {
+							responseTargetElement.appendChild(preloaderElement);
+						}
 					}, 200); //Small delay to secure that the preloader is not loaded all the time
 				}
 
@@ -69,7 +74,7 @@ const PageUpdater = function () {
 				}
 			}
 		},
-		
+
 		Success: async function (response, addPreloaderTimer, formData, responseTargetElement) {
 			clearTimeout(addPreloaderTimer);
 
@@ -102,10 +107,10 @@ const PageUpdater = function () {
 				}
 			}
 		},
-		
+
 		Error: function (e, responseTargetElement, addPreloaderTimer) {
 			clearTimeout(addPreloaderTimer);
-		
+
 			if (document.querySelector("#overlay")) {
 				document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
 			}
