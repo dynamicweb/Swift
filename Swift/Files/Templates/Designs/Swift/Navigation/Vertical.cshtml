@@ -6,6 +6,7 @@
 	string layoutSetting = Model.Parameters.ContainsKey("Layout") ? Model.Parameters["Layout"].ToString().ToLower() : "clean";
 	string paragraphId = Pageview.CurrentParagraph.ID.ToString();
 	string currentPageTitle = Pageview.Item["Title"] != null ? Pageview.Item["Title"].ToString() : Translate("Navigation");
+	string theme = Model.Parameters.ContainsKey("Theme") ? Model.Parameters["Theme"].ToString().ToLower() : "";
 }
 
 @if (layoutSetting != "lines")
@@ -22,9 +23,9 @@ else
 	@* Mobile *@
 	<div class="d-block d-lg-none">
 		<div class="collapsed" data-bs-toggle="collapse" data-bs-target="#VerticalNavigation_@paragraphId" role="button" aria-expanded="true" aria-controls="Navigation">
-			<div class="d-flex">
-				@{string contentPadding = Model.Parameters.ContainsKey("ContentPadding") ? Model.Parameters["ContentPadding"].ToString().ToLower() : "";}
-				<h6 class="fw-bold m-0 flex-fill@(contentPadding)">
+			@{string contentPadding = Model.Parameters.ContainsKey("ContentPadding") ? Model.Parameters["ContentPadding"].ToString().ToLower() : "";}
+			<div class="d-flex@(contentPadding)">
+				<h6 class="fw-bold m-0 flex-fill">
 					@if (string.IsNullOrEmpty(currentPageTitle))
 					{
 						@Translate("Navigation")
@@ -34,7 +35,7 @@ else
 						@currentPageTitle
 					}
 				</h6>
-				<div class="my-auto collapse-chevron-icon p-3"></div>
+				<div class="my-auto collapse-chevron-icon"></div>
 			</div>
 		</div>
 		<div class="collapse hide" id="VerticalNavigation_@paragraphId">
@@ -47,9 +48,11 @@ else
 {
 	string contentPadding = Model.Parameters.ContainsKey("ContentPadding") ? Model.Parameters["ContentPadding"].ToString().ToLower() : "";
 	string layoutSetting = Model.Parameters.ContainsKey("Layout") ? Model.Parameters["Layout"].ToString().ToLower() : "clean";
+	bool ShowSignOutLink = Model.Parameters.ContainsKey("ShowSignOutLink") ? Convert.ToBoolean(Model.Parameters["ShowSignOutLink"].ToString()) : false;
 	string small = layoutSetting == "small" ? " fs-7" : "";
 	int nodeCount = 0;
 	int totalNodes = nodes.Count();
+
 
 	<div class="navbar navbar-expand py-0">
 		<ul class="navbar-nav flex-column flex-fill">
@@ -73,7 +76,7 @@ else
 
 				<li class="nav-item@(linesLayout)@(node.IsActive ? " active" : "")">
 					<div class="d-flex align-items-center">
-						<a class="nav-link flex-fill@(contentPadding)@(small)" @(node.IsActive ? "aria-current='page'" : "") href="@node.Link">
+						<a class="nav-link flex-fill text-reset@(contentPadding)@(small)" @(node.IsActive ? "aria-current='page'" : "") href="@node.Link">
 							@if (!hideIcons)
 							{
 								@RenderIcon(icon)
@@ -83,13 +86,13 @@ else
 								<span class="@(node.IsActive ? "fw-bold" : "")">@node.Name</span>
 							}
 						</a>
-
 						@if (hasChildren)
 						{
-							string collapseCSS = node.InPath ? "" : "collapsed";
-
-							<div class="@collapseCSS collapse-icon@(small)" data-bs-toggle="collapse" data-bs-target="#NavigationGroup_@groupId" role="button" aria-expanded="true" aria-controls="NavigationGroup_@node.GroupId"></div>
+							string collapseCSS = node.InPath ? "" : "collapsed ";
+							string collapseIconStyle = contentPadding == " px-0 py-2" ? collapseIconStyle = "style=" + "-webkit-mask-position:right;mask-position:right;" : "";
+							<div class="@(collapseCSS)m-0 collapse-icon@(small)@(contentPadding)" @collapseIconStyle data-bs-toggle="collapse" data-bs-target="#NavigationGroup_@groupId" role="button" aria-expanded="true" aria-controls="NavigationGroup_@node.GroupId"></div>
 						}
+
 					</div>
 					@if (hasChildren)
 					{
@@ -103,14 +106,25 @@ else
 
 				nodeCount++;
 			}
-			@if (Pageview.User != null)
+			@if (ShowSignOutLink)
 			{
-				string linesLayout = layoutSetting == "lines" ? " border-top" : "";
+				if (Pageview.User != null)
+				{
+					string linesLayout = layoutSetting == "lines" ? " border-top" : "";
+					string link = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
 
-				<li class="nav-item@(linesLayout)">
-					<a href="/Admin/Public/ExtranetLogoff.aspx?redirect=no" class="nav-link@(contentPadding)@(small)">@Translate("Sign out")</a>
-				</li>
+					if (Pageview.User.CurrentSecondaryUser != null)
+					{
+						<li class="nav-item@(linesLayout)">
+							<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="nav-link text-reset@(contentPadding)@(small)">@Translate("Sign out as a customer")</a>
+						</li>
+					}
+					<li class="nav-item@(linesLayout)">
+						<a href="@link" class="nav-link text-reset@(contentPadding)@(small)">@Translate("Sign out")</a>
+					</li>
+				}
 			}
+
 		</ul>
 	</div>
 }

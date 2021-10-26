@@ -43,7 +43,9 @@ const ProductList = function () {
 						}
 					}, 200); //Small delay to secure that the preloader is not loaded all the time
 				} else {
-					document.querySelector(responseTargetElement).innerHTML = "";
+					if (responseTargetElement != null) {
+						responseTargetElement.innerHTML = "";
+					}
 
 					var addPreloaderTimer = setTimeout(function () {
 						var preloaderElement = document.createElement('div');
@@ -55,7 +57,10 @@ const ProductList = function () {
 						helper.className = "visually-hidden";
 						helper.innerHTML = "Loading...";
 						preloaderElement.appendChild(helper);
-						document.querySelector(responseTargetElement).appendChild(preloaderElement);
+
+						if (responseTargetElement != null) {
+							responseTargetElement.appendChild(preloaderElement);
+						}
 					}, 200); //Small delay to secure that the preloader is not loaded all the time
 				}
 
