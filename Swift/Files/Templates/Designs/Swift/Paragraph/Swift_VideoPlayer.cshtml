@@ -51,7 +51,6 @@
 					
 					break;
 			}
-
 			<script type="module">
 				const player = new Plyr('#player_@Pageview.CurrentParagraph.ID', {
 					type: 'video',
@@ -74,14 +73,15 @@
 
 		<div class="h-100 position-relative@(theme) grid grid-1 @(alignment)">
 
-			<div class="player h-100 w-100" data-player="{'src': @videoId'}">
+			<div class="player position-relative" data-player="player_@Pageview.CurrentParagraph.ID">
+
 				@RenderImage()
 				
 				<div class="position-absolute top-0 bottom-0 end-0 start-0 h-100 d-flex align-items-center justify-content-center">
 					<button type="button" class="btn btn-primary rounded-circle lh-1 p-3" data-bs-toggle="modal" data-bs-target="#modal_@Pageview.CurrentParagraph.ID">
-						<div class="icon-3">
+						<span class="icon-3">
 							@ReadFile(iconPath)
-						</div>
+						</span>
 					</button>
 				</div>
 			</div>
@@ -98,7 +98,7 @@
 							case "youtube" :
 							case "vimeo" :
 
-								<div 
+								<div
 									id="player_@Pageview.CurrentParagraph.ID" 
 									class="player plyr__video-embed @(theme) h-100 w-100" 
 									data-plyr-provider="@provider" 
@@ -123,6 +123,7 @@
 						}
 						
 						<script type="module">
+
 							var player = new Plyr('#player_@Pageview.CurrentParagraph.ID', {
 								youtube: {
 									noCookie: true,
@@ -155,33 +156,94 @@
 		break;
 }
 
-
 @helper RenderImage()
 {
-	if (!string.IsNullOrEmpty(Model.Item.GetString("VideoPoster")))
-	{
+	string provider = Model.Item.GetRawValueString("VideoSourceProvider", "none");
+	string videoId = Model.Item.GetString("VideoSourceID");
+	string ratio = Model.Item.GetRawValueString("AspectRatio", "");
+	ratio = ratio != "0" ? ratio : "";
+	string ratioCssClass = ratio != "" && ratio != "fill" ? " ratio" : "";
+	string ratioVariable = ratio != "" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : "";
+	string fillClass = ratio == "fill" ? " h-100" : "";
 
-		string ratio = Model.Item.GetRawValueString("AspectRatio", "");
-		ratio = ratio != "0" ? ratio : "";
-		string ratioCssClass = ratio != "" && ratio != "fill" ? " ratio" : "";
-		string ratioVariable = ratio != "" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : "";
-		string fillClass = ratio == "fill" ? " h-100" : "";
-
-		var parms = new Dictionary<string, object>();
-		parms.Add("loading", "lazy");
-		if (ratio == "fill") {
-			parms.Add("cssClass", "w-100 h-100");
-		}
-		else
-		{
-			parms.Add("cssClass", "mw-100 mh-100");
-		}
-		parms.Add("style","");
-		parms.Add("alt", Model.Item.GetString("ImageAltText"));
-		parms.Add("columns", Model.GridRowColumnCount);
-
-		<figure class="m-0@(ratioCssClass)@(fillClass)" @ratioVariable>
-			@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("VideoPoster") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
-		</figure>
+	var parms = new Dictionary<string, object>();
+	parms.Add("loading", "lazy");
+	if (ratio == "fill") {
+		parms.Add("cssClass", "w-100 h-100");
 	}
+	else
+	{
+		parms.Add("cssClass", "mw-100 mh-100");
+	}
+	parms.Add("style","");
+	parms.Add("alt", @Model.Item.GetString("ImageAltText"));
+	parms.Add("columns", Model.GridRowColumnCount);
+
+	<figure class="m-0@(ratioCssClass)@(fillClass)" @ratioVariable>
+
+		@if (string.IsNullOrEmpty(Model.Item.GetString("VideoPoster")))
+		{
+			switch (provider)
+			{
+				case "youtube" :
+					@RenderYouTubePoster(videoId)
+					break;
+
+				case "vimeo" :
+					@RenderVimeoPoster(videoId)
+					break;
+			}
+		}
+		else 
+		{
+			@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("VideoPoster") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+		}
+		
+	</figure>
+}
+
+@helper RenderYouTubePoster(string videoId)
+{
+	<script type="module">
+		function setVideoThumbnail(source) {
+			var figure = document.querySelector("[data-player='player_@Pageview.CurrentParagraph.ID'] figure");
+			var thumbnail = document.createElement("img");
+			thumbnail.style = "object-fit: cover;";
+			thumbnail.classList.add('mw-100','mh-100');
+			thumbnail.src = source;
+			figure.appendChild(thumbnail);
+		};
+		setVideoThumbnail('https://i.ytimg.com/vi/@(videoId)/hqdefault.jpg');
+	</script>
+}
+
+@helper RenderVimeoPoster(string videoId)
+{
+	<script type="module">
+		function setVideoThumbnail(source) {
+			let figure = document.querySelector("[data-player='player_@Pageview.CurrentParagraph.ID'] figure");
+			let thumbnail = document.createElement("img");
+			thumbnail.style = "object-fit: cover;";
+			thumbnail.classList.add('mw-100','mh-100');
+			thumbnail.src = source;
+			figure.appendChild(thumbnail);
+		};
+		function getVimeoThumbnail() {
+			fetch('https://vimeo.com/api/v2/video/@(videoId).json')
+			.then(function(response) {
+				return response.text();
+			})
+			.then(function(data) {
+				let { thumbnail_large } = JSON.parse(data)[0];
+				let thumbnail = `${thumbnail_large}`;
+				thumbnail = thumbnail.replace("_640", "_1920");
+				setVideoThumbnail(thumbnail);
+			})
+			.catch(error => {
+				console.log(error);
+			});
+		}
+
+		getVimeoThumbnail();
+	</script>
 }

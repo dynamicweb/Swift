@@ -118,13 +118,15 @@ const Typeahead = function() {
 		},
 
 		preSelectSuggestion: function(elm) {
-			var suggestionElement = elm.getElementsByClassName("js-suggestion")[0];
+			var suggestionElement = elm.querySelector(".js-suggestion");
 
 			document.querySelectorAll(".js-type-ahead-field").forEach(function (field) {
-				field.value = suggestionElement.innerText;
+				field.value = suggestionElement.innerText + " ";
+				field.focus();
 
 				var formElm = field.closest(".js-suggest-form");
 				var parm = formElm.querySelector(".js-type-ahead-parameter");
+
 				if (elm.getAttribute("data-param") && elm.getAttribute("data-paramvalue")) {
 					parm.setAttribute("name", elm.getAttribute("data-param"));
 					parm.setAttribute("value", elm.getAttribute("data-paramvalue"));
@@ -139,11 +141,30 @@ const Typeahead = function() {
 				} else {
 					parm.removeAttribute("name");
 					parm.removeAttribute("value");
+
+					var productListPage = formElm.getAttribute("data-product-list-page");
+					formElm.setAttribute("action", productListPage);
 				}
 			});
 		},
 
-		selectSuggestion: function(elm) {
+		setSuggestion: function (elm) {
+			document.body.removeEventListener('click', Typeahead.hideSearchResults, false);
+
+			Typeahead.preSelectSuggestion(elm);
+
+			var searchField = elm.closest(".js-type-ahead-dropdown").querySelector(".js-type-ahead-field");
+
+			if (searchField) {
+				Typeahead.showSearchResults(searchField);
+			}
+
+			var hideSearchTimer = setTimeout(function () {
+				document.body.addEventListener('click', Typeahead.hideSearchResults);
+			}, 200);
+		},
+
+		selectSuggestion: function (elm) {
 			Typeahead.preSelectSuggestion(elm);
 
 			elm.closest(".js-type-ahead-dropdown").querySelector(".js-suggest-form").submit();
@@ -217,7 +238,6 @@ const Typeahead = function() {
 		},
 
 		init: function(){
-			document.body.addEventListener('click', Typeahead.hideSearchResults);
 			document.querySelectorAll(".js-type-ahead-field").forEach(function (field) {
 				field.addEventListener('keyup', (e) => Typeahead.suggest(e, field))
 				field.addEventListener('keydown', (e) => Typeahead.handleTab(e));

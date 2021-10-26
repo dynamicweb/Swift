@@ -1,5 +1,50 @@
 # Changelog
 
+## [v1.0.3] - 05-10-2021
+
+### Bugfixes
+* Product List: Remove unused CSS from article
+* Product List: Products with variants overwrite theme
+* Itemtype: Use querystring data instead of form data on Product Slider
+* Itemtype: Hide page-header in Visual Editor, when page behind option is set
+
+### Changed
+* General: Make header work in adaptive on tablets with wrong UA and make header detection more ressilient
+* General: Remove flex, overflow, min-width from general templates
+
+### Added
+* Itemtype: Stretched link option settings
+
+## [v1.0.2] - 24-09-2021
+
+### Bugfixes
+* Customer Center Order Details: Total discount in receipt 
+* Itemtype: Carousel, Poster, VideoPoster grid unify
+* Itemtype: Vertical align text
+* Newsletter: Gmail theme fix
+* Product List Page: Improve product images
+* Product List Page: Use "Get" instead of "Post"
+
+### Added
+* Product Detail Page: Show error message on a PDP with no product
+
+## [v1.0.1] - 23-09-2021
+
+### Bugfixes
+* Checkout: Aligned checkout summary item
+* Cookies: Cookie notice responsive fixes and button style bug
+* General: Translations
+* Itemtype: Updated Feature field descriptions
+* Itemtype: Remove unused fields from page item types
+* Itemtype: Video player (field descriptions)
+* Newsletter: Use the new page properties theme, instead of page theme
+* Newsletter: Fixed product images alt text
+* Order Email: Clean up order email + fix missing product image
+* Product Detail Page: Fixed scroll position is not remembered after selecting a variant
+
+### Added
+* Itemtype: Video player (support for provided thumbnail)
+
 ## [v1.0.0] - 31-08-2021
 
 This is our first release of Dynamicweb Swift. It's fast and easy to build ecommerce sites for both B2C and B2B with personalized prices, self service, customer center, fantastic search and a lot more. All this using only configuration and no coding.

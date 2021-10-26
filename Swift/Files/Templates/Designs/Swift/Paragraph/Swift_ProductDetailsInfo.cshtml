@@ -6,6 +6,11 @@
 @{ 
 	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
 
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+
 	ProductViewModel product = new ProductViewModel();
 
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
@@ -43,6 +48,14 @@
 	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
 	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
 	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
+
+	string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
+	string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
+	string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
+	string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : ""; 
+
+	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 }
 
 <div class="h-100 @(contentPadding) @(theme)">
@@ -53,18 +66,39 @@
 				<div class="opacity-85">@product.Number</div>
 			}
 		</div>
-		<div>
-			<div class="h4" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
-				<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
-				<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
-				<span class="text-price">@product.Price.PriceFormatted</span>
-			</div>
-			@if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-				<div class="text-decoration-line-through opacity-85">
-					@product.PriceBeforeDiscount.PriceFormatted
+
+		@if (!hidePrice) {
+			<div>
+				<div class="h4" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+					<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
+				
+					@if (showPricesWithVat == "false" && !neverShowVat) {
+						<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
+						if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+							<span class="text-decoration-line-through opacity-75 me-3">
+								@product.PriceBeforeDiscount.PriceWithoutVatFormatted
+							</span>
+						}
+					} else {
+						<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
+						if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+							<span class="text-decoration-line-through opacity-75 me-3">
+								@product.PriceBeforeDiscount.PriceFormatted
+							</span>
+						}
+					}
+			
+					@if (showPricesWithVat == "false" && !neverShowVat) {
+						<span class="text-price">@product.Price.PriceWithoutVatFormatted</span>
+					} else {
+						<span class="text-price">@product.Price.PriceFormatted</span>
+					}
 				</div>
-			}
-		</div>
+				@if (showPricesWithVat == "false" && !neverShowVat) {
+					<small class="opacity-85 fst-normal">@product.Price.PriceWithVatFormatted @Translate("Incl. VAT")</small>
+				}
+			</div> 
+		}
 
 		@if (!string.IsNullOrEmpty(product.ShortDescription))
 		{
@@ -89,7 +123,9 @@
 		@if (product.VariantInfo.VariantInfo != null) {
 			int groupNumber = 1;
 
-			<div class="mb-3 js-variant-selector" data-combinations="@string.Join(",", product.VariantCombinations())">
+			<form class="mb-3 js-variant-selector" data-combinations="@string.Join(",", product.VariantCombinations())">
+				<input type="hidden" name="variantid" />
+
 				@foreach (var variantGroup in product.VariantGroups())
 				{
 					VariantGroupViewModel group = variantGroup;
@@ -121,45 +157,53 @@
 			
 					groupNumber++;
 				}
-			</div>
+			</form>
 		}
 
 		<form method="post" action="@url">
-			<div class="d-flex flex-row">
-				<input type="hidden" name="redirect" value="false" />
-				<input type="hidden" name="ProductId" value="@product.Id" />
-				<input type="hidden" name="cartcmd" value="add" />
+			@if (!hideAddToCart) { 
+				<div class="d-flex flex-row">
+					<input type="hidden" name="redirect" value="false" />
+					<input type="hidden" name="ProductId" value="@product.Id" />
+					<input type="hidden" name="cartcmd" value="add" />
 
-				@if (!string.IsNullOrEmpty(product.VariantId)) {
-					<input type="hidden" name="VariantId" value="@product.VariantId" />
-				}
+					@if (!string.IsNullOrEmpty(product.VariantId)) {
+						<input type="hidden" name="VariantId" value="@product.VariantId" />
+					}
 
 				@if (!Model.Item.GetBoolean("QuantitySelector"))
 				{
 					<div class="flex-fill">
-						<input id="Quantity_@product.Id" name="Quantity" value="1" type="hidden">
+						<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" type="hidden">
 						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary js-add-to-cart-button w-100 @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
 					</div>
 				} else {
-					<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
-						<input id="Quantity_@product.Id" name="Quantity" value="1" class="form-control" style="max-width: 100px" type="number">
-						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
+					<div class="flex-fill input-group input-primary-button-group d-flex flex-row js-input-group">
+						<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number" @qtyValidCheck>
+						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart is-invalid" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
+						@if (stepQty != "1")
+						{
+							<div class="invalid-feedback d-none">
+								@Translate("Please select a quantity that is dividable by") @stepQty
+							</div>
+						}
 					</div>
 				}
 			</div>
 
-			@if (!Model.Item.GetBoolean("HideStockState")) {
-				<div class="mt-3 js-stock-state @hideStockState">
-					@if (product.StockLevel > 0) {
-						if (!Model.Item.GetBoolean("HideInventory")) {
-							<small class="text-success">@product.StockLevel @Translate("Products available in stock")</small>
+				if (!Model.Item.GetBoolean("HideStockState")) {
+					<div class="mt-3 js-stock-state @hideStockState">
+						@if (product.StockLevel > 0) {
+							if (!Model.Item.GetBoolean("HideInventory")) {
+								<small class="text-success">@product.StockLevel @Translate("Products available in stock")</small>
+							} else {
+								<small class="text-success">@Translate("Available in stock")</small>
+							}
 						} else {
-							<small class="text-success">@Translate("Available in stock")</small>
+							<small class="text-danger">@Translate("Out of Stock")</small>
 						}
-					} else {
-						<small class="text-danger">@Translate("Out of Stock")</small>
-					}
-				</div>
+					</div>
+				}
 			}
 		</form>
 	</div>

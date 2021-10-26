@@ -1,8 +1,8 @@
-const Scroll = function() {
-    
-    return {
+const Scroll = function () {
 
-        init() {
+	return {
+
+		init() {
 			document.addEventListener('scroll', function (e) {
 				var themeChangers = document.querySelectorAll("[data-alternative-theme]");
 
@@ -65,21 +65,15 @@ const Scroll = function() {
 		},
 
 		setContentPosition() {
-
-			const viewportWidth = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
 			var headerHeight = 100;
-			var desktopHeader = document.querySelector("#page-header-dekstop");
-			var mobileHeader = document.querySelector("#page-header-mobile");
+			document.querySelectorAll(".page-header").forEach(header => {
+				/*The invisible header is 0*/
+				headerHeight += header.offsetHeight;
+			});
 
-			if (viewportWidth > 992 && desktopHeader) {
-				headerHeight = desktopHeader.clientHeight;
-			} else if (mobileHeader) {
-				headerHeight = mobileHeader.clientHeight;
-			}
 			document.documentElement.style.setProperty('--header-height', headerHeight + 'px');
-
 		}
-    }
+	}
 }();
 
 export { Scroll };
