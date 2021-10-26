@@ -6,6 +6,7 @@ const PageUpdater = function () {
 			var form = clickedButton.closest("form");
 			var preloader = form.getAttribute("data-preloader");
 			var responseTargetElement = form.getAttribute("data-response-target-element") ? "#" + form.getAttribute("data-response-target-element") : "#content";
+			responseTargetElement = document.querySelector(responseTargetElement);
 			var layoutTemplate = form.getAttribute("data-layout-template") ? form.getAttribute("data-layout-template") : "Swift_PageClean.cshtml";
 
 			let formData = new FormData(form);
@@ -18,9 +19,9 @@ const PageUpdater = function () {
 			//Fire the 'update' event
 			let event = new CustomEvent("update.swift.pageupdater", {
 				cancelable: true,
-				detail: {								 
+				detail: {
 					formData: formData,
-					parentEvent: e									  
+					parentEvent: e
 				}
 			});
 			var globalDispatcher = document.dispatchEvent(event);
@@ -102,8 +103,8 @@ const PageUpdater = function () {
 				}
 
 				//Replace content
-				if (document.querySelector(responseTargetElement)) {
-					document.querySelector(responseTargetElement).innerHTML = html;
+				if (responseTargetElement != null) {
+					responseTargetElement.innerHTML = html;
 				}
 			}
 		},
