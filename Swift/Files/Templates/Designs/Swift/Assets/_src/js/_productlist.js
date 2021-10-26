@@ -43,10 +43,24 @@ const ProductList = function () {
 						}
 					}, 200); //Small delay to secure that the preloader is not loaded all the time
 				} else {
+					if (responseTargetElement != null) {
+						responseTargetElement.innerHTML = "";
+					}
+
 					var addPreloaderTimer = setTimeout(function () {
 						var preloaderElement = document.createElement('div');
-						preloaderElement.className = "preloader";
-						responseTargetElement.appendChild(preloaderElement);
+						preloaderElement.className = "d-flex p-4";
+						var preloaderSpinner = document.createElement('div');
+						preloaderSpinner.className = "spinner-border m-auto";
+						preloaderElement.appendChild(preloaderSpinner);
+						var helper = document.createElement('span');
+						helper.className = "visually-hidden";
+						helper.innerHTML = "Loading...";
+						preloaderElement.appendChild(helper);
+
+						if (responseTargetElement != null) {
+							responseTargetElement.appendChild(preloaderElement);
+						}
 					}, 200); //Small delay to secure that the preloader is not loaded all the time
 				}
 
