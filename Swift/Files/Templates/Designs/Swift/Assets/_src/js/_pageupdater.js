@@ -105,6 +105,19 @@ const PageUpdater = function () {
 				//Replace content
 				if (responseTargetElement != null) {
 					responseTargetElement.innerHTML = html;
+
+					//Run scripts from the loaded html
+					var scripts = Array.prototype.slice.call(responseTargetElement.getElementsByTagName("script"));
+					for (var i = 0; i < scripts.length; i++) {
+						if (scripts[i].src != "") {
+							var tag = document.createElement("script");
+							tag.src = scripts[i].src;
+							document.getElementsByTagName("head")[0].appendChild(tag);
+						}
+						else {
+							eval(scripts[i].innerHTML);
+						}
+					}
 				}
 			}
 		},
