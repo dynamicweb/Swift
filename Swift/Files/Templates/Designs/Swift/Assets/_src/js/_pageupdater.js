@@ -19,9 +19,9 @@ const PageUpdater = function () {
 			//Fire the 'update' event
 			let event = new CustomEvent("update.swift.pageupdater", {
 				cancelable: true,
-				detail: {
+				detail: {								 
 					formData: formData,
-					parentEvent: e
+					parentEvent: e									  
 				}
 			});
 			var globalDispatcher = document.dispatchEvent(event);
@@ -75,7 +75,7 @@ const PageUpdater = function () {
 				}
 			}
 		},
-		
+
 		Success: async function (response, addPreloaderTimer, formData, responseTargetElement) {
 			clearTimeout(addPreloaderTimer);
 
@@ -108,10 +108,10 @@ const PageUpdater = function () {
 				}
 			}
 		},
-		
+
 		Error: function (e, responseTargetElement, addPreloaderTimer) {
 			clearTimeout(addPreloaderTimer);
-		
+
 			if (document.querySelector("#overlay")) {
 				document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
 			}
