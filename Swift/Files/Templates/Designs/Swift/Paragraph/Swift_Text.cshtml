@@ -2,7 +2,7 @@
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
-	string layout = Model.Item.GetRawValueString("Layout", "text-start");	
+	string layout = Model.Item.GetRawValueString("Layout", "text-start");
 	layout = layout == "alignLeft" ? "align-items-start text-start" : layout;
 	layout = layout == "alignCenter" ? "align-items-center text-center" : layout;
 	layout = layout == "alignRight" ? "align-items-end text-end" : layout;
@@ -12,43 +12,62 @@
 	contentPadding = contentPadding == "small" ? "p-3 p-md-3" : contentPadding;
 	contentPadding = contentPadding == "large" ? "p-5 p-md-5" : contentPadding;
 
+	string verticalAlign = Model.Item.GetRawValueString("verticalAlign", "justify-content-start");
+	verticalAlign = verticalAlign == "vertical-align-top" ? "justify-content-start" : verticalAlign;
+	verticalAlign = verticalAlign == "vertical-align-center" ? "justify-content-center" : verticalAlign;
+	verticalAlign = verticalAlign == "vertical-align-bottom" ? "justify-content-end" : verticalAlign;
+
+	string maxWidth = Model.Item.GetRawValueString("TextReadability", "max-width-on");
+	maxWidth = maxWidth == "max-width-on" ? " mw-75ch" : maxWidth;
+	maxWidth = maxWidth == "max-width-off" ? "" : maxWidth;
+
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 }
 
-<div class="h-100 position-relative d-flex flex-column mb-0-last-child @contentPadding @(layout)@(theme)">
-	@RenderBody()
+<div class="h-100 position-relative d-flex flex-column mb-0-last-child @contentPadding @verticalAlign @(layout)@(theme)">
+	@RenderBody(maxWidth)
 </div>
 
-@helper RenderBody()
+@helper RenderBody(string maxWidth)
 {
 	string linkType = Model.Item.GetRawValueString("LinkType", "page");
 	Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
 
-	if (linkType == "page" && Model.Item.GetLink("ButtonLink") != null) {
+	string StretchedLink = Model.Item.GetRawValueString("StretchedLink", "");
+	StretchedLink = StretchedLink == "column-not-clickable" ? "" : StretchedLink;
+	StretchedLink = StretchedLink == "column-clickable" ? " stretched-link" : StretchedLink;
+
+	if (linkType == "page" && Model.Item.GetLink("ButtonLink") != null)
+	{
 		link = Model.Item.GetLink("ButtonLink");
 	}
 
-	if (linkType == "product-group") {
+	if (linkType == "product-group")
+	{
 		IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
-		IList<string> groupIds = new List<string>{};
+		IList<string> groupIds = new List<string> { };
 
-		if (selectedGroups != null) {
+		if (selectedGroups != null)
+		{
 			foreach (var fromGroup in selectedGroups)
 			{
 				groupIds.Add(fromGroup.Id);
 			}
 		}
 
-		link = new Dynamicweb.Frontend.LinkViewModel() {
+		link = new Dynamicweb.Frontend.LinkViewModel()
+		{
 			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds)
 		};
 	}
 
-	if (linkType == "product") {
+	if (linkType == "product")
+	{
 		ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink");
-		IList<string> productIds = new List<string>{};
+		IList<string> productIds = new List<string> { };
 
-		if (products != null) {
+		if (products != null)
+		{
 			foreach (var product in products.Products)
 			{
 				productIds.Add(product.Id);
@@ -57,7 +76,8 @@
 
 		string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
 		string pageTag = productIds.Count == 1 ? "ProductDetailPage" : "Shop";
-		link = new Dynamicweb.Frontend.LinkViewModel() {
+		link = new Dynamicweb.Frontend.LinkViewModel()
+		{
 			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds)
 		};
 	}
@@ -66,19 +86,23 @@
 	{
 		string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "h3");
 
-		<h3 class="@titleFontSize mb-3">@Model.Item.GetString("Title")</h3>
+		<h3 class="@titleFontSize mb-3@(maxWidth)">
+			@Model.Item.GetString("Title")
+		</h3>
 	}
 
 	if (!string.IsNullOrEmpty(Model.Item.GetString("Lead")))
 	{
 		string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
 
-		<p class="@subtitleFontSize lead mb-3 max-w-75ch">@Model.Item.GetString("Lead")</p>
+		<p class="@subtitleFontSize lead mb-3@(maxWidth)">
+			@Model.Item.GetString("Lead")
+		</p>
 	}
 
 	if (!string.IsNullOrEmpty(Model.Item.GetString("Text")))
 	{
-		<div class="max-w-75ch mb-0-last-child">
+		<div class="mb-0-last-child@(maxWidth)">
 			@Model.Item.GetString("Text")
 		</div>
 	}
@@ -91,12 +115,14 @@
 		buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
 
 		<div class="mt-3">
-			<a href="@link.Url" @target class="btn @(buttonStyle) stretched-link">@Model.Item.GetString("ButtonLabel")</a>
+			<a href="@link.Url" @target class="btn @(buttonStyle)@(StretchedLink)">@Model.Item.GetString("ButtonLabel")</a>
 		</div>
-	} else if (link != null && !string.IsNullOrEmpty(link.Url)) {
+	}
+	else if (link != null && !string.IsNullOrEmpty(link.Url))
+	{
 		string target = link.IsExternal ? "target=\"_blank\"" : "";
 
-		<a href="@link.Url" @target class="stretched-link">
+		<a href="@link.Url" @target class="@StretchedLink">
 			<span class="visually-hidden">@Model.Item.GetString("Title")</span>
 		</a>
 	}

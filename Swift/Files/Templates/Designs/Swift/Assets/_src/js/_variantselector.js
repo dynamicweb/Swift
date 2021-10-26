@@ -136,14 +136,18 @@ const VariantSelector = function () {
 				var globalDispatcher = document.dispatchEvent(event);
 				var localDispatcher = variantSelectorElement.dispatchEvent(event);
 
-				//Update the url
+				
 				if (globalDispatcher != false && localDispatcher != false) {
+					//Update the url
 					var url = new URL(window.location);
 					var searchParams = url.searchParams;
-
 					searchParams.set('variantid', selections.join("."));
 					url.search = searchParams.toString();
-					window.location = url.toString();
+					window.history.replaceState({}, '', decodeURI(url));
+
+					//Call the async PageUpdater
+					variantSelectorElement.querySelector("[name='variantid']").value = selections.join(".");
+					swift.PageUpdater.Update(variantSelectorElement);
 				}
 			}
 
