@@ -1,20 +1,28 @@
-@helper RenderAddressDeliveryAnonymous() {
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+
+@helper RenderAddressDeliveryAnonymous()
+{
 	string userCheckoutPage = Pageview.CurrentParagraph.Item["CheckoutUserPageLink"] != null ? Pageview.CurrentParagraph.Item["CheckoutUserPageLink"].ToString().Replace("Default.aspx?Id=", "") : "";
 	string signInPage = Pageview.CurrentParagraph.Item["SignInPageLink"] != null ? Pageview.CurrentParagraph.Item["SignInPageLink"].ToString() + "&GoBackToPage=" + userCheckoutPage : "";
+	bool enableAdditionalAddress = Pageview.CurrentParagraph.Item["EnableAdditionalAddress"] != null ? (Boolean)Pageview.CurrentParagraph.Item["EnableAdditionalAddress"] : false;
+
+	string currentCountry = GetString("Ecom:Order.Delivery.Country.Code");
+	string countrySelectorColumnSize = "g-col-6";
+	string deliveryRegionLabel = "State";
 
 	<input type="hidden" name="EcomUserCreateNew" id="EcomUserCreateNew" value="true" disabled>
 
 	<div class="mb-0">
-					
+
 		<div class="grid">
 			<div class="g-col-6">
 				<h3 class="fs-6 fw-normal mb-3">@Translate("Contact information")</h3>
 			</div>
-			
+
 			<div class="g-col-6 text-end d-none d-md-block">
 				<a href="@signInPage" class="h6 fw-normal mb-3 d-block">@Translate("Already have account?") @Translate("Log in")</a>
 			</div>
-			
+
 		</div>
 
 	</div>
@@ -31,16 +39,17 @@
 				<a href="@signInPage">@Translate("Already have account?") @Translate("Log in")</a>
 			</div>
 			@* Use newsletter *@
-			@if(GetString("Ecom:Cart.UseNewsletterSubscription") == "True")
+			@if (GetString("Ecom:Cart.UseNewsletterSubscription") == "True")
 			{
 				bool? isChecked = null;
-				if(GetString("Ecom:Order.Delivery.NewsletterSubscribe") == "true") {
+				if (GetString("Ecom:Order.Delivery.NewsletterSubscribe") == "true")
+				{
 					isChecked = true;
-				} 
+				}
 
 				<div class="g-col-12">
 					<div class="form-check">
-						<input class="form-check-input" type="checkbox" name="EcomOrderSubscribeToNewsletter" id="EcomOrderSubscribeToNewsletter" value="" checked="@isChecked"  onchange="toggleCreateUser(event);">
+						<input class="form-check-input" type="checkbox" name="EcomOrderSubscribeToNewsletter" id="EcomOrderSubscribeToNewsletter" value="" checked="@isChecked" onchange="toggleCreateUser(event);">
 						<label class="form-check-label lh-1" for="EcomOrderSubscribeToNewsletter">
 							<span>@Translate("Keep me updated with deals, news and offers")</span>
 						</label>
@@ -76,6 +85,16 @@
 				</div>
 			</div>
 
+			@if (enableAdditionalAddress)
+			{
+				<div class="g-col-12">
+					<div class="form-floating">
+						<input type="text" class="form-control" name="EcomOrderDeliveryAddress2" id="EcomOrderDeliveryAddress2" value="@GetString("Ecom:Order.Delivery.Address2")" placeholder="@Translate("Additional address")">
+						<label for="EcomOrderDeliveryAddress">@Translate("Additional address")</label>
+					</div>
+				</div>
+			}
+
 			<div class="g-col-12">
 				<div class="grid">
 
@@ -86,23 +105,64 @@
 						</div>
 					</div>
 
-					<div class="g-col-6">
+					@if(currentCountry == "US" || currentCountry == "CA" || currentCountry == "GB"){
+						if (GetLoop("DeliveryRegions").Count > 0) {
+							countrySelectorColumnSize = "g-col-3";
+						}
+					}
+
+					<div class="@countrySelectorColumnSize">
 						<div class="form-floating">
 							<input type="text" class="form-control" name="EcomOrderDeliveryCity" id="EcomOrderDeliveryCity" value="@GetString("Ecom:Order.Delivery.City")" placeholder="@Translate("Town / City")">
 							<label for="EcomOrderDeliveryCity">@Translate("Town / City")</label>
 						</div>
 					</div>
 
+					@if(currentCountry == "US" || currentCountry == "CA" || currentCountry == "GB"){
+						if (GetLoop("DeliveryRegions").Count > 0) {
+							if (currentCountry == "CA")
+							{
+								deliveryRegionLabel = Translate("Province");
+							}
+							else if (currentCountry == "GB")
+							{
+								deliveryRegionLabel = Translate("Region");
+							}
+							else if (currentCountry == "US")
+							{
+								deliveryRegionLabel = Translate("State");
+							}
+
+							<div class="g-col-3">
+								<div class="form-floating">
+									<select class="form-select" name="EcomOrderDeliveryRegion" id="EcomOrderDeliveryRegion" onchange="submitForm()">
+										@foreach (LoopItem region in GetLoop("DeliveryRegions")) {
+											if (region.GetString("Ecom:DeliveryRegion.IsDeliveryRegion") == "true") {
+												<option value="@region.GetString("Ecom:DeliveryRegion.RegionCode")" selected>@region.GetString("Ecom:DeliveryRegion.Name")</option>
+											} else {
+												<option value="@region.GetString("Ecom:DeliveryRegion.RegionCode")">@region.GetString("Ecom:DeliveryRegion.Name")</option>
+                                            }
+										}
+									</select>
+									<label for="EcomOrderDeliveryRegion">@deliveryRegionLabel</label>
+								</div>
+							</div>
+                        }
+					}
+
 					<div class="g-col-12 g-col-md-3">
 						<div class="form-floating">
-							<select class="form-control" name="EcomOrderDeliveryCountry" id="EcomOrderDeliveryCountry">
+
+							<select class="form-select" name="EcomOrderDeliveryCountry" id="EcomOrderDeliveryCountry" onchange="submitForm()">
 							@foreach (LoopItem country in GetLoop("Countries")) {
 								if (country.GetString("Ecom:Country.IsDeliveryCountryOrDefault") == "true") {
-									<option value="@country.GetString("Ecom:Country.Code2")" selected>@country.GetString("Ecom:Country.Name")</option>
-								} else {
-									<option value="@country.GetString("Ecom:Country.Code2")">@country.GetString("Ecom:Country.Name")</option>
+										<option value="@country.GetString("Ecom:Country.Code2")" selected>@country.GetString("Ecom:Country.Name")</option>
+									}
+									else
+									{
+										<option value="@country.GetString("Ecom:Country.Code2")">@country.GetString("Ecom:Country.Name")</option>
+									}
 								}
-							}
 							</select>
 							<label for="EcomOrderDeliveryCountry">@Translate("Country")</label>
 						</div>
@@ -110,6 +170,7 @@
 
 				</div>
 			</div>
+
 			<div class="g-col-12">
 				<div class="form-floating">
 					<input type="tel" class="form-control" name="EcomOrderDeliveryPhone" id="EcomOrderDeliveryPhone" value="@GetString("Ecom:Order.Delivery.Phone")" placeholder="@Translate("Phone number")">
@@ -118,7 +179,7 @@
 			</div>
 
 			@* Create user *@
-			@if(GetBoolean("Ecom:Cart.CreateUserInCheckout"))
+			@if (GetBoolean("Ecom:Cart.CreateUserInCheckout"))
 			{
 				<div class="g-col-12">
 					<div class="form-check">

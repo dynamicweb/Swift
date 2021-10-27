@@ -43,7 +43,9 @@ const ProductList = function () {
 						}
 					}, 200); //Small delay to secure that the preloader is not loaded all the time
 				} else {
-					document.querySelector(responseTargetElement).innerHTML = "";
+					if (responseTargetElement != null) {
+						responseTargetElement.innerHTML = "";
+					}
 
 					var addPreloaderTimer = setTimeout(function () {
 						var preloaderElement = document.createElement('div');
@@ -55,7 +57,10 @@ const ProductList = function () {
 						helper.className = "visually-hidden";
 						helper.innerHTML = "Loading...";
 						preloaderElement.appendChild(helper);
-						document.querySelector(responseTargetElement).appendChild(preloaderElement);
+
+						if (responseTargetElement != null) {
+							responseTargetElement.appendChild(preloaderElement);
+						}
 					}, 200); //Small delay to secure that the preloader is not loaded all the time
 				}
 
@@ -121,6 +126,19 @@ const ProductList = function () {
 
 				//Replace the markup
 				responseTargetElement.innerHTML = html;
+
+				//Run scripts from the loaded html
+				var scripts = Array.prototype.slice.call(responseTargetElement.getElementsByTagName("script"));
+				for (var i = 0; i < scripts.length; i++) {
+					if (scripts[i].src != "") {
+						var tag = document.createElement("script");
+						tag.src = scripts[i].src;
+						document.getElementsByTagName("head")[0].appendChild(tag);
+					}
+					else {
+						eval(scripts[i].innerHTML);
+					}
+				}
 
 				//Initialize all the sliders
 				swift.Sliders.init();

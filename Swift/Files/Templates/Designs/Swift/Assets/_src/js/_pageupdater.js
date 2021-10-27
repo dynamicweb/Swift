@@ -6,6 +6,7 @@ const PageUpdater = function () {
 			var form = clickedButton.closest("form");
 			var preloader = form.getAttribute("data-preloader");
 			var responseTargetElement = form.getAttribute("data-response-target-element") ? "#" + form.getAttribute("data-response-target-element") : "#content";
+			responseTargetElement = document.querySelector(responseTargetElement);
 			var layoutTemplate = form.getAttribute("data-layout-template") ? form.getAttribute("data-layout-template") : "Swift_PageClean.cshtml";
 
 			let formData = new FormData(form);
@@ -43,7 +44,9 @@ const PageUpdater = function () {
 						}
 					}, 200); //Small delay to secure that the preloader is not loaded all the time
 				} else {
-					document.querySelector(responseTargetElement).innerHTML = "";
+					if (responseTargetElement != null) {
+						responseTargetElement.innerHTML = "";
+					}
 
 					var addPreloaderTimer = setTimeout(function () {
 						var preloaderElement = document.createElement('div');
@@ -55,7 +58,10 @@ const PageUpdater = function () {
 						helper.className = "visually-hidden";
 						helper.innerHTML = "Loading...";
 						preloaderElement.appendChild(helper);
-						document.querySelector(responseTargetElement).appendChild(preloaderElement);
+
+						if (responseTargetElement != null) {
+							responseTargetElement.appendChild(preloaderElement);
+						}
 					}, 200); //Small delay to secure that the preloader is not loaded all the time
 				}
 
@@ -69,7 +75,7 @@ const PageUpdater = function () {
 				}
 			}
 		},
-		
+
 		Success: async function (response, addPreloaderTimer, formData, responseTargetElement) {
 			clearTimeout(addPreloaderTimer);
 
@@ -97,15 +103,28 @@ const PageUpdater = function () {
 				}
 
 				//Replace content
-				if (document.querySelector(responseTargetElement)) {
-					document.querySelector(responseTargetElement).innerHTML = html;
+				if (responseTargetElement != null) {
+					responseTargetElement.innerHTML = html;
+
+					//Run scripts from the loaded html
+					var scripts = Array.prototype.slice.call(responseTargetElement.getElementsByTagName("script"));
+					for (var i = 0; i < scripts.length; i++) {
+						if (scripts[i].src != "") {
+							var tag = document.createElement("script");
+							tag.src = scripts[i].src;
+							document.getElementsByTagName("head")[0].appendChild(tag);
+						}
+						else {
+							eval(scripts[i].innerHTML);
+						}
+					}
 				}
 			}
 		},
-		
+
 		Error: function (e, responseTargetElement, addPreloaderTimer) {
 			clearTimeout(addPreloaderTimer);
-		
+
 			if (document.querySelector("#overlay")) {
 				document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
 			}
