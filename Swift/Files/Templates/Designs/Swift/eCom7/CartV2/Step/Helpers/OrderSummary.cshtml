@@ -1,38 +1,50 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 
-
-@helper RenderOrderSummary() {
+@helper RenderOrderSummary(bool renderVoucher = true)
+{
 	string totalPriceWithoutDiscountsFeesAndTaxes = GetString("Ecom:Order.TotalPriceWithoutDiscountsFeesAndTaxes.PriceFormatted");
 	string totalPriceWithoutOrderDiscountsAndFees = GetString("Ecom:Order.TotalPriceWithoutOrderDiscountsAndFees.PriceFormatted");
-	
+
 	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
 	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 
-	<div class="d-flex flex-column gap-2 gap-lg-3 position-lg-sticky theme bottom-0 pb-lg-3" id="orderSummaryFooter">
-		<div class="fs-8 border-top pt-2 pt-lg-3">
+	bool disableVouchers = Pageview.CurrentParagraph.Item["DisableVouchers"] != null ? (Boolean)Pageview.CurrentParagraph.Item["DisableVouchers"] : false;
 
+	<div class="d-flex flex-column gap-2 gap-lg-3 pb-3 position-sticky bottom-0 theme" id="orderSummaryFooter">
+
+		@if (renderVoucher && !disableVouchers)
+		{
+			@RenderVoucherForm()
+		}
+
+		<div class="fs-8 border-top pt-2 pt-lg-3">
 			@* Subtotal *@
 			<div class="d-flex justify-content-between fw-bold">
 				<span>@Translate("Subtotal")</span>
 				<span class="text-end">
-					@if (!neverShowVat && showPricesWithVat == "false") {
+					@if (!neverShowVat && showPricesWithVat == "false")
+					{
 						<span class="d-block">
-							@if(totalPriceWithoutDiscountsFeesAndTaxes != totalPriceWithoutOrderDiscountsAndFees)
+							@if (totalPriceWithoutDiscountsFeesAndTaxes != totalPriceWithoutOrderDiscountsAndFees)
 							{
 								<span class="text-price fw-normal text-decoration-line-through">@totalPriceWithoutDiscountsFeesAndTaxes</span>
 							}
 							<span class="text-price">@totalPriceWithoutOrderDiscountsAndFees</span>
 						</span>
 						<span class="fs-8 fw-normal d-block">@Translate("Excl. VAT")</span>
-					} else {
+					}
+					else
+					{
 						<span class="d-block">
-							@if(totalPriceWithoutDiscountsFeesAndTaxes != totalPriceWithoutOrderDiscountsAndFees)
+							@if (totalPriceWithoutDiscountsFeesAndTaxes != totalPriceWithoutOrderDiscountsAndFees)
 							{
 								<span class="text-price fw-normal text-decoration-line-through">@totalPriceWithoutDiscountsFeesAndTaxes</span>
 							}
 							<span class="text-price">@totalPriceWithoutOrderDiscountsAndFees</span>
 						</span>
 
-						if (!neverShowVat) {
+						if (!neverShowVat)
+						{
 							<span class="fs-8 fw-normal d-block">@Translate("Incl. VAT")</span>
 						}
 					}
@@ -40,23 +52,29 @@
 			</div>
 
 			@* Discounts (only order discounts) *@
-			@foreach (LoopItem orderline in GetLoop("OrderLines")) {
+			@foreach (LoopItem orderline in GetLoop("OrderLines"))
+			{
 				bool isDiscount = orderline.GetBoolean("Ecom:Order:OrderLine.IsDiscount");
 				bool isOrderDiscount = orderline.GetInteger("Ecom:Order:OrderLine.Type") == 1;
-				if(isDiscount && isOrderDiscount) {
-					<div class="d-flex justify-content-between"><span>@orderline.GetString("Ecom:Order:OrderLine.ProductName")</span><span>@orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.PriceFormatted")</span></div>
+				if (isDiscount && isOrderDiscount)
+				{
+					<div class="d-flex justify-content-between"><span>@orderline.GetString("Ecom:Order:OrderLine.ProductName")</span><span class="text-price">@orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.PriceFormatted")</span></div>
 				}
 			}
 
 			@* Shipping *@
-			@if(!string.IsNullOrEmpty(GetString("Ecom:Order.ShippingMethodID"))) {
-				if(GetDouble("Ecom:Order.ShippingFee.Price.Value") != 0) {
+			@if (!string.IsNullOrEmpty(GetString("Ecom:Order.ShippingMethodID")))
+			{
+				if (GetDouble("Ecom:Order.ShippingFee.Price.Value") != 0)
+				{
 					<div class="d-flex justify-content-between">
 						<span>@Translate("Delivery")</span>
 						<span>@GetString("Ecom:Order.ShippingFee.PriceFormatted")</span>
 					</div>
 				}
-			} else {
+			}
+			else
+			{
 				<div class="d-flex justify-content-between">
 					<span>@Translate("Delivery")</span>
 					<span>@Translate("Calculated in next step")</span>
@@ -64,14 +82,18 @@
 			}
 
 			@* Payment *@
-			@if(!string.IsNullOrEmpty(GetString("Ecom:Order.PaymentMethodID"))) {
-				if(GetDouble("Ecom:Order.PaymentFee.Price.Value") != 0) {
+			@if (!string.IsNullOrEmpty(GetString("Ecom:Order.PaymentMethodID")))
+			{
+				if (GetDouble("Ecom:Order.PaymentFee.Price.Value") != 0)
+				{
 					<div class="d-flex justify-content-between">
 						<span>@Translate("Payment")</span>
 						<span class="text-price">@GetString("Ecom:Order.PaymentFee.PriceFormatted")</span>
 					</div>
 				}
-			} else {
+			}
+			else
+			{
 				<div class="d-flex justify-content-between">
 					<span>@Translate("Payment")</span>
 					<span>@Translate("Calculated in next step")</span>
@@ -81,29 +103,36 @@
 		<div class="fs-8 border-top pt-2 pt-lg-3">
 			<div class="d-flex justify-content-between fs-6 fw-bold">
 				<span>@Translate("Total")</span>
-				@if (!neverShowVat && showPricesWithVat == "false") {
+				@if (!neverShowVat && showPricesWithVat == "false")
+				{
 					<span class="text-price text-end">
 						<span class="fs-5 d-block">@GetString("Ecom:Order.Price.PriceFormatted")</span>
 						<span class="fs-8 fw-normal d-block">@Translate("Excl. VAT")</span>
 					</span>
-				} else if (!neverShowVat && showPricesWithVat == "true") {
+				}
+				else if (!neverShowVat && showPricesWithVat == "true")
+				{
 					<span class="text-price text-end">
 						<span class="fs-5 d-block">@GetString("Ecom:Order.Price.PriceFormatted")</span>
 						<span class="fs-8 fw-normal d-block">@Translate("Incl. VAT")</span>
 					</span>
-				} else {
+				}
+				else
+				{
 					<span class="text-price fs-5">@GetString("Ecom:Order.Price.PriceFormatted")</span>
 				}
 			</div>
-			
-			@if (!neverShowVat) {
+
+			@if (!neverShowVat)
+			{
 				<div class="d-flex justify-content-between"><span>@Translate("VAT")</span><span class="text-price">@GetString("Ecom:Order.Price.VATFormatted")</span></div>
-				if (showPricesWithVat == "false") {
+				if (showPricesWithVat == "false")
+				{
 					<div class="d-flex justify-content-between"><span>@Translate("Total incl. VAT")</span><span class="text-price">@GetString("Ecom:Order.OrderLines.Total.PriceWithVAT")</span></div>
-				} 
+				}
 			}
 
-			@if(GetDouble("Ecom:Order.TotalDiscount.Price.Value") != 0)
+			@if (GetDouble("Ecom:Order.TotalDiscount.Price.Value") != 0)
 			{
 				<div class="d-flex justify-content-between"><span>@Translate("Discount")</span><span class="text-price">@GetString("Ecom:Order.TotalDiscount.PriceFormatted")</span></div>
 			}
