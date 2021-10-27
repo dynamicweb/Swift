@@ -26,8 +26,6 @@ const Favorite = function () {
 
 				if (command != null) {
 					if (command == "addproducttofavoritelist" || command == "removeproductfromfavoritelist") {
-						console.log("Done");
-
 						var favoriteToast = new bootstrap.Toast(favoriteNotification);
 						favoriteToast.show();
 
