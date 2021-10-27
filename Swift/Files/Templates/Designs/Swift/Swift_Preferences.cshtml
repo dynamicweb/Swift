@@ -1,0 +1,253 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
+@using System
+@using System.Text.RegularExpressions
+@using System.IO
+@using System.Web
+
+@MasterPageFile("Swift_MasterClean.cshtml")
+
+@{ 
+	string layout = Model.Item.GetRawValueString("PreferencesLayout", "modal");
+	layout = HttpContext.Current.Request["Layout"] != null ? HttpContext.Current.Request["Layout"] : layout;
+	layout = layout == "" ? "modal" : layout;
+	string type = HttpContext.Current.Request["Type"] != null ? HttpContext.Current.Request["Type"] : "language";
+
+	string groupId = HttpContext.Current.Request["GroupID"] != null ? HttpContext.Current.Request["GroupID"].ToString() : "";
+	string productId = HttpContext.Current.Request["ProductID"] != null ? HttpContext.Current.Request["ProductID"].ToString() : "";
+	string variantId = HttpContext.Current.Request["VariantID"] != null ? HttpContext.Current.Request["VariantID"].ToString() : "";
+
+	string linkFontSize = HttpContext.Current.Request["FontSize"] != null ? HttpContext.Current.Request["FontSize"].ToString() : "";
+	string linkFontWeight = HttpContext.Current.Request["FontWeight"] != null ? HttpContext.Current.Request["FontWeight"].ToString() : "";
+	string linkCasing = HttpContext.Current.Request["Casing"] != null ? HttpContext.Current.Request["Casing"].ToString() : "";
+
+	Regex reg = new Regex(@"\(([^\)]+)\)");
+	List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
+
+	int pageId = HttpContext.Current.Request["CurrentPageID"] != null ? Convert.ToInt32(HttpContext.Current.Request["CurrentPageID"]) : Pageview.ID;
+	var currentPage = Dynamicweb.Services.Pages.GetPage(pageId); //Get the correct page instance
+
+	if (currentPage.Area.IsMaster) {
+		languages.Add(currentPage);
+		if (currentPage.Languages != null) {
+			foreach (var language in currentPage.Languages) {
+				if (language.Area.Active == true) { 
+					languages.Add(language);
+				}
+			}
+		}
+	} else {
+		languages.Add(currentPage.MasterPage);
+		if (currentPage.MasterPage != null) {
+			if (currentPage.MasterPage.Languages != null) {
+				foreach (var language in currentPage.MasterPage.Languages) {
+					if (language.Area.Active == true) { 
+						languages.Add(language);
+					}
+				}
+			}
+		}
+	}
+
+	languages = languages.Count > 1 ? languages.OrderBy(language => language.Area.CultureInfo.DisplayName).ToList() : languages;
+
+	string siteLanguage = Pageview.Area.CultureInfo.Name;
+	Uri url = Dynamicweb.Context.Current.Request.Url;
+	string hostName = url.Host; // domain.com/da-dk or domain.com/en-us
+
+	var ecomCountries = Dynamicweb.Ecommerce.Services.Countries.GetCountries() != null ? Dynamicweb.Ecommerce.Services.Countries.GetCountries().OrderBy(country => country.Name) : null;
+	var currencies = Dynamicweb.Ecommerce.Services.Currencies.GetAllCurrencies() != null ? Dynamicweb.Ecommerce.Services.Currencies.GetAllCurrencies().OrderBy(currency => currency.Code) : null;
+
+	string modalTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ModalTheme")) ? " theme " + Model.Item.GetRawValueString("ModalTheme").Replace(" ", "").Trim().ToLower() : "";
+}
+
+
+@* Modal *@
+
+@if (layout == "modal")
+{
+	int updatePageId = pageId;
+
+	<div class="modal-content @modalTheme">
+		<div class="modal-header">
+			<h5 class="modal-title" id="PreferencesModalLabel">@Translate("Preferences")</h5>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+		</div>
+		<div class="modal-body d-grid gap-3" id="PreferencesModalBody">
+			<input type="hidden" name="CurrentPageID" value="@pageId" />
+			@if (groupId != "") {
+				<input type="hidden" name="GroupID" value="@groupId" />
+			}
+
+			@if (productId != "") {
+				<input type="hidden" name="ProductID" value="@productId" />
+			}
+
+			@if (variantId != "") {
+				<input type="hidden" name="VariantID" value="@variantId" />
+			}
+
+		
+			@if (languages.Count() > 1 && Model.Item.GetBoolean("LanguageSelector"))
+			{
+				<form action="/Default.aspx" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+					<input type="hidden" name="CurrentPageID" value="@pageId" />
+					<input type="hidden" name="GroupID" value="@groupId" />
+					<input type="hidden" name="ProductID" value="@productId" />
+					<input type="hidden" name="VariantID" value="@variantId" />
+
+					<div class="form-floating">
+						<select id="LanguageSelect" name="ID" class="form-select d-col-12" aria-label="@Translate("Select language")" onchange="swift.PageUpdater.Update(event)">
+							@foreach (var language in languages)
+							{
+								string name = reg.Replace(language.Area.CultureInfo.DisplayName, "");
+								string selectedLanguage = language.Area.ID == Pageview.Area.ID ? "selected" : "";
+								updatePageId = language.Area.ID == Pageview.Area.ID ? language.ID : updatePageId;
+
+								var masterPageId = Pageview.Page?.MasterPageId != null && Pageview.Page.MasterPageId != 0 ? Pageview.Page.MasterPageId : Pageview.ID;
+								var preferencePageId = Dynamicweb.Services.Pages.GetPageIDByMasterID(masterPageId, language.AreaId);
+								preferencePageId = preferencePageId == 0 ? Pageview.Page.MasterPageId : preferencePageId;
+								preferencePageId = preferencePageId == 0 ? Pageview.Page.ID : preferencePageId;
+
+								<option lang="@language.Area.CultureInfo.TwoLetterISOLanguageName" value="@preferencePageId" @selectedLanguage>@name</option>
+							}
+						</select>
+						<label for="LanguageSelect">@Translate("Language")</label>
+					</div>
+				</form>
+			}
+
+			@if (ecomCountries.Count() > 1 && Model.Item.GetBoolean("CountrySelector"))
+			{
+				<form action="/Default.aspx" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+					<input type="hidden" name="ID" value="@Pageview.ID" />
+					<input type="hidden" name="CurrentPageID" value="@pageId" />
+					<input type="hidden" name="GroupID" value="@groupId" />
+					<input type="hidden" name="ProductID" value="@productId" />
+					<input type="hidden" name="VariantID" value="@variantId" />
+
+					<div class="form-floating">
+						<select name="CountryCode" id="CountryCodeSelect" class="form-select d-col-12" aria-label="@Translate("Select country")" onchange="swift.PageUpdater.Update(event)">
+							@foreach (var country in ecomCountries)
+							{
+								var selectedCountry = country.Code2 == Dynamicweb.Ecommerce.Common.Context.Country.Code2 ? "selected" : "";
+
+								if (!string.IsNullOrEmpty(country.Name)) { 
+									<option value="@country.Code2" @selectedCountry>@country.Name</option>
+								}
+							}
+						</select>
+						<label for="CountryCodeSelect">@Translate("Delivery country")</label>
+					</div>
+				</form>
+			}
+
+			@if (currencies.Count() > 1 && Model.Item.GetBoolean("CurrencySelector"))
+			{
+				<form action="/Default.aspx" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+					<input type="hidden" name="ID" value="@Pageview.ID" />
+					<input type="hidden" name="CurrentPageID" value="@pageId" />
+					<input type="hidden" name="GroupID" value="@groupId" />
+					<input type="hidden" name="ProductID" value="@productId" />
+					<input type="hidden" name="VariantID" value="@variantId" />
+
+					<div class="form-floating">
+						<select name="CurrencyCode" id="CurrencySelect" class="form-select d-col-12" aria-label="@Translate("Select currency")" onchange="swift.PageUpdater.Update(event)">
+							@foreach (var currency in currencies)
+							{
+								string selectedCurrency = currency.Code == Dynamicweb.Ecommerce.Common.Context.Currency.Code ? "selected" : "";
+
+								if (!string.IsNullOrEmpty(currency.Code)) { 
+									<option value="@currency.Code" @selectedCurrency>@currency.Code</option>
+								}
+							}
+						</select>
+						<label for="CurrencySelect">@Translate("Currency")</label>
+					</div>
+				</form>
+			}
+		</div>
+		<div class="modal-footer">
+			@{ 
+				hostName = !string.IsNullOrEmpty(Pageview.Area.DomainLock) ? Pageview.Area.DomainLock : url.Host;
+				string link = $"Default.aspx?ID={updatePageId}";
+				link += groupId != "" ? $"&GroupID={groupId}" : "";
+				link += productId != "" ? $"&ProductID={productId}" : "";
+				link += variantId != "" ? $"&VariantID={variantId}" : "";
+				var friendlyUrl = $"{url.Scheme}://{hostName}{Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link)}";
+			}
+
+			<a href="@friendlyUrl" class="btn btn-primary w-100">@Translate("Update preferences")</a>
+		</div>
+	</div>
+}
+
+
+@* Dropdowns *@
+
+@if (layout == "dropdown" && type == "country") {
+	foreach (var country in ecomCountries)
+	{
+		var link = $"{url.Scheme}://{hostName}?ID={currentPage.ID}&AreaID={Pageview.Area.ID}&CountryCode={country.Code2}";
+		link += groupId != "" ? $"&GroupID={groupId}" : "";
+		link += productId != "" ? $"&ProductID={productId}" : "";
+		link += variantId != "" ? $"&VariantID={variantId}" : "";
+
+		if (!string.IsNullOrEmpty(country.Name)) {
+			<li>
+				<a href="@link" class="dropdown-item nav-link-underline @linkFontSize @linkFontWeight @linkCasing">@country.Name</a>
+			</li>
+		}
+	}
+}
+
+@if (layout == "dropdown" && type == "language") {
+	string iconFolder = "/Files/FlagIcons/";
+
+	foreach (var language in languages)
+	{
+		if (language.Area != null) {
+			hostName = !string.IsNullOrEmpty(language.Area.DomainLock) ? language.Area.DomainLock : url.Host;
+			string link = $"Default.aspx?ID={language.ID}";
+			link += groupId != "" ? $"&GroupID={groupId}" : "";
+			link += productId != "" ? $"&ProductID={productId}" : "";
+			link += variantId != "" ? $"&VariantID={variantId}" : "";
+
+			var friendlyUrl = $"{url.Scheme}://{hostName}{Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link)}";
+
+			string icon = iconFolder + language.Area.CultureInfo.Name.ToLower() + ".svg";
+			string name = reg.Replace(language.Area.CultureInfo.DisplayName, "");
+
+			<li>
+				<a lang="@language.Area.CultureInfo.TwoLetterISOLanguageName" href="@friendlyUrl" class="dropdown-item nav-link-underline @linkFontSize @linkFontWeight @linkCasing">@RenderIcon(icon, "icon-2") <span class="align-middle">@name</span></a>
+			</li>
+		}
+	}
+}
+
+@if (layout == "dropdown" && type == "currency") {
+	foreach (var currency in currencies)
+	{
+		var link = $"{url.Scheme}://{hostName}?ID={currentPage.ID}&AreaID={Pageview.Area.ID}&CurrencyCode={currency.Code}";
+		link += groupId != "" ? $"&GroupID={groupId}" : "";
+		link += productId != "" ? $"&ProductID={productId}" : "";
+		link += variantId != "" ? $"&VariantID={variantId}" : "";
+
+		<li>
+			<a href="@link" class="dropdown-item nav-link-underline @linkFontSize @linkFontWeight @linkCasing">@currency.Code</a>
+		</li>
+	}
+}
+
+
+
+@helper RenderIcon(string icon, string iconSize)
+{
+	if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none"))
+	{
+		string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
+
+		<span class="@iconSize">
+			@ReadFile(iconPath)
+		</span>
+	}
+}

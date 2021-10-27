@@ -1,0 +1,95 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb.Ecommerce.Orders
+@using Dynamicweb.Ecommerce.Orders.SalesDiscounts
+
+@helper RenderVoucherForm() {
+
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	string voucherCode = GetString("Ecom:Order.Customer.VoucherCode");
+	string voucherCodeError = GetString("Ecom:Cart.ValidationError.EcomOrderVoucherCode.ErrorMessage");
+	var errors = new List<string>();
+	string validState = "";
+	bool vouchersAppliedAsDiscounts = false;
+	IEnumerable<string> codes = new List<string>();
+	Order order = new OrderService().GetById(GetString("Ecom:Order.ID"));
+
+	if (!string.IsNullOrWhiteSpace(voucherCode))
+	{
+		if (order.VoucherUseType.HasFlag(VoucherUseCategoryType.Discount))
+		{
+			codes = voucherCode.Split(new string[] { ",", ";", " " }, StringSplitOptions.RemoveEmptyEntries);
+			vouchersAppliedAsDiscounts = true;
+		}
+		else
+		{
+			codes = new string[] { voucherCode.Trim() };
+		}
+    }
+		
+	if(!vouchersAppliedAsDiscounts)
+    {
+		foreach (string code in codes)
+		{
+			Voucher vouch = Voucher.GetVoucherByCode(code);
+			if (vouch == null)
+			{
+				validState = "is-invalid";
+				errors.Add(Translate("Voucher") + " <span class='fw-bold'>" + code + "</span> " + Translate("not found"));
+				continue;
+			}
+			if (vouch.DateUsed.HasValue)
+			{
+				validState = "is-invalid";
+				errors.Add(Translate("Voucher") + " <span class='fw-bold'>" + code + "</span> " + Translate("already used"));
+				continue;
+			}
+		}
+	}
+
+	<div class="py-3 border-top" id="orderVoucherForm">
+		
+		<form method="post" id="VoucherForm">
+			<div class="input-group has-validation">
+				<input type="hidden" name="EcomOrderVoucherCode" id="EcomOrderVoucherCode" value="@voucherCode" />
+				<input type="text" class="form-control @(validState)" name="EcomOrderVoucherCodeField" placeholder="@Translate("Add voucher here")" id="EcomOrderVoucherCodeField" value="" aria-label="@Translate("Voucher input")" aria-describedby="voucherSubmit" onkeyup="document.querySelector('#EcomOrderVoucherCode').value = this.value;">
+				<button class="btn btn-sm btn-primary d-inline-flex align-items-center justify-content-center" type="submit" id="EcomOrderVoucherApply" style="min-width: 100px;">
+					<span>@Translate("Apply")</span>
+				</button>
+
+				<div class="invalid-feedback">
+					@{
+						var errorMessage = string.Join(",", errors);
+
+					}
+					@errorMessage
+				</div>
+			</div>
+		</form>
+		
+		@if (!string.IsNullOrWhiteSpace(voucherCode) && vouchersAppliedAsDiscounts)
+		{
+			<div class="d-flex flex-wrap gap-2 pt-3">
+
+				@foreach (string code in codes)
+				{
+				<form method="post">
+					<input type="hidden" name="EcomOrderVoucherCode" value="@voucherCode.Replace(code+",", "").Replace(","+code, "").Replace(code, "")">
+					<span class="badge fw-normal bg-primary d-inline-flex align-items-center justify-content-center opacity-50 opacity-100-hover">
+						<span class="icon-2">
+							@ReadFile(iconPath + "tag.svg")
+						</span>
+						<span class="mx-2">@code</span>
+						<button type="submit" class="bg-transparent border-0 btn-close-white p-0" aria-label="@Translate("Remove voucher")" >
+							<span class="icon-2">
+								@ReadFile(iconPath + "x.svg")
+							</span>
+						</button>
+					</span>
+				</form>
+				}
+			</div>
+		}
+		@voucherCodeError
+
+	</div>
+}
