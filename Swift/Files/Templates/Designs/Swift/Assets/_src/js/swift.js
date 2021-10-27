@@ -1,8 +1,8 @@
 import * as bootstrap from 'bootstrap';
 import { tns } from 'tiny-slider/src/tiny-slider';
 import { Sliders } from './_sliders';
-import { Cart } from './_cart';
 import { Favorite } from './_favorite';
+import { Cart } from './_cart';
 import { Scroll } from './_scroll';
 import { ProductList } from './_productlist';
 import { PageUpdater } from './_pageupdater';
@@ -23,8 +23,8 @@ window.Plyr = Plyr;
 const swift = function () {
 	return {
 		Cart: Cart,
-		Favorite: Favorite,
 		Sliders: Sliders,
+		Favorite: Favorite,
 		Scroll: Scroll,
 		ProductList: ProductList,
 		PageUpdater: PageUpdater,
