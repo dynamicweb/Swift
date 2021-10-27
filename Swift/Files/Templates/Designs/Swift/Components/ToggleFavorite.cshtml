@@ -7,28 +7,108 @@
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 	string productId = Model.Id;
 	bool isInFavoriteList = Pageview.User.IsProductInAnyFavoriteList(productId);
-	string favoriteListId = Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId");
+
+	IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
+	int favoriteListId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) : 0;
 }
 
-<form methmethod="post" action="">
+<form method="post">
+	@if (favoreiteLists.Count() < 2) {
+		if (favoreiteLists.Count() == 1) {
+			foreach (FavoriteList list in favoreiteLists) {
+				favoriteListId = list.ListId;
+			}
+		}
+	}
 
-	<input type="hidden" name="productId" value="@Model.Id" />
-	<input type="hidden" name="variantId" value="@Model.VariantId" />
-	<input type="hidden" name="variantId" value="@Pageview.User.ID" />
-	<input type="hidden" name="variantId" value="@favoriteListId" />
+	<input type="hidden" name="FavoriteListId" value="@favoriteListId"/>
+	<input type="hidden" name="ProductId" value="@Model.Id" />
+	<input type="hidden" name="VariantId" value="@Model.VariantId" />
+	<input type="hidden" name="UserId" value="@Pageview.User.ID" />
 
-	@if(isInFavoriteList)
-	{
-		<button type="button" class="btn btn-secondary">
-			<span class="icon-2">
-				@ReadFile(iconPath + "heart-filled.svg")
-			</span>
-		</button>
+	@if (favoreiteLists.Count() < 2) {
+		isInFavoriteList = Pageview.User.IsProductInFavoriteList(favoriteListId, productId);
+
+		if(isInFavoriteList)
+		{
+			<input type="hidden" name="FavoriteCmd" value="removeproductfromfavoritelist" />
+			<button type="submit" class="btn btn-secondary">
+				<span class="icon-2">
+					@ReadFile(iconPath + "heart-filled.svg")
+				</span>
+			</button>
+		} else {
+			<input type="hidden" name="FavoriteCmd" value="addproducttofavoritelist" />
+			<button type="submit" class="btn btn-secondary">
+				<span class="icon-2">
+					@ReadFile(iconPath + "heart.svg")
+				</span>
+			</button>
+		}
 	} else {
-		<button type="button" class="btn btn-secondary">
-			<span class="icon-2">
-				@ReadFile(iconPath + "heart.svg")
-			</span>
-		</button>
+		<input type="hidden" name="FavoriteCmd" value="" />
+
+		<style>
+			.dropdown-toggle-no-arrow::after {
+				display: none;
+			}
+		</style>
+
+		if(isInFavoriteList) {
+			<button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-no-arrow" data-bs-toggle="dropdown" aria-expanded="false">
+				<span class="icon-2">
+					@ReadFile(iconPath + "heart-filled.svg")
+				</span>
+			</button>
+		} else {
+			<button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-no-arrow" data-bs-toggle="dropdown" aria-expanded="false">
+				<span class="icon-2">
+					@ReadFile(iconPath + "heart.svg")
+				</span>
+			</button>
+		}
+
+		<ul class="dropdown-menu dropdown-menu-end">
+			@foreach (FavoriteList list in favoreiteLists) {
+				string listName = !string.IsNullOrEmpty(list.Name) ? list.Name : Translate("My favorites");
+				bool isInThisFavoriteList = Pageview.User.IsProductInFavoriteList(list.ListId, productId);
+
+				<li>
+					@if(isInThisFavoriteList) {
+						<button type="button" class="btn dropdown-item d-flex align-items-center" data-list-id="@list.ListId" onclick="RemoveFromFavoritesList(event)">
+							<span class="flex-fill me-2">@listName</span>
+							<span class="icon-2">
+								@ReadFile(iconPath + "heart-filled.svg")
+							</span>
+						</button>
+					} else {
+						<button type="button" class="btn dropdown-item d-flex align-items-center" data-list-id="@list.ListId" onclick="AddToFavoritesList(event)">
+							<span class="flex-fill me-2">@listName</span>
+							<span class="icon-2">
+								@ReadFile(iconPath + "heart.svg")
+							</span>
+						</button>
+					}
+				</li>
+			}
+		</ul>
+
+		<script>
+			function RemoveFromFavoritesList(event) {
+				var clickedButton = event.currentTarget;
+				var form = clickedButton.closest('form');
+				form.querySelector('[name="FavoriteListId"]').value = clickedButton.getAttribute('data-list-id');
+				form.querySelector('[name="FavoriteCmd"]').value = "removeproductfromfavoritelist";
+				form.submit();
+			}
+
+			function AddToFavoritesList(event) {
+				var clickedButton = event.currentTarget;
+				var form = clickedButton.closest('form');
+				form.querySelector('[name="FavoriteListId"]').value = clickedButton.getAttribute('data-list-id');
+				form.querySelector('[name="FavoriteCmd"]').value = "addproducttofavoritelist";
+				form.submit();
+			}
+		</script>
 	}
 </form>
