@@ -18,9 +18,17 @@
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
 
+	bool IsNeverOutOfStock = product.NeverOutOfstock;
 	string[] variantId = product.VariantId.Split('.');
-	string disableAddToCart = string.IsNullOrEmpty(product.VariantId) && product.VariantInfo.VariantInfo != null ? "disabled" : "";
-	string hideStockState = string.IsNullOrEmpty(product.VariantId) && product.VariantInfo.VariantInfo != null ? "d-none" : "";
+	string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : "";
+	if (IsNeverOutOfStock)
+	{
+		disableAddToCart = "";
+	}
+
+	// Does product has a expected delivery data
+	bool hasExpectedDelivery = product.ExpectedDelivery != null && product.ExpectedDelivery > DateTime.Now;
+	string expectedDeliveryDate = product.ExpectedDelivery?.ToShortDateString() ?? "";
 
 	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
 	if (!url.Contains("LayoutTemplate"))
@@ -62,12 +70,14 @@
 	<div class="d-flex flex-column gap-4 js-product">
 		<div>
 			<h1 class="@titleFontSize" itemprop="name">@product.Name</h1>
-			@if (!Model.Item.GetBoolean("HideProductNumber")) { 
+			@if (!Model.Item.GetBoolean("HideProductNumber"))
+			{
 				<div class="opacity-85">@product.Number</div>
 			}
 		</div>
 
-		@if (!hidePrice) {
+		@if (!hidePrice)
+		{
 			<div>
 				<div class="h4" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
 					<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
@@ -122,7 +132,8 @@
 			</div>
 		}
 
-		@if (product.VariantInfo.VariantInfo != null) {
+		@if (product.VariantInfo.VariantInfo != null)
+		{
 			int groupNumber = 1;
 
 			<form class="mb-3 js-variant-selector" data-combinations="@string.Join(",", product.VariantCombinations())">
@@ -163,7 +174,8 @@
 		}
 
 		<form method="post" action="@url">
-			@if (!hideAddToCart) { 
+			@if (!hideAddToCart)
+			{
 				<div class="d-flex flex-row">
 					<input type="hidden" name="redirect" value="false" />
 					<input type="hidden" name="ProductId" value="@product.Id" />
@@ -195,19 +207,31 @@
 					}
 				</div>
 
-				if (!Model.Item.GetBoolean("HideStockState")) {
-					<div class="mt-3 js-stock-state @hideStockState">
-						@if (product.StockLevel > 0) {
-							if (!Model.Item.GetBoolean("HideInventory"))
-							{
-								<small class="text-success">@product.StockLevel @Translate("Products available in stock")</small>
+				if (!Model.Item.GetBoolean("HideStockState"))
+				{
+					if(!IsNeverOutOfStock)
+					{
+					<div class="mt-3 js-stock-state">
+						@if (product.StockLevel > 0)
+						{
+							if (!Model.Item.GetBoolean("HideInventory")) {
+								<p class="small text-success m-0">@product.StockLevel @Translate("Products available in stock")</p>
 							} else {
-								<small class="text-success">@Translate("Available in stock")</small>
+								<p class="small text-success m-0">@Translate("Available in stock")</p>
 							}
 						} else {
-							<small class="text-danger">@Translate("Out of Stock")</small>
+							<p class="small text-danger m-0">@Translate("Out of Stock")</p>
+						}
+
+						@if (hasExpectedDelivery)
+						{
+							<p>
+								<span>@Translate("Expected back in stock:")</span>
+								<span>@expectedDeliveryDate</span>
+							</p>
 						}
 					</div>
+					}
 				}
 			}
 		</form>
