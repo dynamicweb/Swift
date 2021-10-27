@@ -1,0 +1,506 @@
+@inherits ViewModelTemplate<ProductListViewModel>
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Core.Encoders
+
+@{ 
+	var productList = Model.Products;
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+
+	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
+	}
+
+	string iconPath = "/Files/icons/";
+
+	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+
+	string selectedDisplayGroups = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["SelectedDisplayGroups"]) ? Dynamicweb.Context.Current.Request.Form["SelectedDisplayGroups"].ToString() : "";
+	List<string> selectedDisplayGroupsList = selectedDisplayGroups != null ? selectedDisplayGroups.Split(',').ToList() : new List<string>();
+
+	//Collect the titles for all available fields
+	List<string> fieldsHeaders = new List<string>();
+	foreach (var product in productList)
+	{
+		foreach (var selection in selectedDisplayGroupsList)
+		{
+			foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
+			{
+				if (selection.ToString() == group.Id)
+				{
+					foreach (var field in group.Fields)
+					{
+						if (!fieldsHeaders.Contains(field.Value.Name))
+						{
+							bool noValues = false;
+							if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+								System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
+								noValues = values.Count > 0 ? false : true;
+							} else if (string.IsNullOrEmpty(field.Value.Value.ToString())) {
+								noValues = true;
+							}
+
+							if (!noValues)
+							{
+								fieldsHeaders.Add(field.Value.Name);
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	//Check if there are any facet and count the amount of selected facets
+	bool facetsFound = false;
+	int selectedFacetsCount = 0;
+	if (Model.FacetGroups != null)
+	{
+		foreach (FacetGroupViewModel facetGroup in Model.FacetGroups)
+		{
+			foreach (FacetViewModel facet in facetGroup.Facets)
+			{
+				if (facet.Options.Count() > 0)
+				{
+					facetsFound = true;
+
+					foreach (FacetOptionViewModel option in facet.Options)
+					{
+						if (option.Selected)
+						{
+							selectedFacetsCount++;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	//Map the data
+	string selectedFacetsLabel = selectedFacetsCount > 0 ? "(" + selectedFacetsCount + ")" : "";
+	int totalGroups =  Model.FacetGroups.Count();
+
+	int pageSizeSetting = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["PageSizeSetting"]) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.Form["PageSizeSetting"].ToString()) : 10;
+	string requestType = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["RequestType"]) ? Dynamicweb.Context.Current.Request.Form["RequestType"].ToString() : "";
+	string title = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Title"]) ? Dynamicweb.Context.Current.Request.Form["Title"].ToString() : "";
+	string mainProductId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["MainProductID"]) ? Dynamicweb.Context.Current.Request.Form["MainProductID"].ToString() : "";
+	string paragraphID = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["ParagraphID"]) ? Dynamicweb.Context.Current.Request.Form["ParagraphID"].ToString() : "";
+	string servicePageId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["ID"]) ? Dynamicweb.Context.Current.Request.Form["ID"].ToString() : "";
+	bool hideTitle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideTitle"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideTitle"].ToString()) : false;
+	bool hideImage = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideImage"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideImage"].ToString()) : false;
+	bool hideProductNumber = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideProductNumber"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideProductNumber"].ToString()) : false;
+	bool hideProductName = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideProductName"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideProductName"].ToString()) : false;
+	bool hideStock = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideStock"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideStock"].ToString()) : false;
+	bool quantitySelector = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["QuantitySelector"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["QuantitySelector"].ToString()) : false;
+	string addToCartColWidth = quantitySelector ? "160" : "60";
+
+	string theme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Theme"]) ? Dynamicweb.Context.Current.Request.Form["Theme"].ToString() : "";
+	string titleFontSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["TitleFontSize"]) ? Dynamicweb.Context.Current.Request.Form["TitleFontSize"].ToString() : "";
+	string contentPadding = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["ContentPadding"]) ? Dynamicweb.Context.Current.Request.Form["ContentPadding"].ToString() : "";
+}
+
+@if (productList.Count > 0 && requestType != "UpdateFacets") {
+
+	//The form that defines what should be rendered
+	<form action="/Default.aspx?ID=@servicePageId" id="VariantProductsListForm_@paragraphID" data-response-target-element="VariantProductsListFacets_@paragraphID">
+		<input type="hidden" name="ID" value="@servicePageId" />
+		<input type="hidden" name="ParagraphID" value="@paragraphID" />
+		<input type="hidden" name="RequestType" value="UpdateFacets" id="VariantProductsListRequestType_@paragraphID" />
+		<input type="hidden" name="PageSize" value="@pageSizeSetting" id="VariantProductsListPageSize_@paragraphID" />
+		<input type="hidden" name="PageSizeSetting" value="@pageSizeSetting" />
+		<input type="hidden" name="MainProductID" value="@mainProductId" />
+		<input type="hidden" name="Title" value="@title" />
+		<input type="hidden" name="HideTitle" value="@hideTitle.ToString()" />
+		<input type="hidden" name="SelectedDisplayGroups" value="@selectedDisplayGroups" />
+		<input type="hidden" name="HideImage" value="@hideImage.ToString()" />
+		<input type="hidden" name="HideProductNumber" value="@hideProductNumber.ToString()" />
+		<input type="hidden" name="HideProductName" value="@hideProductName.ToString()" />
+		<input type="hidden" name="HideStock" value="@hideStock.ToString()" />
+		<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
+		<input type="hidden" name="Theme" value="@theme" />
+		<input type="hidden" name="TitleFontSize" value="@titleFontSize" />
+		<input type="hidden" name="ContentPadding" value="@contentPadding" />
+
+		<div class="modal" id="FacetsModal_@paragraphID">
+			<div class="modal-dialog modal-dialog-scrollable">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">@Translate("Filters and sorting")</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<div class="modal-body" id="VariantProductsListFacets_@paragraphID">
+						@RenderFacets()
+					</div>
+					<div class="modal-footer d-flex">
+						@if (selectedFacetsCount != 0)
+						{
+							<button type="button" class="btn btn-secondary flex-fill" onclick="location.reload()">@Translate("Clear") (@selectedFacetsCount)</button>
+						}
+						<button type="button" class="btn btn-primary flex-fill" data-bs-dismiss="modal" 
+								onclick="UpdateVariantList(event, 'UpdateList')">@Translate("Update")</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</form>
+
+	//The variants list table
+	<div class="h-100 @(contentPadding) @theme">
+		@if (!string.IsNullOrEmpty(title) && !hideTitle) {
+			<h2 class="@titleFontSize mb-4">@title</h2>
+		} 
+
+		@if (facetsFound) {
+			<button type="button" class="btn btn-primary d-flex mb-3" data-bs-toggle="modal" data-bs-target="#FacetsModal_@paragraphID" onclick="UpdateVariantList(event, 'UpdateFacets')">
+				<span class="flex-fill text-start pe-3">
+					@Translate("Filter") @selectedFacetsLabel
+				</span>
+				<span class="icon-1 position-relative" style="top: 5px">
+					@ReadFile(iconPath+"sliders.svg")
+				</span>
+			</button>
+        }
+
+		<div class="table-responsive w-100">
+			<table class="table table-sm table-striped align-middle text-nowrap">
+				<thead>
+					<tr class="fw-bold">
+						@if (!hideImage) {
+							<td scope="col">&nbsp;</td>
+						}
+						@if (!hideProductNumber) {
+							<td scope="col">#</td>
+						}
+						@if (!hideProductName) {
+							<td scope="col">@Translate("Product")</td>
+                        }
+						@foreach (var header in fieldsHeaders) {
+							<td scope="col">@header</td>	
+						}
+						@if (!hideStock) {
+							<td scope="col">@Translate("Stock")</td>
+						}
+						@if (!hidePrice) {
+							<td scope="col" align="right" class="pe-2">@Translate("Price")</td>
+                        }
+						@if (!hideAddToCart) {
+							<td scope="col">@Translate("Qty")</td>
+						}
+					</tr>
+				</thead>
+		
+				<tbody>
+					@foreach (var product in productList) {
+						string image = product.DefaultImage.Value;
+						image = $"/Admin/Public/GetImage.ashx?image={image}&width=30&format=webp"; 
+
+						List<CategoryFieldViewModel> categories = new List<CategoryFieldViewModel>();
+						foreach (var selection in selectedDisplayGroupsList)
+						{
+							foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
+							{
+								if (selection.ToString() == group.Id)
+								{
+									categories.Add(group);
+								}
+							}
+						}
+
+						<tr>
+							@if (!hideImage) {
+								<td width="30" scope="row">
+									<img src="@image" />
+								</td>
+							}
+							@if (!hideProductNumber) {
+								<td scope="row">@product.Number</td>
+							}
+							@if (!hideProductName) {
+								<td scope="row">@product.Name</td>
+							}
+							@if (categories.Count > 0) {
+								foreach (string fieldCell in fieldsHeaders) {
+									FieldValueViewModel fieldValue = new FieldValueViewModel();
+									bool fieldFound = false;
+
+									foreach (CategoryFieldViewModel category in categories) {
+										foreach (var field in category.Fields)
+										{
+											bool noValues = false;
+											if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+												System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
+												noValues = values.Count > 0 ? false : true;
+											} else if (string.IsNullOrEmpty(field.Value.Value.ToString())) {
+												noValues = true;
+											}
+
+											if (!noValues) {
+												string fieldName = field.Value.Name;
+												if (fieldName == fieldCell) {
+													fieldValue = field.Value;
+													fieldFound = true;
+												} 
+											}
+										}
+									}
+
+									if (fieldFound) {
+										<td>@RenderFieldValue(fieldValue)</td>
+                                    } else { 
+										<td>&nbsp;</td>
+									}
+								}
+							}
+							@if (!hideStock) {
+								<td>
+									@if (@product.StockLevel > 0) {
+										<span class="text-success">@Translate("In stock")</span>
+									} else {
+										<span class="text-danger">@Translate("Out of stock")</span>
+									}
+								</td>
+							}
+							@if (!hidePrice) {
+								<td align="right" class="pe-2">
+									<div itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+										<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
+				
+										@if (showPricesWithVat == "false" && !neverShowVat) {
+											<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
+											if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+												<span class="text-decoration-line-through opacity-75 me-3">
+													@product.PriceBeforeDiscount.PriceWithoutVatFormatted
+												</span>
+											}
+										} else {
+											<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
+											if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+												<span class="text-decoration-line-through opacity-75 me-3">
+													@product.PriceBeforeDiscount.PriceFormatted
+												</span>
+											}
+										}
+			
+										@if (showPricesWithVat == "false" && !neverShowVat) {
+											<span class="text-price">@product.Price.PriceWithoutVatFormatted</span>
+										} else {
+											<span class="text-price">@product.Price.PriceFormatted</span>
+										}
+									</div>
+									@if (showPricesWithVat == "false" && !neverShowVat) {
+										<small class="opacity-85 fst-normal">@product.Price.PriceWithVatFormatted @Translate("Incl. VAT")</small>
+									}
+								</td>
+							}
+							@if (!hideAddToCart) { 
+								string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
+								string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
+								string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
+								string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : ""; 
+
+								<td width="@addToCartColWidth" style="min-width: @(addToCartColWidth)px" align="right">
+									<form method="post" action="@url">
+										<input type="hidden" name="redirect" value="false" />
+										<input type="hidden" name="ProductId" value="@product.Id" />
+										<input type="hidden" name="cartcmd" value="add" />
+
+										@if (!string.IsNullOrEmpty(product.VariantId)) {
+											<input type="hidden" name="VariantId" value="@product.VariantId" />
+										}
+
+										@if (quantitySelector) {
+											<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
+												<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number">
+												<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)" style="max-width: 3.5rem;">@ReadFile(iconPath+"shopping-cart.svg")</button>
+												@if (stepQty != "1") {
+													<div class="invalid-feedback d-none">
+														@Translate("Please select a quantity that is dividable by") @stepQty
+													</div>
+												}
+											</div>
+										} else {
+											<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" type="hidden">
+											<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)" style="max-width: 3.5rem;">@ReadFile(iconPath+"shopping-cart.svg")</button>
+										}
+									</form>
+								</td>
+							}
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+
+		@if (Model.PageCount > 1) {
+			int totalProducts = Model.TotalProductsCount;
+			int pageSize = Model.PageSize;
+			pageSize += pageSizeSetting;
+
+			<div class="text-center">
+				<div class="m-2">@Model.PageSize @Translate("out of") @totalProducts</div>
+				<button type="button" class="btn btn-primary" 
+						onclick="document.querySelector('#VariantProductsListPageSize_@paragraphID').value = '@pageSize'; UpdateVariantList(event, 'UpdateList')">@Translate("Load more")</button>
+			</div>
+		}
+	</div>
+}
+
+
+@helper RenderFieldValue(FieldValueViewModel field) { 
+	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
+
+	fieldValue = fieldValue == "False" ? Translate("No") : fieldValue;
+	fieldValue = fieldValue == "True" ? Translate("Yes") : fieldValue;
+
+	bool isColor = false;
+
+	if (field.Value.GetType() == typeof(System.Collections.Generic.List<Dynamicweb.Ecommerce.ProductCatalog.FieldOptionValueViewModel>))
+	{
+		int valueCount = 0;
+		System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
+		int totalValues = values.Count;
+
+		foreach (FieldOptionValueViewModel option in values)
+		{
+			if (option.Value.Substring(0,1) == "#") {
+				isColor = true;   
+			}
+
+			if (!isColor) {
+				@option.Name
+			} else {
+				<span class="colorbox-sm" style="background-color: @option.Value" title="@option.Value"></span>
+			}
+			
+			if (valueCount != totalValues && valueCount < (totalValues - 1)) {
+				if (isColor) {
+<text> </text>
+				} else {
+<text>, </text>
+				}
+			}
+			valueCount++;
+		}
+	}
+	else if (fieldValue != "")
+	{
+		if (fieldValue.Substring(0,1) == "#") {
+			isColor = true;   
+		}
+
+		if (!isColor) {
+			@fieldValue
+		} else {
+			<span class="colorbox-sm" style="background-color: @fieldValue" title="@fieldValue"></span>
+		}
+	}
+} 
+
+
+@* Deliver only the facets update *@
+
+@if (requestType == "UpdateFacets" && facetsFound) {
+	@RenderFacets()
+}
+
+
+@* Filters *@
+
+@helper RenderFacets() { 
+	foreach (FacetGroupViewModel facetGroup in Model.FacetGroups)
+	{
+		foreach (FacetViewModel facet in facetGroup.Facets)
+		{
+			if (facet.Options.Count() > 0)
+			{
+				<div class="border-bottom">
+					<div class="d-flex" data-bs-toggle="collapse" data-bs-target="#FacetGroup_@facet.Name.Replace(" ", "")" role="button" aria-expanded="true" aria-controls="FacetGroup_@facet.Name.Replace(" ", "")">
+						<h2 class="my-3 opacity-85 m-0 flex-fill h6">@facet.Name</h2>
+						<div class="my-auto collapse-chevron-icon"></div>
+					</div>
+					<div class="collapse show" id="FacetGroup_@facet.Name.Replace(" ", "")">
+						<div class="pb-3">
+							@foreach (FacetOptionViewModel facetOption in facet.Options)
+							{
+								string renderType = facet.RenderType;
+								
+								if (renderType == "Colors")
+								{
+									@RenderColorOption(facet, facetOption)
+								}
+								else
+								{
+									@RenderCheckboxOption(facet, facetOption)
+								}
+							}
+						</div>
+					</div>
+				</div>
+			}
+		}
+	}
+}
+
+
+@helper RenderCheckboxOption(FacetViewModel facet, FacetOptionViewModel facetOption)
+{
+	string facetLabel = HtmlEncoder.HtmlEncode(facetOption.Label);
+	string disabled = facetOption.Count <= 0 ? "disabled" : "";
+	string selected = facetOption.Selected ? "checked" : "";
+
+	if (facetLabel.ToLower() == "true")
+	{
+		facetLabel = Translate("Yes");
+	}
+
+	if (facetLabel.ToLower() == "false")
+	{
+		facetLabel = Translate("No");
+	}
+
+	<label class="form-check mb-1" @disabled>
+		<input type="checkbox" onclick="swift.PageUpdater.Update(event)" class="form-check-input" name="@facet.QueryParameter" value="[@facetOption.Value]" data-filter-value="@facetLabel" @selected>
+		<span class="form-check-label d-flex align-items-center">
+			<span class="flex-fill">@facetLabel </span>
+			<small class="opacity-85">@facetOption.Count</small>
+		</span>
+	</label>
+}
+
+@helper RenderColorOption(FacetViewModel facet, FacetOptionViewModel facetOption)
+{
+	string facetLabel = HtmlEncoder.HtmlEncode(facetOption.Label);
+	string disabled = facetOption.Count <= 0 ? "disabled" : "";
+	string selected = facetOption.Selected ? "checked" : "";
+
+	string image = facetOption.Value;
+	string colorCode = facetOption.Value;
+
+	var variantOption = Dynamicweb.Ecommerce.Services.VariantOptions.GetVariantOption(facetOption.Value.ToString(), Dynamicweb.Ecommerce.Common.Context.LanguageID);
+	if (variantOption != null)
+	{
+		image = variantOption.LargeImage;
+		colorCode = variantOption.Color;
+	}
+
+	<div class="colorbox">
+		<input type="checkbox" onclick="swift.PageUpdater.Update(event)" class="@disabled @selected" name="@facet.QueryParameter" value="[@facetOption.Value]" data-filter-value="@facetLabel" @selected title="@facetOption.Label">
+		@if (colorCode.Contains("#"))
+		{
+			<span class="colorbox-background" style="background-color: @colorCode"></span>
+		}
+		else
+		{
+			<img class="colorbox-background" src="/Admin/Public/GetImage.ashx?width=25&height=25&image=@image" />
+		}
+	</div>
+}
+
+

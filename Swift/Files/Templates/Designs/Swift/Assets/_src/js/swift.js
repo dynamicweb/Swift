@@ -5,7 +5,9 @@ import { Cart } from './_cart';
 import { Scroll } from './_scroll';
 import { ProductList } from './_productlist';
 import { PageUpdater } from './_pageupdater';
+import { LocationsMap } from './_locationsmap';
 import { VariantSelector } from './_variantselector';
+import { Video } from './_video';
 import { Typeahead } from './_typeahead';
 import * as Plyr from 'plyr';
 import * as aos from 'aos';
@@ -27,8 +29,10 @@ const swift = function () {
 		Scroll: Scroll,
 		ProductList: ProductList,
 		PageUpdater: PageUpdater,
+		LocationsMap: LocationsMap,
 		VariantSelector: VariantSelector,
-		Typeahead: Typeahead
+		Typeahead: Typeahead,
+		Video: Video
 	}
 }();
 export { swift };
@@ -39,6 +43,8 @@ window.swift = swift;
 window.onpopstate = function (event) {
 	swift.Typeahead.navigateToPage(document.location.href);
 };
+
+//Animation on scroll (AOS) 
 
 aos.init({
 	offset: 240
