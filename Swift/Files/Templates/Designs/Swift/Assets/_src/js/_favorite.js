@@ -82,6 +82,7 @@ const Favorite = function () {
 			if (favoriteNotification && globalDispatcher != false && localDispatcher != false) {
 				var data = Object.fromEntries(formData.entries());
 				var command = data.FavoriteCmd;
+				var reloadPage = data.ReloadPage;
 
 				if (command != null) {
 					if (command == "addproducttofavoritelist" || command == "removeproductfromfavoritelist") {
@@ -93,6 +94,10 @@ const Favorite = function () {
 						}
 						document.querySelector("#favoriteNotificationToast_Text").innerHTML = data.ProductName;
 					}
+				}
+
+				if (reloadPage == "True" && command == "removeproductfromfavoritelist") {
+					location.reload();
 				}
 			}
 		},

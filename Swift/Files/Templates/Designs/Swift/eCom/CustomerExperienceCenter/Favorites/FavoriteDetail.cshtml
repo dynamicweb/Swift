@@ -1,97 +1,109 @@
-﻿@using Dynamicweb.Rendering
+@using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.Frontend
 @using Dynamicweb.Ecommerce.ProductCatalog
 @inherits ViewModelTemplate<FavoriteListViewModel>
 
 @{
-	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	string detailsPageLink = Pageview.CurrentParagraph.Item["ProductDetailsPage"] != null ? Pageview.CurrentParagraph.Item["ProductDetailsPage"].ToString() : "";
 	int favoriteListId = Model.Id;
 	string currentPageUrl = "/Default.aspx?ID=" + Pageview.Page.ID + "&FavoriteListId=" + favoriteListId;
 	int listItemsCount = Model.ProductList.TotalProductsCount;
+	string productCountLabel = listItemsCount > 1 ? Translate("products") : Translate("product");
 	int pageSize = Model.ProductList.PageSize;
 	int userId = Pageview.User.ID;
 }
 
-@Include("../PaginationHelper.cshtml")
-
 <header class="p-3 border-bottom">
 	<div class="d-flex flex-row align-items-center gap-3">
-		<h1 class="h6 m-0 flex-fill text-muted">
+		<h1 class="h6 m-0 flex-fill opacity-75">
 			@Model.Name
 			@if(Model.IsDefault){
 				<small class="badge rounded-pill bg-info text-dark">@Translate("default")</small>
 			}
 		</h1>
-		<span class="small">@listItemsCount products in this list</span>
+		<span class="small text-end">@listItemsCount @productCountLabel <span class="d-none d-sm-inline">@Translate("in this list")</span></span>
 	</div>
 </header>
 
 @if (Model.ProductList != null)
 {
-	string detailsPageLink = Pageview.CurrentParagraph.Item["ProductDetailsPage"] != null ? Pageview.CurrentParagraph.Item["ProductDetailsPage"].ToString() : "";
-
 	<div class="grid grid-2 grid-lg-3 grid-xxl-4 p-3">
-	@foreach (var product in Model.ProductList.Products)
-	{
-		string link = $"{detailsPageLink}&groupid={product.PrimaryOrDefaultGroup.Id}&productid={product.Id}";
-		link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
+		@foreach (var product in Model.ProductList.Products)
+		{
+			string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+			bool anonymousUser = Pageview.User == null;
+			bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
 
-		string productImage = "/Admin/Public/GetImage.ashx?Image=" + @product.DefaultImage.Value + "&Format=webp&Width=450&Height=450";
+			string link = $"{detailsPageLink}&groupid={product.PrimaryOrDefaultGroup.Id}&productid={product.Id}";
+			link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
+			string price = product?.Price?.PriceFormatted ?? "";
+			string priceId = "ProductPrice_" + product.Id + product.VariantId;
 
-		<article class="position-relative d-flex flex-column gap-3">
+			string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+			bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 
-			<div class="image">
-				<div class="ratio ratio-1x1">
-					@if (product.DefaultImage.Value != "")
-					{
-						<a href="@link" class="d-flex justify-content-center align-items-center">
-							<img
-								src="@productImage"
-								width="450"
-								loading="lazy"
-								decoding="async"
-								class="mw-100 mh-100 p-2 p-lg-3"
-								alt="@product.Name">
-						</a>
-					}
-					else
-					{
-						<a href="@link" class="d-block h-100 w-100">
-							<div class="d-block h-100 w-100" style="background-color: var(--bs-gray-200);"></div>
-						</a>
-					}
-				</div>
-			</div>
 
-			<div class="name flex-fill">@product.Name</div>
-			<div class="price">@RenderPartial("Components/ProductPrice.cshtml", product)</div>
+			string productImage = "/Admin/Public/GetImage.ashx?Image=" + @product.DefaultImage.Value + "&Format=webp&Width=450&Height=450";
 
-			<div class="d-flex flex-row gap-2">
-
-				<div class="add-to-cart flex-fill">
-					@RenderPartial("Components/AddToCart.cshtml", product)
-				</div>
-
-				<div class="add-to-favorites">
-					@* <button 
-						type="button" 
-						class="btn btn-secondary js-ToggleFavorite" 
-						title="@Translate("Delete from favorite list")"
-						data-product-id="@product.Id" 
-						data-variant-id="@product.VariantId" 
-						data-list-id="@favoriteListId">
-						<span class="icon-2">
-							@ReadFile(iconPath + "heart-filled.svg")
-						</span>
-					</button> *@
-
+			<article class="position-relative d-flex flex-column gap-3">
+				<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
 					@RenderPartial("Components/ToggleFavorite.cshtml", product)
 				</div>
+				<div class="image">
+					<div class="ratio ratio-1x1">
+						@if (product.DefaultImage.Value != "")
+						{
+							<a href="@link" class="d-flex justify-content-center align-items-center">
+								<img
+									src="@productImage"
+									width="450"
+									loading="lazy"
+									decoding="async"
+									class="mw-100 mh-100 p-2 p-lg-3"
+									alt="@product.Name">
+							</a>
+						}
+						else
+						{
+							<a href="@link" class="d-block h-100 w-100">
+								<div class="d-block h-100 w-100" style="background-color: var(--bs-gray-200);"></div>
+							</a>
+						}
+					</div>
+				</div>
 
-			</div>
+				<div class="name flex-fill">@product.Name</div>
+			
+				@if (!hidePrice) { 
+					<div class="product-list-item__price">
+						<div>
+							@if (showPricesWithVat == "false" && !neverShowVat) {
+								if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+									<span class="text-decoration-line-through opacity-75 me-1">
+										@product.PriceBeforeDiscount.PriceWithoutVatFormatted
+									</span>
+								}
+							} else {
+								if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+									<span class="text-decoration-line-through opacity-75 me-1">
+										@product.PriceBeforeDiscount.PriceFormatted
+									</span>
+								}
+							}
 
-		</article>
-	}
+							@if (showPricesWithVat == "false" && !neverShowVat) {
+								<span class="text-price fw-bold" id="@priceId">@product.Price.PriceWithoutVatFormatted</span>
+							} else {
+								<span class="text-price fw-bold" id="@priceId">@product.Price.PriceFormatted</span>
+							}
+						</div>
+						@if (showPricesWithVat == "false" && !neverShowVat) {
+							<small class="opacity-85 fst-normal">@product.Price.PriceWithVatFormatted @Translate("Incl. VAT")</small>
+						}
+					</div>
+				}
+			</article>
+		}
 	</div>
 
 	if (listItemsCount > pageSize) {
@@ -101,19 +113,34 @@
 	}
 }
 
-@* <script>
-	document.querySelectorAll('.js-ToggleFavorite').forEach(item => {
-		item.addEventListener('click', event => {
-			let button = event.currentTarget;
+@helper RenderPagination(string currentPageLink, int pageCount, int currentPage, int pageSize)
+{
+	<ul class="pagination m-0">
+		@{string pageHrefTemplate = string.Format("<a class=\"page-link\" href=\"{0}&PageNum={{0}}&PageSize={{1}}\">{{0}}</a>", currentPageLink);}
+		@for (int i = 1; i <= pageCount; i++)
+		{
+			var css = i == currentPage
+				? "page-item active"
+				: "page-item";
+			<li class="@css">
+				@string.Format(pageHrefTemplate, i, pageSize)
+			</li>
+		}
+	</ul>
+}
 
-			let userId = @userId;
-			let productId = button.getAttribute('data-product-id');
-			let variantId = button.getAttribute('data-variant-id');
-			let favoriteListId = @favoriteListId;
-
-			document.location.href = "/?favoritecmd=removeproductfromfavoritelist&userId=" + userId + "&productId=" + productId + "&productVariantId=" + variantId + "&favoriteListId=" + favoriteListId;
-		})
-	})
-
-	// http://swift.local.dynamicweb.dk/?favoritecmd=removeproductfromfavoritelist&userId=&productId=&productVariantId=&favoriteListId=
-</script> *@
+ @* Favorite toast *@
+<div aria-live="polite" aria-atomic="true"> 
+	<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11"> 
+		<div id="favoriteNotificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true"> 
+			<div class="toast-header"> 
+				<strong class="me-auto">@Translate("Favorite list updated")</strong> 
+				<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button> 
+			</div> 
+			<div class="toast-body d-flex gap-3"> 
+				<img id="favoriteNotificationToast_Image" src="" /> 
+				<div id="favoriteNotificationToast_Text"></div> 
+			</div> 
+		</div> 
+	</div> 
+</div> 
