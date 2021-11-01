@@ -45,6 +45,39 @@ module.exports = [
             ]
         }
     },
+	{
+        name: 'modules',
+        mode: mode,
+        entry: {
+            'tiny-slider': './Swift/Files/Templates/Designs/Swift/Assets/_src/js/modules/tiny-slider.js',
+			'plyr': './Swift/Files/Templates/Designs/Swift/Assets/_src/js/modules/plyr.js'
+        },
+        output: {
+            path: path.resolve(__dirname, 'Swift','Files','Templates','Designs','Swift','Assets','js'),
+            filename: '[name].js'
+        },
+        module: {
+            rules: [
+                {
+                    test: /\.js?$/,
+                    loader: 'babel-loader'
+                }
+            ]
+        },
+        optimization: {
+            minimize: isProduction,
+            minimizer: [
+                new TerserPlugin({
+					terserOptions: {
+						mangle: true,
+						format: {
+							comments: false,
+						}
+					},
+				})
+            ]
+        }
+    },
     {
         name: 'styles',
         mode: mode,
