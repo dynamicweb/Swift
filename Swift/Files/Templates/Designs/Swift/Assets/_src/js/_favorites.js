@@ -1,4 +1,4 @@
-const Favorite = function () {
+const Favorites = function () {
 
 	return {
 		Update: async function (e) {
@@ -45,7 +45,7 @@ const Favorite = function () {
 			};
 
 			//Fire the 'update' event
-			let event = new CustomEvent("update.swift.favorite", {
+			let event = new CustomEvent("update.swift.favorites", {
 				cancelable: true,
 				detail: {
 					formData: formData,
@@ -59,9 +59,9 @@ const Favorite = function () {
 				let response = await fetch(form.action, fetchOptions);
 
 				if (response.ok) {
-					Favorite.Success(response, formData, clickedButton);
+					Favorites.Success(response, formData, clickedButton);
 				} else {
-					Favorite.Error(response);
+					Favorites.Error(response);
 				}
 			}
 		},
@@ -90,7 +90,10 @@ const Favorite = function () {
 						favoriteToast.show();
 
 						if (data.Thumbnail != "") {
-							document.querySelector("#favoriteNotificationToast_Image").src = data.Thumbnail;
+							var imageElement = document.createElement('img');
+							imageElement.src = data.Thumbnail;
+							document.querySelector("#favoriteNotificationToast_Image").innerHTML = "";
+							document.querySelector("#favoriteNotificationToast_Image").appendChild(imageElement);
 						}
 						document.querySelector("#favoriteNotificationToast_Text").innerHTML = data.ProductName;
 					}
@@ -108,4 +111,4 @@ const Favorite = function () {
 	}
 }();
 
-export { Favorite };
+export { Favorites };

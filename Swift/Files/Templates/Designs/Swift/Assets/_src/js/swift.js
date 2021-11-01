@@ -1,7 +1,7 @@
 import * as bootstrap from 'bootstrap';
 import { tns } from 'tiny-slider/src/tiny-slider';
 import { Sliders } from './_sliders';
-import { Favorite } from './_favorite';
+import { Favorites } from './_favorites';
 import { Cart } from './_cart';
 import { Scroll } from './_scroll';
 import { ProductList } from './_productlist';
@@ -26,7 +26,7 @@ const swift = function () {
 	return {
 		Cart: Cart,
 		Sliders: Sliders,
-		Favorite: Favorite,
+		Favorites: Favorites,
 		Scroll: Scroll,
 		ProductList: ProductList,
 		PageUpdater: PageUpdater,
