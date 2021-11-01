@@ -8,6 +8,7 @@
 	public string galleryLayout { get; set; }
 	public string[] supportedImageFormats { get; set; }
 	public string[] supportedVideoFormats { get; set; }
+	public string[] supportedDocumentFormats { get; set; }
 	public string[] allSupportedFormats { get; set; }
 
 	public class RatioSettings {
@@ -48,7 +49,8 @@
 	@* Supported formats *@
 	supportedImageFormats = new string[] { ".jpg", ".webp", ".png", ".gif" };
 	supportedVideoFormats = new string[] { "youtu.be", "youtube", "vimeo", ".mp4" };
-	allSupportedFormats = supportedImageFormats.Concat(supportedVideoFormats).ToArray();
+	supportedDocumentFormats = new string[] { ".pdf" };
+	allSupportedFormats = supportedImageFormats.Concat(supportedVideoFormats).Concat(supportedDocumentFormats).ToArray();
 
 	@* Collect the assets *@
 	var selectedAssetCategories = Model.Item.GetList("ImageAssets").SelectedValues;
@@ -125,16 +127,32 @@
 							string videoId = assetValue.Substring(assetValue.LastIndexOf('/') + 1);
 							string vimeoJsClass = assetValue.Contains("vimeo") ? "js-vimeo-video-thumbnail" : "";
 
-							<div class="ratio ratio-4x3 border outline-none" data-bs-target="#SmallScreenImages_@Model.ID" data-bs-slide-to="@thumbnailNumber">
-								<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-									@foreach (string videoFormat in supportedVideoFormats) {
-										if (assetValue.Contains(videoFormat)) {
-											<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
+							bool isDocument = false;
+							foreach (string videoFormat in supportedDocumentFormats) { //Documents
+								if (assetValue.Contains(videoFormat)) {
+									isDocument = true;
+								}
+							}
+
+							if (!isDocument) {
+								<div class="ratio ratio-4x3 border outline-none" data-bs-target="#SmallScreenImages_@Model.ID" data-bs-slide-to="@thumbnailNumber" style="cursor: pointer">
+									<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+										@foreach (string videoFormat in supportedVideoFormats) { //Videos
+											if (assetValue.Contains(videoFormat)) {
+												<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
+											}
 										}
-									}
+									</div>
+									<img src="@imagePathThumb" alt="@asset.Name" class="p-0 p-lg-1 @vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
 								</div>
-								<img src="@imagePathThumb" alt="@asset.Name" class="p-0 p-lg-1 @vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
-							</div>
+                            } else {
+								<a href="@assetValue" class="ratio ratio-4x3 border outline-none" style="cursor: pointer" download>
+									<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+										<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
+									</div>
+									<img src="@imagePathThumb" alt="@asset.Name" class="p-0 p-lg-1 mw-100 mh-100" style="object-fit: cover;">
+								</a>
+                            }
 
 							thumbnailNumber++;
 						}
@@ -168,13 +186,13 @@
 										parms.Add("columns", Model.GridRowColumnCount);
 
 										<div class="carousel-item @activeSlide h-100" data-bs-interval="99999">
-											@foreach (string imageFormat in supportedImageFormats) {
+											@foreach (string imageFormat in supportedImageFormats) { //Images
 												if (assetValue.Contains(imageFormat)) {
 													@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
 												}
 											}
 
-											@foreach (string videoFormat in supportedVideoFormats) {
+											@foreach (string videoFormat in supportedVideoFormats) { //Videos
 												if (assetValue.Contains(videoFormat)) {
 													@RenderVideoPlayer(asset, "modal")
 												}
@@ -214,18 +232,23 @@
 	string assetValue = asset.Value;
 
 	<div class="h-100 @(theme)">
-		@foreach (string format in supportedImageFormats) {
+		@foreach (string format in supportedImageFormats) { //Images
 			if (assetValue.Contains(format)) {
 				@RenderImage(asset, assetNumber, size)
 			}
 		}
-		@foreach (string format in supportedVideoFormats) {
+		@foreach (string format in supportedVideoFormats) { //Videos
 			if (assetValue.Contains(format)) {
 				if (Model.Item.GetString("OpenVideoInModal") == "true") {
 					@RenderVideoScreendump(asset, assetNumber, size)
 				} else {
 					@RenderVideoPlayer(asset, size)
 				}
+			}
+		}
+		@foreach (string format in supportedDocumentFormats) { //Documents
+			if (assetValue.Contains(format)) {
+				@RenderDocument(asset, assetNumber, size)
 			}
 		}
 	</div>
@@ -336,4 +359,33 @@
 			</video>
 		}
 	</div>
+}
+
+@helper RenderDocument(MediaViewModel asset, int number, string size = "desktop") { 
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	string productName = product.Name;
+	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+	string imageLinkPath = imagePath;
+
+	RatioSettings ratioSettings = GetRatioSettings(size);
+
+	var parms = new Dictionary<string, object>();
+	parms.Add("alt", productName);
+	parms.Add("itemprop", "image");
+	parms.Add("fullwidth", true);
+	parms.Add("columns", Model.GridRowColumnCount);
+
+	if (ratioSettings.Ratio == "fill" && galleryLayout != "grid") {
+		parms.Add("cssClass", "w-100 h-100 image-zoom-lg");
+	} else {
+		parms.Add("cssClass", "mw-100 mh-100");
+	}
+
+	<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download alt="@Translate("Download")">
+		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+			<div class="icon-5 position-absolute" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
+			@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+		</div>
+	</a>
 }
