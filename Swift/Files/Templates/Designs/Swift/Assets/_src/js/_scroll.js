@@ -61,6 +61,9 @@ const Scroll = function () {
 						element.classList.remove("d-none");
 					});
 				}
+			},
+			{
+				passive: true
 			});
 		},
 
