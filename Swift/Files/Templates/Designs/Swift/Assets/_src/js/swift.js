@@ -1,5 +1,4 @@
 import * as bootstrap from 'bootstrap';
-import { tns } from 'tiny-slider/src/tiny-slider';
 import { Sliders } from './_sliders';
 import { Cart } from './_cart';
 import { Scroll } from './_scroll';
@@ -9,17 +8,9 @@ import { LocationsMap } from './_locationsmap';
 import { VariantSelector } from './_variantselector';
 import { Video } from './_video';
 import { Typeahead } from './_typeahead';
-import * as Plyr from 'plyr';
-import * as aos from 'aos';
 
 //Bootstrap
 window.bootstrap = bootstrap;
-
-//Tiny slider
-window.tns = tns;
-
-//Plyr video
-window.Plyr = Plyr;
 
 //Swift modules
 const swift = function () {
@@ -43,9 +34,3 @@ window.swift = swift;
 window.onpopstate = function (event) {
 	swift.Typeahead.navigateToPage(document.location.href);
 };
-
-//Animation on scroll (AOS) 
-
-aos.init({
-	offset: 240
-})
