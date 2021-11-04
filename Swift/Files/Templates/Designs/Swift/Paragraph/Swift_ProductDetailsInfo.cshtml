@@ -6,17 +6,18 @@
 @{ 
 	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
 
-	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
-	bool anonymousUser = Pageview.User == null;
-	bool hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser;
-	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
-
 	ProductViewModel product = new ProductViewModel();
 
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser;
+	hideAddToCart = product.VariantInfo.VariantInfo != null && Model.Item.GetBoolean("HideVariantSelector") ? true : hideAddToCart;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
 
 	bool IsNeverOutOfStock = product.NeverOutOfstock;
 	string[] variantId = product.VariantId.Split('.');
@@ -159,7 +160,7 @@
 			</div>
 		}
 
-		@if (product.VariantInfo.VariantInfo != null)
+		@if (product.VariantInfo.VariantInfo != null && !Model.Item.GetBoolean("HideVariantSelector"))
 		{
 			int groupNumber = 1;
 
@@ -200,9 +201,9 @@
 			</form>
 		}
 
-		<form method="post" action="@url">
-			@if (!hideAddToCart)
-			{
+		@if (!hideAddToCart)
+		{
+			<form method="post" action="@url">
 				<div class="d-flex flex-row">
 					<input type="hidden" name="redirect" value="false" />
 					<input type="hidden" name="ProductId" value="@product.Id" />
@@ -234,7 +235,7 @@
 					}
 				</div>
 
-				if (!Model.Item.GetBoolean("HideStockState"))
+				@if (!Model.Item.GetBoolean("HideStockState"))
 				{
 					if(!IsNeverOutOfStock)
 					{
@@ -260,8 +261,8 @@
 					</div>
 					}
 				}
-			}
-		</form>
+			</form>
+		}
 	</div>
 </div>
 
@@ -336,11 +337,8 @@
 
 @if (product.VariantInfo.VariantInfo != null)
 {
-	<script>
-		//Initialize the variant selector
-		document.addEventListener('load', function (event) {
-			swift.VariantSelector.init();
-		});
+	<script type="module">
+		swift.VariantSelector.init();
 	</script>
 }
 
