@@ -7,7 +7,7 @@
 * Checkout: Fixed missing company info in account information
 * Checkout: Checkout receipt back btn link fix
 * Checkout: Cleanup fixing alignment and scrollbar issue
-* Customer center: Fixing styling issues
+* Customer Center: Fixing styling issues
 * Product Detail: Various bugs highlighted by Lighthouse related to the Product Details
 * Product Detail: Fix when to hide/disable "add to cart"
 
