@@ -8,9 +8,13 @@
 	string invalidOldPassword = !string.IsNullOrEmpty(GetString("UserManagement:User.OldPassword.Input.Error")) ? "is-invalid" : "";
 	string invalidPassword = !string.IsNullOrEmpty(GetString("UserManagement:User.NewPassword.Input.Error")) ? "is-invalid" : "";
 	string invalidConfirmPassword = !string.IsNullOrEmpty(GetString("UserManagement:User.NewPasswordConfirm.Input.Error")) ? "is-invalid" : "";
+	string currentCountry = GetString("UserManagement:User.CountryCode");
+	var regions = Dynamicweb.Ecommerce.Services.Countries.GetRegions(currentCountry);
+	string countrySelectorColumnSize = "g-col-6";
+	string regionLabel = "State";
 }
 
-@GetString("UserManagement:User.FormStart").Replace("<form", "<form novalidate")
+@GetString("UserManagement:User.FormStart").Replace("<form", "<form novalidate id='UserManagementEditForm'")
 		@if (settingsType == "profile" || settingsType == "")
 		{
 			<header class="d-flex flex-row align-items-center gap-3 p-3 border-bottom">
@@ -70,19 +74,62 @@
 					<div class="invalid-feedback">@GetString("UserManagement:User.Zip.Input.Error")</div>
 				</div> 
 			</div>
-			<div class="g-col-12 g-col-lg-6">
+
+			@if(currentCountry == "US" || currentCountry == "CA" || currentCountry == "GB"){
+				if (regions.Count > 0) {
+					countrySelectorColumnSize = "g-col-12 g-col-lg-3";
+				}
+			}
+
+			<div class="@countrySelectorColumnSize">
 				<div class="form-floating">
 					<input type="text" class="form-control" placeholder="@Translate("Town / City")" name="UserManagement_Form_City" id="UserManagement_Form_City" value="@GetString("UserManagement:User.City")" required />
 					<label for="UserManagement_Form_City" class="form-label">@Translate("Town / City")</label>
 					<div class="invalid-feedback">@GetString("UserManagement:User.City.Input.Error")</div>
 				</div> 
 			</div>
+
+			@if(currentCountry == "US" || currentCountry == "CA" || currentCountry == "GB"){
+
+				if (regions.Count > 0) {
+					if (currentCountry == "CA")
+					{
+						regionLabel = Translate("Province");
+					}
+					else if (currentCountry == "GB")
+					{
+						regionLabel = Translate("Region");
+					}
+					else if (currentCountry == "US")
+					{
+						regionLabel = Translate("State");
+					}
+
+					<div class="g-col-3">
+						<div class="form-floating">
+							@{ 
+								string regionCode = GetString("UserManagement:User.State");
+
+								<select class="form-select" name="UserManagement_Form_State" id="UserManagement_Form_State">
+									@foreach ( var region in regions)
+									{
+										string selected = region.RegionCode == regionCode ? "selected" : "";
+										<option value="@region.RegionCode"  @selected>@region.Name</option>
+									}
+								</select>
+							}
+							<label for="UserManagement_Form_State">@regionLabel</label>
+						</div>
+					</div>
+                }
+			}
+
 			<div class="g-col-12 g-col-lg-3">
 				<div class="form-floating">
 					@{
 						string countryCode = GetString("UserManagement:User.CountryCode");
 
-						<select class="form-select" id="UserManagement_Form_CountryCode" name="UserManagement_Form_CountryCode">
+						<select class="form-select" id="UserManagement_Form_CountryCode" name="UserManagement_Form_CountryCode"  onchange="submitForm()">
 							@foreach (LoopItem country in GetLoop("UserManagement.CountryList"))
 							{
 								string selected = country.GetString("Country.Code2") == countryCode ? "selected" : ""; 
@@ -163,3 +210,9 @@
 @GetString("UserManagement:User.FormEnd")
 
 
+<script>
+	function submitForm() {
+		var form = document.querySelector("#UserManagementEditForm");
+		form.requestSubmit();
+	}
+</script>
