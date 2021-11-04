@@ -1,5 +1,25 @@
 # Changelog
 
+## [v1.2.0] - 04-11-2021
+
+### Bugfixes
+* General: impersonation-reset-button-bug
+* Checkout: Fixed missing company info in account information
+* Checkout: Checkout receipt back btn link fix
+* Checkout: Cleanup fixing alignment and scrollbar issue
+* Customer center: Fixing styling issues
+* Product Detail: Various bugs highlighted by Lighthouse related to the Product Details
+* Product Detail: Fix when to hide/disable "add to cart"
+
+### Changed
+* General: Isolate js modules
+
+### Added
+* Checkout: Possible to Disable delivery date field
+* Itemtype: Animation on scroll (AOS)
+* Itemtype: Preset images
+* Product Detail: Price range low to high
+
 ## [v1.1.0] - 26-10-2021
 
 Dynamicweb proudly presents Swift 1.1.0 This update brings more basic B2B features to Swift and introduces support for multi-language websites and shops. 
