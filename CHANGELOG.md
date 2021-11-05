@@ -1,6 +1,6 @@
 # Changelog
 
-## [v1.2.0] - 04-11-2021
+## [v1.2.0] - 05-11-2021
 
 ### Bugfixes
 * General: impersonation-reset-button-bug
@@ -8,6 +8,8 @@
 * Checkout: Checkout receipt back btn link fix
 * Checkout: Cleanup fixing alignment and scrollbar issue
 * Customer Center: Fixing styling issues
+* General: Forms for editors fix file upload
+* Itemtype: Animation on scroll (AOS) fix
 * Product Detail: Various bugs highlighted by Lighthouse related to the Product Details
 * Product Detail: Fix when to hide/disable "add to cart"
 
@@ -16,9 +18,12 @@
 
 ### Added
 * Checkout: Possible to Disable delivery date field
+* Customer Center: Favorite list (Part 1) Possible to add master products to favorites
 * Itemtype: Animation on scroll (AOS)
 * Itemtype: Preset images
+* Itemtype: Support attached documents on Product Detail through Assets Categories
 * Product Detail: Price range low to high
+
 
 ## [v1.1.0] - 26-10-2021
 
