@@ -1,5 +1,4 @@
 import * as bootstrap from 'bootstrap';
-import { tns } from 'tiny-slider/src/tiny-slider';
 import { Sliders } from './_sliders';
 import { Favorites } from './_favorites';
 import { Cart } from './_cart';
@@ -10,16 +9,9 @@ import { LocationsMap } from './_locationsmap';
 import { VariantSelector } from './_variantselector';
 import { Video } from './_video';
 import { Typeahead } from './_typeahead';
-import * as Plyr from 'plyr';
 
 //Bootstrap
 window.bootstrap = bootstrap;
-
-//Tiny slider
-window.tns = tns;
-
-//Plyr video
-window.Plyr = Plyr;
 
 //Swift modules
 const swift = function () {

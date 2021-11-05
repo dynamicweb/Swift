@@ -5,6 +5,7 @@ const VariantSelector = function () {
 			//Auto initialize
 			document.querySelectorAll(".js-variant-selector").forEach(function (variantSelector) {
 				VariantSelector.UpdateAllVariants(variantSelector);
+				VariantSelector.CheckSelectionComplete(variantSelector, false);
 			});
 		},
 
@@ -25,7 +26,7 @@ const VariantSelector = function () {
 			if (globalDispatcher != false && localDispatcher != false) {
 				VariantSelector.ToggleActiveState(clickedButton);
 				VariantSelector.UpdateAllVariants(variantSelectorElement);
-				VariantSelector.CheckSelectionComplete(variantSelectorElement);
+				VariantSelector.CheckSelectionComplete(variantSelectorElement, true);
 			}
 		},	    
 
@@ -112,7 +113,7 @@ const VariantSelector = function () {
 			}
 		},
 
-		CheckSelectionComplete: function (variantSelectorElement) {
+		CheckSelectionComplete: function (variantSelectorElement, updatePage) {
 			var selections = [];
 			var selectionCount = 0;
 			var totalGroups = variantSelectorElement.querySelectorAll(".js-variant-group").length;
@@ -125,7 +126,7 @@ const VariantSelector = function () {
 				}
 			});
 
-			if (selectionCount == totalGroups) {
+			if (selectionCount == totalGroups && updatePage) {
 				//Fire the 'selectioncomplete' event
 				let event = new CustomEvent("selectioncomplete.swift.variantselector", {
 					cancelable: true,
@@ -153,7 +154,7 @@ const VariantSelector = function () {
 
 			var productElement = variantSelectorElement.closest(".js-product");
 			if (productElement) {
-				var addToCartElement = variantSelectorElement.querySelector(".js-add-to-cart");
+				var addToCartElement = productElement.querySelector(".js-add-to-cart-button");
 				if (addToCartElement) {
 					if (selectionCount == totalGroups) {
 						addToCartElement.classList.remove("disabled");
@@ -162,7 +163,7 @@ const VariantSelector = function () {
 					}
 				}
 
-				var stockStateElement = variantSelectorElement.querySelector(".js-stock-state");
+				var stockStateElement = productElement.querySelector(".js-stock-state");
 				if (stockStateElement) {
 					if (selectionCount == totalGroups) {
 						stockStateElement.classList.remove("d-none");	 
