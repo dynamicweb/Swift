@@ -1,0 +1,270 @@
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.Frontend
+@inherits ViewModelTemplate<FavoriteListListViewModel>
+
+@{
+	string listPageLink = Pageview.CurrentParagraph.Item["ProductListPage"] != null ? Pageview.CurrentParagraph.Item["ProductListPage"].ToString() : "";
+	string currentPageUrl = "/Default.aspx?ID=" + Pageview.Page.ID;
+	int listsCount = Model.TotalFavoriteListsCount;
+	int pageSize = Model.PageSize;
+}
+
+<header class="p-3 border-bottom">
+	<div class="d-flex flex-row align-items-center gap-3">
+		<h1 class="h6 m-0 flex-fill opacity-75">@Translate("Favorite lists")</h1>
+		@if (Model.FavoriteLists != null)
+		{
+			if(Model.FavoriteLists.Count > 0) {
+				<button type="button" class="btn btn-link p-0" data-bs-toggle="modal" data-bs-target="#createFavoriteListModal">+ @Translate("Add new favorite list")</button>
+			}
+		}
+	</div>
+</header>
+
+@if (Model.FavoriteLists == null || Model.FavoriteLists.Count < 1)
+{
+	<div class="grid">
+		<div class="g-col-12 g-start-lg-3 g-col-lg-8 d-flex flex-column gap-3 text-center py-3">
+			<h2 class="h5 m-0">@Translate("It looks like you do not have any favorites yet")</h2>
+			<p class="m-0">@Translate("Save and arrange the best things here until you are ready for them")</p>
+
+			<div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+				@if (!string.IsNullOrEmpty(listPageLink)) {
+					<a href="@listPageLink" class="btn btn-secondary">@Translate("Go exploring")</a>
+                }
+				<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createFavoriteListModal">@Translate("Create favorite list")</button>
+			</div>
+		</div>
+	</div>
+}
+else
+{
+	string productCountLabel = Model.FavoriteLists.Count > 1 ? Translate("products") : Translate("product");
+
+	foreach (var theList in Model.FavoriteLists)
+	{
+		string favoriteListLink = currentPageUrl + "&amp;FavoriteListId=" + theList.Id;
+		string listName = !string.IsNullOrEmpty(theList.Name) ? theList.Name : Translate("Favorites");		
+
+		<article class="d-flex flex-column gap-3 p-3 border-bottom">
+
+			<header class="d-flex flex-row align-items-end lh-1">
+				<h3 class="flex-fill h6 m-0">
+					<a href="@favoriteListLink" class="text-decoration-none opacity-75">@listName</a>
+				</h3>
+				<span class="small text-end">@theList.ProductList.Products.Count @productCountLabel <span class="d-none d-sm-inline">@Translate("in this list")</span></span>
+			</header>
+
+			<div class="d-md-none grid grid-2">
+				@if(theList.ProductList.Products.Count > 0)
+				{
+					foreach (var item in theList.ProductList.Products.Take(2))
+					{
+						string productImage = "/Admin/Public/GetImage.ashx?Image=" + item.DefaultImage.Value + "&Format=webp&Width=350&Height=350";
+
+						<div class="ratio ratio-1x1">
+							<a href="@favoriteListLink" class="d-flex justify-content-center align-items-center">
+								<img
+									src="@productImage"
+									width="350"
+									loading="lazy"
+									decoding="async"
+									class="mw-100 mh-100"
+									alt="@item.Name" />
+							</a>
+						</div>
+					}
+				}
+				else
+				{
+					<div class="g-col-12 py-5 text-center border">
+						<a href="@listPageLink">@Translate("This list is empty. Click here to be inspired")</a>
+					</div>
+				}
+			</div>
+
+			<div class="d-none d-md-grid d-print-grid grid grid-2 grid-md-5">
+				@if(theList.ProductList.Products.Count > 0)
+				{
+					foreach (var item in theList.ProductList.Products.Take(5))
+					{
+						string productImage = "/Admin/Public/GetImage.ashx?Image=" + @item.DefaultImage.Value + "&Format=webp&Width=350&Height=350";
+
+						<div class="ratio ratio-1x1">
+							<a href="@favoriteListLink" class="d-flex justify-content-center align-items-center">
+								<img
+									src="@productImage"
+									width="350"
+									loading="lazy"
+									decoding="async"
+									class="mw-100 mh-100"
+									alt="@item.Name" />
+							</a>
+						</div>
+					}
+				}
+				else
+				{
+					<div class="g-col-12 py-6 text-center border">
+						<a href="@listPageLink">@Translate("This list is empty. Click here to be inspired")</a>
+					</div>
+				}
+			</div>
+
+			<footer class="d-flex flex-row gap-3 align-items-center">
+				<button 
+					type="button" 
+					class="btn btn-sm btn-link p-0 renameFavoriteListModal" 
+					data-bs-toggle="modal" 
+					data-bs-target="#renameFavoriteListModal" 
+					data-list-id="@theList.Id" 
+					data-list-name="@listName">@Translate("Rename")</button>
+				<button 
+					type="button" 
+					class="btn btn-sm btn-link p-0 renameFavoriteNameButton"
+					data-bs-toggle="modal"
+					data-bs-target="#deleteFavoriteListModal"
+					data-list-id="@theList.Id"
+					data-list-name="@listName">@Translate("Delete")</button>
+			</footer>
+		</article>
+	}
+}
+
+@if (listsCount > pageSize)
+{
+	<div class="p-3">
+		@RenderPagination(currentPageUrl, Model.PageCount, Model.CurrentPage, Model.PageSize)	
+	</div>
+}
+
+<div class="modal fade" tabindex="-1" id="createFavoriteListModal">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">@Translate("Create favorite list")</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body d-flex flex-column gap-3">
+				<div>
+					<label for="createFavoriteListInputName" class="form-label">@Translate("Name the favorite list")</label>
+					<input type="text" class="form-control" id="createFavoriteListInputName" placeholder="@Translate("Name")">
+				</div>
+				<div class="alert alert-danger m-0 d-none" role="alert" id="createFavoriteListError">@Translate("A Favorite List must have a name")</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Translate("Cancel")</button>
+				<button type="button" class="btn btn-primary" id="createFavoriteListButton">@Translate("Create list")</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" tabindex="-1" id="renameFavoriteListModal">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">@Translate("Rename favorite list")</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<div>
+					<label for="renameFavoriteListInputName" class="form-label">@Translate("Rename favorite list"):</label>
+					<input type="text" class="form-control" id="renameFavoriteListInputName" placeholder="@Translate("Name")">
+				</div>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Translate("Cancel")</button>
+				<button type="button" class="btn btn-primary" id="renameFavoriteListButton">@Translate("Update list")</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" tabindex="-1" id="deleteFavoriteListModal">
+	<div class="modal-dialog modal-dialog-centered">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h5 class="modal-title">@Translate("Delete favorite list")</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+			</div>
+			<div class="modal-body">
+				<p>@Translate("You are about to delete"): <strong id="deleteFavoriteName"></strong>.</p>
+				<p>@Translate("Are you sure you want to delete it?")</p>
+			</div>
+			<div class="modal-footer">
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Translate("Cancel")</button>
+				<button type="button" class="btn btn-primary" id="deleteFavoriteListButton">@Translate("Delete list")</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<script>
+	let userId = @Pageview.User.ID;
+	let renameFavoriteListModal = document.querySelector("#renameFavoriteListModal")
+	let deleteFavoriteListModal = document.querySelector("#deleteFavoriteListModal")
+
+	renameFavoriteListModal.addEventListener('show.bs.modal', function (event) {
+		let button = event.relatedTarget
+		let renameFavoriteListId = button.getAttribute('data-list-id');
+		let renameFromName = button.getAttribute('data-list-name')
+		let renameFavoriteListInputName = document.getElementById('renameFavoriteListInputName');
+
+		renameFavoriteListInputName.value = renameFromName;
+
+		document.querySelector("#renameFavoriteListButton").addEventListener("click", function () {
+			let favoriteListId = renameFavoriteListId;
+
+			// Rename Favorite List
+			document.location.href = "/?favoritecmd=renamefavoritelist&userId=" + userId + "&favoriteListId=" + favoriteListId + "&name=" + renameFavoriteListInputName.value;
+		});
+	})
+
+	deleteFavoriteListModal.addEventListener('show.bs.modal', function (event) {
+		let button = event.relatedTarget;
+		let deleteFavoriteListId = button.getAttribute('data-list-id');
+		let deleteFavoriteListName = button.getAttribute('data-list-name');
+		let deleteFavoriteName = document.querySelector("#deleteFavoriteName");
+
+		// Update label to confirm before deletion
+		deleteFavoriteName.innerHTML = deleteFavoriteListName;
+
+		// Delete Favorite List
+		document.querySelector("#deleteFavoriteListButton").addEventListener("click", function () {
+			let favoriteListId = deleteFavoriteListId;
+
+			document.location.href = "/?favoritecmd=removefavoritelist&userId=" + userId + "&favoriteListId=" + favoriteListId;
+		});
+	})
+
+	// Create new Favorite List
+	document.querySelector("#createFavoriteListButton").addEventListener("click", function () {
+		let createFavoriteListName = document.querySelector("#createFavoriteListInputName").value;
+
+		if (createFavoriteListName != "") {
+			document.location.href = "/?favoritecmd=createfavoritelist&userId=" + userId + "&name=" + createFavoriteListName;
+		}
+		else if (document.querySelector("#createFavoriteListError"))
+		{
+			document.querySelector("#createFavoriteListError").classList.remove("d-none");
+		}
+	});
+</script>
+
+
+@helper RenderPagination(string currentPageLink, int pageCount, int currentPage, int pageSize)
+{
+	<ul class="pagination m-0">
+		@{string pageHrefTemplate = string.Format("<a class=\"page-link\" href=\"{0}&PageNum={{0}}&PageSize={{1}}\">{{0}}</a>", currentPageLink);}
+		@for (int i = 1; i <= pageCount; i++)
+		{
+			var css = i == currentPage
+				? "page-item active"
+				: "page-item";
+			<li class="@css">
+				@string.Format(pageHrefTemplate, i, pageSize)
+			</li>
+		}
+	</ul>
+}

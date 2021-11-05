@@ -1,0 +1,196 @@
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.Frontend
+@using Dynamicweb.Ecommerce.ProductCatalog
+@inherits ViewModelTemplate<FavoriteListViewModel>
+
+@{
+	string detailsPageLink = Pageview.CurrentParagraph.Item["ProductDetailsPage"] != null ? Pageview.CurrentParagraph.Item["ProductDetailsPage"].ToString() : "";
+	int favoriteListId = Model.Id;
+	string currentPageUrl = "/Default.aspx?ID=" + Pageview.Page.ID + "&FavoriteListId=" + favoriteListId;
+	int listItemsCount = Model.ProductList.TotalProductsCount;
+	string productCountLabel = listItemsCount > 1 ? Translate("products") : Translate("product");
+	int pageSize = Model.ProductList.PageSize;
+	int userId = Pageview.User.ID;
+	string listName = !string.IsNullOrEmpty(Model.Name) ? Model.Name : Translate("Favorites");
+
+	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
+	}
+
+	string priceMin = "";
+	string priceMax = "";
+}
+
+<header class="p-3 border-bottom">
+	<div class="d-flex flex-row align-items-center gap-3">
+		<h1 class="h6 m-0 flex-fill opacity-75">
+			@listName
+		</h1>
+		<span class="small text-end">@listItemsCount @productCountLabel <span class="d-none d-sm-inline">@Translate("in this list")</span></span>
+	</div>
+</header>
+
+@if (Model.ProductList != null)
+{
+	<div class="grid grid-2 grid-lg-3 grid-xxl-4 p-3">
+		@foreach (var product in Model.ProductList.Products)
+		{
+			string link = $"{detailsPageLink}&groupid={product.PrimaryOrDefaultGroup.Id}&productid={product.Id}";
+			link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
+			string priceId = "ProductPrice_" + product.Id + product.VariantId;
+
+			string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+			bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+
+			string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
+			string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
+			string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
+			string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : ""; 
+
+			string productImage = "/Admin/Public/GetImage.ashx?Image=" + @product.DefaultImage.Value + "&Format=webp&Width=450&Height=450";
+
+			<article class="position-relative d-flex flex-column gap-3">
+				<div class="image">
+					<div class="ratio ratio-1x1">
+						@if (product.DefaultImage.Value != "")
+						{
+							<a href="@link" class="d-flex justify-content-center align-items-center">
+								<img
+									src="@productImage"
+									width="450"
+									loading="lazy"
+									decoding="async"
+									class="mw-100 mh-100 p-2 p-lg-3"
+									alt="@product.Name">
+							</a>
+						}
+						else
+						{
+							<a href="@link" class="d-block h-100 w-100">
+								<div class="d-block h-100 w-100" style="background-color: var(--bs-gray-200);"></div>
+							</a>
+						}
+					</div>
+				</div>
+
+				<div class="name flex-fill">@product.Name</div>
+
+				<div>
+					<div class="h4" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+						<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
+				
+						@if (showPricesWithVat == "false" && !neverShowVat) {
+							string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
+
+							<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
+							if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+								<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
+							}
+						} else {
+							string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
+
+							<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
+							if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+								<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
+							}
+						}
+			
+						@if (showPricesWithVat == "false" && !neverShowVat) {
+							string price = product.Price.PriceWithoutVatFormatted;
+							if (product?.VariantInfo?.VariantInfo != null) {
+								priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
+								priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
+							}
+							if (priceMin != priceMax) {
+								price = priceMin + " - " + priceMax;
+							} 
+							<span class="text-price">@price</span>
+						} else {
+							string price = product.Price.PriceFormatted;
+							if (product?.VariantInfo?.VariantInfo != null) {
+								priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
+								priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
+							}
+							if (priceMin != priceMax) {
+								price = priceMin + " - " + priceMax;
+							}
+							<span class="text-price">@price</span>
+						}
+					</div>
+					@if (showPricesWithVat == "false" && !neverShowVat) {
+						string price = product.Price.PriceWithVatFormatted;
+						if (product?.VariantInfo?.VariantInfo != null) {
+							priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
+							priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
+						}
+						if (priceMin != priceMax) {
+							price = priceMin + " - " + priceMax;
+						}
+						<small class="opacity-85 fst-normal">@price @Translate("Incl. VAT")</small>
+					}
+				</div> 
+
+				<div class="d-flex">
+					<form method="post" action="@url" class="flex-fill">
+						<div class="d-flex flex-row">
+							<input type="hidden" name="redirect" value="false" />
+							<input type="hidden" name="ProductId" value="@product.Id" />
+							<input type="hidden" name="cartcmd" value="add" />
+
+							<div class="js-input-group flex-fill">
+								@if (!string.IsNullOrEmpty(product.VariantId)) {
+									<input type="hidden" name="VariantId" value="@product.VariantId" />
+								}
+								<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" type="hidden">
+								<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary w-100 js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
+							</div>
+						</div>
+					</form>
+					<div class="ms-2">
+						@RenderPartial("Components/ToggleFavorite.cshtml", product)
+					</div>
+				</div>
+			</article>
+		}
+	</div>
+
+	if (listItemsCount > pageSize) {
+	<div class="p-3">
+		@RenderPagination(currentPageUrl, Model.ProductList.PageCount, Model.ProductList.CurrentPage, Model.ProductList.PageSize)	
+	</div>
+	}
+}
+
+@helper RenderPagination(string currentPageLink, int pageCount, int currentPage, int pageSize)
+{
+	<ul class="pagination m-0">
+		@{string pageHrefTemplate = string.Format("<a class=\"page-link\" href=\"{0}&PageNum={{0}}&PageSize={{1}}\">{{0}}</a>", currentPageLink);}
+		@for (int i = 1; i <= pageCount; i++)
+		{
+			var css = i == currentPage
+				? "page-item active"
+				: "page-item";
+			<li class="@css">
+				@string.Format(pageHrefTemplate, i, pageSize)
+			</li>
+		}
+	</ul>
+}
+
+ @* Favorite toast *@
+<div aria-live="polite" aria-atomic="true"> 
+	<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11"> 
+		<div id="favoriteNotificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true"> 
+			<div class="toast-header"> 
+				<strong class="me-auto">@Translate("Favorite list updated")</strong> 
+				<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button> 
+			</div> 
+			<div class="toast-body d-flex gap-3"> 
+				<div id="favoriteNotificationToast_Image"></div> 
+				<div id="favoriteNotificationToast_Text"></div> 
+			</div> 
+		</div> 
+	</div> 
+</div> 
