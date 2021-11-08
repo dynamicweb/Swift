@@ -10,14 +10,16 @@
 	public string[] supportedDocumentFormats { get; set; }
 	public string[] allSupportedFormats { get; set; }
 
-	public class RatioSettings {
+	public class RatioSettings
+	{
 		public string Ratio { get; set; }
 		public string CssClass { get; set; }
 		public string CssVariable { get; set; }
 		public string Fill { get; set; }
 	}
 
-	public RatioSettings GetRatioSettings() {
+	public RatioSettings GetRatioSettings()
+	{
 		var ratioSettings = new RatioSettings();
 
 		string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
@@ -34,7 +36,7 @@
 	}
 }
 
-@{ 
+@{
 	bool isVisualEdit = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
 
 	@* Get the product data *@
@@ -51,20 +53,23 @@
 
 	@* Collect the assets *@
 	var selectedAssetCategories = Model.Item.GetList("ImageAssets").SelectedValues;
-	bool includeImagePatternImages = Model.Item.GetBoolean("ImagePatternImages"); 
-	
+	bool includeImagePatternImages = Model.Item.GetBoolean("ImagePatternImages");
+
 	@* Needed image data collection to support both DefaultImage, ImagePatterns and Image Assets *@
 	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedAssetCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
-	IEnumerable<MediaViewModel> assetsList = new MediaViewModel[]{};
+	IEnumerable<MediaViewModel> assetsList = new MediaViewModel[] { };
 	assetsList = includeImagePatternImages && assetsImages.Count() == 0 ? assetsList.Append(product.DefaultImage) : assetsList;
 	assetsList = assetsList.Union(assetsImages);
 	assetsList = includeImagePatternImages ? assetsList.Union(product.ImagePatternImages) : assetsList;
 
 	int totalAssets = 0;
-	foreach (MediaViewModel asset in assetsList) {
-		var assetValue = asset.Value.ToLower(); 
-		foreach (string format in allSupportedFormats) {
-			if (assetValue.Contains(format) ) {
+	foreach (MediaViewModel asset in assetsList)
+	{
+		var assetValue = asset.Value.ToLower();
+		foreach (string format in allSupportedFormats)
+		{
+			if (assetValue.Contains(format))
+			{
 				totalAssets++;
 			}
 		}
@@ -72,17 +77,17 @@
 
 	if (totalAssets == 0)
 	{
-		assetsList = new List<MediaViewModel>(){ };
+		assetsList = new List<MediaViewModel>() { };
 		totalAssets = 0;
 	}
 
 	int videoNumber = 0;
 
 	@* Layout settings *@
-	string spacing = Model.Item.GetRawValueString("Spacing", "4");
-	spacing = spacing == "none" ? "gap-0" : spacing;
-	spacing = spacing == "small" ? "gap-3" : spacing;
-	spacing = spacing == "large" ? "gap-4" : spacing;
+	string spacing = Model.Item.GetRawValueString("Spacing", "p-0");
+	spacing = spacing == "none" ? "p-0" : spacing;
+	spacing = spacing == "small" ? "p-3" : spacing;
+	spacing = spacing == "large" ? "p-5" : spacing;
 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 
@@ -92,143 +97,172 @@
 }
 
 @* Get assets from selected categories or get all assets *@
-@if (totalAssets != 0 && assetsList.Count() != 0) {
-	if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
+
+<div class="@spacing@(theme)">
+	@if (totalAssets != 0 && assetsList.Count() != 0)
 	{
-		string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "h3");
+		if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
+		{
+			string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "h3");
 
-		<h3 class="@titleFontSize mb-3">
-			@Model.Item.GetString("Title")
-		</h3>
-	}
+			<h3 class="@titleFontSize mb-3">
+				@Model.Item.GetString("Title")
+			</h3>
+		}
 
-	<div class="table-responsive @spacing @theme">
-		<table class="table align-middle">
-			<thead class="fw-bold">
-				<tr>
-					@if (!hideThumbnails) {
-						<td width="60">&nbsp;</td>
-                    }
-					<td>@Translate("Name")</td>
-					<td align="right" class="d-none d-lg-block">@Translate("Download")</td>
-					<td align="right" width="100">@Translate("File type")</td>
-				</tr>
-			</thead>
-			<tbody>
-				@foreach (MediaViewModel asset in assetsList) {
-					var assetName = asset.Value.ToLower();
-
-					bool isVideo = false;
-					foreach (string format in supportedVideoFormats) { //Videos
-						if (assetName.Contains(format) ) {
-							isVideo = true;
+		<div class="table-responsive">
+			<table class="table table-hover align-middle mb-0">
+				<thead>
+					<tr>
+						@if (!hideThumbnails)
+						{
+							<th width="60">&nbsp;</th>
 						}
-					}
+						<th>@Translate("Name")</th>
+						<th class="text-end d-none d-lg-table-cell">@Translate("Download")</th>
+						<th class="text-end" width="100">@Translate("File type")</th>
+					</tr>
+				</thead>
+				<tbody class="border-top-0">
+					@foreach (MediaViewModel asset in assetsList)
+					{
+						var assetName = asset.Value.ToLower();
 
-					if (!isVideo) { 
-						string filePath = System.Web.HttpContext.Current.Server.MapPath(assetName);
-						long fileSize = new System.IO.FileInfo(filePath) != null ? new System.IO.FileInfo(filePath).Length : 0;
-
-						foreach (string format in allSupportedFormats) {
-							if (assetName.Contains(format) ) {
-								<tr>
-									@if (!hideThumbnails) {
-										@RenderAsset(asset)
-									}
-									<td>
-										<a href="@assetName" class="text-decoration-none" download alt="@asset.Name">
-											@asset.Name
-										</a>
-									</td>
-									<td align="right" class="d-none d-lg-block">
-										<a href="@assetName" class="text-decoration-none" download alt="@asset.Name">
-											@fileSize KB <div class="icon-2" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
-										</a>
-									</td>
-									<td align="right">@format</td>
-								</tr>
+						bool isVideo = false;
+						foreach (string format in supportedVideoFormats)
+						{ //Videos
+							if (assetName.Contains(format))
+							{
+								isVideo = true;
 							}
 						}
-					} else {
-						string videoType = asset.Value.Contains("youtu.be") || asset.Value.Contains("youtube") ? "Youtube" : "";
-						videoType = asset.Value.Contains("vimeo") ? "Vimeo" : videoType;
 
-						<tr data-bs-toggle="modal" data-bs-target="#modal_@(Model.ID)_@videoNumber" style="cursor: pointer">
-							@if (!hideThumbnails) {
-								@RenderAsset(asset)
+						if (!isVideo)
+						{
+							string filePath = System.Web.HttpContext.Current.Server.MapPath(assetName);
+							long fileSize = new System.IO.FileInfo(filePath) != null ? new System.IO.FileInfo(filePath).Length : 0;
+
+							foreach (string format in allSupportedFormats)
+							{
+								if (assetName.Contains(format))
+								{
+									<tr class="position-relative">
+										@if (!hideThumbnails)
+										{
+											@RenderAsset(asset)
+										}
+										<td>
+											<a href="@assetName" class="text-decoration-none" download alt="@asset.Name">
+												@asset.Name
+											</a>
+										</td>
+										<td class="text-end d-none d-lg-table-cell">
+											<a href="@assetName" class="text-decoration-none stretched-link" download alt="@asset.Name">
+												@fileSize KB <div class="icon-2" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
+											</a>
+										</td>
+										<td class="text-end">@format</td>
+									</tr>
+								}
 							}
-							<td>
-								@asset.Name
-							</td>
-							<td class="d-none d-lg-block">&nbsp;</td>
-							<td align="right">@videoType</td>
-						</tr>
+						}
+						else
+						{
+							string videoType = asset.Value.Contains("youtu.be") || asset.Value.Contains("youtube") ? "Youtube" : "";
+							videoType = asset.Value.Contains("vimeo") ? "Vimeo" : videoType;
 
-						videoNumber++;
+							<tr data-bs-toggle="modal" data-bs-target="#modal_@(Model.ID)_@videoNumber" style="cursor: pointer">
+								@if (!hideThumbnails)
+								{
+									@RenderAsset(asset)
+								}
+								<td>
+									@asset.Name
+								</td>
+								<td class="d-none d-lg-table-cell">&nbsp;</td>
+								<td align="right">@videoType</td>
+							</tr>
+
+							videoNumber++;
+						}
 					}
-				}
-			</tbody>
-		</table>
-	</div>
+				</tbody>
+			</table>
+		</div>
 
-	int modalVideoNumber = 0;
-	foreach (MediaViewModel asset in assetsList) {
-		var assetName = asset.Value.ToLower();
+		int modalVideoNumber = 0;
+		foreach (MediaViewModel asset in assetsList)
+		{
+			var assetName = asset.Value.ToLower();
 
-		foreach (string format in supportedVideoFormats) { //Videos
-			if (assetName.Contains(format) ) {
-				<div class="modal fade" id="modal_@(Model.ID)_@modalVideoNumber" tabindex="-1" aria-labelledby="productDetailsTableModalTitle_@(Model.ID)_@modalVideoNumber" aria-hidden="true">
-					<div class="modal-dialog modal-dialog-centered modal-xl">
-						<div class="modal-content">
-							<div class="modal-header visually-hidden">
-								<h5 class="modal-title" id="productDetailsTableModalTitle_@(Model.ID)_@modalVideoNumber">@product.Title</h5>
-								<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-							</div>
-							<div class="modal-body p-2 p-lg-3 h-100">
-								@RenderVideoPlayer(asset)
+			foreach (string format in supportedVideoFormats)
+			{ //Videos
+				if (assetName.Contains(format))
+				{
+					<div class="modal fade" id="modal_@(Model.ID)_@modalVideoNumber" tabindex="-1" aria-labelledby="productDetailsTableModalTitle_@(Model.ID)_@modalVideoNumber" aria-hidden="true">
+						<div class="modal-dialog modal-dialog-centered modal-xl">
+							<div class="modal-content">
+								<div class="modal-header visually-hidden">
+									<h5 class="modal-title" id="productDetailsTableModalTitle_@(Model.ID)_@modalVideoNumber">@product.Title</h5>
+									<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+								</div>
+								<div class="modal-body p-2 p-lg-3 h-100">
+									@RenderVideoPlayer(asset)
+								</div>
 							</div>
 						</div>
 					</div>
-				</div>
 
-				modalVideoNumber++;
+					modalVideoNumber++;
+				}
 			}
 		}
 	}
-} else if (isVisualEdit) {
-	RatioSettings ratioSettings = GetRatioSettings();
+	else if (isVisualEdit)
+	{
+		RatioSettings ratioSettings = GetRatioSettings();
 
-	<div class="h-100 @theme">
-		<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
-			<img src="~/Files/Images/missing_image.jpg" alt="@Translate("Missing image")" loading="lazy" decoding="async" class="mh-100 mw-100" style="object-fit: cover;" />
+		<div class="h-100 @theme">
+			<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
+				<img src="~/Files/Images/missing_image.jpg" alt="@Translate("Missing image")" loading="lazy" decoding="async" class="mh-100 mw-100" style="object-fit: cover;" />
+			</div>
 		</div>
-	</div>
-}
+	}
 
-@helper RenderAsset(MediaViewModel asset) { 
+</div>
+
+@helper RenderAsset(MediaViewModel asset)
+{
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
 	string assetValue = asset.Value;
 
 	<td class="@(theme)">
-		@foreach (string format in supportedImageFormats) { //Images
-			if (assetValue.Contains(format)) {
+		@foreach (string format in supportedImageFormats)
+		{ //Images
+			if (assetValue.Contains(format))
+			{
 				@RenderImage(asset)
 			}
 		}
-		@foreach (string format in supportedVideoFormats) { //Videos
-			if (assetValue.Contains(format)) {
+		@foreach (string format in supportedVideoFormats)
+		{ //Videos
+			if (assetValue.Contains(format))
+			{
 				@RenderVideoScreendump(asset)
 			}
 		}
-		@foreach (string format in supportedDocumentFormats) { //Documents
-			if (assetValue.Contains(format)) {
+		@foreach (string format in supportedDocumentFormats)
+		{ //Documents
+			if (assetValue.Contains(format))
+			{
 				@RenderDocument(asset)
 			}
 		}
 	</td>
 }
 
-@helper RenderImage(MediaViewModel asset) { 
+@helper RenderImage(MediaViewModel asset)
+{
 	string productName = product.Name;
 	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
 	string imageLinkPath = imagePath;
@@ -243,7 +277,8 @@
 	</a>
 }
 
-@helper RenderVideoScreendump(MediaViewModel asset) { 
+@helper RenderVideoScreendump(MediaViewModel asset)
+{
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 
 	string videoScreendumpPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : "";
@@ -263,7 +298,8 @@
 	</div>
 }
 
-@helper RenderDocument(MediaViewModel asset) { 
+@helper RenderDocument(MediaViewModel asset)
+{
 	string productName = product.Name;
 	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
 	string imageLinkPath = imagePath;
@@ -278,22 +314,23 @@
 	</a>
 }
 
-@helper RenderVideoPlayer(MediaViewModel asset) { 
+@helper RenderVideoPlayer(MediaViewModel asset)
+{
 	string assetValue = asset.Value;
 	string videoId = asset.Value.Substring(asset.Value.LastIndexOf('/') + 1);
 	string type = assetValue.Contains("youtu.be") || assetValue.Contains("youtube") ? "youtube" : "";
 	type = assetValue.Contains("vimeo") ? "vimeo" : type;
 	type = assetValue.Contains(".mp4") ? "selfhosted" : type;
 
-	<div class="h-100"> 
-		@if (type != "selfhosted") { 
-			<div
-				id="player_@(Pageview.CurrentParagraph.ID)_@(videoId)"
-				class="plyr__video-embed" 
-				data-plyr-provider="@(type)" 
-				data-plyr-embed-id="@videoId" 
-				style="--plyr-color-main: var(--swift-foreground-color); height: 100%"
-				allowfullscreen>
+	<div class="h-100">
+		@if (type != "selfhosted")
+		{
+			<div id="player_@(Pageview.CurrentParagraph.ID)_@(videoId)"
+				 class="plyr__video-embed"
+				 data-plyr-provider="@(type)"
+				 data-plyr-embed-id="@videoId"
+				 style="--plyr-color-main: var(--swift-foreground-color); height: 100%"
+				 allowfullscreen>
 			</div>
 
 			<script type="module">
@@ -309,7 +346,9 @@
 					}
 				});
 			</script>
-		} else {
+		}
+		else
+		{
 			string videoType = Path.GetExtension(assetValue).ToLower();
 
 			<video preload="true" class="h-100 w-100" style="object-fit: cover;">
