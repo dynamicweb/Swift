@@ -1,5 +1,6 @@
 import * as bootstrap from 'bootstrap';
 import { Sliders } from './_sliders';
+import { Favorites } from './_favorites';
 import { Cart } from './_cart';
 import { Scroll } from './_scroll';
 import { ProductList } from './_productlist';
@@ -17,6 +18,7 @@ const swift = function () {
 	return {
 		Cart: Cart,
 		Sliders: Sliders,
+		Favorites: Favorites,
 		Scroll: Scroll,
 		ProductList: ProductList,
 		PageUpdater: PageUpdater,

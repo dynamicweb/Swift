@@ -1,4 +1,3 @@
-
 const Cart = function () {
 	return {
 		Update: async function (e) {

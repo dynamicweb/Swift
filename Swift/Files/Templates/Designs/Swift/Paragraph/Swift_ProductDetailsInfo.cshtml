@@ -3,13 +3,8 @@
 @using Dynamicweb.Ecommerce.Products.FieldDisplayGroups
 @using Dynamicweb.Frontend
 
-@{ 
+@{
 	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
-
-	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
-	bool anonymousUser = Pageview.User == null;
-	bool hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser;
-	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
 
 	ProductViewModel product = new ProductViewModel();
 
@@ -17,6 +12,13 @@
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser;
+	hideAddToCart = product.VariantInfo.VariantInfo != null && Model.Item.GetBoolean("HideVariantSelector") ? true : hideAddToCart;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+	bool hideFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("HideFavoritesSelector")) ? Model.Item.GetBoolean("HideFavoritesSelector") : false;
 
 	bool IsNeverOutOfStock = product.NeverOutOfstock;
 	string[] variantId = product.VariantId.Split('.');
@@ -42,8 +44,9 @@
 	foreach (var selection in selectedDisplayGroups)
 	{
 		foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
-		{		
-			if (selection == group.Id) {
+		{
+			if (selection == group.Id)
+			{
 				mainFeatures.Add(group);
 			}
 		}
@@ -60,7 +63,7 @@
 	string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
 	string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
 	string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
-	string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : ""; 
+	string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : "";
 
 	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
 	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
@@ -84,57 +87,72 @@
 			<div>
 				<div class="h4" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
 					<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
-				
-					@if (showPricesWithVat == "false" && !neverShowVat) {
+
+					@if (showPricesWithVat == "false" && !neverShowVat)
+					{
 						string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
 
 						<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
-						if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-							<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
-						}
-					} else {
-						string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
-
-						<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
-						if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+						if (product.Price.Price != product.PriceBeforeDiscount.Price)
+						{
 							<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
 						}
 					}
-			
-					@if (showPricesWithVat == "false" && !neverShowVat) {
+					else
+					{
+						string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
+
+						<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
+						if (product.Price.Price != product.PriceBeforeDiscount.Price)
+						{
+							<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
+						}
+					}
+
+					@if (showPricesWithVat == "false" && !neverShowVat)
+					{
 						string price = product.Price.PriceWithoutVatFormatted;
-						if (product?.VariantInfo?.VariantInfo != null) {
+						if (product?.VariantInfo?.VariantInfo != null)
+						{
 							priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
 							priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
 						}
-						if (priceMin != priceMax) {
+						if (priceMin != priceMax)
+						{
 							price = priceMin + " - " + priceMax;
-                        } 
+						}
 						<span class="text-price">@price</span>
-					} else {
+					}
+					else
+					{
 						string price = product.Price.PriceFormatted;
-						if (product?.VariantInfo?.VariantInfo != null) {
+						if (product?.VariantInfo?.VariantInfo != null)
+						{
 							priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
 							priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
 						}
-						if (priceMin != priceMax) {
+						if (priceMin != priceMax)
+						{
 							price = priceMin + " - " + priceMax;
 						}
 						<span class="text-price">@price</span>
 					}
 				</div>
-				@if (showPricesWithVat == "false" && !neverShowVat) {
+				@if (showPricesWithVat == "false" && !neverShowVat)
+				{
 					string price = product.Price.PriceWithVatFormatted;
-					if (product?.VariantInfo?.VariantInfo != null) {
+					if (product?.VariantInfo?.VariantInfo != null)
+					{
 						priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
 						priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
 					}
-					if (priceMin != priceMax) {
+					if (priceMin != priceMax)
+					{
 						price = priceMin + " - " + priceMax;
 					}
 					<small class="opacity-85 fst-normal">@price @Translate("Incl. VAT")</small>
 				}
-			</div> 
+			</div>
 		}
 
 		@if (!string.IsNullOrEmpty(product.ShortDescription))
@@ -150,16 +168,16 @@
 				@foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
 				{
 					<dl>
-					@foreach (var field in mainFeatureGroup.Fields)
-					{
-					@RenderField(field.Value)
-					}
+						@foreach (var field in mainFeatureGroup.Fields)
+						{
+							@RenderField(field.Value)
+						}
 					</dl>
 				}
 			</div>
 		}
 
-		@if (product.VariantInfo.VariantInfo != null)
+		@if (product.VariantInfo.VariantInfo != null && !Model.Item.GetBoolean("HideVariantSelector"))
 		{
 			int groupNumber = 1;
 
@@ -185,8 +203,8 @@
 								<button type="button" class="btn p-0 d-inline-block mb-2 variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id">
 									<img src="/Admin/Public/GetImage.ashx?image=@(option.Image.Value)&width=42&Format=WebP&Quality=70" />
 								</button>
-							} 
-							else 
+							}
+							else
 							{
 								<button type="button" class="btn btn-secondary d-inline-block mb-2 variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id">
 									@option.Name
@@ -194,89 +212,108 @@
 							}
 						}
 					</div>
-			
+
 					groupNumber++;
 				}
 			</form>
 		}
 
-		<form method="post" action="@url">
+		<div class="d-flex flex-row flex-nowrap gap-2">
 			@if (!hideAddToCart)
 			{
-				<div class="d-flex flex-row">
+				<form method="post" action="@url" class="flex-fill">
 					<input type="hidden" name="redirect" value="false" />
 					<input type="hidden" name="ProductId" value="@product.Id" />
 					<input type="hidden" name="cartcmd" value="add" />
 
-					@if (!string.IsNullOrEmpty(product.VariantId)) {
-						<input type="hidden" name="VariantId" value="@product.VariantId" />
-					}
-
-					@if (!Model.Item.GetBoolean("QuantitySelector"))
-					{
-						<div class="flex-fill">
-							<label for="Quantity_@product.Id" class="visually-hidden">@Translate("Quantity")</label>
+					<div class="input-group input-primary-button-group js-input-group d-flex flex-row flex-nowrap">
+						@if (!string.IsNullOrEmpty(product.VariantId))
+						{
+							<input type="hidden" name="VariantId" value="@product.VariantId" />
+						}
+						@if (!Model.Item.GetBoolean("QuantitySelector"))
+						{
 							<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" type="hidden">
-							<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary js-add-to-cart-button w-100 @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
-						</div>
-					} else {
-						<div class="flex-fill input-group input-primary-button-group d-flex flex-row js-input-group">
-							<label for="Quantity_@product.Id" class="visually-hidden">@Translate("Quantity")</label>
-							<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number" @qtyValidCheck>
-							<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart is-invalid" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
-							@if (stepQty != "1")
+
+						}
+						else
+						{
+							<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 6rem; min-width:4rem;" type="number">
+							if (stepQty != "1")
 							{
 								<div class="invalid-feedback d-none">
 									@Translate("Please select a quantity that is dividable by") @stepQty
 								</div>
 							}
-						</div>
-					}
-				</div>
-
-				if (!Model.Item.GetBoolean("HideStockState"))
-				{
-					if(!IsNeverOutOfStock)
-					{
-					<div class="mt-3 js-stock-state">
-						@if (product.StockLevel > 0)
-						{
-							if (!Model.Item.GetBoolean("HideInventory")) {
-								<p class="small text-success m-0">@product.StockLevel @Translate("Products available in stock")</p>
-							} else {
-								<p class="small text-success m-0">@Translate("Available in stock")</p>
-							}
-						} else {
-							<p class="small text-danger m-0">@Translate("Out of Stock")</p>
 						}
-
-						@if (hasExpectedDelivery)
-						{
-							<p>
-								<span>@Translate("Expected back in stock:")</span>
-								<span>@expectedDeliveryDate</span>
-							</p>
-						}
+						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
 					</div>
-					}
+				</form>
+				if (!anonymousUser && !hideFavoritesSelector)
+				{
+					@RenderPartial("Components/ToggleFavorite.cshtml", product)
 				}
 			}
-		</form>
+			else if (!anonymousUser && !hideFavoritesSelector)
+			{
+				<div class="flex-fill">
+					@Translate("Add to favorites") @RenderPartial("Components/ToggleFavorite.cshtml", product)
+				</div>
+			}
+		</div>
 	</div>
+	@if (!Model.Item.GetBoolean("HideStockState"))
+	{
+		if (!IsNeverOutOfStock)
+		{
+			<div class="mt-3 js-stock-state">
+
+				@if (product.StockLevel > 0)
+				{
+					if (!Model.Item.GetBoolean("HideInventory"))
+					{
+						<p class="small text-success m-0">@product.StockLevel @Translate("Products available in stock")</p>
+					}
+					else
+					{
+						<p class="small text-success m-0">@Translate("Available in stock")</p>
+					}
+				}
+
+				else
+				{
+					<p class="small text-danger m-0">@Translate("Out of Stock")</p>
+				}
+
+				@if (hasExpectedDelivery)
+				{
+					<p>
+						<span>@Translate("Expected back in stock:")</span>
+						<span>@expectedDeliveryDate</span>
+					</p>
+				}
+
+			</div>
+		}
+	}
 </div>
 
-@helper RenderField(FieldValueViewModel field) { 
+@helper RenderField(FieldValueViewModel field)
+{
 	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
 	bool noValues = false;
 
-	if (!string.IsNullOrEmpty(fieldValue)) {
-		if (field.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+	if (!string.IsNullOrEmpty(fieldValue))
+	{
+		if (field.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>))
+		{
 			System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
 			noValues = values.Count > 0 ? false : true;
 		}
 	}
 
-	if (!string.IsNullOrEmpty(fieldValue) && noValues == false) {
+	if (!string.IsNullOrEmpty(fieldValue) && noValues == false)
+	{
 		<dt class="g-col-12 g-col-sm-4 g-col-lg-12 fw-bold m-0">@field.Name</dt>
 		<dd class="g-col-12 g-col-sm-8 g-col-lg-12 mb-3">
 			@RenderFieldValue(field)
@@ -284,7 +321,8 @@
 	}
 }
 
-@helper RenderFieldValue(FieldValueViewModel field) { 
+@helper RenderFieldValue(FieldValueViewModel field)
+{
 	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
 
 	fieldValue = fieldValue == "False" ? Translate("No") : fieldValue;
@@ -300,21 +338,29 @@
 
 		foreach (FieldOptionValueViewModel option in values)
 		{
-			if (option.Value.Substring(0,1) == "#") {
-				isColor = true;   
+			if (option.Value.Substring(0, 1) == "#")
+			{
+				isColor = true;
 			}
 
-			if (!isColor) {
+			if (!isColor)
+			{
 				@option.Name
-			} else {
+			}
+			else
+			{
 				<span class="colorbox-sm" style="background-color: @option.Value" title="@option.Value"></span>
 			}
-			
-			if (valueCount != totalValues && valueCount < (totalValues - 1)) {
-				if (isColor) {
-<text> </text>
-				} else {
-<text>, </text>
+
+			if (valueCount != totalValues && valueCount < (totalValues - 1))
+			{
+				if (isColor)
+				{
+					<text> </text>
+				}
+				else
+				{
+					<text>, </text>
 				}
 			}
 			valueCount++;
@@ -322,13 +368,17 @@
 	}
 	else
 	{
-		if (fieldValue.Substring(0,1) == "#") {
-			isColor = true;   
+		if (fieldValue.Substring(0, 1) == "#")
+		{
+			isColor = true;
 		}
 
-		if (!isColor) {
+		if (!isColor)
+		{
 			@fieldValue
-		} else {
+		}
+		else
+		{
 			<span class="colorbox-sm" style="background-color: @fieldValue" title="@fieldValue"></span>
 		}
 	}
@@ -336,11 +386,8 @@
 
 @if (product.VariantInfo.VariantInfo != null)
 {
-	<script>
-		//Initialize the variant selector
-		document.addEventListener('load', function (event) {
-			swift.VariantSelector.init();
-		});
+	<script type="module">
+		swift.VariantSelector.init();
 	</script>
 }
 

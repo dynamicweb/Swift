@@ -87,11 +87,8 @@ const PageUpdater = function () {
 			let event = new CustomEvent("updated.swift.pageupdater", {
 				cancelable: true,
 				detail: {
-					cancelable: true,
-					detail: {
-						formData: formData,
-						html: html
-					}
+					formData: formData,
+					html: html
 				}
 			});
 			var globalDispatcher = document.dispatchEvent(event);
