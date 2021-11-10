@@ -1,9 +1,23 @@
 const Favorites = function () {
 
 	return {
+		GetList: function (e) {
+			var clickedButton = e.currentTarget;
+			swift.PageUpdater.Update(clickedButton);
+
+			/* Update the panel header */
+			if (document.querySelector('#DynamicOffcanvasLabel') != null && clickedButton.getAttribute("data-panel-label") != null) {
+				document.querySelector('#DynamicOffcanvasLabel').innerHTML = clickedButton.getAttribute("data-panel-label");
+			}
+		},
+
 		Update: async function (e) {
 			var clickedButton = e.currentTarget;
 			var form = clickedButton.closest('form');
+
+			var productId = clickedButton.getAttribute('data-product-id');
+			var variantId = clickedButton.getAttribute('data-variant-id');
+			var productBtn = document.querySelector('#FavoriteBtn_' + productId + variantId);
 
 			var command = clickedButton.getAttribute('data-command');
 			command = command == "add" ? "addproducttofavoritelist" : command;
@@ -11,6 +25,7 @@ const Favorites = function () {
 			form.querySelector('[name="FavoriteListId"]').value = clickedButton.getAttribute('data-list-id');
 			form.querySelector('[name="FavoriteCmd"]').value = command;
 
+			/* Update the clicked button */
 			if (command == "addproducttofavoritelist") {
 				clickedButton.setAttribute('data-command', 'remove');
 				clickedButton.querySelector('.js-filled-favorite-icon').classList.remove('d-none');
@@ -21,7 +36,8 @@ const Favorites = function () {
 				clickedButton.querySelector('.js-outline-favorite-icon').classList.remove('d-none');
 			}
 
-			if (clickedButton.closest('form').querySelector('.js-any-filled-favorite-icon') != null) {
+			/* Update the specific product favorite icon */
+			if (clickedButton.closest('form')) {
 				var favoriteFound = false;
 				clickedButton.closest('form').querySelectorAll('.js-filled-favorite-icon').forEach(function (icon) {
 					if (!icon.classList.contains('d-none')) {
@@ -30,11 +46,11 @@ const Favorites = function () {
 				});
 
 				if (favoriteFound) {
-					clickedButton.closest('form').querySelector('.js-any-filled-favorite-icon').classList.remove('d-none');
-					clickedButton.closest('form').querySelector('.js-any-outline-favorite-icon').classList.add('d-none');
+					productBtn.querySelector('.js-any-filled-favorite-icon').classList.remove('d-none');
+					productBtn.querySelector('.js-any-outline-favorite-icon').classList.add('d-none');
 				} else {
-					clickedButton.closest('form').querySelector('.js-any-filled-favorite-icon').classList.add('d-none');
-					clickedButton.closest('form').querySelector('.js-any-outline-favorite-icon').classList.remove('d-none');
+					productBtn.querySelector('.js-any-filled-favorite-icon').classList.add('d-none');
+					productBtn.querySelector('.js-any-outline-favorite-icon').classList.remove('d-none');
 				}
 			}
 

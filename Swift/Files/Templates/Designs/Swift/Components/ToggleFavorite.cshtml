@@ -6,37 +6,35 @@
 @{
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 	string productId = Model.Id;
+	string variantId = Model.VariantId;
 	bool isInFavoriteList = Pageview.User.IsProductInAnyFavoriteList(productId);
 
 	IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
-	int favoriteListIdFromUrl = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) : 0;
-	int favoriteListId = favoriteListIdFromUrl;
-	bool reloadPage = favoriteListIdFromUrl != 0;
+	int favoriteListId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) : 0;
 }
 
-<form method="post" action="@Pageview.SearchFriendlyUrl">
-	@if (favoreiteLists.Count() == 1) {
-		foreach (FavoriteList list in favoreiteLists) {
-			favoriteListId = list.ListId;
-		}
+
+@if (favoreiteLists.Count() == 1) {
+	foreach (FavoriteList list in favoreiteLists) {
+		favoriteListId = list.ListId;
 	}
+} 
 
-	<input type="hidden" name="ReloadPage" value="@reloadPage.ToString()" />
-	<input type="hidden" name="FavoriteCmd" value="" />
-	<input type="hidden" name="FavoriteListId" value="@favoriteListId"/>
-	<input type="hidden" name="UserId" value="@Pageview.User.ID" />
-	<input type="hidden" name="ProductId" value="@Model.Id" />
-	<input type="hidden" name="VariantId" value="@Model.VariantId" />
-	<input type="hidden" name="ProductName" value="@Model.Name" />
-	@if (!string.IsNullOrEmpty(Model.DefaultImage.Value)) {
-		<input type="hidden" name="Thumbnail" value="/Admin/Public/GetImage.ashx?image=@(Model.DefaultImage.Value)&width=80&format=webp" /> 
-    }
+@if (favoreiteLists.Count() < 2) {
+	isInFavoriteList = Pageview.User.IsProductInFavoriteList(favoriteListId, productId);
+	string defaultCommand = isInFavoriteList ? "remove" : "add";
+	string filledFavoriteIcon = isInFavoriteList ? "" : "d-none";
+	string outlineFavoriteIcon = isInFavoriteList ? "d-none" : "";
 
-	@if (favoreiteLists.Count() < 2) {
-		isInFavoriteList = Pageview.User.IsProductInFavoriteList(favoriteListId, productId);
-		string defaultCommand = isInFavoriteList ? "remove" : "add";
-		string filledFavoriteIcon = isInFavoriteList ? "" : "d-none";
-		string outlineFavoriteIcon = isInFavoriteList ? "d-none" : "";
+	<form action="@Pageview.SearchFriendlyUrl">
+		<input type="hidden" name="ReloadPage" value="false" />
+		<input type="hidden" name="FavoriteCmd" value="" />
+		<input type="hidden" name="FavoriteListId" value="@favoriteListId"/>
+		<input type="hidden" name="UserId" value="@Pageview.User.ID" />
+		<input type="hidden" name="ProductId" value="@productId" />
+		<input type="hidden" name="VariantId" value="@variantId" />
+		<input type="hidden" name="ProductName" value="@Model.Name" />
+		<input type="hidden" name="ProductImage" value="@(Model.DefaultImage.Value)" />
 
 		<button type="button" class="btn btn-secondary rounded-0 h-100" data-list-id="@favoriteListId" data-command="@defaultCommand" onclick="swift.Favorites.Update(event)">
 			<span class="icon-2 js-filled-favorite-icon @filledFavoriteIcon">
@@ -46,17 +44,25 @@
 				@ReadFile(iconPath + "heart.svg")
 			</span>
 		</button>
-	} else {
-		string anyFilledFavoriteIcon = isInFavoriteList ? "" : "d-none";
-		string anyOutlineFavoriteIcon = isInFavoriteList ? "d-none" : "";
+	</form>
+} else {
+	string servicePageId = GetPageIdByNavigationTag("FavoriteServicePage") != 0 ? GetPageIdByNavigationTag("FavoriteServicePage").ToString() : "";
 
-		<style>
-			.dropdown-toggle-no-arrow::after {
-				display: none;
-			}
-		</style>
+	string anyFilledFavoriteIcon = isInFavoriteList ? "" : "d-none";
+	string anyOutlineFavoriteIcon = isInFavoriteList ? "d-none" : "";
 
-		<button type="button" class="btn btn-secondary rounded-0 dropdown-toggle dropdown-toggle-no-arrow" data-bs-toggle="offcanvas" data-bs-target="#dynamicOffcanvas" aria-controls="dynamicOffcanvas">
+	<form action="/Default.aspx?ID=@servicePageId" data-response-target-element="DynamicOffcanvasBody" data-layout-template="Swift_MiniFavorites.cshtml">
+		<input type="hidden" name="ProductId" value="@productId" />
+		<input type="hidden" name="VariantId" value="@variantId" />
+		<input type="hidden" name="ProductName" value="@Model.Name" />
+		<input type="hidden" name="ProductImage" value="@(Model.DefaultImage.Value)" />
+
+		<button type="button" id="FavoriteBtn_@(productId)@(variantId)" class="btn btn-secondary rounded-0" 
+				data-bs-toggle="offcanvas" 
+				data-bs-target="#DynamicOffcanvas" 
+				aria-controls="DynamicOffcanvas" 
+				data-panel-label="@Translate("Save") @Model.Name @Translate("for later")"
+				onclick="swift.Favorites.GetList(event)">
 			<span class="icon-2 js-any-filled-favorite-icon @anyFilledFavoriteIcon">
 				@ReadFile(iconPath + "heart-filled.svg")
 			</span>
@@ -64,28 +70,6 @@
 				@ReadFile(iconPath + "heart.svg")
 			</span>
 		</button>
-
-		@*<ul class="dropdown-menu dropdown-menu-end">
-			@foreach (FavoriteList list in favoreiteLists) {
-				string listName = !string.IsNullOrEmpty(list.Name) ? list.Name : Translate("My favorites");
-				bool isInThisFavoriteList = Pageview.User.IsProductInFavoriteList(list.ListId, productId);
-				string defaultCommand = isInThisFavoriteList ? "remove" : "add";
-				string filledFavoriteIcon = isInThisFavoriteList ? "" : "d-none";
-				string outlineFavoriteIcon = isInThisFavoriteList ? "d-none" : "";
-
-				<li>
-					<button type="button" class="btn dropdown-item d-flex align-items-center h-100" data-list-id="@list.ListId" data-command="@defaultCommand" onclick="swift.Favorites.Update(event)">
-						<span class="flex-fill me-2">@listName</span>
-						<span class="icon-2 js-filled-favorite-icon @filledFavoriteIcon">
-							@ReadFile(iconPath + "heart-filled.svg")
-						</span>
-						<span class="icon-2 js-outline-favorite-icon @outlineFavoriteIcon">
-							@ReadFile(iconPath + "heart.svg")
-						</span>
-					</button>
-				</li>
-			}
-		</ul>*@
-	}
-</form>
+	</form>
+}
 
