@@ -32,7 +32,7 @@ const Favorites = function () {
 			}
 
 			/* Update the specific product favorite icon */
-			if (clickedButton.closest('form')) {
+			if (clickedButton.closest('form') && productBtn) {
 				var favoriteFound = false;
 				clickedButton.closest('form').querySelectorAll('.js-filled-favorite-icon').forEach(function (icon) {
 					if (!icon.classList.contains('d-none')) {
