@@ -4,11 +4,6 @@ const Favorites = function () {
 		GetList: function (e) {
 			var clickedButton = e.currentTarget;
 			swift.PageUpdater.Update(clickedButton);
-
-			/* Update the panel header */
-			if (document.querySelector('#DynamicOffcanvasLabel') != null && clickedButton.getAttribute("data-panel-label") != null) {
-				document.querySelector('#DynamicOffcanvasLabel').innerHTML = clickedButton.getAttribute("data-panel-label");
-			}
 		},
 
 		Update: async function (e) {
@@ -52,6 +47,8 @@ const Favorites = function () {
 					productBtn.querySelector('.js-any-filled-favorite-icon').classList.add('d-none');
 					productBtn.querySelector('.js-any-outline-favorite-icon').classList.remove('d-none');
 				}
+
+				productBtn.blur();
 			}
 
 			let formData = new FormData(form);
