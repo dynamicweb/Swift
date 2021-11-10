@@ -10,12 +10,12 @@
 	string linkFontSize = Model.Parameters["LinkFontSize"].ToString();
 }
 
-<nav class="d-none d-lg-flex nav flex-nowrap mx-n3 megamenu-wrapper @navAlignment">
+<nav class="navbar navbar-expand d-none d-lg-flex mx-n2 position-static megamenu-wrapper py-0 @navAlignment">
 	@RenderFirstLevelNodes(Model.Nodes, theme, linkFontWeight, linkCasing, linkFontSize)
 </nav>
 
-<nav class="d-flex d-lg-none nav flex-nowrap mx-n3">
-	@RenderFirstLevelNodesMobile(Model.Nodes, linkFontWeight, linkCasing, linkFontSize)
+<nav class="navbar navbar-expand d-flex d-lg-none mx-n2 py-0 @navAlignment">
+	@RenderFirstLevelNodesMobile(Model.Nodes, linkFontWeight, linkCasing, linkFontSize, navAlignment)
 </nav>
 
 @helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string theme, string linkFontWeight, string linkCasing, string linkFontSize)
@@ -28,144 +28,142 @@
 	string dropdownLinkCasing = Model.Parameters["DropdownLinkCasing"].ToString();
 	string dropdownLinkFontSize = Model.Parameters["DropdownLinkFontSize"].ToString();
 
-	foreach (var node in nodes)
-	{
-		var hasChildren = node.Nodes.Count() > 0;
-		string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
-
-		bool hasManyChildren = false;
-		foreach (var subnode in node.Nodes)
+	<ul class="navbar-nav">
+		@foreach (var node in nodes)
 		{
-			if (subnode.Nodes.Any())
+			var hasChildren = node.Nodes.Count() > 0;
+			string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
+
+			bool hasManyChildren = false;
+			foreach (var subnode in node.Nodes)
 			{
-				hasManyChildren = true;
+				if (subnode.Nodes.Any())
+				{
+					hasManyChildren = true;
+				}
 			}
-		}
-		string submenuType = "auto";
+			string submenuType = "auto";
 
-		if (submenuType == "auto")
-		{
-			submenuType = hasManyChildren ? "megamenu" : "dropdown";
-		}
-
-		<div class="nav-item has-megamenu@(node.IsActive ? " active" : "")">
-
-			@if (node.IsClickable)
+			if (submenuType == "auto")
 			{
-				<a class="nav-link nav-link-clean nav-link-underline @linkFontWeight @linkCasing @linkFontSize@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" @dropdownAttributes>
+				submenuType = hasManyChildren ? "megamenu" : "dropdown";
+			}
+
+			<li class="nav-item@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown" : "")@(hasManyChildren ? " has-megamenu" : "")">
+
+				@if (node.IsClickable)
+				{
+					<a class="nav-link nav-link-clean nav-link-underline @linkFontWeight @linkCasing @linkFontSize@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" @dropdownAttributes>
+						@RenderNavigationItem(node)
+					</a>
+				}
+				else
+				{
+					<span class="nav-link nav-link-clean @linkFontWeight @linkCasing @linkFontSize" @dropdownAlignment>
+						@RenderNavigationItem(node)
+					</span>
+				}
+
+				@if (hasChildren)
+				{
+					if (submenuType == "megamenu")
+					{
+						<div class="dropdown-menu megamenu px-3 py-4@(theme)" id="NavGroup@(node.PageId)">
+							<div class="container-xl">
+								<div class="d-flex flex-row flex-wrap mx-n2 @dropdownAlignment">
+									@foreach (var subnode in node.Nodes)
+									{
+										<div class="col-2">
+											<a href="@subnode.Link" class="nav-link nav-link-underline">
+												<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
+											</a>
+											@if (subnode.Nodes.Any())
+											{
+												foreach (var subsubnode in subnode.Nodes)
+												{
+													<a class="nav-link nav-link-underline" href="@subsubnode.Link" @(subnode.IsActive ? " aria-current='page'" : "")>
+														<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
+													</a>
+												}
+											}
+										</div>
+									}
+								</div>
+							</div>
+						</div> 
+						}
+					else
+					{
+						var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+						string pageType = page.ItemType;
+
+						<ul class="dropdown-menu@(theme)">
+							@if (pageType == "Swift_SignIn")
+							{
+								if (Pageview.User == null)
+								{
+									<li>
+										<a href="@node.Link" class="dropdown-item nav-link-underline  @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")>@node.Name</a>
+									</li>
+								}
+							}
+
+							@foreach (var subnode in node.Nodes)
+							{
+								<li>
+									<a class="dropdown-item nav-link-underline  @linkFontWeight @linkCasing @linkFontSize" href="@subnode.Link" @(node.IsActive ? " aria-current='page'" : "")>@subnode.Name</a>
+								</li>
+							}
+
+							@if (pageType == "Swift_SignIn")
+							{
+								if (Pageview.User != null)
+								{
+									string link = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
+						
+									<li><hr class="dropdown-divider"></li>
+
+									if (Pageview.User.CurrentSecondaryUser != null)
+									{
+										<li>
+											<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item nav-link-underline @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")  >@Translate("Sign out as a customer")</a>
+										</li>
+									}
+									<li>
+										<a href="@link" class="dropdown-item nav-link-underline @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")>@Translate("Sign out")</a>
+									</li>
+								}
+
+							}
+						</ul>
+					}
+				}
+			</li>
+		}
+	</ul>
+}
+
+@helper RenderFirstLevelNodesMobile(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string linkFontWeight, string linkCasing, string linkFontSize, string navAlignment)
+{
+	<div class="navbar-nav">
+		@foreach (var node in nodes)
+		{
+			var hasChildren = node.Nodes.Count() > 0;
+
+			if (node.IsClickable)
+			{
+				<a class="nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize @(node.IsActive ? " active" : "")" href="@node.Link">
 					@RenderNavigationItem(node)
 				</a>
 			}
 			else
 			{
-				<span class="nav-link nav-link-clean @linkFontWeight @linkCasing @linkFontSize" @dropdownAlignment>
+				<span class="nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize">
 					@RenderNavigationItem(node)
 				</span>
 			}
-
-			@if (hasChildren)
-			{
-				if (submenuType == "megamenu")
-				{
-					<div class="dropdown-menu megamenu px-3 py-4@(theme)" id="NavGroup@(node.PageId)">
-						<div class="container-xl">
-							<div class="d-flex flex-row flex-wrap mx-n3 @dropdownAlignment">
-								@foreach (var subnode in node.Nodes)
-								{
-									<div class="col-2">
-										<a href="@subnode.Link" class="nav-link nav-link-underline">
-											<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
-										</a>
-										@if (subnode.Nodes.Any())
-										{
-											foreach (var subsubnode in subnode.Nodes)
-											{
-												<a class="nav-link nav-link-underline" href="@subsubnode.Link" @(subnode.IsActive ? " aria-current='page'" : "")>
-													<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
-												</a>
-											}
-										}
-										else
-										{
-											<a class="nav-link" href="@subnode.Link" @(node.IsActive ? " aria-current='page'" : "")>
-												<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subnode.Name</span>
-											</a>
-										}
-									</div>
-								}
-							</div>
-						</div>
-					</div> 
-					}
-				else
-				{
-					var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
-					string pageType = page.ItemType;
-
-					<ul class="dropdown-menu@(theme)">
-						@if (pageType == "Swift_SignIn")
-						{
-							if (Pageview.User == null)
-							{
-								<li>
-									<a href="@node.Link" class="dropdown-item nav-link-underline  @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")>@node.Name</a>
-								</li>
-							}
-						}
-
-						@foreach (var subnode in node.Nodes)
-						{
-							<li>
-								<a class="dropdown-item nav-link-underline  @linkFontWeight @linkCasing @linkFontSize" href="@subnode.Link" @(node.IsActive ? " aria-current='page'" : "")>@subnode.Name</a>
-							</li>
-						}
-
-						@if (pageType == "Swift_SignIn")
-						{
-							if (Pageview.User != null)
-							{
-								string link = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
-						
-								<li><hr class="dropdown-divider"></li>
-
-								if (Pageview.User.CurrentSecondaryUser != null)
-								{
-									<li>
-										<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item nav-link-underline @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")  >@Translate("Sign out as a customer")</a>
-									</li>
-								}
-								<li>
-									<a href="@link" class="dropdown-item nav-link-underline @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")>@Translate("Sign out")</a>
-								</li>
-							}
-
-						}
-					</ul>
-				}
-			}
-		</div>
-	}
-}
-
-@helper RenderFirstLevelNodesMobile(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string linkFontWeight, string linkCasing, string linkFontSize)
-{
-	foreach (var node in nodes)
-	{
-		var hasChildren = node.Nodes.Count() > 0;
-
-		if (node.IsClickable)
-		{
-			<a class="nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize @(node.IsActive ? " active" : "")" href="@node.Link">
-				@RenderNavigationItem(node)
-			</a>
 		}
-		else
-		{
-			<span class="nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize">
-				@RenderNavigationItem(node)
-			</span>
-		}
-	}
+	</div>
 }
 
 @helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node)
@@ -251,4 +249,3 @@
 		</span>
 	}
 }
-
