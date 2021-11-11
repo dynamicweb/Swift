@@ -2,7 +2,7 @@
 @using Dynamicweb
 @using System.IO
 
-@{ 
+@{
 	string theme = Model.Parameters["theme"].ToString();
 	string navAlignment = Model.Parameters["NavAlignment"].ToString();
 	string linkFontWeight = Model.Parameters["LinkFontWeight"].ToString();
@@ -27,130 +27,157 @@
 	string dropdownLinkFontWeight = Model.Parameters["DropdownLinkFontWeight"].ToString();
 	string dropdownLinkCasing = Model.Parameters["DropdownLinkCasing"].ToString();
 	string dropdownLinkFontSize = Model.Parameters["DropdownLinkFontSize"].ToString();
-	string ProductGroupImage = Model.Parameters["ProductGroupImage"].ToString();
+	string ImagePlacement = Model.Parameters["ProductGroupImagePlacement"].ToString();
 
-	<ul class="navbar-nav">
-		@foreach (var node in nodes)
+	string imageAlignment = "";
+
+	imageAlignment = dropdownAlignment == "justify-content-start text-start" && ImagePlacement == "flex-row" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-start text-start" && ImagePlacement == "flex-row-reverse" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-start text-start" && ImagePlacement == "flex-column" ? "align-items-start" : imageAlignment;
+
+	imageAlignment = dropdownAlignment == "justify-content-center text-center" && ImagePlacement == "flex-row" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-center text-center" && ImagePlacement == "flex-row-reverse" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-center text-center" && ImagePlacement == "flex-column" ? "align-items-center" : imageAlignment;
+
+	imageAlignment = dropdownAlignment == "justify-content-end text-end" && ImagePlacement == "flex-row" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-end text-end" && ImagePlacement == "flex-row-reverse" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-end text-end" && ImagePlacement == "flex-column" ? "align-items-end" : imageAlignment;
+
+<ul class="navbar-nav">
+	@foreach (var node in nodes)
+	{
+		var hasChildren = node.Nodes.Count() > 0;
+		string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
+
+		bool hasManyChildren = false;
+		foreach (var subnode in node.Nodes)
 		{
-			var hasChildren = node.Nodes.Count() > 0;
-			string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
-
-			bool hasManyChildren = false;
-			foreach (var subnode in node.Nodes)
+			if (subnode.Nodes.Any())
 			{
-				if (subnode.Nodes.Any())
-				{
-					hasManyChildren = true;
-				}
+				hasManyChildren = true;
 			}
-			string submenuType = "auto";
+		}
+		string submenuType = "auto";
 
-			if (submenuType == "auto")
+		if (submenuType == "auto")
+		{
+			submenuType = hasManyChildren ? "megamenu" : "dropdown";
+		}
+
+		<li class="nav-item@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown" : "")@(hasManyChildren ? " has-megamenu" : "")">
+
+			@if (node.IsClickable)
 			{
-				submenuType = hasManyChildren ? "megamenu" : "dropdown";
+				<a class="nav-link nav-link-clean nav-link-underline @linkFontWeight @linkCasing @linkFontSize@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" @dropdownAttributes>
+					@RenderNavigationItem(node)
+				</a>
+			}
+			else
+			{
+				<span class="nav-link nav-link-clean @linkFontWeight @linkCasing @linkFontSize" @dropdownAlignment>
+					@RenderNavigationItem(node)
+				</span>
 			}
 
-			<li class="nav-item@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown" : "")@(hasManyChildren ? " has-megamenu" : "")">
-
-				@if (node.IsClickable)
+			@if (hasChildren)
+			{
+				if (submenuType == "megamenu")
 				{
-					<a class="nav-link nav-link-clean nav-link-underline @linkFontWeight @linkCasing @linkFontSize@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" @dropdownAttributes>
-						@RenderNavigationItem(node)
-					</a>
+					<div class="dropdown-menu megamenu px-3 py-4@(theme)" id="NavGroup@(node.PageId)">
+						<div class="container-xl">
+							<div class="d-flex flex-row flex-wrap mx-n2 @dropdownAlignment">
+								@foreach (var subnode in node.Nodes)
+								{
+									if (!string.IsNullOrEmpty(subnode.GroupId)) {
+
+										var group = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(subnode.GroupId, Dynamicweb.Ecommerce.Common.Context.LanguageID);
+										
+										if (group is object && group.ProductGroupFieldValues.Count > 0)
+										{
+											var groupName = group.Name;
+											var groupImage = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "NavProductGroupImage").Value;
+											var imagePath = "/Admin/Public/GetImage.ashx?Width=" + 48 + "&Height=" + 48 + "&crop=0&image=" + groupImage;
+											
+											<div class="col-2">
+												<a href="@subnode.Link" class="nav-link nav-link-underline">
+													@if (groupImage != null && ImagePlacement != "none")
+													{
+														<div class="d-flex @ImagePlacement @imageAlignment gap-3">
+															<img class="rounded-circle" alt="@groupName" width="48" height="48" src="@imagePath">
+															<h6 class="m-0 w-100 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
+														</div> 
+													}
+													else
+													{
+														<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
+													}
+												</a>
+												@if (subnode.Nodes.Any())
+												{
+													foreach (var subsubnode in subnode.Nodes)
+													{
+														<a class="nav-link nav-link-underline" href="@subsubnode.Link" @(subnode.IsActive ? " aria-current='page'" : "")>
+															<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
+														</a>
+													}
+												}
+										</div>
+										}
+									}
+								}
+							</div>
+						</div>
+					</div>
 				}
 				else
 				{
-					<span class="nav-link nav-link-clean @linkFontWeight @linkCasing @linkFontSize" @dropdownAlignment>
-						@RenderNavigationItem(node)
-					</span>
-				}
+					var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+					string pageType = page.ItemType;
 
-				@if (hasChildren)
-				{
-					if (submenuType == "megamenu")
-					{
-						<div class="dropdown-menu megamenu px-3 py-4@(theme)" id="NavGroup@(node.PageId)">
-							<div class="container-xl">
-								<div class="d-flex flex-row flex-wrap mx-n2 @dropdownAlignment">
-									@foreach (var subnode in node.Nodes)
-									{
-										<div class="col-2">
-											<a href="@subnode.Link" class="nav-link nav-link-underline">
-												@if (ProductGroupImage != "none")
-												{
-													<div class="d-flex @ProductGroupImage align-items-center gap-3">
-														@RenderGroupImage(subnode.GroupId, Dynamicweb.Ecommerce.Common.Context.LanguageID)
-														<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
-													</div>
-												}
-												else { 
-													<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
-												}
-											</a>
-											@if (subnode.Nodes.Any())
-											{
-												foreach (var subsubnode in subnode.Nodes)
-												{
-													<a class="nav-link nav-link-underline" href="@subsubnode.Link" @(subnode.IsActive ? " aria-current='page'" : "")>
-														<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
-													</a>
-												}
-											}
-										</div>
-									}
-								</div>
-							</div>
-						</div> 
-						}
-					else
-					{
-						var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
-						string pageType = page.ItemType;
-
-						<ul class="dropdown-menu@(theme)">
-							@if (pageType == "Swift_SignIn")
-							{
-								if (Pageview.User == null)
-								{
-									<li>
-										<a href="@node.Link" class="dropdown-item nav-link-underline  @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")>@node.Name</a>
-									</li>
-								}
-							}
-
-							@foreach (var subnode in node.Nodes)
+					<ul class="dropdown-menu@(theme)">
+						@if (pageType == "Swift_SignIn")
+						{
+							if (Pageview.User == null)
 							{
 								<li>
-									<a class="dropdown-item nav-link-underline  @linkFontWeight @linkCasing @linkFontSize" href="@subnode.Link" @(node.IsActive ? " aria-current='page'" : "")>@subnode.Name</a>
+									<a href="@node.Link" class="dropdown-item nav-link-underline  @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")>@node.Name</a>
+								</li>
+							}
+						}
+
+						@foreach (var subnode in node.Nodes)
+						{
+							<li>
+								<a class="dropdown-item nav-link-underline  @linkFontWeight @linkCasing @linkFontSize" href="@subnode.Link" @(node.IsActive ? " aria-current='page'" : "")>@subnode.Name</a>
+							</li>
+						}
+
+						@if (pageType == "Swift_SignIn")
+						{
+							if (Pageview.User != null)
+							{
+								string link = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
+
+								<li><hr class="dropdown-divider"></li>
+
+								if (Pageview.User.CurrentSecondaryUser != null)
+								{
+									<li>
+										<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item nav-link-underline @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")>@Translate("Sign out as a customer")</a>
+									</li>
+								}
+								<li>
+									<a href="@link" class="dropdown-item nav-link-underline @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")>@Translate("Sign out")</a>
 								</li>
 							}
 
-							@if (pageType == "Swift_SignIn")
-							{
-								if (Pageview.User != null)
-								{
-									string link = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
-						
-									<li><hr class="dropdown-divider"></li>
-
-									if (Pageview.User.CurrentSecondaryUser != null)
-									{
-										<li>
-											<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item nav-link-underline @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")  >@Translate("Sign out as a customer")</a>
-										</li>
-									}
-									<li>
-										<a href="@link" class="dropdown-item nav-link-underline @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")>@Translate("Sign out")</a>
-									</li>
-								}
-
-							}
-						</ul>
-					}
+						}
+					</ul>
 				}
-			</li>
-		}
-	</ul>
+			}
+		</li>
+	}
+</ul>
 }
 
 @helper RenderFirstLevelNodesMobile(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string linkFontWeight, string linkCasing, string linkFontSize, string navAlignment)
@@ -208,9 +235,9 @@
 			case "linksOnly":
 				<span class="align-middle">@node.Name</span>
 				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
-			break;
-		case "iconsOnly":
-			@RenderIcon(icon, iconSize)
+				break;
+			case "iconsOnly":
+				@RenderIcon(icon, iconSize)
 				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
 				break;
 			case "iconsAndLinks":
@@ -257,55 +284,5 @@
 		<span class="@iconSize">
 			@ReadFile(iconPath)
 		</span>
-	}
-}
-
-@helper RenderGroupImage(string groupID, string languageID)
-{
-	var group = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(groupID, languageID);
-
-	@*Media icon*@
-	if (!string.IsNullOrEmpty(group.Icon))
-    {
-		if (Path.GetExtension(group.Icon).ToLower() == ".svg")
-		{
-			@RenderIcon("/Files" + group.Icon, "icon-4")
-		}
-		else
-		{
-			var imagePath = "/Admin/Public/GetImage.ashx?Width=" + 48 + "&Height=" + 48 + "&crop=0&image=" + group.Icon + "Quality=100";
-
-			<img class="rounded-circle" src="@imagePath">
-		}
-	}
-	
-	@*Media small image *@
-	if (!string.IsNullOrEmpty(group.SmallImage))
-    {
-		if (Path.GetExtension(group.SmallImage).ToLower() == ".svg")
-		{
-			@RenderIcon("/Files" + group.SmallImage, "icon-3")
-	}
-	else
-	{
-		var imagePath = "/Admin/Public/GetImage.ashx?Width=" + 48 + "&Height=" + 48 + "&crop=0&image=" + group.SmallImage + "&Quality=100";
-
-			<img class="rounded-circle" src="@imagePath">
-		}
-	}
-
-	@*Media large image *@
-	if (!string.IsNullOrEmpty(group.LargeImage))
-    {
-		if (Path.GetExtension(group.LargeImage).ToLower() == ".svg")
-		{
-			@RenderIcon("/Files" + group.LargeImage, "icon-3")
-		}
-		else
-		{
-			var imagePath = "/Admin/Public/GetImage.ashx?Width=" + 48 + "&Height=" + 48 + "&crop=0&image=" + group.LargeImage + "&Quality=100";
-
-			<img class="rounded-circle" src="@imagePath">
-		}
 	}
 }
