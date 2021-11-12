@@ -1,6 +1,6 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
-
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
 
 @{ 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
@@ -24,6 +24,10 @@
 		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
 	}
 
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+
 	string detailsPageLink = Dynamicweb.Context.Current.Items["DetailsPageLink"] != null ? Dynamicweb.Context.Current.Items["DetailsPageLink"].ToString() : "";
 	string productTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductTheme")) ? " theme p-3 " + Model.Item.GetRawValueString("ProductTheme").Replace(" ", "").Trim().ToLower() : "";
 	string textPadding = productTheme != "" ? "px-2 px-lg-3 pb-2 pb-lg-3" : "";
@@ -33,6 +37,24 @@
 	string staticVariantsLayout = Model.Item.GetRawValueString("StaticVariantsLayout", "hide");
 
 	string groupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GroupID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") : "";
+
+	var favoriteParameters = new Dictionary<string, object>();
+	if (!anonymousUser && !hideFavoritesSelector)
+	{
+		int defaultFavoriteListId = 0;
+
+		IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
+		int favoriteListsTotal = favoreiteLists.Count();
+
+		if (favoreiteLists.Count() == 1) {
+			foreach (FavoriteList list in favoreiteLists) {
+				defaultFavoriteListId = list.ListId;
+			}
+		}
+		
+		favoriteParameters.Add("ListId", defaultFavoriteListId);
+		favoriteParameters.Add("ListTotal", favoriteListsTotal);
+	}
 
 	if (productList.TotalProductsCount > 0) { 
 		int pageSizeSetting = 30;
@@ -44,10 +66,6 @@
 		<div class="grid grid-2 grid-lg-3 pt-3">
 			@foreach (ProductViewModel product in productList.Products)
 			{
-				string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
-				bool anonymousUser = Pageview.User == null;
-				bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
-
 				string link = $"{detailsPageLink}&groupid={product.PrimaryOrDefaultGroup.Id}&productid={product.Id}";
 				link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
 				string imagePath = product?.DefaultImage?.Value ?? "";
@@ -87,7 +105,7 @@
 				<article class="product-list-item position-relative">
 					@if (!anonymousUser && !hideFavoritesSelector && product.VariantInfo.VariantInfo == null) {
 						<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
-							@RenderPartial("Components/ToggleFavorite.cshtml", product)
+							@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
 						</div>
 					}
 					<a href="@link" class="d-flex flex-column gap-3 d-block h-100 text-decoration-none @(productTheme)">
