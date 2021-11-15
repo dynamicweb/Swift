@@ -2,8 +2,7 @@
 @using Dynamicweb
 @using System.IO
 
-@{ 
-	string theme = Model.Parameters["theme"].ToString();
+@{
 	string navAlignment = Model.Parameters["NavAlignment"].ToString();
 	string linkFontWeight = Model.Parameters["LinkFontWeight"].ToString();
 	string linkCasing = Model.Parameters["LinkCasing"].ToString();
@@ -11,14 +10,14 @@
 }
 
 <nav class="navbar navbar-expand d-none d-lg-flex mx-n2 position-static megamenu-wrapper py-0 @navAlignment">
-	@RenderFirstLevelNodes(Model.Nodes, theme, linkFontWeight, linkCasing, linkFontSize)
+	@RenderFirstLevelNodes(Model.Nodes, linkFontWeight, linkCasing, linkFontSize)
 </nav>
 
 <nav class="navbar navbar-expand d-flex d-lg-none mx-n2 py-0 @navAlignment">
 	@RenderFirstLevelNodesMobile(Model.Nodes, linkFontWeight, linkCasing, linkFontSize, navAlignment)
 </nav>
 
-@helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string theme, string linkFontWeight, string linkCasing, string linkFontSize)
+@helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string linkFontWeight, string linkCasing, string linkFontSize)
 {
 	string dropdownAlignment = Model.Parameters["DropdownAlignment"].ToString();
 	string dropdownLinkHeaderFontWeight = Model.Parameters["DropdownLinkHeaderFontWeight"].ToString();
@@ -27,6 +26,7 @@
 	string dropdownLinkFontWeight = Model.Parameters["DropdownLinkFontWeight"].ToString();
 	string dropdownLinkCasing = Model.Parameters["DropdownLinkCasing"].ToString();
 	string dropdownLinkFontSize = Model.Parameters["DropdownLinkFontSize"].ToString();
+	bool showCampaignImage = Model.Parameters.ContainsKey("ShowCampaignImage") ? Convert.ToBoolean(Model.Parameters["ShowCampaignImage"].ToString()) : false;
 
 	<ul class="navbar-nav">
 		@foreach (var node in nodes)
@@ -68,36 +68,70 @@
 				{
 					if (submenuType == "megamenu")
 					{
-						<div class="dropdown-menu megamenu px-3 py-4@(theme)" id="NavGroup@(node.PageId)">
+						<div class="dropdown-menu megamenu py-4" id="NavGroup@(node.PageId)">
 							<div class="container-xl">
-								<div class="d-flex flex-row flex-wrap mx-n2 @dropdownAlignment">
-									@foreach (var subnode in node.Nodes)
-									{
-										<div class="col-2">
-											<a href="@subnode.Link" class="nav-link nav-link-underline">
-												<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
-											</a>
-											@if (subnode.Nodes.Any())
-											{
-												foreach (var subsubnode in subnode.Nodes)
+								@if (showCampaignImage != false)
+								{
+									<div class="grid">
+										<div class="g-col-9 g-col-xl-10">
+											<div class="grid mx-n2 @dropdownAlignment">
+												@foreach (var subnode in node.Nodes)
 												{
-													<a class="nav-link nav-link-underline" href="@subsubnode.Link" @(subnode.IsActive ? " aria-current='page'" : "")>
-														<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
-													</a>
+													<div class="g-col-4 g-col-xxl-3 g-col-xxxl-2">
+														<a href="@subnode.Link" class="nav-link nav-link-underline">
+															<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
+														</a>
+														@if (subnode.Nodes.Any())
+														{
+															foreach (var subsubnode in subnode.Nodes)
+															{
+																<a class="nav-link nav-link-underline" href="@subsubnode.Link" @(subnode.IsActive ? " aria-current='page'" : "")>
+																	<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
+																</a>
+															}
+														}
+													</div>
 												}
+											</div>
+										</div>
+										<div class="g-col-3 g-col-xl-2">
+											@foreach (var subnode in node.Nodes)
+											{
+												@RenderCampaignImage(subnode.GroupId, Dynamicweb.Ecommerce.Common.Context.LanguageID)
 											}
 										</div>
-									}
-								</div>
+									</div>
+								}
+								else { 
+									<div class="grid mx-n2 @dropdownAlignment">
+										@foreach (var subnode in node.Nodes)
+										{
+											<div class="g-col-3 g-col-xxl-2">
+												<a href="@subnode.Link" class="nav-link nav-link-underline">
+													<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
+												</a>
+												@if (subnode.Nodes.Any())
+												{
+													foreach (var subsubnode in subnode.Nodes)
+													{
+														<a class="nav-link nav-link-underline" href="@subsubnode.Link" @(subnode.IsActive ? " aria-current='page'" : "")>
+															<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
+														</a>
+													}
+												}
+											</div>
+										}
+									</div>
+								}
 							</div>
-						</div> 
-						}
+						</div>
+					}
 					else
 					{
 						var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
 						string pageType = page.ItemType;
 
-						<ul class="dropdown-menu@(theme)">
+						<ul class="dropdown-menu">
 							@if (pageType == "Swift_SignIn")
 							{
 								if (Pageview.User == null)
@@ -120,13 +154,13 @@
 								if (Pageview.User != null)
 								{
 									string link = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
-						
+
 									<li><hr class="dropdown-divider"></li>
 
 									if (Pageview.User.CurrentSecondaryUser != null)
 									{
 										<li>
-											<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item nav-link-underline @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")  >@Translate("Sign out as a customer")</a>
+											<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item nav-link-underline @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")>@Translate("Sign out as a customer")</a>
 										</li>
 									}
 									<li>
@@ -198,9 +232,9 @@
 			case "linksOnly":
 				<span class="align-middle">@node.Name</span>
 				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
-			break;
-		case "iconsOnly":
-			@RenderIcon(icon, iconSize)
+				break;
+			case "iconsOnly":
+				@RenderIcon(icon, iconSize)
 				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
 				break;
 			case "iconsAndLinks":
@@ -247,5 +281,35 @@
 		<span class="@iconSize">
 			@ReadFile(iconPath)
 		</span>
+	}
+}
+
+@helper RenderCampaignImage(string groupID, string languageID)
+{
+	if (!string.IsNullOrEmpty(groupID))
+	{
+		var group = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(groupID, languageID);
+
+		if (group is object && group.ProductGroupFieldValues.Count > 0)
+		{
+			var campaignImage = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "CampaignImage").Value.ToString();
+			var campaignImageDescription = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "CampaignImageDescription").Value.ToString();
+			var campaignImageLinkLabel = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "CampaignImageLinkLabel").Value.ToString();
+			var campaignImageLink = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "CampaignImageLink").Value.ToString();
+			string campaignTheme = Model.Parameters.ContainsKey("CampaignTheme") ? Model.Parameters["CampaignTheme"].ToString().ToLower() : "";
+
+
+			if (!string.IsNullOrEmpty(campaignImage))
+			{
+				var imagePath = "/Admin/Public/GetImage.ashx?Width=" + 1000 + "&Height=" + 1000 + "&crop=0&image=" + "Files/Images/" + campaignImage;
+				<div class="card @campaignTheme">
+					<img src="@imagePath" class="card-img-top" alt="@campaignImageDescription">
+					<div class="card-body">
+						<p class="card-text">@campaignImageDescription</p>
+						<a href="campaignImageLink" title="" class="btn btn-link stretched-link p-0">@campaignImageLinkLabel</a>
+					</div>
+				</div>
+			}
+		}
 	}
 }
