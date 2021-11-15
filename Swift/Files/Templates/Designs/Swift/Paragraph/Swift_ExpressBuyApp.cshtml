@@ -1,0 +1,156 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb
+@{
+	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+	string paragraphId = Model.ID.ToString();
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+
+	Dynamicweb.Frontend.LinkViewModel checkoutAnonymousPageId = Model.Item.GetLink("CheckoutAnonymousPageLink");
+	Dynamicweb.Frontend.LinkViewModel checkoutUserPageId = Model.Item.GetLink("CheckoutUserPageLink");
+	Dynamicweb.Frontend.LinkViewModel productListPage = Model.Item.GetLink("ProductListPage");
+	Dynamicweb.Frontend.LinkViewModel productDetailsPage = Model.Item.GetLink("ProductDetailsPage");
+	string productListPageUrl = productListPage?.Url;
+	string productDetailsPageUrl = productDetailsPage?.Url;
+	string checkoutAnonymousPageUrl = checkoutAnonymousPageId?.Url;
+	string checkoutUserPageUrl = checkoutUserPageId?.Url;
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+}
+
+<div class="grid gap-0 min-vh-lg-100 h-lg-100">
+	
+	<section class="g-col-12 g-col-lg-8 p-3 p-lg-5 d-flex flex-column align-content-stretch order-last order-lg-first position-relative">
+		@Header()
+		@Search()
+	</section>
+
+	<aside class="g-col-12 g-col-lg-4 order-first order-lg-last @(theme)">
+
+		<div class="p-3 p-lg-5">
+			@if(!isVisualEditor)
+			{
+				string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartSummary"));
+	
+				<div id="CartSummaryContainer_@Model.ID">
+					@* Initial form for first load (We pass all the settings to the actual template) *@
+				</div>
+
+				<form action="@url" id="CartSummaryForm_@Model.ID" data-layout-template="Swift_CartSummary.cshtml" data-response-target-element="CartSummaryContainer_@Model.ID">
+					<input type="hidden" name="redirect" value="false" />
+					<input type="hidden" id="ProductId" name="ProductId" value="" />
+					<input type="hidden" id="VariantId" name="VariantId" value="" />
+					<input type="hidden" id="Quantity" name="Quantity" value="" />
+					<input type="hidden" name="cartcmd" value="add" />
+				</form>
+
+				<script type="module">
+					swift.PageUpdater.Update(document.querySelector("#CartSummaryForm_@Model.ID"));
+				</script>
+			}
+			else
+			{
+				<div class="alert alert-info" role="alert">
+					<span>@Translate("Cart Summary")</span>
+				</div>
+			}
+		</div>
+
+	</aside>
+
+</div>
+
+
+@helper Header()
+{
+	int frontPageId = Dynamicweb.Services.Pages.GetFirstPageForArea(Pageview.AreaID).ID;
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	<header class="d-flex flex-grow-0 pb-3 pb-lg-0">
+		<div class="flex-fill">
+			<h1 class="h3">Express buy</h1>
+			<p class="mb-0">Use the search to find your products</p>
+		</div>
+		<div class="d-flex align-items-start gap-2">
+			<a href="/Default.aspx?id=@frontPageId" class="btn btn-secondary">
+				<div class="d-flex gap-2 align-items-center lh-base">
+					<span class="icon-2">
+						@ReadFile(iconPath + "arrow-left.svg")
+					</span>
+					<span>@Translate("Leave")</span>
+				</div>
+			</a>
+		</div>
+	</header>
+}
+
+@helper Search()
+{
+	string url = "/Default.aspx?ID=" + Model.PageID;
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	string searchTerm = string.Empty;
+	if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request["q"]))
+	{
+		searchTerm = Dynamicweb.Context.Current.Request["q"];
+	}
+	
+	<form class="position-sticky top-0" action="/Default.aspx" id="ExpressBuyForm_@Model.ID" data-response-target-element="ExpressBuyResultsContainer_@Model.ID" onsubmit="updateSearch(); return false;" data-preloader="inline">
+		<div class="py-3 py-lg-4 w-100">
+			<input type="hidden" name="ID" value="@Model.PageID" />
+			<input type="hidden" name="feed" value="true" />
+			<input type="hidden" name="redirect" value="false" />
+			<input type="hidden" name="isVariant" value="true,false" />
+			@*<input type="hidden" name="sku" />*@
+
+
+			<div class="input-group">
+				<span class="position-absolute top-0 icon-2 px-3 d-flex align-items-center h-100 search-icon" style="z-index: 1;">
+					@ReadFile(iconPath + "search.svg")
+				</span>
+				<label for="search_@Model.ID" class="visually-hidden">@Translate("Search here")</label>
+				<input id="search_@Model.ID"
+					   class="form-control rounded-pill rounded-end py-2 ps-5 pe-3"
+					   type="search"
+					   placeholder="@Translate("Search here")"
+					   autocomplete="off"
+					   maxlength="255"
+					   name="q"
+					   value="@searchTerm"
+					   onkeyup="updateSearch();">
+
+				<button type="submit" class="btn btn-primary rounded-pill rounded-start" style="max-width: 10rem; min-width: 115px;">@Translate("Search")</button>
+
+			</div>
+		</div>
+	</form>
+
+	<script>
+		function updateSearch() {
+			swift.PageUpdater.Update(document.querySelector("#ExpressBuyForm_@Model.ID"));
+		}
+	</script>
+
+	<div id="ExpressBuyResultsContainer_@Model.ID" class="grid gap-2">
+		@* Initial form for first load (We pass all the settings to the actual template) *@
+		@EmptyState()
+		@*@Model.GetModuleOutput()*@
+	</div>
+}
+
+
+@helper EmptyState()
+{
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	<div class="js-express-buy-empty-state align-items-center d-flex flex-column flex-grow-1 justify-content-center min-vh-50">
+
+		<div class="d-flex flex-column gap-3 lh-1 align-items-center text-center">
+			<span class="icon-7">
+				@ReadFile(iconPath + "search.svg")
+			</span>
+			<h3 class="m-0">Go ahead and search</h3>
+			<p class="m-0 fs-7">Do you prefer browsing for products? Then click to explore product catalog</p>
+
+			<a href="#" class="mt-2 btn btn-secondary">Explore products</a>
+		</div>
+
+	</div>
+}
