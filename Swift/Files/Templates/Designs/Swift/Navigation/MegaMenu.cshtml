@@ -26,7 +26,7 @@
 	string dropdownLinkFontWeight = Model.Parameters["DropdownLinkFontWeight"].ToString();
 	string dropdownLinkCasing = Model.Parameters["DropdownLinkCasing"].ToString();
 	string dropdownLinkFontSize = Model.Parameters["DropdownLinkFontSize"].ToString();
-	bool showCampaignImage = Model.Parameters.ContainsKey("ShowCampaignImage") ? Convert.ToBoolean(Model.Parameters["ShowCampaignImage"].ToString()) : false;
+	bool showProductGroupPromotionImage = Model.Parameters.ContainsKey("ShowProductGroupPromotionImage") ? Convert.ToBoolean(Model.Parameters["ShowProductGroupPromotionImage"].ToString()) : false;
 
 	<ul class="navbar-nav">
 		@foreach (var node in nodes)
@@ -70,7 +70,7 @@
 					{
 						<div class="dropdown-menu megamenu py-4" id="NavGroup@(node.PageId)">
 							<div class="container-xl">
-								@if (showCampaignImage != false)
+								@if (showProductGroupPromotionImage == true)
 								{
 									<div class="grid">
 										<div class="g-col-9 g-col-xl-10">
@@ -94,12 +94,42 @@
 												}
 											</div>
 										</div>
-										<div class="g-col-3 g-col-xl-2">
-											@foreach (var subnode in node.Nodes)
+										@if (!string.IsNullOrEmpty(node.GroupId))
+										{
+											var group = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(node.GroupId, Dynamicweb.Ecommerce.Common.Context.LanguageID);
+
+											if (group is object && group.ProductGroupFieldValues.Count > 0)
 											{
-												@RenderCampaignImage(subnode.GroupId, Dynamicweb.Ecommerce.Common.Context.LanguageID)
+												var productGroupPromotionImage = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "ProductGroupPromotionImage").Value.ToString();
+												var productGroupPromotionDescription = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "ProductGroupPromotionDescription").Value.ToString();
+												var productGroupPromotionLinkLabel = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "ProductGroupPromotionLinkLabel").Value.ToString();
+												string productGroupPromotionImageTheme = Model.Parameters.ContainsKey("ProductGroupPromotionImageTheme") ? Model.Parameters["ProductGroupPromotionImageTheme"].ToString().ToLower() : "";
+												var groupName = group.Name;
+												var imagePath = "/Admin/Public/GetImage.ashx?Width=" + 1000 + "&Height=" + 1000 + "&crop=0&image=" + "Files/Images/" + productGroupPromotionImage;
+
+												if (!string.IsNullOrEmpty(productGroupPromotionImage))
+												{
+													<div class="g-col-3 g-col-xl-2">
+														<div class="card@(productGroupPromotionImageTheme)">
+															<img src="@imagePath" class="card-img-top" alt="@groupName">
+															<div class="card-body">
+																@if (!string.IsNullOrEmpty(productGroupPromotionDescription)) { 
+																	<p class="card-text">@productGroupPromotionDescription</p>
+																}
+																@if(!string.IsNullOrEmpty(productGroupPromotionLinkLabel)) 
+																{	
+																	<a href="@node.Link" title="@productGroupPromotionLinkLabel" class="btn btn-link stretched-link p-0">@productGroupPromotionLinkLabel</a>
+																}
+																else
+																{ 
+																	<a href="@node.Link" title="@groupName" class="btn btn-link stretched-link p-0">@groupName</a>
+																}
+															</div>
+														</div>
+													</div>
+												}
 											}
-										</div>
+										}
 									</div>
 								}
 								else { 
@@ -281,35 +311,5 @@
 		<span class="@iconSize">
 			@ReadFile(iconPath)
 		</span>
-	}
-}
-
-@helper RenderCampaignImage(string groupID, string languageID)
-{
-	if (!string.IsNullOrEmpty(groupID))
-	{
-		var group = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(groupID, languageID);
-
-		if (group is object && group.ProductGroupFieldValues.Count > 0)
-		{
-			var campaignImage = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "CampaignImage").Value.ToString();
-			var campaignImageDescription = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "CampaignImageDescription").Value.ToString();
-			var campaignImageLinkLabel = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "CampaignImageLinkLabel").Value.ToString();
-			var campaignImageLink = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "CampaignImageLink").Value.ToString();
-			string campaignTheme = Model.Parameters.ContainsKey("CampaignTheme") ? Model.Parameters["CampaignTheme"].ToString().ToLower() : "";
-
-
-			if (!string.IsNullOrEmpty(campaignImage))
-			{
-				var imagePath = "/Admin/Public/GetImage.ashx?Width=" + 1000 + "&Height=" + 1000 + "&crop=0&image=" + "Files/Images/" + campaignImage;
-				<div class="card @campaignTheme">
-					<img src="@imagePath" class="card-img-top" alt="@campaignImageDescription">
-					<div class="card-body">
-						<p class="card-text">@campaignImageDescription</p>
-						<a href="campaignImageLink" title="" class="btn btn-link stretched-link p-0">@campaignImageLinkLabel</a>
-					</div>
-				</div>
-			}
-		}
 	}
 }
