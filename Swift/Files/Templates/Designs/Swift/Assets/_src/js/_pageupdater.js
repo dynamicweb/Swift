@@ -29,7 +29,7 @@ const PageUpdater = function () {
 
 			if (globalDispatcher != false && localDispatcher != false) {
 				//UI updates
-				var preloaderTargetElement = type != "inline" ? form : responseTargetElement;
+				var preloaderTargetElement = preloader != "inline" ? form : responseTargetElement;
 				var addPreloaderTimer = setTimeout(function () {
 					PageUpdater.AddPreloaders(type, preloaderTargetElement);
 				}, 200); //Small delay to secure that the preloader is not loaded all the time
@@ -48,9 +48,10 @@ const PageUpdater = function () {
 		UpdateFromUrl: async function (e, url) {
 			var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
 			var layoutTemplate = clickedButton.getAttribute("data-layout-template") ? clickedButton.getAttribute("data-layout-template") : "Swift_PageClean.cshtml";
-			var responseTargetElement = clickedButton.getAttribute("data-response-target-element") ? "#" + document.querySelector(clickedButton.getAttribute("data-response-target-element")) : clickedButton;
-
 			url += "&LayoutTemplate=" + layoutTemplate;
+
+			//By default the UpdateFromUrl simply targets the element that makes the call. But you do also have the choice of setting the target
+			var responseTargetElement = clickedButton.getAttribute("data-response-target-element") ? document.querySelector("#" + clickedButton.getAttribute("data-response-target-element")) : clickedButton;
 
 			//Fire the 'update' event
 			let event = new CustomEvent("update.swift.pageupdater", {
@@ -65,7 +66,7 @@ const PageUpdater = function () {
 			if (globalDispatcher != false && localDispatcher != false) {
 				//UI updates
 				var addPreloaderTimer = setTimeout(function () {
-					PageUpdater.AddPreloaders("inline", clickedButton);
+					PageUpdater.AddPreloaders("inline", responseTargetElement);
 				}, 200); //Small delay to secure that the preloader is not loaded all the time
 
 				//Fetch
@@ -97,8 +98,11 @@ const PageUpdater = function () {
 					targetElement.innerHTML = "";
 				}
 
+				var preloaderContainer = document.createElement('div');
+				preloaderContainer.className = "w-100 h-100 d-flex justify-content-center align-items-center";
 				var preloaderElement = document.createElement('div');
-				preloaderElement.className = "d-flex icon-1";
+				preloaderElement.className = "icon-1";
+				preloaderContainer.appendChild(preloaderElement);
 				var preloaderSpinner = document.createElement('div');
 				preloaderSpinner.className = "spinner-border m-auto";
 				preloaderElement.appendChild(preloaderSpinner);
@@ -108,7 +112,7 @@ const PageUpdater = function () {
 				preloaderElement.appendChild(helper);
 
 				if (targetElement != null) {
-					targetElement.appendChild(preloaderElement);
+					targetElement.appendChild(preloaderContainer);
 				}
 			}
 		},
