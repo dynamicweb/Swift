@@ -1,55 +1,13 @@
 const Favorites = function () {
 
 	return {
-		GetList: function (e) {
-			var clickedButton = e.currentTarget;
-			swift.PageUpdater.Update(clickedButton);
-		},
-
 		Update: async function (e) {
-			var clickedButton = e.currentTarget;
-			var form = clickedButton.closest('form');
+			var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
+			var form = e.currentTarget != undefined ? clickedButton.closest('form') : document.querySelector('#' + e);
 
-			var productId = clickedButton.getAttribute('data-product-id');
-			var variantId = clickedButton.getAttribute('data-variant-id');
-			var productBtn = document.querySelector('#FavoriteBtn_' + productId + variantId);
-
-			var command = clickedButton.getAttribute('data-command');
-			command = command == "add" ? "addproducttofavoritelist" : command;
-			command = command == "remove" ? "removeproductfromfavoritelist" : command;
-			form.querySelector('[name="FavoriteListId"]').value = clickedButton.getAttribute('data-list-id');
-			form.querySelector('[name="FavoriteCmd"]').value = command;
-
-			/* Update the clicked button */
-			if (command == "addproducttofavoritelist") {
-				clickedButton.setAttribute('data-command', 'remove');
-				clickedButton.querySelector('.js-filled-favorite-icon').classList.remove('d-none');
-				clickedButton.querySelector('.js-outline-favorite-icon').classList.add('d-none');
-			} else {
-				clickedButton.setAttribute('data-command', 'add');
-				clickedButton.querySelector('.js-filled-favorite-icon').classList.add('d-none');
-				clickedButton.querySelector('.js-outline-favorite-icon').classList.remove('d-none');
-			}
-
-			/* Update the specific product favorite icon */
-			if (clickedButton.closest('form') && productBtn) {
-				var favoriteFound = false;
-				clickedButton.closest('form').querySelectorAll('.js-filled-favorite-icon').forEach(function (icon) {
-					if (!icon.classList.contains('d-none')) {
-						favoriteFound = true;
-					}
-				});
-
-				if (favoriteFound) {
-					productBtn.querySelector('.js-any-filled-favorite-icon').classList.remove('d-none');
-					productBtn.querySelector('.js-any-outline-favorite-icon').classList.add('d-none');
-				} else {
-					productBtn.querySelector('.js-any-filled-favorite-icon').classList.add('d-none');
-					productBtn.querySelector('.js-any-outline-favorite-icon').classList.remove('d-none');
-				}
-
-				productBtn.blur();
-			}
+			var productId = form.getAttribute('data-product-id');
+			var variantId = form.getAttribute('data-variant-id');
+			var productButton = document.querySelector('#FavoriteBtn_' + productId + variantId);
 
 			let formData = new FormData(form);
 			var fetchOptions = {
@@ -66,20 +24,19 @@ const Favorites = function () {
 				}
 			});
 			var globalDispatcher = document.dispatchEvent(event);
-			var localDispatcher = clickedButton.dispatchEvent(event);
 
-			if (globalDispatcher != false && localDispatcher != false) {
+			if (globalDispatcher != false) {
 				let response = await fetch(form.action, fetchOptions);
 
 				if (response.ok) {
-					Favorites.Success(response, formData, clickedButton);
+					Favorites.Success(response, formData, clickedButton, productButton);
 				} else {
 					Favorites.Error(response);
 				}
 			}
 		},
 
-		Success: async function (response, formData, clickedButton) {
+		Success: async function (response, formData, clickedButton, productButton) {
 			var favoriteNotification = document.querySelector("#favoriteNotificationToast");
 
 			//Fire the 'updated'´event
@@ -90,9 +47,8 @@ const Favorites = function () {
 				}
 			});
 			var globalDispatcher = document.dispatchEvent(event);
-			var localDispatcher = clickedButton.dispatchEvent(event);
 
-			if (favoriteNotification && globalDispatcher != false && localDispatcher != false) {
+			if (favoriteNotification && globalDispatcher != false) {
 				var data = Object.fromEntries(formData.entries());
 				var command = data.FavoriteCmd;
 				var reloadPage = data.ReloadPage;
@@ -109,6 +65,14 @@ const Favorites = function () {
 							document.querySelector("#favoriteNotificationToast_Image").appendChild(imageElement);
 						}
 						document.querySelector("#favoriteNotificationToast_Text").innerHTML = data.ProductName;
+
+						/* Update the specific product favorite icon */
+						if (productButton) {
+							var icon = productButton.querySelector('img');
+							var currentIcon = icon.src;
+							icon.src = icon.getAttribute("data-alt-icon");
+							icon.setAttribute("data-alt-icon", icon);
+						}
 					}
 				}
 

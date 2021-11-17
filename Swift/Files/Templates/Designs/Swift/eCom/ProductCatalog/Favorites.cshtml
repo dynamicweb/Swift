@@ -1,0 +1,79 @@
+@inherits ViewModelTemplate<ProductViewModel>
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	string productId = Model.Id;
+	string variantId = Model.VariantId;
+	bool isInFavoriteList;
+
+	IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
+	int favoriteListTotal = favoreiteLists.Count();
+
+	int favoriteListId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) : 0;
+	bool isFavoriteListDetailPage = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? true : false;
+}
+
+@if (favoriteListTotal < 2 || isFavoriteListDetailPage ) {
+	isInFavoriteList = Pageview.User.IsProductInFavoriteList(favoriteListId, productId, variantId);
+	string defaultCommand = isInFavoriteList ? "remove" : "add";
+	string filledFavoriteIcon = isInFavoriteList ? "" : "d-none";
+	string outlineFavoriteIcon = isInFavoriteList ? "d-none" : "";
+
+	<form action="@Pageview.SearchFriendlyUrl" id="FavoriteToggleForm_@productId@variantId" data-product-id="@productId" data-variant-id="@variantId">
+		<input type="hidden" name="ReloadPage" value="false" />
+		<input type="hidden" name="FavoriteListId" value="@favoriteListId"/>
+		<input type="hidden" name="UserId" value="@Pageview.User.ID" />
+		<input type="hidden" name="ProductName" value="@Model.Name" />
+		@if (!string.IsNullOrEmpty(Model.DefaultImage.Value)) {
+			<input type="hidden" name="Thumbnail" value="/Admin/Public/GetImage.ashx?image=@(Model.DefaultImage.Value)&width=80&format=webp" /> 
+		}
+		@if (isInFavoriteList) {
+			<input type="hidden" name="FavoriteCmd" value="removeproductfromfavoritelist" />
+        } else {
+			<input type="hidden" name="FavoriteCmd" value="addproducttofavoritelist" />
+        }
+	</form>
+
+	<script>
+		swift.Favorites.Update('FavoriteToggleForm_@productId@variantId');
+	</script>
+
+	if (isInFavoriteList) {
+		<img src="@(iconPath)heart-filled.svg" data-alt-icon="@(iconPath)heart.svg" class="icon-2" />
+	} else {
+		<img src="@(iconPath)heart.svg" data-alt-icon="@(iconPath)heart-filled.svg" class="icon-2" />
+	}
+} else {
+	isInFavoriteList = Pageview.User.IsProductInAnyFavoriteList(productId);
+	string servicePageId = GetPageIdByNavigationTag("FavoriteServicePage") != 0 ? GetPageIdByNavigationTag("FavoriteServicePage").ToString() : "";
+
+	string anyFilledFavoriteIcon = isInFavoriteList ? "" : "d-none";
+	string anyOutlineFavoriteIcon = isInFavoriteList ? "d-none" : "";
+
+	<form action="/Default.aspx?ID=@servicePageId" id="FavoriteListForm_@productId@variantId" data-response-target-element="DynamicOffcanvas" data-layout-template="Swift_MiniFavorites.cshtml">
+		<input type="hidden" name="ProductId" value="@productId" />
+		<input type="hidden" name="VariantId" value="@variantId" />
+		<input type="hidden" name="ProductName" value="@Model.Name" />
+		<input type="hidden" name="ProductImage" value="@(Model.DefaultImage.Value)" />
+	</form>
+
+	if (isInFavoriteList) {
+		<span class="icon-2">
+			@ReadFile(iconPath + "heart-filled.svg")
+		</span>
+	} else {
+		<span class="icon-2">
+			@ReadFile(iconPath + "heart.svg")
+		</span>
+	}
+
+	<script>
+		var bsOffcanvas = new bootstrap.Offcanvas(document.querySelector('#DynamicOffcanvas'))
+		bsOffcanvas.show();
+
+		swift.PageUpdater.Update('FavoriteListForm_@productId@variantId');
+	</script>
+}
