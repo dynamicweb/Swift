@@ -13,6 +13,8 @@
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
 
+	string relationType = Model.Item.GetRawValueString("RelationType", "trending");
+
 	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "h3");
 	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
 
@@ -44,8 +46,6 @@
 		url += "&VisualEdit=True";
 	}
 
-	string relationType = Model.Item.GetRawValueString("RelationType", "trending");
-
 	//If products is added through the trending groups selector
 	IList<ProductGroupViewModel> groupsToRelateToTrending = Model.Item.GetValue<IList<ProductGroupViewModel>>("GroupsToRelateToTrending");
 	IList<ProductGroupViewModel> groupsToRelateToMostSold = Model.Item.GetValue<IList<ProductGroupViewModel>>("GroupsToRelateToMostSold");
@@ -66,10 +66,10 @@
 	}
 
 	//If products is added through the selector
-	ProductListViewModel productsToRelateTo = Model.Item.GetValue<ProductListViewModel>("ProductsToRelateTo");
 	IList<string> relateFromProductIds = new List<string>{};
 
-	if (productsToRelateTo != null) {
+	ProductListViewModel productsToRelateTo = Model.Item.GetValue<ProductListViewModel>("ProductsToRelateTo");
+	if (productsToRelateTo != null && relationType == "frequently") {
 		foreach (var fromProduct in productsToRelateTo.Products)
 		{
 			relateFromProductIds.Add(fromProduct.Id);
@@ -77,30 +77,38 @@
 	}
 
 	ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("Products");
-	IList<string> selectedProductIds = new List<string>{};
-
-	if (products != null) {
+	if (products != null && relationType == "selected") {
 		foreach (var productSelection in products.Products)
 		{
-			selectedProductIds.Add(productSelection.Id);
+			relateFromProductIds.Add(productSelection.Id);
+		}
+	}
+
+	if (relationType == "related-products") {
+		foreach (var group in product.RelatedGroups)
+		{
+			foreach (var relatedProduct in group.Products)
+			{
+				relateFromProductIds.Add(relatedProduct.ProductId);
+			}
 		}
 	}
 
 	string groupIds = productViewModelFound ? product.PrimaryOrDefaultGroup.Id : string.Join(",", relateFromGroupIds);
-	string productIds = productViewModelFound ? product.Id : string.Join(",", relateFromProductIds);
+	string productIds = productViewModelFound && relationType != "related-products" ? product.Id : string.Join(",", relateFromProductIds);
 	string title = Model?.Item?.GetString("Title") != null ? Model.Item.GetString("Title") : Translate("Products");
 
 	string linkParameters = "";
-	linkParameters += "&GroupId=" + groupIds;
+	linkParameters += relationType != "related-products" ? "&GroupId=" + groupIds : "";
 	linkParameters += !string.IsNullOrEmpty(productIds) ? "&MainProductId=" + productIds : "";
-	linkParameters += selectedProductIds.Count > 0 ? "&MainProductId=" +  string.Join(",", selectedProductIds) : "";
 	string productListPageId = Model.Item.GetLink("ProductListPage") != null ? Model.Item.GetLink("ProductListPage").PageId.ToString() : "";
 	string productListPageByNavigationTag = GetPageIdByNavigationTag("Shop") != 0 ? GetPageIdByNavigationTag("Shop").ToString() : "";
 	productListPageId = productListPageId == "" ? productListPageByNavigationTag : productListPageId;
 	string link = "/Default.aspx?ID=" + productListPageId + linkParameters;
 }
 
-<form method="post" action="@url" data-response-target-element="RelatedProducts_@Model.ID" data-preloader="inline" data-update-url="false" class="w-100 h-100 js-product-list">
+<form method="post" action="@url" id="RelatedProductsForm_@Model.ID" data-response-target-element="RelatedProducts_@Model.ID" data-preloader="inline" data-update-url="false">
+	<input type="hidden" name="Link" value="@link" />
 	<input type="hidden" name="HideTitle" value="@Model.Item.GetString("HideTitle")" />
 	@if (Model.Item.GetInt32("ProductsCount") != 0) { 
 		<input type="hidden" name="PageSize" value="@Model.Item.GetInt32("ProductsCount")" />
@@ -109,14 +117,11 @@
 		<input type="hidden" name="ProductDetailsPage" value="@detailPageId" />
 	}
 	@if (!Model.Item.GetBoolean("HideTitle")) { 
-		<input type="hidden" name="HeadingTitle" value="@title" />
+		<input type="hidden" name="HeadingTitle" id="RelatedProductsTitle_@Model.ID" value="@title" />
 	}
 	@if (!string.IsNullOrEmpty(Model.Item.GetString("Subtitle"))) { 
 		<input type="hidden" name="Subtitle" value="@Model.Item.GetString("Subtitle")" />
 	}
-	
-	<input type="hidden" name="Link" value="@link" />
-
 	@if (!string.IsNullOrEmpty(Model.Item.GetString("LinkText"))) { 
 		<input type="hidden" name="LinkText" value="@Model.Item.GetString("LinkText")" />
 	}
@@ -137,8 +142,6 @@
 	@if (buttonStyle != "") { 
 		<input type="hidden" name="ButtonStyle" value="@buttonStyle" />
 	}
-		<input type="hidden" name="TextReadability" value="@maxWidth" />
-	
 	@if (generalTheme != "") { 
 		<input type="hidden" name="GeneralTheme" value="@generalTheme" />
 	}
@@ -152,14 +155,9 @@
 		string contentPadding = Model.Item.GetRawValueString("ContentPadding");
 		<input type="hidden" name="ContentPadding" value="@contentPadding" />
 	}
+	<input type="hidden" name="TextReadability" value="@maxWidth" />
 
 	@* Types *@
-	@if (relationType == "trending" || relationType == "most-sold") {
-		if (groupIds != "") { 
-			<input type="hidden" name="GroupId" value="@groupIds" />
-		}
-	}
-
 	@if (relationType == "trending") {
 		<input type="hidden" name="SortBy" value="OrderCountGrowth" /> 
 	}
@@ -169,14 +167,49 @@
 	@if (relationType == "frequently") {
 		<input type="hidden" name="BoughtWithProductIds" value="[@productIds]" /> 
 	}
-	@if (relationType == "selected") {
-		productIds = string.Join(",", selectedProductIds);
-		<input type="hidden" name="MainProductID" value="@productIds" /> 
+
+	@if (relationType == "trending" || relationType == "most-sold") {
+		if (groupIds != "") { 
+			<input type="hidden" name="GroupId" value="@groupIds" />
+		}
 	}
 
-	<div id="RelatedProducts_@Model.ID" class="h-100"></div>
+	@if (relationType == "selected" || relationType == "related-products") {
+		<input type="hidden" name="MainProductID"  id="MainProductID_@Model.ID" value="@productIds" /> 
+	}
+
+	@if (relationType != "related-products") {
+		<div class="w-100 h-100">
+			<div id="RelatedProducts_@Model.ID" class="h-100" style="min-height: 345px"></div>
+		</div>
+    } else {
+		<div class="grid gap-6 w-100 h-100">
+			@foreach (var group in product.RelatedGroups)
+			{
+				<div id="RelatedProducts_@(Model.ID)_@group.Id" class="g-col-12 h-100" style="min-height: 345px"></div>
+			}
+		</div>
+    }
 </form>
 
-<script type="module">
-	swift.ProductList.init();
-</script>
+@if (relationType != "related-products") {
+	<script type="module">
+		swift.PageUpdater.Update(document.querySelector("#RelatedProducts_@Model.ID"));
+	</script>
+} else {
+	foreach (var group in product.RelatedGroups)
+	{
+		IList<string> fromProductIds = new List<string>{};
+
+		foreach (var relatedProduct in group.Products) {
+			fromProductIds.Add(relatedProduct.ProductId);
+		}
+
+		<script type="module">
+			document.querySelector("#MainProductID_@Model.ID").value = "@string.Join(",", fromProductIds)";
+			document.querySelector("#RelatedProductsTitle_@Model.ID").value = "@group.Name";
+			document.querySelector("#RelatedProductsForm_@Model.ID").setAttribute("data-response-target-element", "RelatedProducts_@(Model.ID)_@group.Id");
+			swift.PageUpdater.Update(document.querySelector("#RelatedProducts_@(Model.ID)_@group.Id"));
+		</script>
+	}
+}

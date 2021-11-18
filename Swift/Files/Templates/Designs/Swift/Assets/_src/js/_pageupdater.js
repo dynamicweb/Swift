@@ -103,6 +103,9 @@ const PageUpdater = function () {
 				if (responseTargetElement != null) {
 					responseTargetElement.innerHTML = html;
 
+					//Initialize all the sliders
+					swift.Sliders.init();
+
 					//Run scripts from the loaded html
 					var scripts = Array.prototype.slice.call(responseTargetElement.getElementsByTagName("script"));
 					for (var i = 0; i < scripts.length; i++) {
