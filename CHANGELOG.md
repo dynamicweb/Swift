@@ -1,5 +1,30 @@
 # Changelog
 
+## [v1.3.0] - 16-11-2021
+
+## Bugfixes
+* Itemtype: Stop video play, when modal is closed
+* Itemtype: Fix geolocation format on LocationMaps
+* Product Details: Downloadable documents if file doesn't exist returns an error
+* Product Details: HTML validation error 
+
+## Changed
+* Customer Center: State/Region dropdown on Add Addresse, Manage Addresses and Edit profile
+* General: Unify themes for Product list and Product details
+* General: Use Offcanvas instead of dropdown when adding to favorite list
+* Itemtype: Improvements on Mega menu and dropdown
+
+## Removed
+* Itemtype: Remove hide navbar functionality on Product slider
+
+## Added
+* Itemtype: Simple map
+* Checkout: Order reference field
+* Customer Center: Integration Customer Center - orders, invoices, credit notes
+* General: Add missing use of micro templates for 4 col flex row
+* General: Update product query for Wheel size
+
+
 ## [v1.2.0] - 05-11-2021
 
 ### Bugfixes
