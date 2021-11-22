@@ -88,6 +88,7 @@
 	int totalGroups =  Model.FacetGroups.Count();
 
 	int pageSizeSetting = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["PageSizeSetting"]) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.Form["PageSizeSetting"].ToString()) : 10;
+	string sourceType = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["SourceType"]) ? Dynamicweb.Context.Current.Request.Form["SourceType"].ToString() : "variants";
 	string requestType = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["RequestType"]) ? Dynamicweb.Context.Current.Request.Form["RequestType"].ToString() : "";
 	string title = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Title"]) ? Dynamicweb.Context.Current.Request.Form["Title"].ToString() : "";
 	string mainProductId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["MainProductID"]) ? Dynamicweb.Context.Current.Request.Form["MainProductID"].ToString() : "";
@@ -104,6 +105,10 @@
 	string theme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Theme"]) ? Dynamicweb.Context.Current.Request.Form["Theme"].ToString() : "";
 	string titleFontSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["TitleFontSize"]) ? Dynamicweb.Context.Current.Request.Form["TitleFontSize"].ToString() : "";
 	string contentPadding = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["ContentPadding"]) ? Dynamicweb.Context.Current.Request.Form["ContentPadding"].ToString() : "";
+
+	//Create group id collection and products id collection strings
+	string groupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["GroupId"]) ? Dynamicweb.Context.Current.Request.Form["GroupId"].ToString() : "";
+	string productIds = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Title"]) ? Dynamicweb.Context.Current.Request.Form["Title"].ToString() : "";
 }
 
 @if (productList.Count > 0 && requestType != "UpdateFacets") {
@@ -111,11 +116,11 @@
 	//The form that defines what should be rendered
 	<form action="/Default.aspx?ID=@servicePageId" id="VariantProductsListForm_@paragraphID" data-response-target-element="VariantProductsListFacets_@paragraphID">
 		<input type="hidden" name="ID" value="@servicePageId" />
+		<input type="hidden" name="SourceType" value="@sourceType" />
 		<input type="hidden" name="ParagraphID" value="@paragraphID" />
 		<input type="hidden" name="RequestType" value="UpdateFacets" id="VariantProductsListRequestType_@paragraphID" />
 		<input type="hidden" name="PageSize" value="@pageSizeSetting" id="VariantProductsListPageSize_@paragraphID" />
 		<input type="hidden" name="PageSizeSetting" value="@pageSizeSetting" />
-		<input type="hidden" name="MainProductID" value="@mainProductId" />
 		<input type="hidden" name="Title" value="@title" />
 		<input type="hidden" name="HideTitle" value="@hideTitle.ToString()" />
 		<input type="hidden" name="SelectedDisplayGroups" value="@selectedDisplayGroups" />
@@ -127,6 +132,38 @@
 		<input type="hidden" name="Theme" value="@theme" />
 		<input type="hidden" name="TitleFontSize" value="@titleFontSize" />
 		<input type="hidden" name="ContentPadding" value="@contentPadding" />
+		
+		@*--- VARIANTS ---*@
+		@if (sourceType == "variants") {
+			<input type="hidden" name="MainProductID" value="@productIds" />
+		}
+
+		@*--- MOST SOLD ---*@
+		@if (sourceType == "most-sold") {
+			<input type="hidden" name="SortBy" value="OrderCount" /> 
+			<input type="hidden" name="GroupId" value="@groupId" />
+		}
+
+		@*--- TRENDING ---*@
+		@if (sourceType == "trending") {
+			<input type="hidden" name="SortBy" value="OrderCountGrowth" /> 
+			<input type="hidden" name="GroupId" value="@groupId" />
+		}
+
+		@*--- LATEST ---*@
+		@if (sourceType == "latest") {
+			<input type="hidden" name="SortBy" value="Created" /> 
+			<input type="hidden" name="GroupId" value="@groupId" />
+		}
+
+		@*--- FREQUENTLY BOUGHT ---*@
+		@if (sourceType == "frequently") {
+			<input type="hidden" name="BoughtWithProductIds" value="[@productIds]" /> 
+		}
+
+		@if (sourceType != "variants") {
+			<input type="hidden" name="isVariant" value="false" />
+        }
 
 		<div class="modal" id="FacetsModal_@paragraphID">
 			<div class="modal-dialog modal-dialog-scrollable">
@@ -225,39 +262,38 @@
 							@if (!hideProductName) {
 								<td scope="row">@product.Name</td>
 							}
-							@if (categories.Count > 0) {
-								foreach (string fieldCell in fieldsHeaders) {
-									FieldValueViewModel fieldValue = new FieldValueViewModel();
-									bool fieldFound = false;
+							@foreach (string fieldCell in fieldsHeaders) {
+								FieldValueViewModel fieldValue = new FieldValueViewModel();
+								bool fieldFound = false;
 
-									foreach (CategoryFieldViewModel category in categories) {
-										foreach (var field in category.Fields)
-										{
-											bool noValues = false;
-											if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
-												System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
-												noValues = values.Count > 0 ? false : true;
-											} else if (string.IsNullOrEmpty(field.Value.Value.ToString())) {
-												noValues = true;
-											}
+								foreach (CategoryFieldViewModel category in categories) {
+									foreach (var field in category.Fields)
+									{
+										bool noValues = false;
+										if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+											System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
+											noValues = values.Count > 0 ? false : true;
+										} else if (string.IsNullOrEmpty(field.Value.Value.ToString())) {
+											noValues = true;
+										}
 
-											if (!noValues) {
-												string fieldName = field.Value.Name;
-												if (fieldName == fieldCell) {
-													fieldValue = field.Value;
-													fieldFound = true;
-												} 
-											}
+										if (!noValues) {
+											string fieldName = field.Value.Name;
+											if (fieldName == fieldCell) {
+												fieldValue = field.Value;
+												fieldFound = true;
+											} 
 										}
 									}
+								}
 
-									if (fieldFound) {
-										<td>@RenderFieldValue(fieldValue)</td>
-                                    } else { 
-										<td>&nbsp;</td>
-									}
+								if (fieldFound) {
+									<td>@RenderFieldValue(fieldValue)</td>
+                                } else { 
+									<td>&nbsp;</td>
 								}
 							}
+
 							@if (!hideStock) {
 								<td>
 									@if (@product.StockLevel > 0) {
