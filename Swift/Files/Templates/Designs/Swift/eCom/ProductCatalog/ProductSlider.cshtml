@@ -1,6 +1,11 @@
 @inherits ViewModelTemplate<ProductListViewModel>
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+
+@functions {
+	Dictionary<string, object> favoriteParameters { get; set; }
+}
 
 @{
 	string linkText = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("LinkText")) ? Dynamicweb.Context.Current.Request.Form.Get("LinkText") : "";
@@ -13,6 +18,27 @@
 	string generalTheme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("GeneralTheme")) ? Dynamicweb.Context.Current.Request.Form.Get("GeneralTheme") : "";
 	string ContentPadding = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ContentPadding")) ? Dynamicweb.Context.Current.Request.Form.Get("ContentPadding") : "";
 	string alignMiddle = headingTitle == "" && headingSubtitle == "" ? " justify-content-center" : "";
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+
+	favoriteParameters = new Dictionary<string, object>();
+	if (!anonymousUser)
+	{
+		int defaultFavoriteListId = 0;
+
+		IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
+		int favoriteListsTotal = favoreiteLists.Count();
+
+		if (favoreiteLists.Count() == 1) {
+			foreach (FavoriteList list in favoreiteLists) {
+				defaultFavoriteListId = list.ListId;
+			}
+		}
+		
+		favoriteParameters.Add("ListId", defaultFavoriteListId);
+		favoriteParameters.Add("ListTotal", favoriteListsTotal);
+	}
 }
 
 @*--- SLIDER: TEXT TOP ---*@
@@ -121,7 +147,7 @@
 	<div class="js-slider d-flex">
 		@foreach (ProductViewModel product in Model.Products)
 		{
-			<article>
+			<article class="position-relative">
 				@RenderProduct(product)
 			</article>
 		}
@@ -132,7 +158,7 @@
 	<div class="grid gap-4">
 		@foreach (ProductViewModel product in Model.Products)
 		{
-			<div class="g-col-6 @columnSize">
+			<div class="g-col-6 @columnSize position-relative">
 				@RenderProduct(product)
 			</div>
 		}
@@ -161,6 +187,12 @@
 	link += !string.IsNullOrEmpty(product.VariantId) ? "&amp;VariantID=" + product.VariantId : "";
 	string imagePath = product?.DefaultImage.Value.ToString() ?? "";
 	imagePath = "/Admin/Public/GetImage.ashx?image=" + imagePath + "&width=" + 350 + "&Format=WebP&Quality=70";
+	
+	if (!anonymousUser && product.VariantInfo.VariantInfo == null) {
+		<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
+			@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+		</div>
+	}
 
 	<a href="@link" class="text-decoration-none d-block h-100 no-outline">
 		<div class="h-100 d-flex flex-column justify-content-between gap-3@(theme)">
@@ -168,7 +200,7 @@
 				<img loading="lazy" decoding="async" src="@imagePath" class="h-100 w-100 @ContentPadding" style="object-fit: contain;" alt="@product.Name" />
 			</div>
 			<div class="@ContentPadding flex-fill d-flex flex-column justify-content-between">
-				<h3 class="h6 opacity-85">@product.Name @product.VariantId</h3>
+				<h3 class="h6 opacity-85">@product.Name @product.VariantName</h3>
 
 				@if (!hidePrice) {
 					<div>
