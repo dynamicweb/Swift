@@ -2,10 +2,10 @@
 @using Dynamicweb.Frontend.Navigation
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Environment
+@using Dynamicweb.Frontend
 
 @{
 	bool isVisualEditor = Dynamicweb.Context.Current.Request.GetBoolean("visualedit");
-	string searchParameter = Dynamicweb.Context.Current.Request.GetString("q");
 
 	ProductListViewModel productList = new ProductListViewModel();
 
@@ -14,16 +14,87 @@
 		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
 	}
 
-	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-4");
+	bool hideImage = Model.Item.GetBoolean("HideGroupImage");
+	string groupImage = productList.Group.Assets.FirstOrDefault(x => x.Name == "LargeImage").Value;
+
+	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
+	ratio = ratio != "0" ? ratio : "";
+	string ratioCssClass = ratio != "" && ratio != "fill" ? " ratio" : "";
+	string ratioVariable = ratio != "" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : "";
+	string fillClass = ratio == "fill" ? " h-100" : "";
 
 	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
 	contentPadding = contentPadding == "none" ? "p-0" : contentPadding;
 	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
 	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
 
+	string layout = Model.Item.GetRawValueString("Layout", "text-start");
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 }
 
-<div class="@(contentPadding)@(theme)">
-	
-</div>
+@if (layout == "text-start" || layout == "text-center") {
+	<div class="@(contentPadding)@(theme) @(layout)">
+		@RenderContent(productList)
+
+		@if (!hideImage && !string.IsNullOrEmpty(groupImage)) {
+			<figure class="m-0@(ratioCssClass)@(fillClass)" @ratioVariable>
+				@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = groupImage })
+			</figure>
+		}
+	</div>
+} else {
+	var parms = new Dictionary<string, object>();
+	parms.Add("cssClass", "card-img rounded-0 h-100 w-100");
+
+	<div class="position-relative h-100@(theme)">
+		@if (!hideImage && !string.IsNullOrEmpty(groupImage)) {
+			<div class="position-absolute top-0 bottom-0 end-0 start-0">
+				@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = groupImage }, parms)
+			</div>
+		}
+
+		<div class="container-xl h-100 @(contentPadding)">
+			<div class="h-100 position-relative grid grid-1 min-vh-25 min-vh-md-50">
+				<div class="grid grid-1 gap-3 gap-md-4">
+					@RenderContent(productList)
+				</div>
+			</div>
+		</div>
+	</div>
+}
+
+@helper RenderContent(ProductListViewModel productList) {
+	string searchParameter = Dynamicweb.Context.Current.Request.GetString("q");	
+
+	bool hideTitle = Model.Item.GetBoolean("HideGroupTitle");
+	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-4");
+
+	var navigationSettings = new NavigationSettings();
+	navigationSettings.StartLevel = 2;
+	navigationSettings.ExpandMode = ExpandMode.Path;
+	navigationSettings.Parameters.Add("TitleFontSize", titleFontSize);
+
+	string breadcrumbContent = Navigation.RenderNavigation("Navigation/ProductGroupHeader.cshtml", navigationSettings);
+	breadcrumbContent = searchParameter != "" ? "<h1 class=\"" + titleFontSize + "\">" + Translate("Search results for") + ": " + searchParameter + "</h1>" : breadcrumbContent;
+
+	bool hideDescription = Model.Item.GetBoolean("HideGroupDescription");
+	string groupDescription = productList.Group.Description;
+	string descriptionFontSize = Model.Item.GetRawValueString("DescriptionFontSize", "fs-6");
+
+	if (!hideTitle) {
+		@breadcrumbContent
+	}
+
+	if (!hideDescription && !string.IsNullOrEmpty(groupDescription)) {
+		<div class="@descriptionFontSize">
+			@groupDescription
+		</div>
+	}
+}
+
+@if (isVisualEditor)
+{
+	<div class="alert alert-dark m-0" role="alert">
+		<span>@Translate("Product list info: The info paragraph will be hiden here, if any")</span>
+	</div>
+}
