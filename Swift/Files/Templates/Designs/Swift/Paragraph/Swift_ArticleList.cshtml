@@ -1,38 +1,56 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 
 @{
+	bool renderAsResponsive = Pageview.AreaSettings.GetString("DeviceRendering", "responsive").Equals("responsive", StringComparison.OrdinalIgnoreCase);
+	bool mobile = Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Mobile || Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Tablet;
+
+	string responsiveClassDesktop = string.Empty;
+	string responsiveClassMobile = string.Empty;
+	if (renderAsResponsive)
+	{
+		responsiveClassDesktop = "d-none d-xl-grid";
+		responsiveClassMobile = "d-block d-xl-none";
+
+	}
+
 	string listSource = !string.IsNullOrEmpty(Model.Item.GetString("ListSource")) ? Model.Item.GetString("ListSource") : Model.PageID.ToString();
-	string layoutDesktop = Model.Item.GetRawValueString("LayoutDesktop");
-	string layoutMobile = Model.Item.GetRawValueString("LayoutMobile");
-	string gridLayoutDesktop = Model.Item.GetRawValueString("GridLayoutDesktop");
-	string gridLayoutMobile = Model.Item.GetRawValueString("GridLayoutMobile");
-	string sliderWrapper = layoutDesktop == "carousel" || layoutMobile == "carousel" ? "swiffy-slider" : "";
-	string sliderSection = layoutDesktop == "carousel" || layoutMobile == "carousel" ? "slider-container" : "";
-	string sliderCount = layoutDesktop == "carousel" || layoutMobile == "carousel" ? "slider-item-show4" : "";
-	string gridWrapperMobile = layoutMobile == "grid" ? "grid grid-" + gridLayoutMobile : "";
-	string gridWrapperDesktop = layoutDesktop == "grid" ? "grid grid-lg-" + gridLayoutDesktop : "";
+	string listStyle = Model.Item.GetRawValueString("ListStyle");
+	bool carouselDesktop = Model.Item.GetBoolean("CarouselDesktop");
+	bool carouselMobile = Model.Item.GetBoolean("CarouselMobile");
+	string listLayoutStacked = Model.Item.GetRawValueString("ListLayoutStacked");
+	string listLayoutSideBySide = Model.Item.GetRawValueString("ListLayoutSideBySide");
+	string itemStyleStacked = Model.Item.GetRawValueString("ItemStyleStacked");
+	string itemStyleSideBySide = Model.Item.GetRawValueString("ItemStyleSideBySide");
+
+	string sliderCount = "slider-item-show";
+	if (listStyle == "side-by-side") {
+		sliderCount += listLayoutSideBySide;
+	}
+
+	if (listStyle == "stacked")
+	{
+		sliderCount += listLayoutStacked;
+	}
+
+	string gridCount = "grid-";
+	if (listStyle == "side-by-side")
+	{
+		gridCount += listLayoutSideBySide;
+	}
+
+	if (listStyle == "stacked")
+	{
+		gridCount += listLayoutStacked;
+	}
 }
 
-@*@RenderItemList(new
+
+@if (renderAsResponsive || !mobile)
 {
-	ItemType = "Swift_ArticleList",
-	ListTemplate = "ItemPublisher/List/List.cshtml", //create new one
-	ItemFieldsList = "*",
-	ListSourceType = "Page",
-	ListSourcePage = listSource,
-	IncludeAllChildItems = true,
-	ListPageSize = "10",
-	IncludeParagraphItems = true,
-	ListOrderBy = "Created",
-	ListOrderByDirection = "Descending"
-})*@
-
-@* Render list for small screens *@ 
-
-<div class="d-lg-none">
-	@if (layoutMobile == "carousel") { 
-		<div class="@sliderWrapper @sliderCount">
-			<div class="@sliderSection">
+	if (carouselDesktop) 
+	{ 
+		<div class="@responsiveClassDesktop swiffy-slider slider-item-reveal @sliderCount">
+			<div class="slider-container">
 				@RenderItemList(new
 				{
 					ItemType = "Swift_Article",
@@ -51,8 +69,9 @@
 			<button type="button" class="slider-nav slider-nav-next"></button>
 		</div>
 	}
-	else if (layoutMobile == "grid"){
-		<div class="@gridWrapperMobile @gridWrapperDesktop">
+	else 
+	{
+		<div class="@responsiveClassDesktop grid @gridCount">
 			@RenderItemList(new
 			{
 				ItemType = "Swift_Article",
@@ -67,14 +86,16 @@
 				ListOrderByDirection = "Descending"
 			})
 		</div>
-	}
-</div>
 
-@* Render list for large screen *@ 
-<div class="d-none d-lg-block">
-	@if (layoutDesktop == "carousel") { 
-		<div class="@sliderWrapper @sliderCount">
-			<div class="@sliderSection">
+	}
+}
+
+@if (renderAsResponsive || mobile)
+{
+	if (carouselMobile) 
+	{ 
+		<div class="@responsiveClassMobile swiffy-slider slider-item-reveal @sliderCount">
+			<div class="slider-container">
 				@RenderItemList(new
 				{
 					ItemType = "Swift_Article",
@@ -93,8 +114,9 @@
 			<button type="button" class="slider-nav slider-nav-next"></button>
 		</div>
 	}
-	else if (layoutDesktop == "grid"){
-		<div class="@gridWrapperMobile @gridWrapperDesktop">
+	else 
+	{ 
+		<div class="@responsiveClassMobile grid">
 			@RenderItemList(new
 			{
 				ItemType = "Swift_Article",
@@ -109,5 +131,15 @@
 				ListOrderByDirection = "Descending"
 			})
 		</div>
+
 	}
-</div>
+}
+
+
+@if (carouselMobile || carouselDesktop) 
+{ 
+
+	<script type="module" data-noinit>
+		swiffyslider.init()
+	</script>
+}
