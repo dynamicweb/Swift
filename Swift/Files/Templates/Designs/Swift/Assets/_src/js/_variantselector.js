@@ -156,18 +156,14 @@ const VariantSelector = function () {
 			if (productElement) {
 				var addToCartElement = productElement.querySelector(".js-add-to-cart-button");
 				if (addToCartElement) {
-					if (selectionCount == totalGroups) {
-						addToCartElement.classList.remove("disabled");
-					} else {
+					if (selectionCount != totalGroups) {
 						addToCartElement.classList.add("disabled");
 					}
 				}
 
 				var stockStateElement = productElement.querySelector(".js-stock-state");
 				if (stockStateElement) {
-					if (selectionCount == totalGroups) {
-						stockStateElement.classList.remove("d-none");	 
-					} else {
+					if (selectionCount != totalGroups) {
 						stockStateElement.classList.add("d-none");
 					}
 				}
