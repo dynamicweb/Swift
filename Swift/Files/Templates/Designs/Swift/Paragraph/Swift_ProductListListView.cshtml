@@ -33,6 +33,8 @@
 	bool hideAddToCart =  !string.IsNullOrEmpty(Model.Item.GetString("HideAddToCart")) ? Model.Item.GetBoolean("HideAddToCart") : false;
 	bool quantitySelector = !string.IsNullOrEmpty(Model.Item.GetString("QuantitySelector")) ? Model.Item.GetBoolean("QuantitySelector") : false;
 
+	string listItemLayout = !string.IsNullOrEmpty(Model.Item.GetString("ListItemLayout")) ? Model.Item.GetString("ListItemLayout") : "full";
+
 	string detailsPageLink = Dynamicweb.Context.Current.Items["DetailsPageLink"] != null ? Dynamicweb.Context.Current.Items["DetailsPageLink"].ToString() : "";
 	string productTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductTheme")) ? " theme p-3 " + Model.Item.GetRawValueString("ProductTheme").Replace(" ", "").Trim().ToLower() : "";
 	string textPadding = productTheme != "" ? "px-2 px-lg-3 pb-2 pb-lg-3" : "";
@@ -64,7 +66,7 @@
 
 		int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
 
-		<div class="grid pt-3">
+		<div class="pt-3">
 			@foreach (ProductViewModel product in productList.Products)
 			{
 				var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
@@ -74,9 +76,10 @@
 				link += "&productid=" + product.Id;
 				link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
 
+				int imageSize = listItemLayout == "full" ? 80 : 48;
 				string imagePath = product?.DefaultImage?.Value ?? "";
 				imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
-				imagePath = "/Admin/Public/GetImage.ashx?width=" + 48 + "&image=" + imagePath + "&format=webp";
+				imagePath = "/Admin/Public/GetImage.ashx?width=" + imageSize + "&image=" + imagePath + "&format=webp";
 
 				string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
 				ratio = ratio != "0" ? ratio : "";
@@ -104,169 +107,150 @@
 					}
 				}
 
-				<article class="g-col-12 d-flex flex-row @(productTheme)">
-					<a href="@link" class="me-3 d-flex align-items-center" style="width: 48px">
-						<figure class="@ratioCssClass m-auto" style="@(ratioVariable)">
-							<img src="@imagePath" alt="@product.Name" class="mw-100 mh-100" loading="lazy" />
-						</figure>
-					</a>
-
-					<a href="@link" class="flex-fill text-decoration-none me-3">
-						<h3 class="h6 mb-0">@product.Name @product.VariantId</h3>	
-						@if (!hideProductNumber) {
-							<small class="opacity-75">@product.Number</small>
-                        }
-						@if (mainFeatures.Count > 0)
-						{
-							string featuresLayout = Model.Item.GetRawValueString("FeaturesLayout", "bullets"); 
-
-							if (featuresLayout == "bullets") {
-								<ul class="m-0 p-0 opacity-75" style="line-height: 1.2; list-style-position: inside">
-									@foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
-									{
-										foreach (var field in mainFeatureGroup.Fields)
-										{
-											@RenderField(field.Value)
-										}
-									}
-								</ul>
-                            } else {
-								List<string> featuresList = new List<string>();
-								foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
-								{
-									foreach (var field in mainFeatureGroup.Fields)
-									{
-										if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
-											foreach (FieldOptionValueViewModel option in field.Value.Value as System.Collections.Generic.List<FieldOptionValueViewModel>) {
-												if (!string.IsNullOrWhiteSpace(option.Value)) {
-													featuresList.Add(option.Value);
-                                                }
-											}
-										} else {
-											if (!string.IsNullOrWhiteSpace(field.Value.Value.ToString())) {
-												featuresList.Add(field.Value.Value.ToString());
-											}
-                                        }
-									}
-								}
-								string featuresString = (string.Join(", ", featuresList.Select(x => x.ToString()).ToArray()));
-
-								<div class="opacity-75">@featuresString</div>
-                            }
-						}
-					</a>
-
-					@if (!hidePrice) { 
-						string priceMin = "";
-						string priceMax = "";
-
-						<div class="me-3">
-							<div>
-								<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
-				
-								@if (showPricesWithVat == "false" && !neverShowVat) {
-									string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
-
-									<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
-									if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-										<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
-									}
-								} else {
-									string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
-
-									<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
-									if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-										<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
-									}
-								}
-			
-								@if (showPricesWithVat == "false" && !neverShowVat) {
-									string price = product.Price.PriceWithoutVatFormatted;
-									if (product?.VariantInfo?.VariantInfo != null) {
-										priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
-										priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
-									}
-									if (priceMin != priceMax) {
-										price = priceMin + " - " + priceMax;
-									} 
-									<span class="text-price">@price</span>
-								} else {
-									string price = product.Price.PriceFormatted;
-									if (product?.VariantInfo?.VariantInfo != null) {
-										priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
-										priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
-									}
-									if (priceMin != priceMax) {
-										price = priceMin + " - " + priceMax;
-									}
-									<span class="text-price">@price</span>
-								}
-							</div>
-
-							@if (showPricesWithVat == "false" && !neverShowVat) {
-								string price = product.Price.PriceWithVatFormatted;
-								if (product?.VariantInfo?.VariantInfo != null) {
-									priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
-									priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
-								}
-								if (priceMin != priceMax) {
-									price = priceMin + " - " + priceMax;
-								}
-								<small class="opacity-85 fst-normal">@price @Translate("Incl. VAT")</small>
-							}
+				<article class="mb-3 grid @(productTheme)">
+					<a href="@link" class="g-col-12 g-col-lg-8 d-flex text-decoration-none">
+						<div class="d-flex align-items-center me-3" style="min-width: @(imageSize)px">
+							<figure class="@ratioCssClass" style="@(ratioVariable)">
+								<img src="@imagePath" alt="@product.Name" class="mw-100 mh-100" loading="lazy" style="object-fit: cover;"/>
+							</figure>
 						</div>
-					}
 
-					@if (!hideAddToCart && product.VariantInfo.VariantInfo == null) { 
-						string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
-						string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
-						string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
-						string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : ""; 
-
-						<form method="post" action="@url">
-							<input type="hidden" name="redirect" value="false" />
-							<input type="hidden" name="ProductId" value="@product.Id" />
-							<input type="hidden" name="cartcmd" value="add" />
-
-							@if (!string.IsNullOrEmpty(product.VariantId)) {
-								<input type="hidden" name="VariantId" value="@product.VariantId" />
-							}
-
-							@if (quantitySelector) {
-								<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
-									<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number">
-									<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)" style="max-width: 3.5rem;">@ReadFile(iconPath+"shopping-cart.svg")</button>
-									@if (stepQty != "1") {
-										<div class="invalid-feedback d-none">
-											@Translate("Please select a quantity that is dividable by") @stepQty
-										</div>
+						@if (listItemLayout == "full") {
+							<div class="flex-fill">
+								<h3 class="h6 mb-0">@product.Name @product.VariantId</h3>	
+								@if (!hideProductNumber) {
+									<small class="opacity-75">@product.Number</small>
+								}
+								@RenderMainFeatures(mainFeatures)
+							</div>
+                        } else if (listItemLayout == "compact") {
+							<div class="grid flex-fill">
+								<div class="g-col-12 g-col-lg-6">
+									<h3 class="h6 mb-0">@product.Name @product.VariantId</h3>	
+									@if (!hideProductNumber) {
+										<small class="opacity-75">@product.Number</small>
 									}
 								</div>
-							} else {
-								<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" type="hidden">
-								<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)" style="max-width: 3.5rem;">@ReadFile(iconPath+"shopping-cart.svg")</button>
-							}
-						</form>
-					} else {
-						string buttonWidth = quantitySelector ? "width: calc(100px + 3.5rem);" : "max-width: 3.5rem;";
-						string buttonText = quantitySelector ? @Translate("Select") : @ReadFile(iconPath+"sliders.svg");
+								<div class="g-col-12 g-col-lg-6">
+									@RenderMainFeatures(mainFeatures)
+								</div>
+							</div>
+                        }
+					</a>
 
-						string variantSelectorServicePageId = !string.IsNullOrEmpty(Model.Item.GetString("VariantSelectorServicePageId")) ? Model.Item.GetLink("VariantSelectorServicePageId").PageId.ToString() : "";
-						variantSelectorServicePageId = variantSelectorServicePageId != "" ? variantSelectorServicePageId : GetPageIdByNavigationTag("RelatedProductsListService").ToString();
+					<div class="g-col-12 g-col-lg-4 d-flex justify-content-end">
+						@if (!hidePrice) { 
+							string priceMin = "";
+							string priceMax = "";
 
-						<form action="/Default.aspx?ID=@variantSelectorServicePageId" data-response-target-element="VariantSelectorModalContent_@Model.ID" data-preloader="inline">
-							<input type="hidden" name="ProductID" value="@product.Id" />
-							<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
-							<input type="hidden" name="ViewType" value="ModalContent" />							
-							<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-secondary" title="@Translate("Select")" style="@buttonWidth" data-bs-toggle="modal" data-bs-target="#VariantSelectorModal_@Model.ID">@buttonText</button>
-						</form>
-                    }
+							<div class="d-inline-block text-end me-3">
+								<div>
+									<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
+				
+									@if (showPricesWithVat == "false" && !neverShowVat) {
+										string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
 
-					@if (!anonymousUser && !hideFavoritesSelector && product.VariantInfo.VariantInfo == null) {
-						<div class="ms-3">
-							@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
-						</div>
-					}
+										<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
+										if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+											<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
+										}
+									} else {
+										string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
+
+										<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
+										if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+											<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
+										}
+									}
+			
+									@if (showPricesWithVat == "false" && !neverShowVat) {
+										string price = product.Price.PriceWithoutVatFormatted;
+										if (product?.VariantInfo?.VariantInfo != null) {
+											priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
+											priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
+										}
+										if (priceMin != priceMax) {
+											price = priceMin + " - " + priceMax;
+										} 
+										<span class="text-price">@price</span>
+									} else {
+										string price = product.Price.PriceFormatted;
+										if (product?.VariantInfo?.VariantInfo != null) {
+											priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
+											priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
+										}
+										if (priceMin != priceMax) {
+											price = priceMin + " - " + priceMax;
+										}
+										<span class="text-price">@price</span>
+									}
+								</div>
+
+								@if (showPricesWithVat == "false" && !neverShowVat) {
+									string price = product.Price.PriceWithVatFormatted;
+									if (product?.VariantInfo?.VariantInfo != null) {
+										priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
+										priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
+									}
+									if (priceMin != priceMax) {
+										price = priceMin + " - " + priceMax;
+									}
+									<small class="opacity-85 fst-normal">@price @Translate("Incl. VAT")</small>
+								}
+							</div>
+						}
+
+						@if (!hideAddToCart && product.VariantInfo.VariantInfo == null) { 
+							string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
+							string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
+							string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
+							string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : ""; 
+
+							<form method="post" action="@url" class="d-inline-block">
+								<input type="hidden" name="redirect" value="false" />
+								<input type="hidden" name="ProductId" value="@product.Id" />
+								<input type="hidden" name="cartcmd" value="add" />
+
+								@if (!string.IsNullOrEmpty(product.VariantId)) {
+									<input type="hidden" name="VariantId" value="@product.VariantId" />
+								}
+
+								@if (quantitySelector) {
+									<div class="input-group input-primary-button-group d-flex flex-row w-100">
+										<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number">
+										<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@ReadFile(iconPath+"shopping-cart.svg")</button>
+										@if (stepQty != "1") {
+											<div class="invalid-feedback d-none">
+												@Translate("Please select a quantity that is dividable by") @stepQty
+											</div>
+										}
+									</div>
+								} else {
+									<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" type="hidden">
+									<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@ReadFile(iconPath+"shopping-cart.svg")</button>
+								}
+							</form>
+						} else {
+							string buttonWidth = quantitySelector ? "width: calc(100px + 3.5rem);" : "max-width: 3.5rem;";
+							string buttonText = quantitySelector ? @Translate("Select") : @ReadFile(iconPath+"sliders.svg");
+
+							string variantSelectorServicePageId = !string.IsNullOrEmpty(Model.Item.GetString("VariantSelectorServicePageId")) ? Model.Item.GetLink("VariantSelectorServicePageId").PageId.ToString() : "";
+							variantSelectorServicePageId = variantSelectorServicePageId != "" ? variantSelectorServicePageId : GetPageIdByNavigationTag("RelatedProductsListService").ToString();
+
+							<form action="/Default.aspx?ID=@variantSelectorServicePageId" data-response-target-element="VariantSelectorModalContent_@Model.ID" data-preloader="inline" class="d-inline-block">
+								<input type="hidden" name="ProductID" value="@product.Id" />
+								<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
+								<input type="hidden" name="ViewType" value="ModalContent" />							
+								<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-secondary" title="@Translate("Select")" style="@buttonWidth" data-bs-toggle="modal" data-bs-target="#VariantSelectorModal_@Model.ID">@buttonText</button>
+							</form>
+						}
+
+						@if (!anonymousUser && !hideFavoritesSelector && product.VariantInfo.VariantInfo == null) {
+							<div class="ms-3">
+								@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+							</div>
+						}
+					</div>
 				</article>
 			}
 		</div>
@@ -327,6 +311,46 @@
 				<span>@Translate("Product list: The list will be shown here, if any")</span>
 			</div>
 		}
+	}
+}
+
+@helper RenderMainFeatures(List<CategoryFieldViewModel> mainFeatures) { 
+	if (mainFeatures.Count > 0) {
+		string featuresLayout = Model.Item.GetRawValueString("FeaturesLayout", "bullets"); 
+
+		if (featuresLayout == "bullets") {
+			<ul class="m-0 p-0 opacity-75" style="line-height: 1.2; list-style-position: inside">
+				@foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
+				{
+					foreach (var field in mainFeatureGroup.Fields)
+					{
+						@RenderField(field.Value)
+					}
+				}
+			</ul>
+        } else {
+			List<string> featuresList = new List<string>();
+			foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
+			{
+				foreach (var field in mainFeatureGroup.Fields)
+				{
+					if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+						foreach (FieldOptionValueViewModel option in field.Value.Value as System.Collections.Generic.List<FieldOptionValueViewModel>) {
+							if (!string.IsNullOrWhiteSpace(option.Value)) {
+								featuresList.Add(option.Value);
+                            }
+						}
+					} else {
+						if (!string.IsNullOrWhiteSpace(field.Value.Value.ToString())) {
+							featuresList.Add(field.Value.Value.ToString());
+						}
+                    }
+				}
+			}
+			string featuresString = (string.Join(", ", featuresList.Select(x => x.ToString()).ToArray()));
+
+			<div class="opacity-75">@featuresString</div>
+        }
 	}
 }
 
