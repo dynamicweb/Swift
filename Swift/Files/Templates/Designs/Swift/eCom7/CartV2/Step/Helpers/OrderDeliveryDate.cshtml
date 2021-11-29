@@ -10,10 +10,10 @@
 	useSpecificDateChecked = shippingDate != "" ? "checked=\"checked\"" : "",
 	showDeliveryDate = shippingDate != "" ? "show" : "",
 	disableField = shippingDate == "" ? "" : "disabled";
-	bool enableDeliveryDate = Pageview.CurrentParagraph.Item["EnableDeliveryDate"] != null ? (Boolean)Pageview.CurrentParagraph.Item["EnableDeliveryDate"] : false;
+	bool enableDeliveryDate = paragraphViewmodel.Item.GetBoolean("EnableDeliveryDate");
 	bool disableRegionalHolidays = Pageview.CurrentParagraph.Item["DisableRegionalHolidays"] != null ? (Boolean)Pageview.CurrentParagraph.Item["DisableRegionalHolidays"] : false;
 
-	var disabledWeekdays = Pageview.CurrentParagraph.Item["DisabledWeekdays"];
+	var disabledWeekdays = paragraphViewmodel.Item.GetList("DisabledWeekdays").SelectedValues.ToList();
 	var disabledDates = paragraphViewmodel.Item.GetItems("DisabledDates");
 
 	if(enableDeliveryDate)
@@ -28,7 +28,7 @@
 		</style>
 
 		<div class="mt-4">
-
+			
 			<h3 class="fs-6 fw-normal mb-0">@Translate("Select delivery date")</h3>
 			<p class="fs-8 mb-3">@Translate("Choose either next available or a specific date")</p>
 
@@ -55,11 +55,21 @@
 
 				<div class="collapse @showDeliveryDate" id="DeliveryDateContainer">
 					<div class="list-group-item border-top-0 py-3 bg-light">
-						<input type="date" class="form-control" id="EcomOrderShippingDate" name="EcomOrderShippingDate" value="@shippingDate" min="@tomorrow">
-						@* Icon for crossbrowser support *@
-						<span class="icon-2 pe-none me-4 position-absolute end-0 top-50 translate-middle-y">
-							@ReadFile(iconPath + "calendar.svg")
-						</span>
+						<div class="input-group flatpickr">
+							<input type="text" class="form-control" id="EcomOrderShippingDate" name="EcomOrderShippingDate" value="@GetString("Ecom:Order.ShippingDate")" placeholder="@Translate("Select date")" data-input>
+
+							<button class="btn btn-outline-primary d-flex justify-content-center align-items-center" type="button" data-toggle>
+								<span class="icon-2">
+									@ReadFile(iconPath + "calendar.svg")
+								</span>
+							</button>
+
+							<button class="btn btn-outline-primary d-flex justify-content-center align-items-center" type="button" data-clear>
+								<span class="icon-2">
+									@ReadFile(iconPath + "x.svg")
+								</span>
+							</button>
+						</div>
 					</div>
 				</div>
 
@@ -96,18 +106,50 @@
 				};
 			</script>
 
-			<script>
-				@disableRegionalHolidays
-				@disabledWeekdays
+			@{ 
+				string disabeldDate = "date.getDay() === ";				
+			}
 
-				@foreach (var date in disabledDates)
-				{
-					<div>@date.GetDateTime("DisabledDateStart").ToString("yyyy-MM-dd")</div>
-					if (date.GetDateTime("DisabledDateEnd") > DateTime.Now) {
-						<div>@date.GetDateTime("DisabledDateEnd").ToString("yyyy-MM-dd")</div>
+			<script type="module">
+				flatpickr(".flatpickr", {
+					altFormat: "d-m-Y",
+					dateFormat: "d-m-Y",
+					weekNumbers: true,
+					minDate: new Date().fp_incr(1),
+					wrap: true,
+					defaultDate: '@GetDate("Ecom:Order.ShippingDate").ToShortDateString()',
+					disable: [
+						{
+							from: "01-12-2021",
+							to: "31-12-2021"
+						},
+						function (date) {
+							// return true to disable
+							return (
+								@foreach(var date in disabledWeekdays)
+								{
+									@disabeldDate @date @(" || ")
+								}
+							);
+
+						}
+					],
+					"locale": {
+						"firstDayOfWeek": 1 // start week on Monday
 					}
-				}
+				});
 			</script>
+
+			@*
+		@disableRegionalHolidays
+
+		@foreach (var date in disabledDates)
+		{
+			<div>@date.GetDateTime("DisabledDateStart").ToString("yyyy-MM-dd")</div>
+			if (date.GetDateTime("DisabledDateEnd") > DateTime.Now) {
+				<div>@date.GetDateTime("DisabledDateEnd").ToString("yyyy-MM-dd")</div>
+			}
+		} *@
 
 		</div>
 
