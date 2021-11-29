@@ -1,7 +1,6 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 @helper RenderOrderDeliveryDate()
 {
-
 	var paragraphViewmodel = Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(Pageview.CurrentParagraph);
 	string shippingDate = !string.IsNullOrWhiteSpace(GetString("Ecom:Order.ShippingDate")) ? GetString("Ecom:Order.ShippingDate") : "",
 	tomorrow = DateTime.Today.AddDays(1).ToString("yyyy-MM-dd"),
@@ -11,24 +10,13 @@
 	showDeliveryDate = shippingDate != "" ? "show" : "",
 	disableField = shippingDate == "" ? "" : "disabled";
 	bool enableDeliveryDate = paragraphViewmodel.Item.GetBoolean("EnableDeliveryDate");
-	bool disableRegionalHolidays = Pageview.CurrentParagraph.Item["DisableRegionalHolidays"] != null ? (Boolean)Pageview.CurrentParagraph.Item["DisableRegionalHolidays"] : false;
-
 	var disabledWeekdays = paragraphViewmodel.Item.GetList("DisabledWeekdays").SelectedValues.ToList();
 	var disabledDates = paragraphViewmodel.Item.GetItems("DisabledDates");
 
 	if(enableDeliveryDate)
     {
-		<style>
-			@* crossbrowser support - diasable webkit icon *@
-			input[type="date"]::-webkit-calendar-picker-indicator {
-				color: transparent;
-				background: none;
-				z-index: 1;
-			}
-		</style>
-
 		<div class="mt-4">
-			
+
 			<h3 class="fs-6 fw-normal mb-0">@Translate("Select delivery date")</h3>
 			<p class="fs-8 mb-3">@Translate("Choose either next available or a specific date")</p>
 
@@ -106,50 +94,53 @@
 				};
 			</script>
 
-			@{ 
-				string disabeldDate = "date.getDay() === ";				
+			@{
+				@* build the list of disabled weekdays for js function *@
+				string disabeldDate = "date.getDay() === ";
+				List<string> disabledDatesList = new List<string>();
+				foreach(var date in disabledWeekdays)
+				{
+					disabledDatesList.Add(disabeldDate + date);
+				}
+				string disabledDatesString = string.Join(" || ", disabledDatesList.Select(x => x.ToString()).ToArray());
 			}
 
 			<script type="module">
+
+				@* Set the flatpickr locale language from culture info *@
+				flatpickr.localize(flatpickr.l10ns.@(Pageview.Area.CultureInfo.TwoLetterISOLanguageName));
+
 				flatpickr(".flatpickr", {
 					altFormat: "d-m-Y",
 					dateFormat: "d-m-Y",
 					weekNumbers: true,
 					minDate: new Date().fp_incr(1),
 					wrap: true,
-					defaultDate: '@GetDate("Ecom:Order.ShippingDate").ToShortDateString()',
+					defaultDate: "@(!string.IsNullOrWhiteSpace(GetString("Ecom:Order.ShippingDate")) ? GetDate("Ecom:Order.ShippingDate").ToShortDateString() : tomorrow)",
 					disable: [
+						@foreach (var date in disabledDates)
 						{
-							from: "01-12-2021",
-							to: "31-12-2021"
-						},
-						function (date) {
-							// return true to disable
-							return (
-								@foreach(var date in disabledWeekdays)
-								{
-									@disabeldDate @date @(" || ")
+							@:{
+								@:from: "@date.GetDateTime("DisabledDateStart").ToString("dd-MM-yyyy")",
+								if (date.GetDateTime("DisabledDateEnd") > DateTime.Now) {
+									@:to: "@date.GetDateTime("DisabledDateEnd").ToString("dd-MM-yyyy")"
 								}
+								else {
+									@:to: "@date.GetDateTime("DisabledDateStart").ToString("dd-MM-yyyy")"
+								}
+							@:},
+						}
+						function (date) {
+							return (
+								@disabledDatesString
 							);
-
 						}
 					],
 					"locale": {
-						"firstDayOfWeek": 1 // start week on Monday
+						"firstDayOfWeek": 1 // always have as 1 to support weekday selector
 					}
 				});
 			</script>
-
-			@*
-		@disableRegionalHolidays
-
-		@foreach (var date in disabledDates)
-		{
-			<div>@date.GetDateTime("DisabledDateStart").ToString("yyyy-MM-dd")</div>
-			if (date.GetDateTime("DisabledDateEnd") > DateTime.Now) {
-				<div>@date.GetDateTime("DisabledDateEnd").ToString("yyyy-MM-dd")</div>
-			}
-		} *@
 
 		</div>
 
