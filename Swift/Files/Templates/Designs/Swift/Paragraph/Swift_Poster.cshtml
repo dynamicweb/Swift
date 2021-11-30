@@ -23,10 +23,17 @@
 		}
 	}
 
+	string posterSizeBase = Model.Item.GetRawValueString("PosterSize", "height");
+
 	string posterHeight = Model.Item.GetRawValueString("PosterHeight", "h-100 min-vh-75 min-vh-md-100");
 	posterHeight = posterHeight == "small" ? "min-vh-25 min-vh-md-50" : posterHeight;
 	posterHeight = posterHeight == "medium" ? "min-vh-50 min-vh-md-75" : posterHeight;
 	posterHeight = posterHeight == "large" ? "min-vh-75 min-vh-md-100" : posterHeight;
+
+	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
+	ratio = ratio != "0" ? ratio : "";
+	string ratioCssClass = ratio != "" && ratio != "fill" ? " ratio" : "";
+	string ratioVariable = ratio != "" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : "";
 
 	string posterPadding = Model.Item.GetRawValueString("ContentPadding", "");
 	posterPadding = posterPadding == "none" ? "p-3 px-xl-3 py-xl-4" : posterPadding;
@@ -44,12 +51,8 @@
 	string maxWidth = Model.Item.GetRawValueString("TextReadability", "max-width-on");
 	maxWidth = maxWidth == "max-width-on" ? "mw-75ch d-inline-block" : maxWidth;
 	maxWidth = maxWidth == "max-width-off" ? "" : maxWidth;
-}
 
-<div class="position-relative h-100@(theme)@(movePageBehindClass)">
-	@RenderImage()
-
-	@switch (layout)
+	switch (layout)
 	{
 		case "align-top-left-text-left":
 		alignment = "text-start justify-content-start align-items-start";
@@ -80,35 +83,54 @@
 			break;
 	}
 
-	<div class="@(posterWidth) h-100 @posterPadding">
-		<div class="h-100 position-relative grid grid-1 @(alignment) @(posterHeight)" id="Poster_@Pageview.CurrentParagraph.ID">
-			<div class="grid grid-1 gap-3 gap-md-4">
-				@RenderTitle(maxWidth)
-				@RenderText(maxWidth)
-				@RenderButton()
+	var parms = new Dictionary<string, object>();
+	parms.Add("cssClass", "h-100 w-100");
+	parms.Add("columns", Model.GridRowColumnCount);
+
+	string imageFilter = Model.Item.GetRawValueString("ImageFilter", "");
+	imageFilter = imageFilter == "no-filter" ? "" : imageFilter;
+	imageFilter = imageFilter == "filter" ? " image-filter" : imageFilter;
+}
+
+<div class="position-relative @(theme)@(movePageBehindClass)">
+	@if (posterSizeBase == "height") {
+		if (!string.IsNullOrEmpty(Model.Item.GetString("Image"))) {
+			<div class="position-absolute top-0 bottom-0 end-0 start-0@(imageFilter)">
+				@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+			</div>
+		}
+
+		<div class="@(posterWidth) h-100 @posterPadding">
+			<div class="h-100 position-relative grid grid-1 @(alignment) @(posterHeight)" id="Poster_@Pageview.CurrentParagraph.ID">
+				<div class="grid grid-1 gap-3 gap-md-4">
+					@RenderTitle(maxWidth)
+					@RenderText(maxWidth)
+					@RenderButton()
+				</div>
 			</div>
 		</div>
-	</div>
-</div>
-
-@helper RenderImage()
-{
-	if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
-	{
-
-		var parms = new Dictionary<string, object>();
-		parms.Add("cssClass", "card-img rounded-0 h-100 w-100");
-		parms.Add("columns", Model.GridRowColumnCount);
-
-		string imageFilter = Model.Item.GetRawValueString("ImageFilter", "");
-		imageFilter = imageFilter == "no-filter" ? "" : imageFilter;
-		imageFilter = imageFilter == "filter" ? " image-filter" : imageFilter;
-
-		<div class="position-absolute top-0 bottom-0 end-0 start-0@(imageFilter)">
-			@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+    }
+	@if (posterSizeBase == "aspect-ratio") {
+		<div class="@(posterWidth) @posterPadding position-absolute h-100 w-100" style="z-index: 1">
+			<div class="h-100 grid grid-1 @(alignment)" @ratioVariable id="Poster_@Pageview.CurrentParagraph.ID">
+				<div class="grid grid-1 gap-3 gap-md-4">
+					@RenderTitle(maxWidth)
+					@RenderText(maxWidth)
+					@RenderButton()
+				</div>
+			</div>
 		</div>
-	}
-}
+
+		if (!string.IsNullOrEmpty(Model.Item.GetString("Image"))) {
+			<div class="position-relative @(imageFilter)">
+				<figure class="m-0@(ratioCssClass)" @ratioVariable>
+					@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+				</figure>
+			</div>
+		}
+
+    }
+</div>
 
 @helper RenderTitle(string maxWidth)
 {
