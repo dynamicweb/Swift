@@ -23,7 +23,7 @@
 * General: Adjusting Swift theme with Bootstrap variables
 
 ## Removed
-* General: Remove border from favoirte icon
+* General: Remove border from favorite icon
 
 ## Added
 * Checkout: Possible to disable dates on the delivery date calendar
