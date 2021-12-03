@@ -1,6 +1,6 @@
 # Changelog
 
-## [v1.4.0] - 02-12-2021
+## [v1.4.0] - 03-12-2021
 
 ## Bugfixes
 * Checkout: The theme on Checkout receipt should follow column theme
