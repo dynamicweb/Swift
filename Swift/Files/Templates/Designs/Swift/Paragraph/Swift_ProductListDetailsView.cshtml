@@ -31,12 +31,13 @@
 	bool hideAddToCart =  !string.IsNullOrEmpty(Model.Item.GetString("HideAddToCart")) ? Model.Item.GetBoolean("HideAddToCart") : false;
 	bool hideFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("HideFavoritesSelector")) ? Model.Item.GetBoolean("HideFavoritesSelector") : false;
 
+	string listItemLayout = !string.IsNullOrEmpty(Model.Item.GetString("ListItemLayout")) ? Model.Item.GetString("ListItemLayout") : "full";
+
 	string detailsPageLink = Dynamicweb.Context.Current.Items["DetailsPageLink"] != null ? Dynamicweb.Context.Current.Items["DetailsPageLink"].ToString() : "";
 	string productTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductTheme")) ? " theme p-3 " + Model.Item.GetRawValueString("ProductTheme").Replace(" ", "").Trim().ToLower() : "";
 	string textPadding = !string.IsNullOrEmpty(Model.Item.GetString("ContentPadding")) ? Model.Item.GetRawValueString("ContentPadding") : "none";
 	textPadding = textPadding == "none" ? "" : textPadding;
 	textPadding = textPadding == "small" ? "p-2 p-lg-3" : textPadding;
-	textPadding = textPadding == "large" ? "p-3 p-lg-4" : textPadding;
 
 	string groupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GroupID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") : "";
 	string url = Dynamicweb.Context.Current.Request.RawUrl;
@@ -73,7 +74,7 @@
 
 			string imagePath = product?.DefaultImage?.Value ?? "";
 			imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
-			imagePath = "/Admin/Public/GetImage.ashx?width=" + 80 + "&image=" + imagePath + "&format=webp";
+			imagePath = "/Admin/Public/GetImage.ashx?width=" + 48 + "&image=" + imagePath + "&format=webp";
 
 			string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
 			ratio = ratio != "0" ? ratio : "";
@@ -96,19 +97,13 @@
 					}
 				}
 			}
-
-			<style>
-				.short-description > p:last-child {
-					margin: 0;
-				}
-			</style>
-
-			<article class="grid gap-2 gap-lg-3 mb-3 @(productTheme) @textPadding">
-				<a href="@link" class="g-col-12 g-col-lg-9 d-flex text-decoration-none mb-2 mb-lg-0">
+	
+			<article class="grid gap-2 gap-lg-3 mb-3 @(productTheme)">
+				<a href="@link" class="g-col-12 g-col-lg-8 d-flex text-decoration-none mb-2 mb-lg-0">
 					@if (!Model.Item.GetBoolean("HideImage")) {
-						<div class="d-flex align-items-center me-2 me-lg-3" style="min-width: 80px">
+						<div class="d-flex align-items-center me-3" style="min-width: 48px">
 							<div class="@ratioCssClass m-0" style="@(ratioVariable)">
-								<figure class="m-0 d-flex justify-content-center">
+								<figure class="m-0">
 									<div class="d-flex justify-content-center align-items-center h-100 w-100">
 										<img src="@imagePath" alt="@product.Name" class="mw-100 mh-100" loading="lazy" style="object-fit: cover;"/>
 									</div>
@@ -117,68 +112,46 @@
 						</div>
 					}
 
-					<div class="flex-fill">
-						<h3 class="h6 mb-0 flex-fill">@product.Name @product.VariantId</h3>	
-						@if (!hideProductNumber) {
-							<div class="fs-7 opacity-75">@product.Number</div>
-						}
+					<div class="grid gap-1 flex-fill">
+						<div class="g-col-12 g-col-lg-6">
+							<h3 class="h6 mb-0">@product.Name @product.VariantId</h3>	
+							@if (!hideProductNumber) {
+								<div class="fs-7 opacity-75">@product.Number</div>
+							}
+							@if (!Model.Item.GetBoolean("HideStockState")) {
+								<div class="g-col-12 fs-7 d-block d-lg-none">
+									@RenderStockState(product)
+								</div>
+							}
+						</div>
+						@if (selectedDisplayGroups.Count() > 0) {
+							<div class="g-col-12 g-col-lg-4">
+								@RenderMainFeatures(mainFeatures)
+							</div>
+                        }
 						@if (!Model.Item.GetBoolean("HideStockState")) {
-							<div class="g-col-12 fs-7 d-block d-lg-none">
+							<div class="g-col-12 g-col-lg-2 text-end align-self-center d-none d-lg-block">
 								@RenderStockState(product)
 							</div>
 						}
-						@if (!Model.Item.GetBoolean("HideShortDescription") && selectedDisplayGroups.Count() > 0) {
-							<div class="grid gap-2 gap-lg-4 w-100">
-								<div class="g-col-12 g-col-lg-8 fs-7 fs-7 d-none d-lg-block short-description">
-									@product.ShortDescription
-								</div>
-								<div class="g-col-12 g-col-lg-4">
-									@RenderMainFeatures(mainFeatures)
-								</div>
-							</div>
-                        } else {
-							if (!Model.Item.GetBoolean("HideShortDescription")) {
-								<div class="fs-7 d-none d-lg-block">
-									@product.ShortDescription
-								</div>
-							}
-                        }
 					</div>
 				</a>
 
-				<div class="g-col-12 g-col-lg-3 d-flex flex-column gap-2 gap-lg-3 align-items-end">
-					<div class="flex-fill">
-						<div class="d-flex gap-2">
-							@if (!hidePrice) {
-								<div class="text-end align-self-end d-block d-lg-none">
-									@RenderPrice(product)
-								</div>
-							}
-							@if (!anonymousUser && !hideFavoritesSelector && product.VariantInfo.VariantInfo == null) {
-								<div>
-									@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
-								</div>
-							}
-							@RenderAddToCart(product)
-						</div>
-						@if (!Model.Item.GetBoolean("HideStockState")) {
-							<div class="text-end align-self-end mt-1 d-none d-lg-block">
-								@if (!Model.Item.GetBoolean("HideStockState")) {
-									@RenderStockState(product)
-								}
-							</div>
-						}
-					</div>
-
-					@if (!hidePrice) {
-						<div class="text-end align-self-end d-none d-lg-block">
+				<div class="g-col-12 g-col-lg-4 d-flex justify-content-end">
+					@if (!hidePrice) { 
+						<div class="me-3 my-auto">
 							@RenderPrice(product)
 						</div>
-                    }
+					}
+					@if (!anonymousUser && !hideFavoritesSelector && product.VariantInfo.VariantInfo == null) {
+						<div>
+							@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+						</div>
+					}
+					@RenderAddToCart(product)
 				</div>
 			</article>
-
-		}
+        }
 
 		<div class="my-3">
 			<div class="text-center d-flex flex-column gap-3">
@@ -225,6 +198,7 @@
 				</div>
 			</div>
 		}
+
 	} else {
 		if (!isVisualEditor) {
 			<div class="alert alert-dark m-0">
@@ -362,7 +336,7 @@
 			string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
 			string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : ""; 
 
-			<form method="post" action="@url" class="d-inline-block">
+			<form method="post" action="@url" class="d-inline-block my-auto">
 				<input type="hidden" name="redirect" value="false" />
 				<input type="hidden" name="ProductId" value="@product.Id" />
 				<input type="hidden" name="cartcmd" value="add" />
@@ -393,7 +367,7 @@
 			string variantSelectorServicePageId = !string.IsNullOrEmpty(Model.Item.GetString("VariantSelectorServicePageId")) ? Model.Item.GetLink("VariantSelectorServicePageId").PageId.ToString() : "";
 			variantSelectorServicePageId = variantSelectorServicePageId != "" ? variantSelectorServicePageId : GetPageIdByNavigationTag("RelatedProductsListService").ToString();
 
-			<form action="/Default.aspx?ID=@variantSelectorServicePageId" data-response-target-element="VariantSelectorModalContent_@Model.ID" data-preloader="inline" class="d-inline-block">
+			<form action="/Default.aspx?ID=@variantSelectorServicePageId" data-response-target-element="VariantSelectorModalContent_@Model.ID" data-preloader="inline" class="d-inline-block my-auto">
 				<input type="hidden" name="ProductID" value="@product.Id" />
 				<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
 				<input type="hidden" name="ViewType" value="ModalContent" />							
