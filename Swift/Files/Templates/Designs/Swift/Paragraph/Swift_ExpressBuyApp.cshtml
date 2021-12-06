@@ -1,0 +1,141 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb
+
+@{
+	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+}
+
+<div class="grid gap-0 min-vh-lg-100 h-lg-100">
+	
+	<section class="g-col-12 g-col-lg-8 p-3 p-lg-5 d-flex flex-column align-content-stretch order-last order-lg-first position-relative">
+		@Header()
+		@Search()
+	</section>
+
+	<aside class="g-col-12 g-col-lg-4 order-first order-lg-last @(theme)">
+
+		<div class="h-100 p-3 p-lg-5">
+			@if(!isVisualEditor)
+			{
+
+				<div id="CartSummaryContainer">
+					@* Initial form for first load (We pass all the settings to the actual template) *@
+				</div>
+
+				<script type="module">
+					swift.PageUpdater.Update(document.querySelector("#ExpressBuyAddForm"));
+				</script>
+			}
+			else
+			{
+				<div class="alert alert-info" role="alert">
+					<span>@Translate("Cart Summary")</span>
+				</div>
+			}
+		</div>
+
+	</aside>
+
+</div>
+
+
+@helper Header()
+{
+	int frontPageId = Dynamicweb.Services.Pages.GetFirstPageForArea(Pageview.AreaID).ID;
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	<header class="d-flex flex-grow-0 pb-3 pb-lg-0">
+		<div class="flex-fill">
+			<h1 class="h3">@Translate("Express buy")</h1>
+			<p class="mb-0">@Translate("Use the search to find your products")</p>
+		</div>
+		<div class="d-flex align-items-start gap-2">
+			<a href="/Default.aspx?id=@frontPageId" class="btn btn-link pe-0">
+				<div class="d-flex gap-2 align-items-center lh-base">
+					<span class="icon-2">
+						@ReadFile(iconPath + "arrow-left.svg")
+					</span>
+					<span>@Translate("Leave")</span>
+				</div>
+			</a>
+		</div>
+	</header>
+}
+
+@helper Search()
+{
+	Dynamicweb.Frontend.LinkViewModel checkoutAnonymousPageId = Model.Item.GetLink("CheckoutAnonymousPageLink");
+	string checkoutAnonymousPageUrl = checkoutAnonymousPageId?.Url;
+	Dynamicweb.Frontend.LinkViewModel checkoutUserPageId = Model.Item.GetLink("CheckoutUserPageLink");
+	string checkoutUserPageUrl = checkoutUserPageId?.Url;
+	Dynamicweb.Frontend.LinkViewModel productDetailsPage = Model.Item.GetLink("ProductDetailsPage");
+	string productDetailsPageUrl = productDetailsPage?.Url;
+	string checkoutUrl = Pageview.User == null ? checkoutAnonymousPageUrl : checkoutUserPageUrl;
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	string searchTerm = string.Empty;
+	string defaultQuantityAsZero = Model.Item.GetBoolean("DefaultQuantityAsZero").ToString();
+	if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request["q"]))
+	{
+		searchTerm = Dynamicweb.Context.Current.Request["q"];
+	}
+	
+	<form class="position-sticky top-0" action="/Default.aspx" id="ExpressBuySearchForm" data-response-target-element="ExpressBuyResultsContainer" onsubmit="updateSearch(); return false;" data-preloader="inline">
+		<div class="theme py-3 py-lg-4 w-100">
+			<input type="hidden" name="ID" value="@Model.PageID" />
+			<input type="hidden" name="feed" value="true" />
+			<input type="hidden" name="redirect" value="false" />
+			<input type="hidden" name="isVariant" value="true,false" />
+			<input type="hidden" name="defaultQuantityAsZero" value="@defaultQuantityAsZero" />
+			<input type="hidden" name="productDetailsPageUrl" value="@productDetailsPageUrl" />
+			
+			<div class="input-group">
+				<span class="position-absolute top-0 icon-2 px-3 d-flex align-items-center h-100 search-icon" style="z-index: 10;">
+					@ReadFile(iconPath + "search.svg")
+				</span>
+				<label for="search_@Model.ID" class="visually-hidden">@Translate("Search here")</label>
+				<input id="search_@Model.ID"
+					   class="form-control rounded-pill  py-2 ps-5 pe-3"
+					   type="search"
+					   placeholder="@Translate("Search here")"
+					   autocomplete="off"
+					   maxlength="255"
+					   name="q"
+					   value="@searchTerm"
+					   onkeyup="updateSearch();">
+			</div>
+		</div>
+	</form>
+
+	<script>
+		function updateSearch() {
+			swift.PageUpdater.Update(document.querySelector("#ExpressBuySearchForm"));
+		}
+	</script>
+
+	<form action="/Default.aspx" method="post" id="ExpressBuyAddForm" data-layout-template="Swift_CartSummary.cshtml" data-response-target-element="CartSummaryContainer">
+		<input type="hidden" name="ID" value="@Model.PageID" />
+		<input type="hidden" name="redirect" value="false" />
+		<input type="hidden" name="cartcmd" value="addmulti" />
+		<input type="hidden" name="checkoutUrl" value="@checkoutUrl" />
+
+		<div id="ExpressBuyResultsContainer" class="grid gap-2">
+			@* Initial form for first load (We pass all the settings to the actual template) *@
+			@{
+				Dynamicweb.Frontend.LinkViewModel productListPage = Model.Item.GetLink("ProductListPage");
+				string productListPageUrl = productListPage?.Url;
+			}
+			<div class="js-express-buy-empty-state align-items-center d-flex flex-column flex-grow-1 justify-content-center min-vh-50 g-col-12">
+				<div class="d-flex flex-column gap-3 lh-1 align-items-center text-center">
+					<span class="icon-7">
+						@ReadFile(iconPath + "search.svg")
+					</span>
+					<h3 class="m-0">@Translate("Go ahead and search")</h3>
+					<p class="m-0 fs-7">@Translate("Do you prefer browsing for products? Then click to explore product catalog")</p>
+					<a href="@productListPageUrl" class="mt-2 btn btn-secondary">@Translate("Explore products")</a>
+				</div>
+			</div>
+		</div>
+
+	</form>
+}

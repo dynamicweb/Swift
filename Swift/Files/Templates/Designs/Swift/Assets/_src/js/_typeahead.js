@@ -133,6 +133,8 @@ const Typeahead = function() {
 
 					if (elm.getAttribute("data-param").includes("ProductId")) {
 						var productDetailPage = formElm.getAttribute("data-product-details-page");
+						productDetailPage = elm.getAttribute("data-selected-details-page") != null ? elm.getAttribute("data-selected-details-page") : productDetailPage;
+
 						formElm.setAttribute("action", productDetailPage);
 					} else {
 						var productListPage = formElm.getAttribute("data-product-list-page");
