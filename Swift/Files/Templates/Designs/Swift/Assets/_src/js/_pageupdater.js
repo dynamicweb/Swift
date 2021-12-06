@@ -31,7 +31,7 @@ const PageUpdater = function () {
 				//UI updates
 				var preloaderTargetElement = preloader != "inline" ? form : responseTargetElement;
 				var addPreloaderTimer = setTimeout(function () {
-					PageUpdater.AddPreloaders(type, preloaderTargetElement);
+					PageUpdater.AddPreloaders(preloader, preloaderTargetElement);
 				}, 200); //Small delay to secure that the preloader is not loaded all the time
 
 				//Fetch
