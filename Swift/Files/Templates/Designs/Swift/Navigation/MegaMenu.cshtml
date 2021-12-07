@@ -1,6 +1,7 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
 @using Dynamicweb
 @using System.IO
+@using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
 	string navAlignment = Model.Parameters["NavAlignment"].ToString();
@@ -26,14 +27,8 @@
 	string dropdownLinkFontWeight = Model.Parameters["DropdownLinkFontWeight"].ToString();
 	string dropdownLinkCasing = Model.Parameters["DropdownLinkCasing"].ToString();
 	string dropdownLinkFontSize = Model.Parameters["DropdownLinkFontSize"].ToString();
-	string ratio = Model.Parameters["ImageAspectRatio"].ToString();
 	bool showProductGroupPromotionImage = Model.Parameters.ContainsKey("ShowProductGroupPromotionImage") ? Convert.ToBoolean(Model.Parameters["ShowProductGroupPromotionImage"].ToString()) : false;
-
-	ratio = ratio != "0" ? ratio : string.Empty;
-	string ratioCssClass = ratio != string.Empty ? " ratio" : "";
-	string ratioVariable = ratio != "" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : string.Empty;
-
-
+	
 	<ul class="navbar-nav">
 		@foreach (var node in nodes)
 		{
@@ -77,69 +72,36 @@
 						<div class="dropdown-menu megamenu py-4" id="NavGroup@(node.PageId)">
 							<div class="container-xl">
 								@if (showProductGroupPromotionImage && !string.IsNullOrEmpty(node.GroupId))
-								{
-									var group = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(node.GroupId, Dynamicweb.Ecommerce.Common.Context.LanguageID);
-
-									if (group is object && group.ProductGroupFieldValues.Count > 0)
-									{
-										var productGroupPromotionImage = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "ProductGroupPromotionImage").Value.ToString();
-										var productGroupPromotionDescription = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "ProductGroupPromotionDescription").Value.ToString();
-										var productGroupPromotionLinkLabel = group.ProductGroupFieldValues.First(g => g.ProductGroupField.SystemName == "ProductGroupPromotionLinkLabel").Value.ToString();
-										string productGroupPromotionImageTheme = Model.Parameters.ContainsKey("ProductGroupPromotionImageTheme") ? Model.Parameters["ProductGroupPromotionImageTheme"].ToString().ToLower() : string.Empty;
-										string gridGap = !string.IsNullOrEmpty(productGroupPromotionImageTheme) ? "gap-0" : "gap-3";
-										string themePadding = !string.IsNullOrEmpty(productGroupPromotionImageTheme) ? "p-3" : "p-0";
-										var groupName = group.Name;
-										var imagePath = "/Admin/Public/GetImage.ashx?Width=" + 480 + "&Height=" + 480 + "&crop=0&image=" + "Files/Images/" + productGroupPromotionImage;
-
-										if (!string.IsNullOrEmpty(productGroupPromotionImage))
-										{
-											<div class="grid">
-												<div class="g-col-9 g-col-xxl-10">
-													<div class="grid mx-n2 @dropdownAlignment">
-														@foreach (var subnode in node.Nodes)
+								{																												
+									<div class="grid">
+										<div class="g-col-9 g-col-xxl-10">
+											<div class="grid mx-n2 @dropdownAlignment">
+												@foreach (var subnode in node.Nodes)
+												{
+													<div class="g-col-4 g-col-xxl-3 g-col-xxxl-2">
+														<a href="@subnode.Link" class="nav-link nav-link-underline">
+															<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
+														</a>
+														@if (subnode.Nodes.Any())
 														{
-															<div class="g-col-4 g-col-xxl-3 g-col-xxxl-2">
-																<a href="@subnode.Link" class="nav-link nav-link-underline">
-																	<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
+															foreach (var subsubnode in subnode.Nodes)
+															{
+																<a class="nav-link nav-link-underline" href="@subsubnode.Link" @(subnode.IsActive ? " aria-current='page'" : "")>
+																	<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
 																</a>
-																@if (subnode.Nodes.Any())
-																{
-																	foreach (var subsubnode in subnode.Nodes)
-																	{
-																		<a class="nav-link nav-link-underline" href="@subsubnode.Link" @(subnode.IsActive ? " aria-current='page'" : "")>
-																			<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
-																		</a>
-																	}
-																}
-															</div>
+															}
 														}
 													</div>
-												</div>
-												<div class="g-col-3 g-col-xxl-2">
-													<div class="grid grid-1 @gridGap@(productGroupPromotionImageTheme)">
-														<a href="@node.Link" title="@groupName">
-															<figure class="m-0@(ratioCssClass)" @ratioVariable> 
-																<img class="img-fluid" src="@imagePath" alt="@groupName" style="object-fit:cover">
-															</figure> 
-														</a>
-														<div class="@themePadding">
-															@if (!string.IsNullOrEmpty(productGroupPromotionDescription)) 
-															{
-																<h6 class="mb-3">@productGroupPromotionDescription</h6>
-															}
-															@if(!string.IsNullOrEmpty(productGroupPromotionLinkLabel)) 
-															{	
-																<a href="@node.Link" title="@productGroupPromotionLinkLabel" class="btn btn-link text-start p-0">@productGroupPromotionLinkLabel</a>
-															}
-														</div>
-													</div>
-												</div>
+												}
 											</div>
-										}
-									}
+										</div>
+										<div class="g-col-3 g-col-xxl-2">
+											@RenderProductGroupPromotionImage(node.GetProductGroup(), node.Link)
+										</div>
+									</div>		
 								}
-								else 
-								{ 
+								else
+								{
 									<div class="grid mx-n2 @dropdownAlignment">
 										@foreach (var subnode in node.Nodes)
 										{
@@ -318,5 +280,49 @@
 		<span class="@iconSize">
 			@ReadFile(iconPath)
 		</span>
+	}
+}
+
+
+@helper RenderProductGroupPromotionImage(ProductGroupViewModel group, string link)
+{
+	IList<FieldValueViewModel> groupFields = group.GroupFields != null ? group.GroupFields : null;
+	var groupName = group.Name;
+	string productGroupPromotionImageTheme = Model.Parameters.ContainsKey("ProductGroupPromotionImageTheme") ? Model.Parameters["ProductGroupPromotionImageTheme"].ToString().ToLower() : string.Empty;
+	string gridGap = !string.IsNullOrEmpty(productGroupPromotionImageTheme) ? "gap-0" : "gap-3";
+	string themePadding = !string.IsNullOrEmpty(productGroupPromotionImageTheme) ? "p-3" : "p-0";
+	string ratio = Model.Parameters["ImageAspectRatio"].ToString();
+	ratio = ratio != "0" ? ratio : string.Empty;
+	string ratioCssClass = ratio != string.Empty ? " ratio" : "";
+	string ratioVariable = ratio != "" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : string.Empty;
+
+	if (groupFields != null)
+	{
+		<div class="grid grid-1 @gridGap@(productGroupPromotionImageTheme)">
+			@foreach (FieldValueViewModel field in groupFields)
+			{
+				if (field.SystemName == "ProductGroupPromotionImage")
+				{
+					var productGroupPromotionImage = field.Value.ToString();
+					var imagePath = "/Admin/Public/GetImage.ashx?Width=" + 480 + "&Height=" + 480 + "&crop=0&image=" + "Files/Images/" + productGroupPromotionImage;
+					
+					<a href="@link" title="@groupName">
+						<figure class="m-0@(ratioCssClass)" @ratioVariable>
+							<img class="img-fluid" src="@imagePath" alt="@groupName" style="object-fit:cover">
+						</figure>
+					</a>
+				}
+				if (field.SystemName == "ProductGroupPromotionDescription")
+				{
+					<h6 class="m-0 @themePadding">
+						@field.Value.ToString()
+					</h6>
+				}
+				if (field.SystemName == "ProductGroupPromotionLinkLabel")
+				{
+					<a href="@link" title="@field.Value.ToString()" class="btn btn-link text-start border-0 pt-0 @themePadding">@field.Value.ToString()</a>
+				}
+			}
+		</div>
 	}
 }
