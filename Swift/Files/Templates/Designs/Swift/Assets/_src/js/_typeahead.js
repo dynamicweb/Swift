@@ -181,6 +181,10 @@ const Typeahead = function() {
 			} 
 
 			closestDropdown.classList.add("show");
+
+			var hideSearchTimer = setTimeout(function () {
+				document.body.addEventListener('click', Typeahead.hideSearchResults);
+			}, 200);
 		},
 
 		hideSearchResults: function() {

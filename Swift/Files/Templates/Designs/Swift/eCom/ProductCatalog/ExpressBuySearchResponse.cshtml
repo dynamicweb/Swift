@@ -1,0 +1,94 @@
+@inherits ViewModelTemplate<ProductListViewModel>
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	bool defaultQuantityAsZero = Convert.ToBoolean(Dynamicweb.Context.Current.Request["defaultQuantityAsZero"]);
+	string productDetailsPageUrl = Dynamicweb.Context.Current.Request["productDetailsPageUrl"];
+
+	var productCounter = 0;
+}
+
+@if (Model.Products.Count() > 0)
+{
+	<header class="g-col-12 py-2 d-none d-lg-block">
+		<div class="grid gap-2 lh-1">
+			<div class="g-col-1"></div>
+			<div class="g-col-1">@Translate("Number")</div>
+			<div class="g-col-4">@Translate("Product")</div>
+			<div class="g-col-2">@Translate("Variant")</div>
+			<div class="g-col-2 text-end">@Translate("Price")</div>
+			<div class="g-col-2 text-end">@Translate("Qty")</div>
+		</div>
+	</header>
+
+	foreach (var product in Model.Products)
+	{
+		string minQty = product.PurchaseMinimumQuantity != 1 ? product.PurchaseMinimumQuantity.ToString() : "1";
+		string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
+		string quantity = !defaultQuantityAsZero ? minQty : "0";
+
+		var defaultGroupId = product.PrimaryOrDefaultGroup?.Id != null ? product.PrimaryOrDefaultGroup.Id : "0";
+		var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups?.GetGroup(defaultGroupId)?.Meta?.PrimaryPage != null ? Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId).Meta.PrimaryPage : "0";
+
+		string link = string.IsNullOrEmpty(selectedDetailPage) ? $"{productDetailsPageUrl}?groupid={defaultGroupId}" : selectedDetailPage;
+		link += "&ProductID=" + product.Id;
+		link += !string.IsNullOrEmpty(product.VariantId) ? "&Variantid=" + product.VariantId : "";
+
+		productCounter += 1;
+
+		<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center">
+
+			<div class="d-none d-lg-block g-col-12 border-top"></div>
+
+			<input type="hidden" name="ProductLoopCounter@(productCounter)" value="@(productCounter)" />
+			<input type="hidden" name="ProductId@(productCounter)" value="@product.Id" />
+			<input type="hidden" name="VariantId@(productCounter)" value="@product.VariantId" />
+			
+			<div class="g-col-1">
+				<a href="@link" tabindex="-1">
+					<img class="img-fluid" src="/Admin/public/getimage.ashx?image=@Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value)&width=60&height=60&format=webp&Crop=5&fillcanvas=true" height="60" width="60" alt="@product.Name">
+				</a>
+			</div>
+
+			<div class="g-col-7 g-col-lg-9 grid grid-9 gap-0 gap-lg-3 lh-1">
+
+				<div class="g-col-5 g-col-lg-1 order-1">
+					<span class="fs-8 fs-lg-6"><a href="@link"  tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.Number</a></span>
+				</div>
+
+				<div class="g-col-5 g-col-lg-4 order-3 lh-1">
+					<span class="fs-8 fs-lg-6"><a href="@link"  tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.Name</a></span>
+				</div>
+
+				<div class="g-col-4 g-col-lg-2 order-4">
+					<span class="fs-8 fs-lg-6"><a href="@link"  tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.VariantName</a></span>
+				</div>
+
+				<div class="g-col-4 g-col-lg-2 text-end order-2 order-lg-last">
+					<span class="text-price fs-8 fs-lg-6">@product.Price.PriceFormatted</span>
+				</div>
+			</div>
+
+			<div class="g-col-2 g-col-lg-2">
+				<label for="Quantity" class="visually-hidden">@Translate("Quantity")</label>
+				<input type="number" step="@stepQty" min="@minQty" class="form-control text-center ms-auto" value="@quantity" name="Quantity@(productCounter)" style="max-width: 85px;">
+			</div>
+
+		</article>
+	}
+
+	<div class="d-flex justify-content-between align-items-baseline py-3 g-col-12 theme position-sticky bottom-0" style="box-shadow: 0 -10px 10px -12px var(--bs-gray-300);">
+		@Translate("Total results") @Model.Products.Count()
+		<button type="button" class="btn btn-primary" onclick="swift.PageUpdater.Update(document.querySelector('#ExpressBuyAddForm'))">
+			<div class="d-flex gap-2 align-items-center lh-base">
+				<span>@Translate("Add all to cart")</span>
+				<span class="icon-2">
+					@ReadFile(iconPath + "shopping-cart.svg")
+				</span>
+			</div>
+		</button>
+	</div>
+
+}
