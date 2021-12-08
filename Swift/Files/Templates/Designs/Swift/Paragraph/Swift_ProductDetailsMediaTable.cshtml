@@ -111,7 +111,7 @@
 		}
 
 		<div class="table-responsive">
-			<table class="table table-hover align-middle mb-0">
+			<table class="table table-hover align-middle mb-0" style="table-layout: fixed;">
 				<thead>
 					<tr>
 						@if (!hideThumbnails)
@@ -241,7 +241,7 @@
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
 	string assetValue = asset.Value;
 
-	<td class="@(theme)">
+	<td class="@(theme) px-0">
 		@foreach (string format in supportedImageFormats)
 		{ //Images
 			if (assetValue.Contains(format))
@@ -269,15 +269,18 @@
 @helper RenderImage(MediaViewModel asset)
 {
 	string productName = product.Name;
+	productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
 	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
 	string imageLinkPath = imagePath;
 	imagePath = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=60&format=webp";
+
+	string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
 
 	RatioSettings ratioSettings = GetRatioSettings();
 
 	<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download>
 		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-			<img loading="lazy" src="@imagePath" class="mw-100 mh-100" alt="@productName" />
+			<img loading="lazy" src="@imagePath" class="mw-100 mh-100" alt="@productName" @assetTitle itemprop="image" />
 		</div>
 	</a>
 }
@@ -293,12 +296,16 @@
 	string vimeoJsClass = videoScreendumpPath.Contains("vimeo") ? "js-vimeo-video-thumbnail" : "";
 	videoScreendumpPath = videoScreendumpPath.Contains("vimeo") ? "" : videoScreendumpPath;
 
+	string productName = product.Name;
+	productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
+	string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
+
 	RatioSettings ratioSettings = GetRatioSettings();
 
 	<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
 		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
 			<div class="icon-2 position-absolute" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
-			<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@asset.Name" class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;" />
+			<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;" />
 		</div>
 	</div>
 }
@@ -306,28 +313,34 @@
 @helper RenderDocument(MediaViewModel asset)
 {
 	string productName = product.Name;
+	productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
 	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
 	string imageLinkPath = imagePath;
 	imagePath = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=60&format=webp";
+	string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
 
 	RatioSettings ratioSettings = GetRatioSettings();
 
 	<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download alt="@productName">
 		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-			<img loading="lazy" src="@imagePath" class="mw-100 mh-100" alt="@productName" />
+			<img loading="lazy" src="@imagePath" class="mw-100 mh-100" alt="@productName" @assetTitle />
 		</div>
 	</a>
 }
 
 @helper RenderVideoPlayer(MediaViewModel asset)
 {
+	string assetName = !string.IsNullOrEmpty(asset.DisplayName) ? asset.DisplayName : asset.Name;
 	string assetValue = asset.Value;
 	string videoId = asset.Value.Substring(asset.Value.LastIndexOf('/') + 1);
 	string type = assetValue.Contains("youtu.be") || assetValue.Contains("youtube") ? "youtube" : "";
 	type = assetValue.Contains("vimeo") ? "vimeo" : type;
 	type = assetValue.Contains(".mp4") ? "selfhosted" : type;
 
-	<div class="h-100">
+	<div class="h-100" itemscope itemtype="https://schema.org/VideoObject">
+		<span class="visually-hidden" itemprop="name">@assetName</span>
+		<span class="visually-hidden" itemprop="contentUrl">@asset.Value</span>
+		<span class="visually-hidden" itemprop="thumbnailUrl">@asset.Value</span>
 		@if (type != "selfhosted")
 		{
 			<div id="player_@(Pageview.CurrentParagraph.ID)_@(videoId)"
@@ -361,9 +374,8 @@
 		{
 			string videoType = Path.GetExtension(assetValue).ToLower();
 
-			<video preload="true" class="h-100 w-100" style="object-fit: cover;">
-				<source src="@assetValue"
-						type="video/@videoType.Replace(".", "")">
+			<video preload="auto" class="h-100 w-100" style="object-fit: cover;">
+				<source src="@assetValue" type="video/@videoType.Replace(".", "")">
 			</video>
 		}
 	</div>

@@ -134,6 +134,10 @@
 								}
 							}
 
+							string assetName = asset.Name;
+							assetName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
+							string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
+
 							if (!isDocument) {
 								<div class="ratio ratio-4x3 border outline-none" data-bs-target="#SmallScreenImages_@Model.ID" data-bs-slide-to="@thumbnailNumber" style="cursor: pointer">
 									<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
@@ -143,14 +147,14 @@
 											}
 										}
 									</div>
-									<img src="@imagePathThumb" alt="@asset.Name" class="p-0 p-lg-1 @vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
+									<img src="@imagePathThumb" alt="@assetName" @assetTitle class="p-0 p-lg-1 @vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
 								</div>
                             } else {
 								<a href="@assetValue" class="ratio ratio-4x3 border outline-none" style="cursor: pointer" download>
 									<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
 										<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
 									</div>
-									<img src="@imagePathThumb" alt="@asset.Name" class="p-0 p-lg-1 mw-100 mh-100" style="object-fit: cover;">
+									<img src="@imagePathThumb" alt="@assetName" @assetTitle class="p-0 p-lg-1 mw-100 mh-100" style="object-fit: cover;">
 								</a>
                             }
 
@@ -262,10 +266,13 @@
 	RatioSettings ratioSettings = GetRatioSettings(size);
 
 	var parms = new Dictionary<string, object>();
-	parms.Add("alt", productName);
+	parms.Add("alt", productName + asset.Keywords);
 	parms.Add("itemprop", "image");
 	parms.Add("fullwidth", true);
 	parms.Add("columns", Model.GridRowColumnCount);
+	if (!string.IsNullOrEmpty(asset.DisplayName)) {
+		parms.Add("title", asset.DisplayName);
+    } 
 
 	if (ratioSettings.Ratio == "fill" && galleryLayout != "grid") {
 		parms.Add("cssClass", "w-100 h-100 image-zoom-lg");
@@ -290,17 +297,22 @@
 	string vimeoJsClass = videoScreendumpPath.Contains("vimeo") ? "js-vimeo-video-thumbnail" : "";
 	videoScreendumpPath = videoScreendumpPath.Contains("vimeo") ? "" : videoScreendumpPath;
 
+	string productName = product.Name;
+	productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
+	string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
+
 	RatioSettings ratioSettings = GetRatioSettings(size);
 
 	<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable); cursor: pointer" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID">
 		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide-to="@number">
 			<div class="icon-5 position-absolute" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
-			<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@asset.Name" class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;" />
+			<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;" />
 		</div>
 	</div>
 }
 
-@helper RenderVideoPlayer(MediaViewModel asset, string size = "desktop") { 
+@helper RenderVideoPlayer(MediaViewModel asset, string size = "desktop") {
+	string assetName = !string.IsNullOrEmpty(asset.DisplayName) ? asset.DisplayName : asset.Name;
 	string assetValue = asset.Value;
 	string videoId = asset.Value.Substring(asset.Value.LastIndexOf('/') + 1);
 	string type = assetValue.Contains("youtu.be") || assetValue.Contains("youtube") ? "youtube" : "";
@@ -310,7 +322,11 @@
 	string openInModal = Model.Item.GetString("OpenVideoInModal");
 	bool autoPlay = Model.Item.GetBoolean("VideoAutoPlay");
 
-	<div class="h-100"> 
+	<div class="h-100" itemscope itemtype="https://schema.org/VideoObject">
+		<span class="visually-hidden" itemprop="name">@assetName</span>
+		<span class="visually-hidden" itemprop="contentUrl">@asset.Value</span>
+		<span class="visually-hidden" itemprop="thumbnailUrl">@asset.Value</span>
+
 		@if (type != "selfhosted") { 
 			<div
 				id="player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size"
@@ -361,9 +377,8 @@
 			string autoPlayAttributes = (autoPlay && openInModal == "false") ? "loop autoplay muted playsinline" : "";
 			string videoType = Path.GetExtension(assetValue).ToLower();
 
-			<video preload="true" @autoPlayAttributes class="h-100 w-100" style="object-fit: cover;">
-				<source src="@assetValue"
-						type="video/@videoType.Replace(".", "")">
+			<video preload="auto" @autoPlayAttributes class="h-100 w-100" style="object-fit: cover;">
+				<source src="@assetValue" type="video/@videoType.Replace(".", "")">
 			</video>
 		}
 	</div>
@@ -379,10 +394,13 @@
 	RatioSettings ratioSettings = GetRatioSettings(size);
 
 	var parms = new Dictionary<string, object>();
-	parms.Add("alt", productName);
+	parms.Add("alt", productName + asset.Keywords);
 	parms.Add("itemprop", "image");
 	parms.Add("fullwidth", true);
 	parms.Add("columns", Model.GridRowColumnCount);
+	if (!string.IsNullOrEmpty(asset.DisplayName)) {
+		parms.Add("title", asset.DisplayName);
+    } 
 
 	if (ratioSettings.Ratio == "fill" && galleryLayout != "grid") {
 		parms.Add("cssClass", "w-100 h-100 image-zoom-lg");
