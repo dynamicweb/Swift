@@ -1,5 +1,6 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
 @using Dynamicweb
+@using Dynamicweb.Frontend
 @using System.IO
 
 @{ 
@@ -31,6 +32,10 @@
 	<ul class="navbar-nav">
 		@foreach (var node in nodes)
 		{
+			var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+			var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page);
+			string submenuType = pageViewModel?.PropertyItem != null ? pageViewModel.PropertyItem.GetRawValueString("SubmenuType", "auto") : "auto";
+
 			var hasChildren = node.Nodes.Count() > 0;
 			string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
 
@@ -42,25 +47,23 @@
 					hasManyChildren = true;
 				}
 			}
-			string submenuType = "auto";
 
-			if (submenuType == "auto")
-			{
-				submenuType = hasManyChildren ? "megamenu" : "dropdown";
-			}
+			submenuType = submenuType == "auto" && hasManyChildren ? "megamenu" : submenuType;
+			submenuType = submenuType == "auto" && !hasManyChildren ? "dropdown" : submenuType;
+			string submenuTypeCss = submenuType == "dropdown" ? " dropdown" : "";
+			submenuTypeCss = submenuType == "megamenu" ? " dropdown has-megamenu" : submenuTypeCss;
 
-			<li class="nav-item@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown" : "")@(hasManyChildren ? " has-megamenu" : "")">
-
+			<li class="nav-item@(node.IsActive ? " active" : "")@submenuTypeCss">
 				@if (node.IsClickable)
 				{
 					<a class="nav-link nav-link-clean nav-link-underline @linkFontWeight @linkCasing @linkFontSize@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" @dropdownAttributes>
-						@RenderNavigationItem(node)
+						@RenderNavigationItem(node, pageViewModel)
 					</a>
 				}
 				else
 				{
 					<span class="nav-link nav-link-clean @linkFontWeight @linkCasing @linkFontSize" @dropdownAlignment>
-						@RenderNavigationItem(node)
+						@RenderNavigationItem(node, pageViewModel)
 					</span>
 				}
 
@@ -94,7 +97,6 @@
 						}
 					else
 					{
-						var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
 						string pageType = page.ItemType;
 
 						<ul class="dropdown-menu@(theme)">
@@ -148,31 +150,32 @@
 	<div class="navbar-nav">
 		@foreach (var node in nodes)
 		{
+			var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+			var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page);
 			var hasChildren = node.Nodes.Count() > 0;
 
 			if (node.IsClickable)
 			{
 				<a class="nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize @(node.IsActive ? " active" : "")" href="@node.Link">
-					@RenderNavigationItem(node)
+					@RenderNavigationItem(node, pageViewModel)
 				</a>
 			}
 			else
 			{
 				<span class="nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize">
-					@RenderNavigationItem(node)
+					@RenderNavigationItem(node, pageViewModel)
 				</span>
 			}
 		}
 	</div>
 }
 
-@helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node)
+@helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node, PageInfoViewModel pageViewModel)
 {
-	var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
-	string pageType = page.ItemType;
+	string pageType = pageViewModel?.Item?.SystemName != null ? pageViewModel.Item.SystemName : "Swift_Page";
 	string linkFontSize = Model.Parameters["LinkFontSize"].ToString();
 	string layout = Model?.Parameters["Layout"].ToString();
-	string icon = page.Item["Icon"] != null ? page.Item["Icon"].ToString() : "";
+	string icon = pageViewModel?.PropertyItem != null ? pageViewModel.PropertyItem.GetRawValueString("Icon", "") : "";
 	string iconSize = "icon-3";
 
 	if (linkFontSize == "fs-7")
