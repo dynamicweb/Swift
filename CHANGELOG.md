@@ -1,5 +1,66 @@
 # Changelog
 
+## [v1.4.0] - 03-12-2021
+
+## Bugfixes
+* Checkout: The theme on Checkout receipt should follow column theme
+* Checkout: Padding correction in Payment and delivery section
+* Customer Center: Toast image is not rendered when only having 1 favorite list
+* Customer Center: Favorite list do not use form submit
+* Customer Center: Errors when deleting a favorite page, leaving an empty page
+* Facets : Navigation, Sorting disappears when there is no facets
+* General: Fix Translation
+* Itemtype: Fix bad navigation preferences implementation + remove area label from dynamic modal on navigation and favorites
+* Itemtype: Alignment fix on product slider
+* Itemtype: Title field is missing
+* Itemtype: Image and text is not centred and missing padding
+* Itemtype: Align preferences node with navigation
+* Itemtype: Facets collapse
+* Product Detail: Improve the variant disable method when a product is out of stock
+* Product Detail: Field title and content us wrapped in product details info column
+
+## Changed 
+* General: Adjusting Swift theme with Bootstrap variables
+
+## Removed
+* General: Remove border from favorite icon
+
+## Added
+* Checkout: Possible to disable dates on the delivery date calendar
+* Customer center: Possible to add product variants to favorite list
+* General: Express buy
+* Itemtype: Row with 6 columns
+* Itemtype: Possible to select Center Vertical alignment on Text Column
+* Itemtype: Product slider, added related products and newest products
+* Itemtype: Mega menu/Dropdown options
+* Product Detail: Possible to create different product detail page design based on product group
+* Product Detail: Quantity prices 
+
+## [v1.3.0] - 16-11-2021
+
+## Bugfixes
+* Itemtype: Stop video play, when modal is closed
+* Itemtype: Fix geolocation format on LocationMaps
+* Product Details: Downloadable documents if file doesn't exist returns an error
+* Product Details: HTML validation error 
+
+## Changed
+* Customer Center: State/Region dropdown on Add Addresse, Manage Addresses and Edit profile
+* General: Unify themes for Product list and Product details
+* General: Use Offcanvas instead of dropdown when adding to favorite list
+* Itemtype: Improvements on Mega menu and dropdown
+
+## Removed
+* Itemtype: Remove hide navbar functionality on Product slider
+
+## Added
+* Itemtype: Simple map
+* Checkout: Order reference field
+* Customer Center: Integration Customer Center - orders, invoices, credit notes
+* General: Add missing use of micro templates for 4 col flex row
+* General: Update product query for Wheel size
+
+
 ## [v1.2.0] - 05-11-2021
 
 ### Bugfixes

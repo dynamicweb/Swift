@@ -1,7 +1,8 @@
+@inherits ViewModelTemplate<FavoriteListViewModel>
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.Frontend
 @using Dynamicweb.Ecommerce.ProductCatalog
-@inherits ViewModelTemplate<FavoriteListViewModel>
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
 
 @{
 	string detailsPageLink = Pageview.CurrentParagraph.Item["ProductDetailsPage"] != null ? Pageview.CurrentParagraph.Item["ProductDetailsPage"].ToString() : "";
@@ -21,6 +22,18 @@
 
 	string priceMin = "";
 	string priceMax = "";
+
+	var favoriteParameters = new Dictionary<string, object>();
+	int defaultFavoriteListId = 0;
+
+	IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
+	if (favoreiteLists.Count() == 1) {
+		foreach (FavoriteList list in favoreiteLists) {
+			defaultFavoriteListId = list.ListId;
+		}
+	}
+		
+	favoriteParameters.Add("ListId", defaultFavoriteListId);
 }
 
 <header class="p-3 border-bottom">
@@ -37,10 +50,14 @@
 	<div class="grid grid-2 grid-lg-3 grid-xxl-4 p-3">
 		@foreach (var product in Model.ProductList.Products)
 		{
-			string link = $"{detailsPageLink}&groupid={product.PrimaryOrDefaultGroup.Id}&productid={product.Id}";
-			link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
-			string priceId = "ProductPrice_" + product.Id + product.VariantId;
+			var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
+			var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId).Meta.PrimaryPage;
 
+			string link = string.IsNullOrEmpty(selectedDetailPage) ? $"{detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
+			link += "&productid=" + product.Id;
+			link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
+
+			string priceId = "ProductPrice_" + product.Id + product.VariantId;
 			string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
 			bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 
@@ -50,6 +67,8 @@
 			string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : ""; 
 
 			string productImage = "/Admin/Public/GetImage.ashx?Image=" + @product.DefaultImage.Value + "&Format=webp&Width=450&Height=450";
+			string productName = product.Name;
+			productName += !string.IsNullOrEmpty(product.VariantName) ? " - " + product.VariantName : "";
 
 			<article class="position-relative d-flex flex-column gap-3">
 				<div class="image">
@@ -75,7 +94,7 @@
 					</div>
 				</div>
 
-				<div class="name flex-fill">@product.Name</div>
+				<div class="name flex-fill">@productName</div>
 
 				<div>
 					<div class="h4" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
@@ -149,7 +168,7 @@
 						</div>
 					</form>
 					<div class="ms-2">
-						@RenderPartial("Components/ToggleFavorite.cshtml", product)
+						@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
 					</div>
 				</div>
 			</article>

@@ -1,6 +1,7 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
-@helper RenderOrderDeliveryDate() 
+@helper RenderOrderDeliveryDate()
 {
+	var paragraphViewmodel = Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(Pageview.CurrentParagraph);
 	string shippingDate = !string.IsNullOrWhiteSpace(GetString("Ecom:Order.ShippingDate")) ? GetString("Ecom:Order.ShippingDate") : "",
 	tomorrow = DateTime.Today.AddDays(1).ToString("yyyy-MM-dd"),
 	iconPath = "/Files/Templates/Designs/Swift/Assets/icons/",
@@ -8,26 +9,19 @@
 	useSpecificDateChecked = shippingDate != "" ? "checked=\"checked\"" : "",
 	showDeliveryDate = shippingDate != "" ? "show" : "",
 	disableField = shippingDate == "" ? "" : "disabled";
-	bool enableDeliveryDate = Pageview.CurrentParagraph.Item["EnableDeliveryDate"] != null ? (Boolean)Pageview.CurrentParagraph.Item["EnableDeliveryDate"] : false;
+	bool enableDeliveryDate = !string.IsNullOrEmpty(paragraphViewmodel.Item.GetString("EnableDeliveryDate")) ? paragraphViewmodel.Item.GetBoolean("EnableDeliveryDate") : false;
+	var disabledWeekdays =  !string.IsNullOrEmpty(paragraphViewmodel.Item.GetString("DisabledWeekdays")) ? paragraphViewmodel.Item.GetList("DisabledWeekdays").SelectedValues.ToList() : new List<string>();
+	var disabledDates = !string.IsNullOrEmpty(paragraphViewmodel.Item.GetString("DisabledDates")) ? paragraphViewmodel.Item.GetItems("DisabledDates") : new List<Dynamicweb.Frontend.ItemViewModel>();
 
 	if(enableDeliveryDate)
     {
-		<style>
-			@* crossbrowser support - diasable webkit icon *@
-			input[type="date"]::-webkit-calendar-picker-indicator {
-				color: transparent;
-				background: none;
-				z-index: 1;
-			}
-		</style>
-
 		<div class="mt-4">
-	
+
 			<h3 class="fs-6 fw-normal mb-0">@Translate("Select delivery date")</h3>
 			<p class="fs-8 mb-3">@Translate("Choose either next available or a specific date")</p>
 
 			<div class="list-group">
-					
+
 				<label class="list-group-item list-group-item-action py-3 d-flex justify-content-between">
 					<span class="d-flex justify-content-between">
 						<input class="form-check-input me-3" type="radio" name="DeliveryDate" value="False" @useNextDateChecked onchange="hideDeliveryDateContainer()">
@@ -49,14 +43,24 @@
 
 				<div class="collapse @showDeliveryDate" id="DeliveryDateContainer">
 					<div class="list-group-item border-top-0 py-3 bg-light">
-						<input type="date" class="form-control" id="EcomOrderShippingDate" name="EcomOrderShippingDate" value="@shippingDate" min="@tomorrow">
-						@* Icon for crossbrowser support *@
-						<span class="icon-2 pe-none me-4 position-absolute end-0 top-50 translate-middle-y">
-							@ReadFile(iconPath+"calendar.svg")
-						</span>
+						<div class="input-group flatpickr">
+							<input type="text" class="form-control" id="EcomOrderShippingDate" name="EcomOrderShippingDate" value="@GetString("Ecom:Order.ShippingDate")" placeholder="@Translate("Select date")" data-input>
+
+							<button class="btn btn-outline-primary d-flex justify-content-center align-items-center" type="button" data-toggle>
+								<span class="icon-2">
+									@ReadFile(iconPath + "calendar.svg")
+								</span>
+							</button>
+
+							<button class="btn btn-outline-primary d-flex justify-content-center align-items-center" type="button" data-clear>
+								<span class="icon-2">
+									@ReadFile(iconPath + "x.svg")
+								</span>
+							</button>
+						</div>
 					</div>
 				</div>
-			
+
 			</div>
 
 			<script>
@@ -89,7 +93,61 @@
 					});
 				};
 			</script>
-		
+
+			@{
+				@* build the list of disabled weekdays for js function *@
+				string disabeldDate = "date.getDay() === ";
+				List<string> disabledWeekdaysList = new List<string>();
+				foreach(var date in disabledWeekdays)
+				{
+					disabledWeekdaysList.Add(disabeldDate + date);
+				}
+				string disabledWeekdaysString = string.Join(" || ", disabledWeekdaysList.Select(x => x.ToString()).ToArray());
+			}
+
+		<script type="module">
+
+			@* Set the flatpickr locale language from culture info *@
+			flatpickr.localize(flatpickr.l10ns.@(Pageview.Area.CultureInfo.TwoLetterISOLanguageName));
+
+			flatpickr(".flatpickr", {
+				altFormat: "d-m-Y",
+				dateFormat: "d-m-Y",
+				weekNumbers: true,
+				minDate: new Date().fp_incr(1),
+				wrap: true,
+				defaultDate: "@(!string.IsNullOrWhiteSpace(GetString("Ecom:Order.ShippingDate")) ? GetDate("Ecom:Order.ShippingDate").ToShortDateString() : tomorrow)",
+				@if(disabledDates.Count > 0 || disabledWeekdays.Count > 0)
+				{
+					@:disable: [
+						foreach (var date in disabledDates)
+						{
+							@:{
+								@:from: "@date.GetDateTime("DisabledDateStart").ToString("dd-MM-yyyy")",
+								if (date.GetDateTime("DisabledDateEnd") > DateTime.Now) {
+									@:to: "@date.GetDateTime("DisabledDateEnd").ToString("dd-MM-yyyy")"
+								}
+								else {
+									@:to: "@date.GetDateTime("DisabledDateStart").ToString("dd-MM-yyyy")"
+								}
+							@:},
+						}
+						if(disabledWeekdays.Count > 0)
+						{
+							@:function (date) {
+								@:return (
+									@disabledWeekdaysString
+								@:);
+							@:}
+						}
+					@:],
+					@:"locale": {
+						@:"firstDayOfWeek": 1 @* Always have as 1 to support weekday selector *@
+					@:}
+				}
+			});
+		</script>
+
 		</div>
 
     }

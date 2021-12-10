@@ -6,88 +6,28 @@
 @{
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 	string productId = Model.Id;
-	bool isInFavoriteList = Pageview.User.IsProductInAnyFavoriteList(productId);
+	string variantId = Model.VariantId;
 
 	IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
-	int favoriteListIdFromUrl = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) : 0;
-	int favoriteListId = favoriteListIdFromUrl;
-	bool reloadPage = favoriteListIdFromUrl != 0;
+	int favoriteListId = GetViewParameter("ListId") != null ? GetViewParameterInt32("ListId") : 0;
+	favoriteListId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) : favoriteListId;
+	string favoriteToggleType = favoriteListId == 0 && favoreiteLists.Count() > 1 ? "multiple-lists" : "single-list";
+	favoriteToggleType = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? "remove-from-list" : favoriteToggleType;
+
+	bool isInFavoriteList = Pageview.User.IsProductInAnyFavoriteList(productId, variantId);
+	string pageId = GetPageIdByNavigationTag("FavoriteServicePage") != 0 ? GetPageIdByNavigationTag("FavoriteServicePage").ToString() : "";
+	pageId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? Pageview.Page.ID.ToString() : pageId;
+
+	string url = "/Default.aspx?ID=" + pageId + "&ProductID=" + productId + "&ProductVariantId=" + variantId;
+	url += favoriteToggleType == "single-list" || favoriteToggleType == "remove-from-list" ? "&FavoriteListId=" + favoriteListId : "";
+	url += favoriteToggleType == "remove-from-list" ? "&FavoriteCmd=removeproductfromfavoritelist" : "";
 }
 
-<form method="post" action="@Pageview.SearchFriendlyUrl">
-	@if (favoreiteLists.Count() < 2) {
-		if (favoreiteLists.Count() == 1) {
-			foreach (FavoriteList list in favoreiteLists) {
-				favoriteListId = list.ListId;
-			}
-		}
-	}
-
-	<input type="hidden" name="ReloadPage" value="@reloadPage.ToString()" />
-	<input type="hidden" name="FavoriteCmd" value="" />
-	<input type="hidden" name="FavoriteListId" value="@favoriteListId"/>
-	<input type="hidden" name="UserId" value="@Pageview.User.ID" />
-	<input type="hidden" name="ProductId" value="@Model.Id" />
-	<input type="hidden" name="VariantId" value="@Model.VariantId" />
-	<input type="hidden" name="ProductName" value="@Model.Name" />
-	@if (!string.IsNullOrEmpty(Model.DefaultImage.Value)) {
-		<input type="hidden" name="Thumbnail" value="/Admin/Public/GetImage.ashx?image=@(Model.DefaultImage.Value)&width=80&format=webp" /> 
-    }
-
-	@if (favoreiteLists.Count() < 2) {
-		isInFavoriteList = Pageview.User.IsProductInFavoriteList(favoriteListId, productId);
-		string defaultCommand = isInFavoriteList ? "remove" : "add";
-		string filledFavoriteIcon = isInFavoriteList ? "" : "d-none";
-		string outlineFavoriteIcon = isInFavoriteList ? "d-none" : "";
-
-		<button type="button" class="btn btn-secondary rounded-0 h-100" data-list-id="@favoriteListId" data-command="@defaultCommand" onclick="swift.Favorites.Update(event)">
-			<span class="icon-2 js-filled-favorite-icon @filledFavoriteIcon">
-				@ReadFile(iconPath + "heart-filled.svg")
-			</span>
-			<span class="icon-2 js-outline-favorite-icon @outlineFavoriteIcon">
-				@ReadFile(iconPath + "heart.svg")
-			</span>
-		</button>
+<button type="button" class="btn h-100" id="FavoriteBtn_@productId@variantId" onclick="swift.Favorites.Toggle(event, '@url', '@favoriteToggleType')">
+	@if (isInFavoriteList) {
+		<img src="@(iconPath)heart-filled.svg" data-alt-icon="@(iconPath)heart.svg" class="icon-2" style="width: 1rem" />
 	} else {
-		string anyFilledFavoriteIcon = isInFavoriteList ? "" : "d-none";
-		string anyOutlineFavoriteIcon = isInFavoriteList ? "d-none" : "";
-
-		<style>
-			.dropdown-toggle-no-arrow::after {
-				display: none;
-			}
-		</style>
-
-		<button type="button" class="btn btn-secondary rounded-0 dropdown-toggle dropdown-toggle-no-arrow" data-bs-toggle="dropdown" aria-expanded="false">
-			<span class="icon-2 js-any-filled-favorite-icon @anyFilledFavoriteIcon">
-				@ReadFile(iconPath + "heart-filled.svg")
-			</span>
-			<span class="icon-2 js-any-outline-favorite-icon @anyOutlineFavoriteIcon">
-				@ReadFile(iconPath + "heart.svg")
-			</span>
-		</button>
-
-		<ul class="dropdown-menu dropdown-menu-end">
-			@foreach (FavoriteList list in favoreiteLists) {
-				string listName = !string.IsNullOrEmpty(list.Name) ? list.Name : Translate("My favorites");
-				bool isInThisFavoriteList = Pageview.User.IsProductInFavoriteList(list.ListId, productId);
-				string defaultCommand = isInThisFavoriteList ? "remove" : "add";
-				string filledFavoriteIcon = isInThisFavoriteList ? "" : "d-none";
-				string outlineFavoriteIcon = isInThisFavoriteList ? "d-none" : "";
-
-				<li>
-					<button type="button" class="btn dropdown-item d-flex align-items-center h-100" data-list-id="@list.ListId" data-command="@defaultCommand" onclick="swift.Favorites.Update(event)">
-						<span class="flex-fill me-2">@listName</span>
-						<span class="icon-2 js-filled-favorite-icon @filledFavoriteIcon">
-							@ReadFile(iconPath + "heart-filled.svg")
-						</span>
-						<span class="icon-2 js-outline-favorite-icon @outlineFavoriteIcon">
-							@ReadFile(iconPath + "heart.svg")
-						</span>
-					</button>
-				</li>
-			}
-		</ul>
+		<img src="@(iconPath)heart.svg" data-alt-icon="@(iconPath)heart-filled.svg" class="icon-2" style="width: 1rem" />
 	}
-</form>
+</button>
 

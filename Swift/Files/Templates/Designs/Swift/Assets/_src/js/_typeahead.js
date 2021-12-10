@@ -133,6 +133,8 @@ const Typeahead = function() {
 
 					if (elm.getAttribute("data-param").includes("ProductId")) {
 						var productDetailPage = formElm.getAttribute("data-product-details-page");
+						productDetailPage = elm.getAttribute("data-selected-details-page") != null ? elm.getAttribute("data-selected-details-page") : productDetailPage;
+
 						formElm.setAttribute("action", productDetailPage);
 					} else {
 						var productListPage = formElm.getAttribute("data-product-list-page");
@@ -179,6 +181,10 @@ const Typeahead = function() {
 			} 
 
 			closestDropdown.classList.add("show");
+
+			var hideSearchTimer = setTimeout(function () {
+				document.body.addEventListener('click', Typeahead.hideSearchResults);
+			}, 200);
 		},
 
 		hideSearchResults: function() {
