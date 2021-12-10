@@ -1,0 +1,140 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+
+@{ 
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+}
+
+@if (!string.IsNullOrEmpty(theme)) {
+	<div class="h-100@(theme)">
+		@RenderProductList()
+	</div>
+} else {
+	@RenderProductList()
+}
+
+@helper RenderProductList () { 
+	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+
+	ProductListViewModel productList = new ProductListViewModel();
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
+	{
+		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
+	}
+
+	string detailsPageLink = Dynamicweb.Context.Current.Items["DetailsPageLink"] != null ? Dynamicweb.Context.Current.Items["DetailsPageLink"].ToString() : "";
+	string url = Dynamicweb.Context.Current.Request.RawUrl;
+
+	if (productList.TotalProductsCount > 0) { 
+		int pageSizeSetting = 30;
+		int pageSize = productList.PageSize;
+		pageSize += pageSizeSetting;
+
+		int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
+
+		foreach (ProductViewModel product in productList.Products)
+		{
+			var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
+			var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId).Meta.PrimaryPage;
+
+			string link = string.IsNullOrEmpty(selectedDetailPage) ? $"{detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
+			link += "&productid=" + product.Id;
+			link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
+
+			if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+			{
+				Dynamicweb.Context.Current.Items["ProductDetails"] = product;
+			} 
+			else 
+			{
+				Dynamicweb.Context.Current.Items.Add("ProductDetails", product);
+			}
+
+			string listItemSourcePageId = Model.Item.GetLink("ListItemSource").PageId;
+
+			@if (!string.IsNullOrEmpty(listItemSourcePageId)) {
+				var page = Dynamicweb.Services.Pages.GetPage(listItemSourcePageId);
+				var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page);
+				string gridColumnSize = pageViewModel.Item.GetRawValueString("ViewType", "3-columns");
+				gridColumnSize = gridColumnSize == "2-columns" ? "g-col-lg-6" : "";
+				gridColumnSize = gridColumnSize == "3-columns" ? "g-col-lg-4" : gridColumnSize;
+				gridColumnSize = gridColumnSize == "4-columns" ? "g-col-lg-3" : gridColumnSize;
+				gridColumnSize = gridColumnSize == "list" ? "" : gridColumnSize;
+
+				<div class="grid pt-3">
+					<article class="g-col-12 @gridColumnSize position-relative" itemscope itemtype="https://schema.org/Product">
+						@RenderGrid(listItemSourcePageId)
+					</article>
+				</div>
+            }
+		}
+
+		<div class="my-3">
+			<div class="text-center">
+				<div class="opacity-85 mb-3">@loadedProducts @Translate("out of") @productList.TotalProductsCount @Translate("products")</div>
+				@if (productList.PageCount != 1) {
+					string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "NameForSort";
+					sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
+
+					<form method="get" action="@url" data-response-target-element="content" class="w-100">
+						@foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+						{
+							foreach (FacetViewModel facetItem in facetGroup.Facets)
+							{
+								foreach (FacetOptionViewModel facetOption in facetItem.Options)
+								{
+									if (facetOption.Selected)
+									{
+										<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]" />
+									}
+								}
+							}
+						}
+
+						@if (productList?.Group?.Id != null) {
+							<input type="hidden" name="GroupId" value="@productList.Group.Id" />
+						}
+
+						<input type="hidden" name="PageSize" value="@pageSize" />
+						<input type="hidden" name="SortBy" value="@sortBySelection" />
+						<input type="hidden" name="RequestType" value="UpdateList" />
+
+						<button class="btn btn-primary mb-3" type="button" onclick="swift.ProductList.Update(event)">@Translate("Load more products")</button>
+					</form>
+				}
+			</div>
+		</div>
+
+		<script>
+			function switchVariantProduct(id, price, imagesrc) {
+				var productImageElement = document.querySelector("#ProductImage_" + id);
+				var productPriceElement = document.querySelector("#ProductPrice_" + id + " .text-price");
+
+				if (productPriceElement) {
+					productPriceElement.innerText = price;
+				}
+
+				if (productImageElement) {
+					productImageElement.src = imagesrc;
+
+					var imageSrcset = productImageElement.srcset;
+					imageSrcset = imageSrcset.replace(/image=.*?&/g, 'image=' + imagesrc + "&");
+
+					productImageElement.srcset = imageSrcset;
+				}
+			}
+		</script>
+	} else {
+		if (!isVisualEditor) {
+			<div class="alert alert-dark m-0">
+				@Translate("We did not find anything matching your search result")
+			</div>
+		} else {
+			<div class="alert alert-dark m-0" role="alert">
+				<span>@Translate("Product list: The list will be shown here, if any")</span>
+			</div>
+		}
+	}
+}

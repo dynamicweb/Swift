@@ -1,0 +1,54 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	ProductViewModel product = new ProductViewModel();
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	} else if (Pageview.Item["DummyProduct"] != null) {
+		ProductViewModelSettings productSetting = new ProductViewModelSettings
+		{
+			LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+			CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+			CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+			ShopId = Pageview.Area.EcomShopId
+		};
+
+		ProductViewModel dummyProduct = ViewModelFactory.CreateView(productSetting, Pageview.Item["DummyProduct"].ToString().Replace("p_", ""));
+		product = dummyProduct;
+	}
+
+	string imagePath = product?.DefaultImage?.Value ?? "";
+	imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
+
+	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
+	ratio = ratio != "0" ? ratio : "";
+	string ratioCssClass = ratio != "" ? " ratio" : "";
+	string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
+
+	string imagePathXs       = "/Admin/Public/GetImage.ashx?width=" + 480 + "&image=" + imagePath + "&format=webp";
+	string imagePathS        = "/Admin/Public/GetImage.ashx?width=" + 640 + "&image=" + imagePath + "&format=webp";
+	string imagePathFallBack = "/Admin/Public/GetImage.ashx?width=" + 640 + "&image=" + imagePath + "&format=webp";
+
+	string imageId = "ProductImage_" + product.Id + product.VariantId;
+}
+
+@if (!string.IsNullOrEmpty(imagePath)) {
+	<div class="ratio" style="@(ratioVariable)">
+		<div class="d-flex justify-content-center align-items-center">
+			<img 
+				id="@imageId"
+				srcset="
+					@imagePathXs 480w,
+					@imagePathS  640w"
+				sizes="(min-width: 992px) 33vw, 50vw"
+				src="@imagePathFallBack"
+				loading="lazy"
+				decoding="async"
+				class="mw-100 mh-100"
+				alt="@product.Name">
+		</div>
+	</div>
+}
