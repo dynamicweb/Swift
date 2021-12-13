@@ -1,0 +1,98 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	ProductViewModel product = new ProductViewModel();
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	} else if (Pageview.Item["DummyProduct"] != null) {
+		ProductViewModelSettings productSetting = new ProductViewModelSettings
+		{
+			LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+			CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+			CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+			ShopId = Pageview.Area.EcomShopId
+		};
+
+		ProductViewModel dummyProduct = ViewModelFactory.CreateView(productSetting, Pageview.Item["DummyProduct"].ToString().Replace("p_", ""));
+
+		product = dummyProduct;
+	}
+
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
+	horizontalAlign = horizontalAlign == "center" ? "justify-content-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "right" ? "justify-content-end" : horizontalAlign;
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+
+	bool hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser ? true : false;
+}
+
+
+@if (!hideAddToCart) { 
+	string iconPath = "/Files/icons/";
+	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
+	}
+
+	string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : "";
+	bool isNeverOutOfStock = product.NeverOutOfstock;
+	disableAddToCart = isNeverOutOfStock ? "" : disableAddToCart; 
+
+	bool quantitySelector = !string.IsNullOrEmpty(Model.Item.GetString("QuantitySelector")) ? Model.Item.GetBoolean("QuantitySelector") : false;
+	bool variantSelectorModal = !string.IsNullOrEmpty(Model.Item.GetString("VariantSelectorModal")) ? Model.Item.GetBoolean("VariantSelectorModal") : false;
+
+	if (product.VariantInfo.VariantInfo == null) { 
+		string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
+		string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
+		string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
+		string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : ""; 
+		 
+		<div class="d-flex @horizontalAlign w-100">
+			<form method="post" action="@url">
+				<input type="hidden" name="redirect" value="false" />
+				<input type="hidden" name="ProductId" value="@product.Id" />
+				<input type="hidden" name="cartcmd" value="add" />
+
+				@if (!string.IsNullOrEmpty(product.VariantId)) {
+					<input type="hidden" name="VariantId" value="@product.VariantId" />
+				}
+
+				@if (quantitySelector) {
+					<div class="input-group input-primary-button-group d-flex flex-row w-100">
+						<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number">
+						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)"><span class="icon-2">@ReadFile(iconPath+"shopping-cart.svg")</span></button>
+						@if (stepQty != "1") {
+							<div class="invalid-feedback d-none">
+								@Translate("Please select a quantity that is dividable by") @stepQty
+							</div>
+						}
+					</div>
+				} else {
+					<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" type="hidden">
+					<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary js-add-to-cart-button" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)"><span class="icon-2">@ReadFile(iconPath+"shopping-cart.svg")</span></button>
+				}
+			</form>
+		</div>
+	} else if (variantSelectorModal) {
+		string buttonWidth = quantitySelector ? "width: calc(80px + 3.5rem);" : "max-width: 3.5rem;";
+		string buttonText = quantitySelector ? Translate("Select") : "<span class=\"icon-2\">" + @ReadFile(iconPath+"shopping-cart.svg") + "</span>";
+
+		string variantSelectorServicePageId = !string.IsNullOrEmpty(Model.Item.GetString("VariantSelectorServicePageId")) ? Model.Item.GetLink("VariantSelectorServicePageId").PageId.ToString() : "";
+		variantSelectorServicePageId = variantSelectorServicePageId != "" ? variantSelectorServicePageId : GetPageIdByNavigationTag("RelatedProductsListService").ToString();
+
+		<div class="d-flex @horizontalAlign w-100">
+			<form action="/Default.aspx?ID=@variantSelectorServicePageId" data-response-target-element="DynamicModalContent" data-preloader="inline">
+				<input type="hidden" name="ProductID" value="@product.Id" />
+				<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
+				<input type="hidden" name="ViewType" value="ModalContent" />							
+				<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-primary" title="@Translate("Select")" style="@buttonWidth" data-bs-toggle="modal" data-bs-target="#DynamicModal">@buttonText</button>
+			</form>
+		</div>
+	}
+}
