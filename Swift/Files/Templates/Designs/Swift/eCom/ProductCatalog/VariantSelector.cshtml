@@ -1,0 +1,107 @@
+@inherits ViewModelTemplate<ProductViewModel>
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{ 
+	string viewType = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ViewType")) ? Dynamicweb.Context.Current.Request.Form.Get("ViewType") : "";
+	bool quantitySelector = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("QuantitySelector")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form.Get("QuantitySelector")) : false;
+
+	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
+	}
+}
+
+@if (Model.VariantInfo.VariantInfo != null) {
+	if (viewType == "ModalContent") {
+		string minQty = Model.PurchaseMinimumQuantity != 1 ? "min=\"" + Model.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
+		string stepQty = Model.PurchaseQuantityStep > 1 ? Model.PurchaseQuantityStep.ToString() : "1";
+		string valueQty = Model.PurchaseMinimumQuantity > Model.PurchaseQuantityStep ? Model.PurchaseMinimumQuantity.ToString() : stepQty;
+		string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : ""; 
+
+		<div class="modal-header">
+			<h5 class="modal-title">@Model.Name</h5>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+		</div>
+		<div class="modal-body" >
+			@RenderSelector()
+		</div>
+		<div class="modal-footer">
+			<form method="post" action="@url">
+				<input type="hidden" name="redirect" value="false" />
+				<input type="hidden" name="ProductId" value="@Model.Id" />
+				<input type="hidden" name="cartcmd" value="add" />
+				<input type="hidden" name="VariantId" value="@Model.VariantId" id="VariantIdField_@Model.Id" />
+
+				@if (quantitySelector) {
+					<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
+						<input id="Quantity_@(Model.Id)_@Model.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number">
+						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(Model.Id)">@Translate("Add to cart")</button>
+						@if (stepQty != "1") {
+							<div class="invalid-feedback d-none">
+								@Translate("Please select a quantity that is dividable by") @stepQty
+							</div>
+						}
+					</div>
+				} else {
+					<input id="Quantity_@(Model.Id)_@Model.VariantId" name="Quantity" value="@valueQty" type="hidden">
+					<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(Model.Id)">@Translate("Add to cart")</button>
+				}
+			</form>
+		</div>
+    } else {
+		@RenderSelector()
+    }
+	
+	<script type="module">
+		swift.VariantSelector.init();
+
+		document.addEventListener('selectioncomplete.swift.variantselector', function (event) {
+			event.preventDefault();
+			document.querySelector("#VariantIdField_@Model.Id").value = document.querySelector("#SelectedVariantId_@Model.Id").value;
+		});
+	</script>
+}
+
+@helper RenderSelector() { 
+	int groupNumber = 1;
+	string variantId = Model.VariantId;
+
+	<form class="mb-3 js-variant-selector" data-combinations="@string.Join(",", Model.VariantCombinations())">
+		<input type="hidden" name="productId" value="@Model.Id" />
+		<input type="hidden" name="variantid" id="SelectedVariantId_@Model.Id" />
+
+		@foreach (var variantGroup in Model.VariantGroups())
+		{
+			VariantGroupViewModel group = variantGroup;
+
+			<h3 class="h6">@group.Name</h3>
+			<div class="mb-3 js-variant-group" data-group-id="@groupNumber">
+				@foreach (var option in group.Options)
+				{
+					string active = variantId.Contains(option.Id) ? "active" : "";
+
+					if (!string.IsNullOrEmpty(option.Color))
+					{
+						<button type="button" class="btn colorbox rounded-circle me-1 mb-2 d-inline-block variant-option js-variant-option @active" style="background-color: @option.Color" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id"></button>
+					}
+					else if (!string.IsNullOrEmpty(option.Color) && !string.IsNullOrEmpty(option.Image.Value))
+					{
+						<button type="button" class="btn p-0 d-inline-block mb-2 variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id">
+							<img src="/Admin/Public/GetImage.ashx?image=@(option.Image.Value)&width=42&Format=WebP&Quality=70" />
+						</button>
+					}
+					else
+					{
+						<button type="button" class="btn btn-secondary d-inline-block mb-2 variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id">
+							@option.Name
+						</button>
+					}
+				}
+			</div>
+
+			groupNumber++;
+		}
+	</form>
+}

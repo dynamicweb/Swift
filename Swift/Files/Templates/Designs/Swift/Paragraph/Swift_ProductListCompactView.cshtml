@@ -1,0 +1,463 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+
+@{ 
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+}
+
+@if (!string.IsNullOrEmpty(theme)) {
+	<div class="h-100@(theme)">
+		@RenderProductList()
+	</div>
+} else {
+	@RenderProductList()
+}
+
+@helper RenderProductList () { 
+	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+
+	ProductListViewModel productList = new ProductListViewModel();
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
+	{
+		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
+	}
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hideProductNumber =  !string.IsNullOrEmpty(Model.Item.GetString("HideProductNumber")) ? Model.Item.GetBoolean("HideProductNumber") : false;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+	bool hideAddToCart =  !string.IsNullOrEmpty(Model.Item.GetString("HideAddToCart")) ? Model.Item.GetBoolean("HideAddToCart") : false;
+	hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser ? true : hideAddToCart;
+	bool hideFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("HideFavoritesSelector")) ? Model.Item.GetBoolean("HideFavoritesSelector") : false;
+
+	string listItemLayout = !string.IsNullOrEmpty(Model.Item.GetString("ListItemLayout")) ? Model.Item.GetString("ListItemLayout") : "full";
+
+	string detailsPageLink = Dynamicweb.Context.Current.Items["DetailsPageLink"] != null ? Dynamicweb.Context.Current.Items["DetailsPageLink"].ToString() : "";
+	string productTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductTheme")) ? " theme p-3 " + Model.Item.GetRawValueString("ProductTheme").Replace(" ", "").Trim().ToLower() : "";
+	string modalTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ModalTheme")) ? " theme " + Model.Item.GetRawValueString("ModalTheme").Replace(" ", "").Trim().ToLower() : "theme light";
+	string textPadding = !string.IsNullOrEmpty(Model.Item.GetString("ContentPadding")) ? Model.Item.GetRawValueString("ContentPadding") : "none";
+	textPadding = textPadding == "none" ? "" : textPadding;
+	textPadding = textPadding == "small" ? "p-2 p-lg-3" : textPadding;
+
+	string groupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GroupID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") : "";
+	string url = Dynamicweb.Context.Current.Request.RawUrl;
+
+	var favoriteParameters = new Dictionary<string, object>();
+	if (!anonymousUser && !hideFavoritesSelector)
+	{
+		int defaultFavoriteListId = 0;
+
+		IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
+		if (favoreiteLists.Count() == 1) {
+			foreach (FavoriteList list in favoreiteLists) {
+				defaultFavoriteListId = list.ListId;
+			}
+		}
+		
+		favoriteParameters.Add("ListId", defaultFavoriteListId);
+	}
+
+	if (productList.TotalProductsCount > 0) { 
+		int pageSizeSetting = 30;
+		int pageSize = productList.PageSize;
+		pageSize += pageSizeSetting;
+
+		int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
+
+		foreach (ProductViewModel product in productList.Products) {
+			var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
+			var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId).Meta.PrimaryPage;
+
+			string link = string.IsNullOrEmpty(selectedDetailPage) ? $"{detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
+			link += "&productid=" + product.Id;
+			link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
+
+			string imagePath = product?.DefaultImage?.Value ?? "";
+			imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
+			imagePath = "/Admin/Public/GetImage.ashx?width=" + 48 + "&image=" + imagePath + "&format=webp";
+
+			string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
+			ratio = ratio != "0" ? ratio : "";
+			string ratioCssClass = ratio != "" ? " ratio" : "";
+			string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
+
+			string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
+
+			string imageId = "ProductImage_" + product.Id + product.VariantId;
+
+			IEnumerable<string> selectedDisplayGroups = Model.Item.GetList("MainFeatures").SelectedValues;
+			List<CategoryFieldViewModel> mainFeatures = new List<CategoryFieldViewModel>();
+
+			foreach (var selection in selectedDisplayGroups)
+			{
+				foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
+				{
+					if (selection == group.Id) {
+						mainFeatures.Add(group);
+					}
+				}
+			}
+	
+			<article class="grid gap-2 gap-lg-3 mb-3 @(productTheme)">
+				<a href="@link" class="g-col-12 g-col-lg-8 d-flex text-decoration-none mb-2 mb-lg-0">
+					@if (!Model.Item.GetBoolean("HideImage")) {
+						<div class="d-flex align-items-center me-3" style="min-width: 48px">
+							<div class="@ratioCssClass m-0" style="@(ratioVariable)">
+								<figure class="m-0">
+									<div class="d-flex justify-content-center align-items-center h-100 w-100">
+										<img src="@imagePath" alt="@product.Name" class="mw-100 mh-100" loading="lazy" style="object-fit: cover;"/>
+									</div>
+								</figure>
+							</div>
+						</div>
+					}
+
+					<div class="grid gap-1 flex-fill">
+						<div class="g-col-12 g-col-lg-6">
+							<h3 class="h6 mb-0">@product.Name @product.VariantId</h3>	
+							@if (!hideProductNumber) {
+								<div class="fs-7 opacity-75">@product.Number</div>
+							}
+							@if (!Model.Item.GetBoolean("HideStockState")) {
+								<div class="g-col-12 fs-7 d-block d-lg-none">
+									@RenderStockState(product)
+								</div>
+							}
+						</div>
+						@if (selectedDisplayGroups.Count() > 0) {
+							<div class="g-col-12 g-col-lg-4">
+								@RenderMainFeatures(mainFeatures)
+							</div>
+                        }
+						@if (!Model.Item.GetBoolean("HideStockState")) {
+							<div class="g-col-12 g-col-lg-2 text-end align-self-center d-none d-lg-block">
+								@RenderStockState(product)
+							</div>
+						}
+					</div>
+				</a>
+
+				<div class="g-col-12 g-col-lg-4 d-flex justify-content-end">
+					@if (!hidePrice) { 
+						<div class="me-3 my-auto">
+							@RenderPrice(product)
+						</div>
+					}
+					@if (!anonymousUser && !hideFavoritesSelector && product.VariantInfo.VariantInfo == null) {
+						@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+					}
+					@RenderAddToCart(product)
+				</div>
+			</article>
+        }
+
+		<div class="my-3">
+			<div class="text-center d-flex flex-column gap-3">
+				<div class="opacity-85">@loadedProducts @Translate("out of") @productList.TotalProductsCount @Translate("products")</div>
+				@if (productList.PageCount != 1) {
+					string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "NameForSort";
+					sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
+
+					<form method="get" action="@url" data-response-target-element="content" class="w-100">
+						@foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+						{
+							foreach (FacetViewModel facetItem in facetGroup.Facets)
+							{
+								foreach (FacetOptionViewModel facetOption in facetItem.Options)
+								{
+									if (facetOption.Selected)
+									{
+										<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]" />
+									}
+								}
+							}
+						}
+
+						@if (productList?.Group?.Id != null) {
+							<input type="hidden" name="GroupId" value="@productList.Group.Id" />
+						}
+
+						<input type="hidden" name="PageSize" value="@pageSize" />
+						<input type="hidden" name="SortBy" value="@sortBySelection" />
+						<input type="hidden" name="RequestType" value="UpdateList" />
+
+						<button class="btn btn-primary" type="button" onclick="swift.ProductList.Update(event)">@Translate("Load more products")</button>
+					</form>
+				}
+			</div>
+		</div>
+
+		if (!hideAddToCart) {
+			<div class="modal fade js-product" id="VariantSelectorModal_@Model.ID" tabindex="-1" aria-hidden="true">
+				<div class="modal-dialog modal-dialog-centered modal-md" >
+					<div class="modal-content @modalTheme" id="VariantSelectorModalContent_@Model.ID">
+						@* The content here comes from an external request *@
+					</div>
+				</div>
+			</div>
+		}
+
+	} else {
+		if (!isVisualEditor) {
+			<div class="alert alert-dark m-0">
+				@Translate("We did not find anything matching your search result")
+			</div>
+		} else {
+			<div class="alert alert-dark m-0" role="alert">
+				<span>@Translate("Product list: The list will be shown here, if any")</span>
+			</div>
+		}
+	}
+}
+
+@helper RenderMainFeatures(List<CategoryFieldViewModel> mainFeatures) { 
+	if (mainFeatures.Count > 0) {
+		string featuresLayout = Model.Item.GetRawValueString("FeaturesLayout", "bullets"); 
+
+		if (featuresLayout == "bullets") {
+			<ul class="m-0 p-0 lh-1 fs-7 opacity-75" style="list-style-position: inside">
+				@foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
+				{
+					foreach (var field in mainFeatureGroup.Fields)
+					{
+						@RenderField(field.Value)
+					}
+				}
+			</ul>
+        } else {
+			List<string> featuresList = new List<string>();
+			foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
+			{
+				foreach (var field in mainFeatureGroup.Fields)
+				{
+					if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+						List<string> options = new List<string>();
+						foreach (FieldOptionValueViewModel option in field.Value.Value as System.Collections.Generic.List<FieldOptionValueViewModel>) {
+							if (!string.IsNullOrWhiteSpace(option.Value)) {
+								if (option.Value.ToString().Contains("#") && (Translate(field.Value.Name) == Translate("Color") || Translate(field.Value.Name) == Translate("Colour"))) {
+									string colorSpan = "<span class=\"colorbox-sm\" style=\"background-color: " + option.Value + "\"></span>";
+									options.Add(colorSpan);
+								} else {
+									options.Add(option.Value);
+								}
+                            }
+						}
+						string optionsString = (string.Join(", ", options.Select(x => x.ToString()).ToArray()));
+						if ((Translate(field.Value.Name) == Translate("Color") || Translate(field.Value.Name) == Translate("Colour"))) {
+							optionsString = (string.Join(" ", options.Select(x => x.ToString()).ToArray()));
+						}
+						featuresList.Add(field.Value.Name + ": " + optionsString);
+					} else {
+						if (!string.IsNullOrWhiteSpace(field.Value.Value.ToString())) {
+							if (field.Value.Value.ToString().Contains("#") && (Translate(field.Value.Name) == Translate("Color") || Translate(field.Value.Name) == Translate("Colour"))) {
+								string colorSpan = "<span class=\"colorbox-sm\" style=\"background-color: " + field.Value.Value + "\"></span>";
+								featuresList.Add(field.Value.Name + ": " + colorSpan);
+							} else {
+								featuresList.Add(field.Value.Name + ": " + field.Value.Value.ToString());
+                            }
+						}
+                    }
+				}
+			}
+			string featuresString = (string.Join(", ", featuresList.Select(x => x.ToString()).ToArray()));
+
+			<div class="opacity-75 fs-7">@featuresString</div>
+        }
+	}
+}
+
+@helper RenderField(FieldValueViewModel field) { 
+	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
+
+	if (fieldValue != "") {
+		fieldValue = fieldValue == "False" ? Translate("No") : fieldValue;
+		fieldValue = fieldValue == "True" ? Translate("Yes") : fieldValue;
+
+		if (field.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+			fieldValue = "";
+			List<string> options = new List<string>();
+			foreach (FieldOptionValueViewModel option in field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>) {
+				if (!string.IsNullOrWhiteSpace(option.Value)) {
+					if (option.Value.ToString().Contains("#") && (Translate(field.Name) == Translate("Color") || Translate(field.Name) == Translate("Colour"))) {
+						string colorSpan = "<span class=\"colorbox-sm\" style=\"background-color: " + option.Value + "\"></span>";
+						options.Add(colorSpan);
+					} else {
+						options.Add(option.Value);
+					}
+                }
+			}
+			string optionsString = (string.Join(", ", options.Select(x => x.ToString()).ToArray()));
+			if ((Translate(field.Name) == Translate("Color") || Translate(field.Name) == Translate("Colour"))) {
+				optionsString = (string.Join(" ", options.Select(x => x.ToString()).ToArray()));
+			}
+			
+			fieldValue = optionsString;
+		}
+
+		if (!string.IsNullOrEmpty(fieldValue)) {
+			<li>@(field.Name): @fieldValue</li>
+		} 
+	}
+}
+
+@helper RenderStockState(ProductViewModel product) { 
+	bool isNeverOutOfStock = product.NeverOutOfstock;
+	bool hasExpectedDelivery = product.ExpectedDelivery != null && product.ExpectedDelivery > DateTime.Now;
+	string expectedDeliveryDate = product.ExpectedDelivery?.ToShortDateString() ?? "";
+
+	string stockLevel = product.StockLevel > 100 ? "100+" : product.StockLevel.ToString();
+
+	if (!isNeverOutOfStock) {
+		if (product.StockLevel > 0) {
+			if (!Model.Item.GetBoolean("HideInventory"))
+			{
+				<p class="fs-7 text-success m-0">@stockLevel @Translate("In stock")</p>
+			}
+			else
+			{
+				<p class="fs-7 text-success m-0">@Translate("In stock")</p>
+			}
+		} else {
+			<p class="fs-7 text-danger m-0">@Translate("Out of Stock")</p>
+		}
+
+		if (hasExpectedDelivery) {
+			<p>
+				<span>@Translate("Expected:")</span>
+				<span>@expectedDeliveryDate</span>
+			</p>
+		}
+	}
+}
+
+@helper RenderAddToCart(ProductViewModel product) { 
+	string iconPath = "/Files/icons/";
+	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
+	}
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+
+	bool hideAddToCart =  !string.IsNullOrEmpty(Model.Item.GetString("HideAddToCart")) ? Model.Item.GetBoolean("HideAddToCart") : false;
+	hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser ? true : hideAddToCart;
+	bool quantitySelector = !string.IsNullOrEmpty(Model.Item.GetString("QuantitySelector")) ? Model.Item.GetBoolean("QuantitySelector") : false;
+
+	string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : "";
+	bool isNeverOutOfStock = product.NeverOutOfstock;
+	disableAddToCart = isNeverOutOfStock ? "" : disableAddToCart; 
+
+	if (!hideAddToCart) { 
+		if (product.VariantInfo.VariantInfo == null) { 
+			string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
+			string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
+			string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
+			string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : ""; 
+
+			<form method="post" action="@url" class="d-inline-block my-auto">
+				<input type="hidden" name="redirect" value="false" />
+				<input type="hidden" name="ProductId" value="@product.Id" />
+				<input type="hidden" name="cartcmd" value="add" />
+
+				@if (!string.IsNullOrEmpty(product.VariantId)) {
+					<input type="hidden" name="VariantId" value="@product.VariantId" />
+				}
+
+				@if (quantitySelector) {
+					<div class="input-group input-primary-button-group d-flex flex-row w-100">
+						<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number">
+						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)"><span class="icon-2">@ReadFile(iconPath+"shopping-cart.svg")</span></button>
+						@if (stepQty != "1") {
+							<div class="invalid-feedback d-none">
+								@Translate("Please select a quantity that is dividable by") @stepQty
+							</div>
+						}
+					</div>
+				} else {
+					<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" type="hidden">
+					<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary js-add-to-cart-button" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)"><span class="icon-2">@ReadFile(iconPath+"shopping-cart.svg")</span></button>
+				}
+			</form>
+		} else {
+			string buttonWidth = quantitySelector ? "width: calc(80px + 3.5rem);" : "max-width: 3.5rem;";
+			string buttonText = quantitySelector ? Translate("Select") : "<span class=\"icon-2\">" + @ReadFile(iconPath+"shopping-cart.svg") + "</span>";
+
+			string variantSelectorServicePageId = !string.IsNullOrEmpty(Model.Item.GetString("VariantSelectorServicePageId")) ? Model.Item.GetLink("VariantSelectorServicePageId").PageId.ToString() : "";
+			variantSelectorServicePageId = variantSelectorServicePageId != "" ? variantSelectorServicePageId : GetPageIdByNavigationTag("RelatedProductsListService").ToString();
+
+			<form action="/Default.aspx?ID=@variantSelectorServicePageId" data-response-target-element="VariantSelectorModalContent_@Model.ID" data-preloader="inline" class="d-inline-block my-auto">
+				<input type="hidden" name="ProductID" value="@product.Id" />
+				<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
+				<input type="hidden" name="ViewType" value="ModalContent" />							
+				<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-primary" title="@Translate("Select")" style="@buttonWidth" data-bs-toggle="modal" data-bs-target="#VariantSelectorModal_@Model.ID">@buttonText</button>
+			</form>
+		}
+	}
+}
+
+@helper RenderPrice(ProductViewModel product) { 
+	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+	string priceMin = "";
+	string priceMax = "";
+
+	<div class="text-end lh-1 my-auto my-lg-0">
+		<div>
+			<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
+				
+			@if (showPricesWithVat == "false" && !neverShowVat) {
+				string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
+
+				<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
+				if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+					<span class="text-decoration-line-through opacity-75 me-2 text-price">@beforePrice</span>
+				}
+			} else {
+				string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
+
+				<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
+				if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+					<span class="text-decoration-line-through opacity-75 me-2 text-price">@beforePrice</span>
+				}
+			}
+			
+			@if (showPricesWithVat == "false" && !neverShowVat) {
+				string price = product.Price.PriceWithoutVatFormatted;
+				if (product?.VariantInfo?.VariantInfo != null) {
+					priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
+					priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
+				}
+				if (priceMin != priceMax) {
+					price = priceMin + " - " + priceMax;
+				} 
+				<span class="text-price">@price</span>
+			} else {
+				string price = product.Price.PriceFormatted;
+				if (product?.VariantInfo?.VariantInfo != null) {
+					priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
+					priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
+				}
+				if (priceMin != priceMax) {
+					price = priceMin + " - " + priceMax;
+				}
+				<span class="text-price">@price</span>
+			}
+		</div>
+
+		@if (showPricesWithVat == "false" && !neverShowVat) {
+			string price = product.Price.PriceWithVatFormatted;
+			if (product?.VariantInfo?.VariantInfo != null) {
+				priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
+				priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
+			}
+			if (priceMin != priceMax) {
+				price = priceMin + " - " + priceMax;
+			}
+			<div class="fs-7 opacity-85 text-price">@price @Translate("Incl. VAT")</div>
+		}
+	</div>
+}
