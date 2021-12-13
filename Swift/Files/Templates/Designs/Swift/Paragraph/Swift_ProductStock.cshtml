@@ -1,0 +1,66 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+
+	ProductViewModel product = new ProductViewModel();
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	} else if (Pageview.Item["DummyProduct"] != null) {
+		ProductViewModelSettings productSetting = new ProductViewModelSettings
+		{
+			LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+			CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+			CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+			ShopId = Pageview.Area.EcomShopId
+		};
+
+		ProductViewModel dummyProduct = ViewModelFactory.CreateView(productSetting, Pageview.Item["DummyProduct"].ToString().Replace("p_", ""));
+
+		product = dummyProduct;
+	}
+
+	bool IsNeverOutOfStock = product.NeverOutOfstock;
+
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
+	horizontalAlign = horizontalAlign == "center" ? "text-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "right" ? "text-end" : horizontalAlign;
+	bool hasExpectedDelivery = product.ExpectedDelivery != null && product.ExpectedDelivery > DateTime.Now;
+	string expectedDeliveryDate = product.ExpectedDelivery?.ToShortDateString() ?? "";
+}
+
+@if (!IsNeverOutOfStock) {
+	<div class="js-stock-state @horizontalAlign">
+
+		@if (product.StockLevel > 0)
+		{
+			if (!Model.Item.GetBoolean("HideInventory"))
+			{
+				<p class="small text-success m-0">@product.StockLevel @Translate("In stock")</p>
+			}
+			else
+			{
+				<p class="small text-success m-0">@Translate("In stock")</p>
+			}
+		}
+
+		else
+		{
+			<p class="small text-danger m-0">@Translate("Out of Stock")</p>
+		}
+
+		@if (hasExpectedDelivery)
+		{
+			<p>
+				<span>@Translate("Expected in stock:")</span>
+				<span>@expectedDeliveryDate</span>
+			</p>
+		}
+
+	</div>
+} else if (isVisualEditor) {
+	<div class="alert alert-info">@Translate("Stock state")</div>
+}
