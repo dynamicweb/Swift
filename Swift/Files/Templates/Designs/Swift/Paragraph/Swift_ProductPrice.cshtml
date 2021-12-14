@@ -2,6 +2,8 @@
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
+	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+
 	ProductViewModel product = new ProductViewModel();
 
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
@@ -21,10 +23,94 @@
 		product = dummyProduct;
 	}
 
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+
 	string priceFontSize = Model.Item.GetRawValueString("PriceSize", "fs-6");
 	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
 	horizontalAlign = horizontalAlign == "center" ? "text-center" : horizontalAlign;
 	horizontalAlign = horizontalAlign == "right" ? "text-end" : horizontalAlign;
 }
 
-<h2 class="@priceFontSize text-nowrap m-0 @horizontalAlign" itemprop="name">@product.Price.PriceFormatted</h2>
+@if (!hidePrice)
+{
+	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+
+	string priceMin = "";
+	string priceMax = "";
+
+	<div class="h4 m-0" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+		<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
+
+		@if (showPricesWithVat == "false" && !neverShowVat)
+		{
+			string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
+
+			<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
+			if (product.Price.Price != product.PriceBeforeDiscount.Price)
+			{
+				<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
+			}
+		}
+		else
+		{
+			string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
+
+			<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
+			if (product.Price.Price != product.PriceBeforeDiscount.Price)
+			{
+				<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
+			}
+		}
+
+		@if (showPricesWithVat == "false" && !neverShowVat)
+		{
+			string price = product.Price.PriceWithoutVatFormatted;
+			if (product?.VariantInfo?.VariantInfo != null)
+			{
+				priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
+				priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
+			}
+			if (priceMin != priceMax)
+			{
+				price = priceMin + " - " + priceMax;
+			}
+			<span class="text-price">@price</span>
+		}
+		else
+		{
+			string price = product.Price.PriceFormatted;
+			if (product?.VariantInfo?.VariantInfo != null)
+			{
+				priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
+				priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
+			}
+			if (priceMin != priceMax)
+			{
+				price = priceMin + " - " + priceMax;
+			}
+			<span class="text-price">@price</span>
+		}
+	</div>
+
+	if (showPricesWithVat == "false" && !neverShowVat)
+	{
+		string price = product.Price.PriceWithVatFormatted;
+		if (product?.VariantInfo?.VariantInfo != null)
+		{
+			priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
+			priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
+		}
+		if (priceMin != priceMax)
+		{
+			price = priceMin + " - " + priceMax;
+		}
+		<small class="opacity-85 fst-normal">@price @Translate("Incl. VAT")</small>
+	}
+} else if (isVisualEditor) {
+	<div class="alert alert-dark m-0" role="alert">
+		<span>@Translate("Price will be shown here")</span>
+	</div>
+}

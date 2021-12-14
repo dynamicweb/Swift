@@ -1,0 +1,69 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+
+	ProductViewModel product = new ProductViewModel();
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	} else if (Pageview.Item["DummyProduct"] != null) {
+		ProductViewModelSettings productSetting = new ProductViewModelSettings
+		{
+			LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+			CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+			CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+			ShopId = Pageview.Area.EcomShopId
+		};
+
+		ProductViewModel dummyProduct = ViewModelFactory.CreateView(productSetting, Pageview.Item["DummyProduct"].ToString().Replace("p_", "").Replace(":", ""));
+
+		product = dummyProduct;
+	}
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+
+	string layout = Model.Item.GetRawValueString("Layout", "list");
+}
+
+@if (!hidePrice && product.Prices.Count > 0) {
+	if (layout == "list") {
+		<div>
+			@foreach (PriceListViewModel quantityPrice in product.Prices)
+			{
+				string quantityLabel = Translate("PCS");
+				string quantityPriceSuffix = quantityPrice.Quantity > 1 ? Translate("pr. PCS") : "";
+
+				<small class="d-block opacity-75"><span>@quantityPrice.Quantity @quantityLabel</span> - <span class="fw-bold">@quantityPrice.Price.PriceFormatted @quantityPriceSuffix</span></small>
+			}
+		</div>
+	} else if (layout == "table") {
+		<div class="grid">
+			<table class="table table-sm mt-3 g-col-12 g-col-lg-6">
+				<thead>
+					<tr>
+						<td>@Translate("QTY")</td>
+						<td>@Translate("pr. PCS")</td>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (PriceListViewModel quantityPrice in product.Prices)
+					{
+						<tr>
+							<td>@quantityPrice.Quantity</td>
+							<td>@quantityPrice.Price.PriceFormatted</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+} else if (isVisualEditor) {
+	<div class="alert alert-dark m-0" role="alert">
+		<span>@Translate("Price table will be shown here")</span>
+	</div>
+}
