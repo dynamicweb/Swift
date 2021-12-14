@@ -1,5 +1,6 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
 
 @{
 	ProductViewModel product = new ProductViewModel();
@@ -16,7 +17,7 @@
 			ShopId = Pageview.Area.EcomShopId
 		};
 
-		ProductViewModel dummyProduct = ViewModelFactory.CreateView(productSetting, Pageview.Item["DummyProduct"].ToString().Replace("p_", ""));
+		ProductViewModel dummyProduct = ViewModelFactory.CreateView(productSetting, Pageview.Item["DummyProduct"].ToString().Replace("p_", "").Replace(":", ""));
 
 		product = dummyProduct;
 	}
@@ -44,8 +45,13 @@
 	bool isNeverOutOfStock = product.NeverOutOfstock;
 	disableAddToCart = isNeverOutOfStock ? "" : disableAddToCart; 
 
+	bool favoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("FavoritesSelector")) ? Model.Item.GetBoolean("FavoritesSelector") : false;
 	bool quantitySelector = !string.IsNullOrEmpty(Model.Item.GetString("QuantitySelector")) ? Model.Item.GetBoolean("QuantitySelector") : false;
 	bool variantSelectorModal = !string.IsNullOrEmpty(Model.Item.GetString("VariantSelectorModal")) ? Model.Item.GetBoolean("VariantSelectorModal") : false;
+
+	string width = Model.Item.GetRawValueString("Width", "small");
+	string fullWidth = width.Contains("full") ? "flex-fill" : "";
+	string addToCartLabel = width.Contains("small") ? "<span class=\"icon-2\">" + ReadFile(iconPath+"shopping-cart.svg") + "</span>" : Translate("Add to cart");
 
 	if (product.VariantInfo.VariantInfo == null) { 
 		string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
@@ -54,7 +60,7 @@
 		string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : ""; 
 		 
 		<div class="d-flex @horizontalAlign w-100">
-			<form method="post" action="@url">
+			<form method="post" action="@url" class="w-100">
 				<input type="hidden" name="redirect" value="false" />
 				<input type="hidden" name="ProductId" value="@product.Id" />
 				<input type="hidden" name="cartcmd" value="add" />
@@ -63,35 +69,51 @@
 					<input type="hidden" name="VariantId" value="@product.VariantId" />
 				}
 
-				@if (quantitySelector) {
-					<div class="input-group input-primary-button-group d-flex flex-row w-100">
-						<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number">
-						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)"><span class="icon-2">@ReadFile(iconPath+"shopping-cart.svg")</span></button>
-						@if (stepQty != "1") {
-							<div class="invalid-feedback d-none">
-								@Translate("Please select a quantity that is dividable by") @stepQty
-							</div>
+				<div class="input-group input-primary-button-group d-flex flex-row w-100" style="z-index: 1">
+					@if (!anonymousUser && favoritesSelector && product.VariantInfo.VariantInfo == null) {
+						var favoriteParameters = new Dictionary<string, object>();
+						int defaultFavoriteListId = 0;
+
+						IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
+						if (favoreiteLists.Count() == 1) {
+							foreach (FavoriteList list in favoreiteLists) {
+								defaultFavoriteListId = list.ListId;
+							}
 						}
-					</div>
-				} else {
-					<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" type="hidden">
-					<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary js-add-to-cart-button" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)"><span class="icon-2">@ReadFile(iconPath+"shopping-cart.svg")</span></button>
-				}
+						favoriteParameters.Add("ListId", defaultFavoriteListId);
+
+						@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+					}
+
+					@if (quantitySelector) {
+							<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number">
+							<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary @fullWidth js-add-to-cart-button" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@addToCartLabel</button>
+							if (stepQty != "1") {
+								<div class="invalid-feedback d-none">
+									@Translate("Please select a quantity that is dividable by") @stepQty
+								</div>
+							}
+					} else {
+						<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" type="hidden">
+						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary @fullWidth js-add-to-cart-button" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@addToCartLabel</button>
+					}
+				</div>
 			</form>
 		</div>
 	} else if (variantSelectorModal) {
 		string buttonWidth = quantitySelector ? "width: calc(80px + 3.5rem);" : "max-width: 3.5rem;";
-		string buttonText = quantitySelector ? Translate("Select") : "<span class=\"icon-2\">" + @ReadFile(iconPath+"shopping-cart.svg") + "</span>";
+		buttonWidth = width.Contains("full") ? "" : buttonWidth;
+		string buttonText = quantitySelector || width.Contains("full") ? Translate("Select") : "<span class=\"icon-2\">" + @ReadFile(iconPath+"shopping-cart.svg") + "</span>";
 
 		string variantSelectorServicePageId = !string.IsNullOrEmpty(Model.Item.GetString("VariantSelectorServicePageId")) ? Model.Item.GetLink("VariantSelectorServicePageId").PageId.ToString() : "";
 		variantSelectorServicePageId = variantSelectorServicePageId != "" ? variantSelectorServicePageId : GetPageIdByNavigationTag("RelatedProductsListService").ToString();
 
 		<div class="d-flex @horizontalAlign w-100">
-			<form action="/Default.aspx?ID=@variantSelectorServicePageId" data-response-target-element="DynamicModalContent" data-preloader="inline">
+			<form action="/Default.aspx?ID=@variantSelectorServicePageId" data-response-target-element="DynamicModalContent" data-preloader="inline" class="w-100 d-flex" style="z-index: 1">
 				<input type="hidden" name="ProductID" value="@product.Id" />
 				<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
 				<input type="hidden" name="ViewType" value="ModalContent" />							
-				<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-primary" title="@Translate("Select")" style="@buttonWidth" data-bs-toggle="modal" data-bs-target="#DynamicModal">@buttonText</button>
+				<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-primary @fullWidth" title="@Translate("Select")" style="@buttonWidth" data-bs-toggle="modal" data-bs-target="#DynamicModal">@buttonText</button>
 			</form>
 		</div>
 	}
