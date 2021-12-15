@@ -31,14 +31,14 @@ const PageUpdater = function () {
 				//UI updates
 				var preloaderTargetElement = preloader != "inline" ? form : responseTargetElement;
 				var addPreloaderTimer = setTimeout(function () {
-					PageUpdater.AddPreloaders(type, preloaderTargetElement);
+					PageUpdater.AddPreloaders(preloader, preloaderTargetElement);
 				}, 200); //Small delay to secure that the preloader is not loaded all the time
 
 				//Fetch
 				let response = await fetch(form.action, fetchOptions);
 
 				if (response.ok) {
-					PageUpdater.Success(response, addPreloaderTimer, formData, responseTargetElement);
+					PageUpdater.Success(response, addPreloaderTimer, formData, responseTargetElement, clickedButton);
 				} else {
 					PageUpdater.Error(response, addPreloaderTimer);
 				}
@@ -73,7 +73,7 @@ const PageUpdater = function () {
 				let response = await fetch(url);
 
 				if (response.ok) {
-					PageUpdater.Success(response, addPreloaderTimer, new FormData(), responseTargetElement);
+					PageUpdater.Success(response, addPreloaderTimer, new FormData(), responseTargetElement, clickedButton);
 				} else {
 					PageUpdater.Error(response, addPreloaderTimer);
 				}
@@ -117,7 +117,7 @@ const PageUpdater = function () {
 			}
 		},
 
-		Success: async function (response, addPreloaderTimer, formData, responseTargetElement) {
+		Success: async function (response, addPreloaderTimer, formData, responseTargetElement, clickedButton) {
 			clearTimeout(addPreloaderTimer);
 
 			let html = await response.text().then(function (text) {
@@ -133,8 +133,9 @@ const PageUpdater = function () {
 				}
 			});
 			var globalDispatcher = document.dispatchEvent(event);
+			var localDispatcher = clickedButton.dispatchEvent(event);
 
-			if (globalDispatcher != false) {
+			if (globalDispatcher != false && localDispatcher != false) {
 				//Remove preloader
 				if (document.querySelector("#overlay")) {
 					document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
