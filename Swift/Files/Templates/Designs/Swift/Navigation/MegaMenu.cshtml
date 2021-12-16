@@ -2,13 +2,14 @@
 @using Dynamicweb
 @using Dynamicweb.Frontend
 @using System.IO
+@using Dynamicweb.Ecommerce.ProductCatalog
 
-@{ 
-	string theme = Model.Parameters["theme"].ToString();
-	string navAlignment = Model.Parameters["NavAlignment"].ToString();
-	string linkFontWeight = Model.Parameters["LinkFontWeight"].ToString();
-	string linkCasing = Model.Parameters["LinkCasing"].ToString();
-	string linkFontSize = Model.Parameters["LinkFontSize"].ToString();
+@{
+	string theme = Model.Parameters["theme"] != null ? Model.Parameters["theme"].ToString() : string.Empty;
+	string navAlignment = Model.Parameters["NavAlignment"] != null ? Model.Parameters["NavAlignment"].ToString() : string.Empty;
+	string linkFontWeight = Model.Parameters["LinkFontWeight"] != null ? Model.Parameters["LinkFontWeight"].ToString() : string.Empty;
+	string linkCasing = Model.Parameters["LinkCasing"] != null ? Model.Parameters["LinkCasing"].ToString() : string.Empty;
+	string linkFontSize = Model.Parameters["LinkFontSize"] != null ? Model.Parameters["LinkFontSize"].ToString() : string.Empty;
 }
 
 <nav class="navbar navbar-expand d-none d-lg-flex mx-n2 position-static megamenu-wrapper py-0 @navAlignment">
@@ -21,13 +22,24 @@
 
 @helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string theme, string linkFontWeight, string linkCasing, string linkFontSize)
 {
-	string dropdownAlignment = Model.Parameters["DropdownAlignment"].ToString();
-	string dropdownLinkHeaderFontWeight = Model.Parameters["DropdownLinkHeaderFontWeight"].ToString();
-	string dropdownLinkHeaderCasing = Model.Parameters["DropdownLinkHeaderCasing"].ToString();
-	string dropdownLinkHeaderFontSize = Model.Parameters["DropdownLinkHeaderFontSize"].ToString();
-	string dropdownLinkFontWeight = Model.Parameters["DropdownLinkFontWeight"].ToString();
-	string dropdownLinkCasing = Model.Parameters["DropdownLinkCasing"].ToString();
-	string dropdownLinkFontSize = Model.Parameters["DropdownLinkFontSize"].ToString();
+	string dropdownAlignment = Model.Parameters["DropdownAlignment"] != null ? Model.Parameters["DropdownAlignment"].ToString() : string.Empty;
+	string dropdownLinkHeaderFontWeight = Model.Parameters["DropdownLinkHeaderFontWeight"] != null ? Model.Parameters["DropdownLinkHeaderFontWeight"].ToString() : string.Empty;
+	string dropdownLinkHeaderCasing = Model.Parameters["DropdownLinkHeaderCasing"] != null ? Model.Parameters["DropdownLinkHeaderCasing"].ToString() : string.Empty;
+	string dropdownLinkHeaderFontSize = Model.Parameters["DropdownLinkHeaderFontSize"] != null ? Model.Parameters["DropdownLinkHeaderFontSize"].ToString() : string.Empty;
+	string dropdownLinkFontWeight = Model.Parameters["DropdownLinkFontWeight"] != null ? Model.Parameters["DropdownLinkFontWeight"].ToString() : string.Empty;
+	string dropdownLinkCasing = Model.Parameters["DropdownLinkCasing"] != null ? Model.Parameters["DropdownLinkCasing"].ToString() : string.Empty;
+	string dropdownLinkFontSize = Model.Parameters["DropdownLinkFontSize"] != null ? Model.Parameters["DropdownLinkFontSize"].ToString() : string.Empty;
+	string productGroupImagePlacement = Model.Parameters["ProductGroupImagePlacement"] != null ? Model.Parameters["ProductGroupImagePlacement"].ToString() : string.Empty;
+	string imageAlignment = "";
+	imageAlignment = dropdownAlignment == "justify-content-start text-start" && productGroupImagePlacement == "flex-row" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-start text-start" && productGroupImagePlacement == "flex-row-reverse" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-start text-start" && productGroupImagePlacement == "flex-column" ? "align-items-start" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-center text-center" && productGroupImagePlacement == "flex-row" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-center text-center" && productGroupImagePlacement == "flex-row-reverse" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-center text-center" && productGroupImagePlacement == "flex-column" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-end text-end" && productGroupImagePlacement == "flex-row" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-end text-end" && productGroupImagePlacement == "flex-row-reverse" ? "align-items-center" : imageAlignment;
+	bool showProductGroupPromotionImage = Model.Parameters.ContainsKey("ShowProductGroupPromotionImage") ? Convert.ToBoolean(Model.Parameters["ShowProductGroupPromotionImage"].ToString()) : false;
 
 	<ul class="navbar-nav">
 		@foreach (var node in nodes)
@@ -53,7 +65,10 @@
 			string submenuTypeCss = submenuType == "dropdown" ? " dropdown" : "";
 			submenuTypeCss = submenuType == "megamenu" ? " dropdown has-megamenu" : submenuTypeCss;
 
-			<li class="nav-item@(node.IsActive ? " active" : "")@submenuTypeCss">
+			string nodeId = !string.IsNullOrEmpty(node.GroupId) ? node.GroupId : "Page_" + node.PageId.ToString();
+			string dataType = !string.IsNullOrEmpty(node.GroupId) ? "group" : "page";
+
+			<li id="@(nodeId)" data-type="@dataType" class="nav-item@(node.IsActive ? " active" : "")@submenuTypeCss">
 				@if (node.IsClickable)
 				{
 					<a class="nav-link nav-link-clean nav-link-underline @linkFontWeight @linkCasing @linkFontSize@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" @dropdownAttributes>
@@ -71,30 +86,114 @@
 				{
 					if (submenuType == "megamenu")
 					{
-						<div class="dropdown-menu megamenu px-3 py-4@(theme)" id="NavGroup@(node.PageId)">
+						<div class="dropdown-menu megamenu py-4@(theme)" id="NavGroup@(node.PageId)">
 							<div class="container-xl">
-								<div class="d-flex flex-row flex-wrap mx-n2 @dropdownAlignment">
-									@foreach (var subnode in node.Nodes)
-									{
-										<div class="col-2">
-											<a href="@subnode.Link" class="nav-link nav-link-underline">
-												<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
-											</a>
-											@if (subnode.Nodes.Any())
-											{
-												foreach (var subsubnode in subnode.Nodes)
+								@if (showProductGroupPromotionImage && !string.IsNullOrEmpty(node.GroupId))
+								{
+									<div class="grid gap-4">
+										<div class="g-col-9 g-col-xxl-10">
+											<div class="d-flex flex-wrap gap-3 mx-n2 @dropdownAlignment">
+												@foreach (var subnode in node.Nodes)
 												{
-													<a class="nav-link nav-link-underline" href="@subsubnode.Link" @(subnode.IsActive ? " aria-current='page'" : "")>
-														<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
-													</a>
+													nodeId = !string.IsNullOrEmpty(subnode.GroupId) ? subnode.GroupId : "Page_" + subnode.PageId.ToString();
+													dataType = !string.IsNullOrEmpty(subnode.GroupId) ? "group" : "page";
+
+													<div class="col-4 col-xxl-3 col-xxxl-2">
+														<a id="@(nodeId)" data-type="@dataType" href="@subnode.Link" class="nav-link nav-link-underline lh-sm text-break">
+															@if (productGroupImagePlacement != "none")
+															{
+																<div class="d-flex @productGroupImagePlacement @imageAlignment gap-3">
+																	@RenderGroupImage(subnode.GetProductGroup())
+																	<h6 class="m-0 w-100 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
+																</div>
+															}
+															else
+															{
+																<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
+															}
+														</a>
+														@if (subnode.Nodes.Any())
+														{
+															foreach (var subsubnode in subnode.Nodes)
+															{
+																nodeId = !string.IsNullOrEmpty(subsubnode.GroupId) ? subsubnode.GroupId : "Page_" + subsubnode.PageId.ToString();
+																dataType = !string.IsNullOrEmpty(subsubnode.GroupId) ? "group" : "page";
+
+																<a class="nav-link nav-link-underline lh-sm text-break" href="@subsubnode.Link" @(subnode.IsActive ? " aria-current='page'" : "")>
+																	@if (productGroupImagePlacement != "none")
+																	{
+																		<div class="d-flex @productGroupImagePlacement @imageAlignment gap-3">
+																			@RenderGroupImage(subsubnode.GetProductGroup())
+																			<span class="w-100 @dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
+																		</div>
+																	}
+																	else
+																	{
+																		<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
+																	}
+																</a>
+															}
+														}
+													</div>
 												}
-											}
+											</div>
 										</div>
-									}
-								</div>
+										<div class="g-col-3 g-col-xxl-2">
+											@RenderProductGroupPromotionImage(node.GetProductGroup(), node.Link)
+										</div>
+									</div>
+								}
+								else
+								{
+									<div class="d-flex flex-wrap mx-n2 @dropdownAlignment">
+										@foreach (var subnode in node.Nodes)
+										{
+											nodeId = !string.IsNullOrEmpty(subnode.GroupId) ? subnode.GroupId : "Page_" + subnode.PageId.ToString();
+											dataType = !string.IsNullOrEmpty(subnode.GroupId) ? "group" : "page";
+
+											<div class="col-4 col-xxl-3 col-xxxl-2">
+												<a id="@(nodeId)" data-type="@dataType" href="@subnode.Link" class="nav-link nav-link-underline lh-sm text-break">
+													@if (productGroupImagePlacement != "none")
+													{
+														<div class="d-flex @productGroupImagePlacement @imageAlignment gap-3">
+															@RenderGroupImage(subnode.GetProductGroup())
+															<h6 class="m-0 w-100 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
+														</div>
+													}
+													else
+													{
+														<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
+													}
+												</a>
+												@if (subnode.Nodes.Any())
+												{
+													foreach (var subsubnode in subnode.Nodes)
+													{
+														nodeId = !string.IsNullOrEmpty(subsubnode.GroupId) ? subsubnode.GroupId : "Page_" + subsubnode.PageId.ToString();
+														dataType = !string.IsNullOrEmpty(subsubnode.GroupId) ? "group" : "page";
+
+														<a id="@(nodeId)" data-type="@dataType" class="nav-link nav-link-underline lh-sm text-break" href="@subsubnode.Link" @(subnode.IsActive ? " aria-current='page'" : "")>
+															@if (productGroupImagePlacement != "none")
+															{
+																<div class="d-flex @productGroupImagePlacement @imageAlignment gap-3">
+																	@RenderGroupImage(subsubnode.GetProductGroup())
+																	<span class="w-100 @dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
+																</div>
+															}
+															else
+															{
+																<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
+															}
+														</a>
+													}
+												}
+											</div>
+										}
+									</div>
+								}
 							</div>
-						</div> 
-						}
+						</div>
+					}
 					else
 					{
 						string pageType = page.ItemType;
@@ -122,13 +221,13 @@
 								if (Pageview.User != null)
 								{
 									string link = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
-						
+
 									<li><hr class="dropdown-divider"></li>
 
 									if (Pageview.User.CurrentSecondaryUser != null)
 									{
 										<li>
-											<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item nav-link-underline @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")  >@Translate("Sign out as a customer")</a>
+											<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item nav-link-underline @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")>@Translate("Sign out as a customer")</a>
 										</li>
 									}
 									<li>
@@ -201,9 +300,9 @@
 			case "linksOnly":
 				<span class="align-middle">@node.Name</span>
 				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
-			break;
-		case "iconsOnly":
-			@RenderIcon(icon, iconSize)
+				break;
+			case "iconsOnly":
+				@RenderIcon(icon, iconSize)
 				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
 				break;
 			case "iconsAndLinks":
@@ -250,5 +349,112 @@
 		<span class="@iconSize">
 			@ReadFile(iconPath)
 		</span>
+	}
+}
+
+
+@helper RenderProductGroupPromotionImage(ProductGroupViewModel group, string link)
+{
+	IList<FieldValueViewModel> groupFields = group.GroupFields != null ? group.GroupFields : null;
+
+	if (groupFields != null)
+	{
+		var groupName = group.Name;
+		string ratio = Model.Parameters["ImageAspectRatio"].ToString();
+		ratio = ratio != "0" ? ratio : string.Empty;
+		string ratioCssClass = ratio != string.Empty ? " ratio" : "";
+		string ratioVariable = ratio != "" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : string.Empty;
+		string productGroupPromotionImage = string.Empty;
+		string productGroupPromotionImagePath = string.Empty;
+		string productGroupPromotionDescription = string.Empty;
+		string productGroupPromotionLinkLabel = string.Empty;
+		string productGroupPromotionLink = string.Empty;
+		string productGroupPromotionImageTheme = Model.Parameters.ContainsKey("ProductGroupPromotionImageTheme") ? Model.Parameters["ProductGroupPromotionImageTheme"].ToString().ToLower() : string.Empty;
+		string gridGap = !string.IsNullOrEmpty(productGroupPromotionImageTheme) ? "gap-0" : "gap-3";
+		string themePadding = !string.IsNullOrEmpty(productGroupPromotionImageTheme) ? "p-3" : "p-0";
+
+		foreach (FieldValueViewModel field in groupFields)
+		{
+			if (field.SystemName == "ProductGroupPromotionImage")
+			{
+				productGroupPromotionImage = field.Value != null ? field.Value.ToString() : string.Empty;
+				productGroupPromotionImagePath = "/Admin/Public/GetImage.ashx?Width=" + 480 + "&Height=" + 480 + "&crop=0&image=" + "Files/Images/" + productGroupPromotionImage;
+			}
+			if (field.SystemName == "ProductGroupPromotionDescription")
+			{
+				productGroupPromotionDescription = field.Value != null ? field.Value.ToString() : string.Empty;
+			}
+			if (field.SystemName == "ProductGroupPromotionLinkLabel")
+			{
+				productGroupPromotionLinkLabel = field.Value != null ? field.Value.ToString() : string.Empty;
+			}
+			if (field.SystemName == "ProductGroupPromotionLink")
+			{
+				productGroupPromotionLink = field.Value != null ? field.Value.ToString() : string.Empty;
+			}
+		}
+
+		<div class="grid grid-1 @gridGap@(productGroupPromotionImageTheme)">
+			@if (productGroupPromotionImage != string.Empty)
+			{
+				productGroupPromotionLink = !string.IsNullOrEmpty(productGroupPromotionLink) ? productGroupPromotionLink : link;
+
+				<a href="@productGroupPromotionLink" title="@groupName">
+					<figure class="m-0@(ratioCssClass)" @ratioVariable>
+						<img class="img-fluid" src="@productGroupPromotionImagePath" alt="@groupName" style="object-fit:cover">
+					</figure>
+				</a>
+			}
+			@if (!string.IsNullOrEmpty(productGroupPromotionDescription) || !string.IsNullOrEmpty(productGroupPromotionLinkLabel))
+			{
+				<div class="grid grid-1 @themePadding ">
+
+					@if (!string.IsNullOrEmpty(productGroupPromotionDescription))
+					{
+						<h6 class="m-0">@productGroupPromotionDescription</h6>
+					}
+					@if (!string.IsNullOrEmpty(productGroupPromotionLinkLabel))
+					{
+						productGroupPromotionLink = !string.IsNullOrEmpty(productGroupPromotionLink) ? productGroupPromotionLink : link;
+
+						<a href="@productGroupPromotionLink" title="@productGroupPromotionLinkLabel" class="btn btn-link text-start border-0 p-0">@productGroupPromotionLinkLabel</a>
+					}
+				</div>
+			}
+		</div>
+	}
+}
+
+@helper RenderGroupImage(ProductGroupViewModel group)
+{
+	string productGroupImageShape = Model.Parameters["ProductGroupImageShape"] != null ? Model.Parameters["ProductGroupImageShape"].ToString() : string.Empty;
+	string productGroupImageSize = Model.Parameters["ProductGroupImageSize"] != null ? Model.Parameters["ProductGroupImageSize"].ToString() : string.Empty;
+	IList<FieldValueViewModel> groupFields = group.GroupFields;
+
+	if (groupFields != null)
+	{
+		foreach (FieldValueViewModel field in groupFields)
+		{
+			if (field.SystemName == "ProductGroupNavigationImage")
+			{
+				if (!string.IsNullOrEmpty(field.Value.ToString()))
+				{
+					var groupImage = field.Value.ToString();
+					var groupName = group.Name;
+					var imagePath = "/Admin/Public/GetImage.ashx?Image=" + "/Files/Images/" + groupImage + "&Width=" + productGroupImageSize + "&Height=" + productGroupImageSize + "&crop=0";
+
+					if (Path.GetExtension(groupImage).ToLower() == ".svg")
+					{
+						<div class="icon-auto" style="height: @(productGroupImageSize)px; width: @(productGroupImageSize)px;">
+							@ReadFile("/Files/Images/" + groupImage)
+						</div>
+					}
+					else
+					{
+						<img loading="lazy" class="@productGroupImageShape" alt="@groupName" width="@productGroupImageSize" height="@productGroupImageSize" src="@imagePath">
+					}
+				}
+			}
+		}
 	}
 }
