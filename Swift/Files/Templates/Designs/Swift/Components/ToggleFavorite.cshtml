@@ -7,65 +7,27 @@
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 	string productId = Model.Id;
 	string variantId = Model.VariantId;
-	bool isInFavoriteList;
 
-	int favoriteListTotal = GetViewParameter("ListTotal") != null ? GetViewParameterInt32("ListTotal") : 0;
-
+	IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
 	int favoriteListId = GetViewParameter("ListId") != null ? GetViewParameterInt32("ListId") : 0;
 	favoriteListId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) : favoriteListId;
-	bool isFavoriteListDetailPage = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? true : false;
+	string favoriteToggleType = favoriteListId == 0 && favoreiteLists.Count() > 1 ? "multiple-lists" : "single-list";
+	favoriteToggleType = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? "remove-from-list" : favoriteToggleType;
+
+	bool isInFavoriteList = Pageview.User.IsProductInAnyFavoriteList(productId, variantId);
+	string pageId = GetPageIdByNavigationTag("FavoriteServicePage") != 0 ? GetPageIdByNavigationTag("FavoriteServicePage").ToString() : "";
+	pageId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? Pageview.Page.ID.ToString() : pageId;
+
+	string url = "/Default.aspx?ID=" + pageId + "&ProductID=" + productId + "&ProductVariantId=" + variantId;
+	url += favoriteToggleType == "single-list" || favoriteToggleType == "remove-from-list" ? "&FavoriteListId=" + favoriteListId : "";
+	url += favoriteToggleType == "remove-from-list" ? "&FavoriteCmd=removeproductfromfavoritelist" : "";
 }
 
-@if (favoriteListTotal < 2 || isFavoriteListDetailPage ) {
-	isInFavoriteList = Pageview.User.IsProductInFavoriteList(favoriteListId, productId, variantId);
-	string defaultCommand = isInFavoriteList ? "remove" : "add";
-	string filledFavoriteIcon = isInFavoriteList ? "" : "d-none";
-	string outlineFavoriteIcon = isInFavoriteList ? "d-none" : "";
-
-	<form action="@Pageview.SearchFriendlyUrl">
-		<input type="hidden" name="ReloadPage" value="false" />
-		<input type="hidden" name="FavoriteCmd" value="" />
-		<input type="hidden" name="FavoriteListId" value="@favoriteListId"/>
-		<input type="hidden" name="UserId" value="@Pageview.User.ID" />
-		<input type="hidden" name="ProductId" value="@productId" />
-		<input type="hidden" name="VariantId" value="@variantId" />
-		<input type="hidden" name="ProductName" value="@Model.Name" />
-		<input type="hidden" name="ProductImage" value="@(Model.DefaultImage.Value)" />
-
-		<button type="button" id="FavoriteBtn_@(productId)@(variantId)" class="btn btn-secondary rounded-0 h-100" data-list-id="@favoriteListId" data-command="@defaultCommand" onclick="swift.Favorites.Update(event)">
-			<span class="icon-2 js-filled-favorite-icon @filledFavoriteIcon">
-				@ReadFile(iconPath + "heart-filled.svg")
-			</span>
-			<span class="icon-2 js-outline-favorite-icon @outlineFavoriteIcon">
-				@ReadFile(iconPath + "heart.svg")
-			</span>
-		</button>
-	</form>
-} else {
-	isInFavoriteList = Pageview.User.IsProductInAnyFavoriteList(productId);
-	string servicePageId = GetPageIdByNavigationTag("FavoriteServicePage") != 0 ? GetPageIdByNavigationTag("FavoriteServicePage").ToString() : "";
-
-	string anyFilledFavoriteIcon = isInFavoriteList ? "" : "d-none";
-	string anyOutlineFavoriteIcon = isInFavoriteList ? "d-none" : "";
-
-	<form action="/Default.aspx?ID=@servicePageId" data-response-target-element="DynamicOffcanvas" data-layout-template="Swift_MiniFavorites.cshtml">
-		<input type="hidden" name="ProductId" value="@productId" />
-		<input type="hidden" name="VariantId" value="@variantId" />
-		<input type="hidden" name="ProductName" value="@Model.Name" />
-		<input type="hidden" name="ProductImage" value="@(Model.DefaultImage.Value)" />
-
-		<button type="button" id="FavoriteBtn_@(productId)@(variantId)" class="btn btn-secondary rounded-0" 
-				data-bs-toggle="offcanvas" 
-				data-bs-target="#DynamicOffcanvas" 
-				aria-controls="DynamicOffcanvas" 
-				onclick="swift.Favorites.GetList(event)">
-			<span class="icon-2 js-any-filled-favorite-icon @anyFilledFavoriteIcon">
-				@ReadFile(iconPath + "heart-filled.svg")
-			</span>
-			<span class="icon-2 js-any-outline-favorite-icon @anyOutlineFavoriteIcon">
-				@ReadFile(iconPath + "heart.svg")
-			</span>
-		</button>
-	</form>
-}
+<button type="button" class="btn" id="FavoriteBtn_@productId@variantId" onclick="swift.Favorites.Toggle(event, '@url', '@favoriteToggleType')">
+	@if (isInFavoriteList) {
+		<img src="@(iconPath)heart-filled.svg" data-alt-icon="@(iconPath)heart.svg" class="icon-2" style="width: 1rem" />
+	} else {
+		<img src="@(iconPath)heart.svg" data-alt-icon="@(iconPath)heart-filled.svg" class="icon-2" style="width: 1rem" />
+	}
+</button>
 

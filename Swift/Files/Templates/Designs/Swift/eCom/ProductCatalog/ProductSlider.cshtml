@@ -1,53 +1,76 @@
 @inherits ViewModelTemplate<ProductListViewModel>
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
 
-@{
-	string linkText = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("LinkText")) ? Dynamicweb.Context.Current.Request.QueryString.Get("LinkText") : "";
-
-	string layout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Layout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Layout") : "";
-
-	bool hideTitle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("HideTitle")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("HideTitle")) : false;
-
-	string headingTitle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("HeadingTitle")) ? Dynamicweb.Context.Current.Request.QueryString.Get("HeadingTitle") : "";
-	string headingSubtitle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Subtitle")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Subtitle") : "";
-
-	string generalTheme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GeneralTheme")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GeneralTheme") : "";
-
-	string ContentPadding = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ContentPadding")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ContentPadding") : "";
-
-	string alignMiddle = headingTitle == "" && headingSubtitle == "" ? " justify-content-center" : "";
+@functions {
+	Dictionary<string, object> favoriteParameters { get; set; }
 }
 
+@{
+	string linkText = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("LinkText")) ? Dynamicweb.Context.Current.Request.Form.Get("LinkText") : "";
+	string layout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("Layout")) ? Dynamicweb.Context.Current.Request.Form.Get("Layout") : "";
+	bool hideTitle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("HideTitle")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form.Get("HideTitle")) : false;
+
+	string headingTitle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("HeadingTitle")) ? Dynamicweb.Context.Current.Request.Form.Get("HeadingTitle") : "";
+	string headingSubtitle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("Subtitle")) ? Dynamicweb.Context.Current.Request.Form.Get("Subtitle") : "";
+
+	string generalTheme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("GeneralTheme")) ? Dynamicweb.Context.Current.Request.Form.Get("GeneralTheme") : "";
+	string ContentPadding = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ContentPadding")) ? Dynamicweb.Context.Current.Request.Form.Get("ContentPadding") : "";
+	string alignMiddle = headingTitle == "" || headingSubtitle == "" ? " align-items-center" : "";
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+
+	favoriteParameters = new Dictionary<string, object>();
+	if (!anonymousUser)
+	{
+		int defaultFavoriteListId = 0;
+
+		IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
+		int favoriteListsTotal = favoreiteLists.Count();
+
+		if (favoreiteLists.Count() == 1) {
+			foreach (FavoriteList list in favoreiteLists) {
+				defaultFavoriteListId = list.ListId;
+			}
+		}
+		
+		favoriteParameters.Add("ListId", defaultFavoriteListId);
+		favoriteParameters.Add("ListTotal", favoriteListsTotal);
+	}
+}
+
+@*--- SLIDER: TEXT TOP ---*@
 @if (layout == "" || layout == "text-top")
 {
 	<div class="h-100 @ContentPadding@(generalTheme)">
-
-	@if (headingTitle != "" && !hideTitle)
-	{
-		<div class="pb-2 pb-lg-4 d-flex">
-			<div class="flex-fill">
-				@RenderHeader(headingTitle, headingSubtitle)
+		@if (headingTitle != "" && !hideTitle)
+		{
+			<div class="pb-2 pb-lg-4 d-flex">
+				<div class="flex-fill">
+					@RenderHeader(headingTitle, headingSubtitle)
+				</div>
+				@RenderDesktopLinkButton(headingTitle, headingSubtitle)
 			</div>
-			@RenderDesktopLinkButton(headingTitle, headingSubtitle)
-		</div>
-	}
+		}
 
-	@RenderSlider()
-	@RenderMobileLinkButton(headingTitle, headingSubtitle)
+		@RenderSlider()
+		@RenderMobileLinkButton(headingTitle, headingSubtitle)
 	</div>
 }
 
+@*--- SLIDER: TEXT LEFT ---*@
 @if (layout == "text-left")
 {
-	string sliderColSize = "col";
+	string sliderColSize = "g-col";
 
-	<div class="row g-0 h-100 @ContentPadding@(generalTheme)" data-slider-layout="left">
+	<div class="grid gap-0 gap-lg-5 h-100 @ContentPadding@(generalTheme)" data-slider-layout="left">
 		@if ((headingTitle != "" && hideTitle == false) || headingSubtitle != "" || linkText != "")
 		{
-			sliderColSize = "col-12 col-lg-8";
+			sliderColSize = "g-col-12 g-col-lg-8";
 
-			<div class="col-12 col-lg-4">
+			<div class="g-col-12 g-col-lg-4">
 				<div class="d-flex flex-row@(alignMiddle) h-100">
 					<div class="mb-5 mb-lg-0">
 						@RenderHeader(headingTitle, headingSubtitle)
@@ -64,16 +87,17 @@
 	@RenderMobileLinkButton(headingTitle, headingSubtitle)
 }
 
+@*--- SLIDER: TEXT RIGHT ---*@
 @if (layout == "text-right")
 {
-	string sliderColSize = "col";
+	string sliderColSize = "g-col";
 
-	<div class="row g-0 h-100 @ContentPadding@(generalTheme)" data-slider-layout="right">
+	<div class="grid gap-0 gap-lg-5 h-100 @ContentPadding@(generalTheme)" data-slider-layout="right">
 		@if ((headingTitle != "" && !hideTitle) || headingSubtitle != "" || linkText != "")
 		{
-			sliderColSize = "col-12 col-lg-8";
+			sliderColSize = "g-col-12 g-col-lg-8";
 
-			<div class="col-12 col-lg-4 order-1 order-lg-2">
+			<div class="g-col-12 g-col-lg-4 order-1 order-lg-2">
 				<div class="d-flex flex-row align-items-center@(alignMiddle) h-100">
 					<div class="mb-5 mb-lg-0">
 						@RenderHeader(headingTitle, headingSubtitle)
@@ -90,87 +114,137 @@
 	@RenderMobileLinkButton(headingTitle, headingSubtitle)
 }
 
-@helper RenderSlider()
+@*--- GRID ---*@
+@if (layout == "" || layout == "grid")
 {
+	int parentColumnSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ParentColumnSize")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.Form.Get("ParentColumnSize")) : 12;
+	string columnSize = "g-col-lg-2";
+	columnSize = parentColumnSize == 10 || parentColumnSize == 9 || parentColumnSize == 8 ? "g-col-lg-3" : columnSize;
+	columnSize = parentColumnSize == 6 ? "g-col-lg-4" : columnSize;
+	columnSize = parentColumnSize == 3 || parentColumnSize == 4 ? "g-col-lg-6" : columnSize;
 
-	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
-	bool anonymousUser = Pageview.User == null;
-	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;	
-
-	string detailsPageLink = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductDetailsPage")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ProductDetailsPage") : "#";
-
-	string ratio = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ImageAspectRatio")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ImageAspectRatio") : "";
-	string ratioCssClass = ratio != "" ? "ratio" : "";
-	string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
-
-	string generalTheme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GeneralTheme")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GeneralTheme") : "";
-	string theme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Theme")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Theme") : "";
-	string imageTheme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ImageTheme")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ImageTheme") : "";
-	string ContentPadding = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ContentPadding")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ContentPadding") : "";
-
-	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
-	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
-
-	<div class="js-slider d-flex @generalTheme">
-		@foreach (var product in Model.Products)
+	<div class="h-100 @ContentPadding@(generalTheme)">
+		@if (headingTitle != "" && !hideTitle)
 		{
-			string link = "/Default.aspx?ID=" + detailsPageLink + "&amp;ProductID=" + product.Id;
-			link += !string.IsNullOrEmpty(product.VariantId) ? "&amp;VariantID=" + product.VariantId : "";
+			<div class="pb-2 pb-lg-4 d-flex">
+				<div class="flex-fill">
+					@RenderHeader(headingTitle, headingSubtitle)
+				</div>
+			</div>
+		}
 
-			string imagePath = product?.DefaultImage.Value.ToString() ?? "";
-			imagePath = "/Admin/Public/GetImage.ashx?image=" + imagePath + "&width=" + 350 + "&Format=WebP&Quality=70";
+		@RenderGrid(columnSize)
 
+		<div class="text-center">
+			@RenderDesktopLinkButton(headingTitle, headingSubtitle)
+		</div>
 
-			<article>
-				<a href="@link" class="text-decoration-none d-block h-100 no-outline">
-					<div class="h-100 d-flex flex-column justify-content-between gap-3@(theme)">
-						<div class="@(ratioCssClass)@(imageTheme)" style="@ratioVariable">
-							<img loading="lazy" decoding="async" src="@imagePath" class="h-100 w-100 @ContentPadding" style="object-fit: contain;" alt="@product.Name" />
-						</div>
-						<div class="@ContentPadding flex-fill d-flex flex-column justify-content-between">
-							<h3 class="h6 opacity-85">@product.Name @product.VariantId</h3>
+		@RenderMobileLinkButton(headingTitle, headingSubtitle)
+	</div>
+}
 
-							@if (!hidePrice) {
-								<div>
-									<p class="h6 m-0">
-										@if (showPricesWithVat == "false" && !neverShowVat) {
-											if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-												<span class="text-decoration-line-through opacity-75 me-1">
-													@product.PriceBeforeDiscount.PriceWithoutVatFormatted
-												</span>
-											}
-										} else {
-											if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-												<span class="text-decoration-line-through opacity-75 me-1">
-													@product.PriceBeforeDiscount.PriceFormatted
-												</span>
-											}
-										}
-
-										@if (showPricesWithVat == "false" && !neverShowVat) {
-											<span class="text-price fw-bold">@product.Price.PriceWithoutVatFormatted</span>
-										} else {
-											<span class="text-price fw-bold">@product.Price.PriceFormatted</span>
-										}
-									</p>
-									@if (showPricesWithVat == "false" && !neverShowVat) {
-										<small class="opacity-85 fst-normal">@product.Price.PriceWithVatFormatted @Translate("Incl. VAT")</small>
-									}
-								</div>
-							}
-						</div>
-					</div>
-				</a>
+@helper RenderSlider() {
+	<div class="js-slider d-flex">
+		@foreach (ProductViewModel product in Model.Products)
+		{
+			<article class="position-relative">
+				@RenderProduct(product)
 			</article>
 		}
 	</div>
 }
 
+@helper RenderGrid(string columnSize) {
+	<div class="grid gap-4">
+		@foreach (ProductViewModel product in Model.Products)
+		{
+			<div class="g-col-6 @columnSize position-relative">
+				@RenderProduct(product)
+			</div>
+		}
+	</div>
+}
+
+@helper RenderProduct(ProductViewModel product) { 
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;	
+
+	string detailsPageLink = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ProductDetailsPage")) ? Dynamicweb.Context.Current.Request.Form.Get("ProductDetailsPage") : "#";
+
+	string ratio = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ImageAspectRatio")) ? Dynamicweb.Context.Current.Request.Form.Get("ImageAspectRatio") : "";
+	string ratioCssClass = ratio != "" ? "ratio" : "";
+	string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
+
+	string theme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("Theme")) ? Dynamicweb.Context.Current.Request.Form.Get("Theme") : "";
+	string imageTheme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ImageTheme")) ? Dynamicweb.Context.Current.Request.Form.Get("ImageTheme") : "";
+	string ContentPadding = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ContentPadding")) ? Dynamicweb.Context.Current.Request.Form.Get("ContentPadding") : "";
+
+	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+	
+	var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
+	var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId).Meta.PrimaryPage;
+
+	string link = string.IsNullOrEmpty(selectedDetailPage) ? $"/Default.aspx?ID={detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
+	link += "&productid=" + product.Id;
+	link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
+
+	string imagePath = product?.DefaultImage.Value.ToString() ?? "";
+	imagePath = "/Admin/Public/GetImage.ashx?image=" + imagePath + "&width=" + 350 + "&Format=WebP&Quality=70";
+	
+	if (!anonymousUser && product.VariantInfo.VariantInfo == null) {
+		<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
+			@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+		</div>
+	}
+
+	<a href="@link" class="text-decoration-none d-block h-100 no-outline">
+		<div class="h-100 d-flex flex-column justify-content-between gap-3@(theme)">
+			<div class="@(ratioCssClass)@(imageTheme)" style="@ratioVariable">
+				<img loading="lazy" decoding="async" src="@imagePath" class="h-100 w-100 @ContentPadding" style="object-fit: contain;" alt="@product.Name" />
+			</div>
+			<div class="@ContentPadding flex-fill d-flex flex-column justify-content-between">
+				<h3 class="h6 opacity-85">@product.Name @product.VariantName</h3>
+
+				@if (!hidePrice) {
+					<div>
+						<p class="h6 m-0">
+							@if (showPricesWithVat == "false" && !neverShowVat) {
+								if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+									<span class="text-decoration-line-through opacity-75 me-1">
+										@product.PriceBeforeDiscount.PriceWithoutVatFormatted
+									</span>
+								}
+							} else {
+								if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+									<span class="text-decoration-line-through opacity-75 me-1">
+										@product.PriceBeforeDiscount.PriceFormatted
+									</span>
+								}
+							}
+
+							@if (showPricesWithVat == "false" && !neverShowVat) {
+								<span class="text-price fw-bold">@product.Price.PriceWithoutVatFormatted</span>
+							} else {
+								<span class="text-price fw-bold">@product.Price.PriceFormatted</span>
+							}
+						</p>
+						@if (showPricesWithVat == "false" && !neverShowVat) {
+							<small class="opacity-85 fst-normal">@product.Price.PriceWithVatFormatted @Translate("Incl. VAT")</small>
+						}
+					</div>
+				}
+			</div>
+		</div>
+	</a>
+}
+
 @helper RenderHeader(string headingTitle, string headingSubtitle)
 {
-	string titleFontSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("TitleFontSize")) ? Dynamicweb.Context.Current.Request.QueryString.Get("TitleFontSize") : "h3";
-	string subtitleFontSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SubtitleFontSize")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SubtitleFontSize") : "fs-5";
-	string maxWidth = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("TextReadability")) ? Dynamicweb.Context.Current.Request.QueryString.Get("TextReadability") : "";
+	string titleFontSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("TitleFontSize")) ? Dynamicweb.Context.Current.Request.Form.Get("TitleFontSize") : "h3";
+	string subtitleFontSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("SubtitleFontSize")) ? Dynamicweb.Context.Current.Request.Form.Get("SubtitleFontSize") : "fs-5";
+	string maxWidth = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("TextReadability")) ? Dynamicweb.Context.Current.Request.Form.Get("TextReadability") : "";
 
 	if (!string.IsNullOrEmpty(headingTitle))
 	{
@@ -184,13 +258,16 @@
 
 @helper RenderDesktopLinkButton(string headingTitle, string headingSubtitle)
 {
-	string layout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Layout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Layout") : "";
-	string buttonStyle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ButtonStyle")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ButtonStyle") : "btn-primary";
-	string link = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Link")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Link") : "";
-	string linkText = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("LinkText")) ? Dynamicweb.Context.Current.Request.QueryString.Get("LinkText") : "";
+	int totalProducts = Model.TotalProductsCount;
+	int pageSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("PageSize")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.Form.Get("PageSize")) : 12;
+
+	string layout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("Layout")) ? Dynamicweb.Context.Current.Request.Form.Get("Layout") : "";
+	string buttonStyle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ButtonStyle")) ? Dynamicweb.Context.Current.Request.Form.Get("ButtonStyle") : "btn-primary";
+	string link = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("Link")) ? Dynamicweb.Context.Current.Request.Form.Get("Link") : "";
+	string linkText = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("LinkText")) ? Dynamicweb.Context.Current.Request.Form.Get("LinkText") : "";
 	string marginTop = (headingTitle != "" || headingSubtitle != "") && layout != "" && layout != "text-top" ? " mt-4" : "";
 
-	if (!string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(linkText))
+	if (totalProducts > pageSize && !string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(linkText))
 	{
 		<div class="d-none d-lg-block">
 			<a href="@(link)" class="btn @(buttonStyle) @(marginTop) mb-4">@linkText</a>
@@ -200,12 +277,15 @@
 
 @helper RenderMobileLinkButton(string headingTitle, string headingSubtitle)
 {
-	string buttonStyle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ButtonStyle")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ButtonStyle") : "btn-primary";
-	string link = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Link")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Link") : "";
-	string linkText = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("LinkText")) ? Dynamicweb.Context.Current.Request.QueryString.Get("LinkText") : "";
+	int totalProducts = Model.TotalProductsCount;
+	int pageSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("PageSize")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.Form.Get("PageSize")) : 12;
+
+	string buttonStyle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ButtonStyle")) ? Dynamicweb.Context.Current.Request.Form.Get("ButtonStyle") : "btn-primary";
+	string link = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("Link")) ? Dynamicweb.Context.Current.Request.Form.Get("Link") : "";
+	string linkText = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("LinkText")) ? Dynamicweb.Context.Current.Request.Form.Get("LinkText") : "";
 	string marginTop = headingTitle != "" || headingSubtitle != "" ? " mt-4" : "";
 
-	if (!string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(linkText))
+	if (totalProducts > pageSize && !string.IsNullOrEmpty(link) && !string.IsNullOrEmpty(linkText))
 	{
 		<div class="d-block d-lg-none">
 			<a href="@(link)" class="btn @(buttonStyle) @(marginTop) mb-4 w-100">@linkText</a>

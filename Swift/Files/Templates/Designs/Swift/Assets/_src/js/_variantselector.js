@@ -134,10 +134,12 @@ const VariantSelector = function () {
 						selections: selections
 					}
 				});
+
+				variantSelectorElement.querySelector("[name='variantid']").value = selections.join(".");
+
 				var globalDispatcher = document.dispatchEvent(event);
 				var localDispatcher = variantSelectorElement.dispatchEvent(event);
 
-				
 				if (globalDispatcher != false && localDispatcher != false) {
 					//Update the url
 					var url = new URL(window.location);
@@ -147,7 +149,6 @@ const VariantSelector = function () {
 					window.history.replaceState({}, '', decodeURI(url));
 
 					//Call the async PageUpdater
-					variantSelectorElement.querySelector("[name='variantid']").value = selections.join(".");
 					swift.PageUpdater.Update(variantSelectorElement);
 				}
 			}
@@ -156,18 +157,18 @@ const VariantSelector = function () {
 			if (productElement) {
 				var addToCartElement = productElement.querySelector(".js-add-to-cart-button");
 				if (addToCartElement) {
-					if (selectionCount == totalGroups) {
-						addToCartElement.classList.remove("disabled");
-					} else {
+					if (selectionCount != totalGroups) {
+						addToCartElement.disabled = true;
 						addToCartElement.classList.add("disabled");
+					} else {
+						addToCartElement.disabled = false;
+						addToCartElement.classList.remove("disabled");
 					}
 				}
 
 				var stockStateElement = productElement.querySelector(".js-stock-state");
 				if (stockStateElement) {
-					if (selectionCount == totalGroups) {
-						stockStateElement.classList.remove("d-none");	 
-					} else {
+					if (selectionCount != totalGroups) {
 						stockStateElement.classList.add("d-none");
 					}
 				}

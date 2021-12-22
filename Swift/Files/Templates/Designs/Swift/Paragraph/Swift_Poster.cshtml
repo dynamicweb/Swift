@@ -2,7 +2,6 @@
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
-	bool isVisualEdit = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
 	string layout = Model.Item.GetRawValueString("Layout", "align-middle-center-text-center");
 
 	bool movePageBehind = false;
@@ -11,7 +10,7 @@
 	if (Pageview.Page.PropertyItem != null)
 	{
 		string headerCssClass = Pageview.Page.PropertyItem["MoveThisPageBehindTheHeader"] != null ? Pageview.Page.PropertyItem["MoveThisPageBehindTheHeader"].ToString() : "sticky-top";
-		movePageBehind = headerCssClass == "fixed-top" && !isVisualEdit ? true : false;
+		movePageBehind = headerCssClass == "fixed-top" && !Pageview.IsVisualEditorMode ? true : false;
 		if (movePageBehind)
 		{
 			movePageBehindClass = " poster-behind";
@@ -23,10 +22,18 @@
 		}
 	}
 
-	string posterHeight = Model.Item.GetRawValueString("PosterHeight", "h-100 min-vh-75 min-vh-md-100");
+
+	string posterHeight = Model.Item.GetRawValueString("PosterHeight", "");
+	string posterSizeBase = posterHeight.Contains("%") || posterHeight.Contains("0") ? "aspect-ratio" : "height";
+	
 	posterHeight = posterHeight == "small" ? "min-vh-25 min-vh-md-50" : posterHeight;
 	posterHeight = posterHeight == "medium" ? "min-vh-50 min-vh-md-75" : posterHeight;
 	posterHeight = posterHeight == "large" ? "min-vh-75 min-vh-md-100" : posterHeight;
+
+	string ratio = posterHeight.Contains("%") || posterHeight.Contains("0") ? Model.Item.GetRawValueString("PosterHeight") : "";
+	ratio = ratio != "0" ? ratio : "";
+	string ratioCssClass = ratio != "" && ratio != "fill" ? " ratio" : "";
+	string ratioVariable = ratio != "" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : "";
 
 	string posterPadding = Model.Item.GetRawValueString("ContentPadding", "");
 	posterPadding = posterPadding == "none" ? "p-3 px-xl-3 py-xl-4" : posterPadding;
@@ -44,71 +51,87 @@
 	string maxWidth = Model.Item.GetRawValueString("TextReadability", "max-width-on");
 	maxWidth = maxWidth == "max-width-on" ? "mw-75ch d-inline-block" : maxWidth;
 	maxWidth = maxWidth == "max-width-off" ? "" : maxWidth;
-}
 
-<div class="position-relative h-100@(theme)@(movePageBehindClass)">
-	@RenderImage()
-
-	@switch (layout)
+	switch (layout)
 	{
 		case "align-top-left-text-left":
-		alignment = "text-start justify-content-start align-items-start";
+			alignment = "text-start justify-content-start align-items-start";
 			break;
 		case "align-top-center-text-center":
-		alignment = "text-center justify-content-start align-items-start";
+			alignment = "text-center justify-content-start align-items-start";
 			break;
 		case "align-top-right-text-right":
-		alignment = "text-end justify-content-start align-items-start";
+			alignment = "text-end justify-content-start align-items-start";
 			break;
 		case "align-middle-left-text-left":
-		alignment = "text-start justify-content-center align-items-center";
+			alignment = "text-start justify-content-center align-items-center";
 			break;
 		case "align-middle-center-text-center":
-		alignment = "text-center justify-content-center align-items-center";
+			alignment = "text-center justify-content-center align-items-center";
 			break;
 		case "align-middle-right-text-right":
-		alignment = "text-end justify-content-center align-items-center";
+			alignment = "text-end justify-content-center align-items-center";
 			break;
 		case "align-bottom-left-text-left":
-		alignment = "text-start justify-content-end align-items-end";
+			alignment = "text-start justify-content-end align-items-end";
 			break;
 		case "align-bottom-center-text-center":
-		alignment = "text-center justify-content-end align-items-end";
+			alignment = "text-center justify-content-end align-items-end";
 			break;
 		case "align-bottom-right-text-right":
-		alignment = "text-end justify-content-end align-items-end";
+			alignment = "text-end justify-content-end align-items-end";
 			break;
 	}
 
-	<div class="@(posterWidth) h-100 @posterPadding">
-		<div class="h-100 position-relative grid grid-1 @(alignment) @(posterHeight)" id="Poster_@Pageview.CurrentParagraph.ID">
-			<div class="grid grid-1 gap-3 gap-md-4">
-				@RenderTitle(maxWidth)
-				@RenderText(maxWidth)
-				@RenderButton()
+
+	var parms = new Dictionary<string, object>();
+	parms.Add("cssClass", "h-100 w-100");
+	parms.Add("columns", Model.GridRowColumnCount);
+
+	string imageFilter = Model.Item.GetRawValueString("ImageFilter", "");
+	imageFilter = imageFilter == "no-filter" ? "" : imageFilter;
+	imageFilter = imageFilter == "filter" ? " image-filter" : imageFilter;
+}
+
+<div class="position-relative @(theme)@(movePageBehindClass)">
+	@if (posterSizeBase == "height") {
+		if (!string.IsNullOrEmpty(Model.Item.GetString("Image"))) {
+			<div class="position-absolute top-0 bottom-0 end-0 start-0@(imageFilter)">
+				@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+			</div>
+		}
+
+		<div class="@(posterWidth) h-100">
+			<div class="h-100 position-relative grid grid-1 @posterPadding @(alignment) @(posterHeight)" id="Poster_@Pageview.CurrentParagraph.ID">
+				<div class="grid grid-1 gap-3 gap-md-4">
+					@RenderTitle(maxWidth)
+					@RenderText(maxWidth)
+					@RenderButton()
+				</div>
 			</div>
 		</div>
-	</div>
-</div>
-
-@helper RenderImage()
-{
-	if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
-	{
-
-		var parms = new Dictionary<string, object>();
-		parms.Add("cssClass", "card-img rounded-0 h-100 w-100");
-		parms.Add("columns", Model.GridRowColumnCount);
-
-		string imageFilter = Model.Item.GetRawValueString("ImageFilter", "");
-		imageFilter = imageFilter == "no-filter" ? "" : imageFilter;
-		imageFilter = imageFilter == "filter" ? " image-filter" : imageFilter;
-
-		<div class="position-absolute top-0 bottom-0 end-0 start-0@(imageFilter)">
-			@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+    }
+	@if (posterSizeBase == "aspect-ratio") {
+		<div class="@(posterWidth) @posterPadding position-absolute h-100 w-100" style="z-index: 1">
+			<div class="h-100 grid grid-1 @(alignment)" @ratioVariable id="Poster_@Pageview.CurrentParagraph.ID">
+				<div class="grid grid-1 gap-3 gap-md-4">
+					@RenderTitle(maxWidth)
+					@RenderText(maxWidth)
+					@RenderButton()
+				</div>
+			</div>
 		</div>
-	}
-}
+
+		if (!string.IsNullOrEmpty(Model.Item.GetString("Image"))) {
+			<div class="position-relative @(imageFilter)">
+				<figure class="m-0@(ratioCssClass)" @ratioVariable>
+					@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+				</figure>
+			</div>
+		}
+
+    }
+</div>
 
 @helper RenderTitle(string maxWidth)
 {
@@ -208,6 +231,14 @@
 		<div class="mt-0">
 			<a href="@link.Url" class="btn @buttonStyle@(ButtonSize)@(StretchedLink)">@Model.Item.GetString("ButtonLabel")</a>
 		</div>
+	}
+	else if (link != null && !string.IsNullOrEmpty(link.Url))
+	{
+		string target = link.IsExternal ? "target=\"_blank\"" : "";
+
+		<a href="@link.Url" @target class="@StretchedLink">
+			<span class="visually-hidden">@Model.Item.GetString("Title")</span>
+		</a>
 	}
 }
 

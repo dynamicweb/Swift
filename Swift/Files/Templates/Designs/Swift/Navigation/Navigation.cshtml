@@ -2,13 +2,12 @@
 @using Dynamicweb
 @using System.IO
 @using System.Text.RegularExpressions
-@using System.Web
 
 @{
 	string negativMargin = Model.Parameters["mx-n3"].ToString();
 	string navOrientation = Model.Parameters["navOrientation"].ToString();
 	string navAlignment = Model.Parameters["navAlignment"].ToString();
-	string theme = !string.IsNullOrEmpty(Model.Parameters["theme"].ToString()) ? Model.Parameters["theme"].ToString() : "light";
+	string theme = !string.IsNullOrEmpty(Model.Parameters["theme"].ToString()) ? Model.Parameters["theme"].ToString() : "";
 }
 
 <nav class="navbar navbar-expand d-none d-lg-flex nav-wrapper py-0 mx-n2 @navOrientation @navAlignment">
@@ -41,37 +40,42 @@
 			var hasChildren = node.Nodes.Count() > 0 || pageType == "Swift_SignIn";
 			string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
 
-			<li class="nav-item@(hasChildren ? " dropdown" : "")">
-				@if (pageType != "Swift_Preferences")
+			if (pageType != "Swift_Preferences")
+			{
+				if (node.IsClickable)
 				{
-					if (node.IsClickable)
-					{
+					<li class="nav-item@(hasChildren ? " dropdown" : "")">
 						<a class="nav-link nav-link-clean text-nowrap nav-link-underline @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" @dropdownAttributes @(node.IsActive ? " aria-current='page'" : "")>
 							@RenderNavigationItem(node)
 						</a>
+					</li>
 
-					}
-					else
-					{
-						<span class="nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing" @dropdownAttributes>
-							@RenderNavigationItem(node)
-						</span>
-					}
 				}
 				else
 				{
-					if (preferencesLayout == "modal")
-					{
-						string groupId = HttpContext.Current.Request["GroupID"] != null ? HttpContext.Current.Request["GroupID"].ToString() : "";
-						string productId = HttpContext.Current.Request["ProductID"] != null ? HttpContext.Current.Request["ProductID"].ToString() : "";
-						string variantId = HttpContext.Current.Request["VariantID"] != null ? HttpContext.Current.Request["VariantID"].ToString() : "";
+					<li class="nav-item@(hasChildren ? " dropdown" : "")">
+						<span class="nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing" @dropdownAttributes>
+							@RenderNavigationItem(node)
+						</span>
+					</li>
+				}
+			}
+			else
+			{
+				if (preferencesLayout == "modal")
+				{
 
+						string groupId = Dynamicweb.Context.Current.Request["GroupID"] != null ? Dynamicweb.Context.Current.Request["GroupID"].ToString() : "";
+						string productId = Dynamicweb.Context.Current.Request["ProductID"] != null ? Dynamicweb.Context.Current.Request["ProductID"].ToString() : "";
+						string variantId = Dynamicweb.Context.Current.Request["VariantID"] != null ? Dynamicweb.Context.Current.Request["VariantID"].ToString() : "";
+
+					<li class="nav-item@(hasChildren ? " dropdown" : "")">
 						<form action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
 							<input type="hidden" name="CurrentPageID" value="@Pageview.ID" />
 							<input type="hidden" name="GroupID" value="@groupId" />
 							<input type="hidden" name="ProductID" value="@productId" />
 							<input type="hidden" name="VariantID" value="@variantId" />
-							<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+							<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link nav-link-clean text-nowrap border-0 @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
 								@if (languageSelector)
 								{
 									@RenderNavigationItem(node, "language") }
@@ -79,22 +83,40 @@
 								{
 									@RenderNavigationItem(node)}
 							</button>
-						</form> }
-					else
+						</form> 
+					</li>
+				}
+				else
+				{
+					var ecomCountries = Dynamicweb.Ecommerce.Services.Countries.GetCountries();
+					var currencies = Dynamicweb.Ecommerce.Services.Currencies.GetAllCurrencies();
+
+					if (languageSelector)
 					{
-						var ecomCountries = Dynamicweb.Ecommerce.Services.Countries.GetCountries();
-						var currencies = Dynamicweb.Ecommerce.Services.Currencies.GetAllCurrencies();
+						List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
 
-						if (languageSelector)
+						if (Pageview.Page.Area.IsMaster)
 						{
-							List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
-
-							if (Pageview.Page.Area.IsMaster)
+							languages.Add(Pageview.Page);
+							if (Pageview.Page.Languages != null)
 							{
-								languages.Add(Pageview.Page);
-								if (Pageview.Page.Languages != null)
+								foreach (var language in Pageview.Page.Languages)
 								{
-									foreach (var language in Pageview.Page.Languages)
+									if (language.Area.Active == true)
+									{
+										languages.Add(language);
+									}
+								}
+							}
+						}
+						else
+						{
+							languages.Add(Pageview.Page.MasterPage);
+							if (Pageview.Page.MasterPage != null)
+							{
+								if (Pageview.Page.MasterPage.Languages != null)
+								{
+									foreach (var language in Pageview.Page.MasterPage.Languages)
 									{
 										if (language.Area.Active == true)
 										{
@@ -103,42 +125,27 @@
 									}
 								}
 							}
-							else
-							{
-								languages.Add(Pageview.Page.MasterPage);
-								if (Pageview.Page.MasterPage != null)
-								{
-									if (Pageview.Page.MasterPage.Languages != null)
-									{
-										foreach (var language in Pageview.Page.MasterPage.Languages)
-										{
-											if (language.Area.Active == true)
-											{
-												languages.Add(language);
-											}
-										}
-									}
-								}
-							}
-
-							if (languages.Count > 1)
-							{
-								preferencesType = "language";
-								@RenderPreferencesDropdown(node, preferencesType, linkFontSize, linkFontWeight, linkCasing, theme) }
 						}
-						if (countrySelector && ecomCountries.Count > 1)
-						{
-							preferencesType = "country";
-							@RenderPreferencesDropdown(node, preferencesType, linkFontSize, linkFontWeight, linkCasing, theme) }
-						if (currencySelector && currencies.Count() > 1)
-						{
-							preferencesType = "currency";
-							@RenderPreferencesDropdown(node, preferencesType, linkFontSize, linkFontWeight, linkCasing, theme)}
-					}
-				}
 
-				@if (hasChildren)
-				{
+						if (languages.Count > 1)
+						{
+							preferencesType = "language";
+							@RenderPreferencesDropdown(node, preferencesType, linkFontSize, linkFontWeight, linkCasing, theme) }
+					}
+					if (countrySelector && ecomCountries.Count > 1)
+					{
+						preferencesType = "country";
+						@RenderPreferencesDropdown(node, preferencesType, linkFontSize, linkFontWeight, linkCasing, theme) }
+					if (currencySelector && currencies.Count() > 1)
+					{
+						preferencesType = "currency";
+						@RenderPreferencesDropdown(node, preferencesType, linkFontSize, linkFontWeight, linkCasing, theme)}
+				}
+			}
+
+			if (hasChildren)
+			{
+				<li class="nav-item@(hasChildren ? " dropdown" : "")">
 					<ul class="dropdown-menu @(theme)">
 						@foreach (var subnode in node.Nodes)//Standard pages
 						{
@@ -165,8 +172,8 @@
 							}
 						}
 					</ul>
-				}
-			</li>
+				</li>
+			}
 		}
 	</ul>
 }
@@ -305,11 +312,11 @@
 
 @helper RenderPreferencesDropdown(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node, string preferencesType, string linkFontSize, string linkFontWeight, string linkCasing, string theme)
 {
-	string groupId = HttpContext.Current.Request["GroupID"] != null ? HttpContext.Current.Request["GroupID"].ToString() : "";
-	string productId = HttpContext.Current.Request["ProductID"] != null ? HttpContext.Current.Request["ProductID"].ToString() : "";
-	string variantId = HttpContext.Current.Request["VariantID"] != null ? HttpContext.Current.Request["VariantID"].ToString() : "";
+	string groupId = Dynamicweb.Context.Current.Request["GroupID"] != null ? Dynamicweb.Context.Current.Request["GroupID"].ToString() : "";
+	string productId = Dynamicweb.Context.Current.Request["ProductID"] != null ? Dynamicweb.Context.Current.Request["ProductID"].ToString() : "";
+	string variantId = Dynamicweb.Context.Current.Request["VariantID"] != null ? Dynamicweb.Context.Current.Request["VariantID"].ToString() : "";
 
-	<li class="nav-item dropdown">
+	<div class="dropdown">
 		<form class="d-none d-lg-block" action="/Default.aspx?ID=@node.PageId" data-response-target-element="@(preferencesType)Dropdown_@Pageview.CurrentParagraph.ID" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
 			<input type="hidden" name="Type" value="@preferencesType" />
 			<input type="hidden" name="CurrentPageID" value="@Pageview.ID" />
@@ -335,11 +342,11 @@
 			<input type="hidden" name="GroupID" value="@groupId" />
 			<input type="hidden" name="ProductID" value="@productId" />
 			<input type="hidden" name="VariantID" value="@variantId" />
-			<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+			<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link nav-link-clean text-nowrap border-0 @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
 				@RenderNavigationItem(node, preferencesType)
 			</button>
 		</form>
-	</li>
+	</div>
 }
 
 @helper RenderIcon(string icon, string iconSize)

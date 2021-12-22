@@ -8,11 +8,12 @@
 	string detailsPageLink = Pageview.CurrentParagraph.Item["ProductDetailsPage"] != null ? Pageview.CurrentParagraph.Item["ProductDetailsPage"].ToString() : "";
 	int favoriteListId = Model.Id;
 	string currentPageUrl = "/Default.aspx?ID=" + Pageview.Page.ID + "&FavoriteListId=" + favoriteListId;
-	int listItemsCount = Model.ProductList.TotalProductsCount;
+	int listItemsCount = Model?.ProductList?.TotalProductsCount != null ? Model.ProductList.TotalProductsCount : 0;
 	string productCountLabel = listItemsCount > 1 ? Translate("products") : Translate("product");
-	int pageSize = Model.ProductList.PageSize;
+	int pageSize = Model?.ProductList?.PageSize != null ? Model.ProductList.PageSize : 0;
 	int userId = Pageview.User.ID;
 	string listName = !string.IsNullOrEmpty(Model.Name) ? Model.Name : Translate("Favorites");
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 
 	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
 	if (!url.Contains("LayoutTemplate"))
@@ -27,16 +28,13 @@
 	int defaultFavoriteListId = 0;
 
 	IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
-	int favoriteListsTotal = favoreiteLists.Count();
-
 	if (favoreiteLists.Count() == 1) {
 		foreach (FavoriteList list in favoreiteLists) {
 			defaultFavoriteListId = list.ListId;
 		}
 	}
-		
+
 	favoriteParameters.Add("ListId", defaultFavoriteListId);
-	favoriteParameters.Add("ListTotal", favoriteListsTotal);
 }
 
 <header class="p-3 border-bottom">
@@ -48,15 +46,19 @@
 	</div>
 </header>
 
-@if (Model.ProductList != null)
+@if (Model?.ProductList != null)
 {
 	<div class="grid grid-2 grid-lg-3 grid-xxl-4 p-3">
 		@foreach (var product in Model.ProductList.Products)
 		{
-			string link = $"{detailsPageLink}&groupid={product.PrimaryOrDefaultGroup.Id}&productid={product.Id}";
-			link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
-			string priceId = "ProductPrice_" + product.Id + product.VariantId;
+			var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
+			var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId).Meta.PrimaryPage;
 
+			string link = string.IsNullOrEmpty(selectedDetailPage) ? $"{detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
+			link += "&productid=" + product.Id;
+			link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
+
+			string priceId = "ProductPrice_" + product.Id + product.VariantId;
 			string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
 			bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 
@@ -66,6 +68,8 @@
 			string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : ""; 
 
 			string productImage = "/Admin/Public/GetImage.ashx?Image=" + @product.DefaultImage.Value + "&Format=webp&Width=450&Height=450";
+			string productName = product.Name;
+			productName += !string.IsNullOrEmpty(product.VariantName) ? " - " + product.VariantName : "";
 
 			<article class="position-relative d-flex flex-column gap-3">
 				<div class="image">
@@ -91,7 +95,7 @@
 					</div>
 				</div>
 
-				<div class="name flex-fill">@product.Name</div>
+				<div class="name flex-fill">@productName</div>
 
 				<div>
 					<div class="h4" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
@@ -148,23 +152,28 @@
 					}
 				</div> 
 
-				<div class="d-flex">
-					<form method="post" action="@url" class="flex-fill">
+				<div class="d-flex align-items-center gap-3 gap-md-2">
+					<form method="post" action="@url" class="flex-sm-fill">
 						<div class="d-flex flex-row">
 							<input type="hidden" name="redirect" value="false" />
 							<input type="hidden" name="ProductId" value="@product.Id" />
 							<input type="hidden" name="cartcmd" value="add" />
 
-							<div class="js-input-group flex-fill">
+							<div class="js-input-group flex-sm-fill">
 								@if (!string.IsNullOrEmpty(product.VariantId)) {
 									<input type="hidden" name="VariantId" value="@product.VariantId" />
 								}
 								<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" type="hidden">
-								<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary w-100 js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
+								<button type="button" onclick="swift.Cart.Update(event)" class="d-none d-sm-block btn btn-primary w-100 js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
+								<button type="button" onclick="swift.Cart.Update(event)" class="d-sm-none btn btn-primary js-add-to-cart-button p-0" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">
+									<span class="icon-2 p-3">
+										@ReadFile(iconPath + "shopping-cart.svg")
+									</span>
+								</button>
 							</div>
 						</div>
 					</form>
-					<div class="ms-2">
+					<div>
 						@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
 					</div>
 				</div>

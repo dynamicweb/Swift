@@ -1,0 +1,320 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
+@using Dynamicweb.Frontend
+
+@{
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+}
+
+@if(Model.Cart.TotalProductsCount > 0)
+{
+	
+	<button class="toggle-order-summary btn text-reset w-100 d-block d-lg-none px-0" type="button" data-bs-toggle="collapse" data-bs-target="#cartSummary" aria-expanded="false" aria-controls="cartSummary">
+		<div class="d-flex align-items-center justify-content-between">
+			<span class="d-flex align-items-center">
+				<span class="fs-7 lh-1"><span class="toggle-order-summary-text"></span> @Translate("order summary")</span>
+				<span class="icon-2 ms-2">
+					@ReadFile(iconPath + "chevron-down.svg")
+				</span>
+			</span>
+			<span class="fw-bold">
+				<span class="text-price">@Model.Cart.TotalPrice.Price.Formatted</span>
+			</span>
+		</div>
+	</button>
+
+	<style>
+		.toggle-order-summary .toggle-order-summary-text::after {
+			content: "@Translate("Show")";
+		}
+		.toggle-order-summary[aria-expanded="true"] .toggle-order-summary-text::after {
+			content: "@Translate("Hide")";
+		}
+		.toggle-order-summary[ aria-expanded="true" ] svg {
+			transform: rotate(-180deg);
+		}
+	</style>
+
+	<div class="d-lg-block h-lg-auto collapse pt-2 pt-lg-0" id="cartSummary">
+		<div class="d-flex flex-column gap-2 gap-lg-3 pb-2 pb-lg-3">
+			@RenderOrderlines(Model.Cart.CartOrderlines)
+		</div>
+
+		@RenderCartSummary()
+
+	</div>
+}
+else
+{
+	<button class="toggle-order-summary btn text-reset w-100 d-block d-lg-none px-0" type="button" data-bs-toggle="collapse" data-bs-target="#cartSummary" aria-expanded="false" aria-controls="cartSummary">
+		<div class="d-flex align-items-center justify-content-between">
+			<span class="d-flex align-items-center">
+				<span class="fs-7 lh-1"><span class="toggle-order-summary-text"></span> @Translate("order summary")</span>
+			</span>
+			<span class="icon-2 ms-2">
+				@ReadFile(iconPath + "chevron-down.svg")
+			</span>
+		</div>
+	</button>
+
+	<style>
+		.toggle-order-summary .toggle-order-summary-text::after {
+			content: "@Translate("Show")";
+		}
+		.toggle-order-summary[aria-expanded="true"] .toggle-order-summary-text::after {
+			content: "@Translate("Hide")";
+		}
+		.toggle-order-summary[ aria-expanded="true" ] svg {
+			transform: rotate(-180deg);
+		}
+	</style>
+
+	<div class="d-lg-block h-lg-auto collapse" id="cartSummary">
+		<div class="d-flex flex-column align-items-center justify-content-center min-vh-50 text-center opacity-50">
+			<span class="icon-5">
+				@ReadFile(iconPath + "shopping-cart.svg")
+			</span>
+			<span>@Translate("Your shopping cart is empty")</span>
+			<span>@Translate("Add products to see cart summary")</span>
+		</div>
+	</div>
+}
+
+@helper RenderOrderlines(IList<CartOrderlineViewModel> orderlines)
+{
+	@*Loop through cart orderlines*@
+	foreach (CartOrderlineViewModel orderline in orderlines)
+	{
+		@CartSummaryItem(orderline);
+	}
+}
+
+@helper CartSummaryItem(CartOrderlineViewModel orderline)
+{
+	string name = orderline.ProductName;
+	string image = "/Admin/Public/GetImage.ashx?width=" + 80 + "&height=" + 80 + "&crop=5&fillcanvas=true&Background=ffffff&image=" + orderline.ProductImage + "&Format=WebP&Quality=100";
+	string priceTotalWithDiscounts = orderline.TotalPrice.Price.Formatted;
+	string priceBefore = orderline.UnitPriceBeforeDiscount.Price.Formatted;
+	string unitPrice = orderline.UnitPrice.Price.Formatted;
+	string discountPrice = orderline.UnitPrice.Price.Formatted;
+	string discountTotal = orderline.TotalDiscount.Price.Formatted;
+	string variantText = orderline.ProductVariantText;
+	var orderlineId = orderline.ID;
+	var quantity = orderline.Quantity;
+	string productId = orderline.ProductID;
+	string variantId = orderline.ProductVariantID;
+
+	string link = "#";
+	string productDetailPageId = GetPageIdByNavigationTag("ProductDetailPage").ToString();
+	link = "Default.aspx?ID=" + productDetailPageId + "&ProductID=" + productId;
+
+
+	if (!string.IsNullOrEmpty(variantId))
+	{
+		link += "&VariantID=" + variantId;
+	}
+
+	bool isDiscount = orderline.IsDiscount;
+
+	if (!isDiscount)
+	{
+	<article class="grid grid-12">
+
+		<div class="g-col-2">
+			<a href="@link" class="ratio ratio-1x1 d-block " title="@name" tabindex="-1">
+				<img src="@image" style="object-fit: contain;" alt="@name">
+			</a>
+		</div>
+
+		<div class="g-col-10">
+
+			<div class="d-flex flex-column gap-1">
+				@* Title *@
+				<h3 class="h6 fs-7 m-0">
+					<a href="@link" class="text-decoration-none" title="@name" tabindex="-1">@name</a>
+				</h3>
+
+				@* Variants *@
+				@if (!string.IsNullOrEmpty(variantText))
+				{
+					<p class="fs-8 m-0">@variantText</p> 
+				} 
+				@* Unit price *@
+
+				<p class="fs-8 m-0">
+					@if (discountPrice == unitPrice)
+					{
+					<span class="d-block">
+						<span class="text-price">@unitPrice</span>
+					</span>
+					}
+					else
+					{
+					<span class="text-price">@discountPrice</span>
+						<span class="text-decoration-line-through">
+							<span class="text-price">@unitPrice</span>
+						</span>
+					}
+				</p>
+
+				<div class="d-flex flex-row justify-content-between">
+					@* Quantity *@
+					<span class="fs-8 d-block">@Translate("Qty"): @quantity</span>
+
+					<div class="text-end flex-fill">
+						@* Total *@
+						<span class="h6 d-block fs-7 m-0">
+							<span class="text-price">@priceTotalWithDiscounts</span>
+						</span>
+						
+						@if (orderline.TotalDiscount.Price.Value != 0)
+						{
+							<span class="d-block fs-8">
+								<span class="text-price">@discountTotal</span>
+							</span>
+						}
+					</div>
+				</div>
+				
+				<a href="/Default.aspx?ID=@Pageview.Page.ID&CartCmd=DelOrderLine&key=@orderline.ID" class="btn btn-link btn-sm p-0 m-0 fs-8 align-self-start opacity-50" title="@Translate("Remove")">@Translate("Remove")</a>
+				
+			</div>
+		</div>
+	</article>
+	}
+}
+
+@helper RenderCartSummary()
+{
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	string totalPriceWithoutDiscountsFeesAndTaxes = Model.Cart.TotalPriceWithoutDiscounts.PriceWithoutVat.Formatted;
+	string totalPriceWithoutOrderDiscountsAndFees = Model.Cart.TotalPriceWithoutFees.Price.Formatted;
+	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+	string checkoutUrl = Dynamicweb.Context.Current.Request["checkoutUrl"];
+
+<div class="d-flex flex-column gap-2 gap-lg-3 position-sticky bottom-0 theme" id="cartSummaryFooter" style="box-shadow: 0 -10px 10px -12px var(--bs-gray-300);">
+
+	<div class="fs-8 border-top pt-2 pt-lg-3">
+		@* Subtotal *@
+		<div class="d-flex justify-content-between fw-bold">
+			<span>@Translate("Subtotal")</span>
+			<span class="text-end">
+				@if (!neverShowVat && showPricesWithVat == "false")
+				{
+				<span class="d-block">
+					<span class="text-price">@totalPriceWithoutOrderDiscountsAndFees</span>
+					</span>
+					<span class="fs-8 fw-normal d-block">@Translate("Excl. VAT")</span>
+					}
+				else
+				{
+				<span class="d-block">
+					<span class="text-price">@totalPriceWithoutOrderDiscountsAndFees</span>
+				</span> 
+				if (!neverShowVat)
+				{
+					<span class="fs-8 fw-normal d-block">@Translate("Incl. VAT")</span>
+				}
+			}
+			</span>
+		</div>
+
+		@* Discounts (only order discounts) *@
+		@foreach (CartOrderlineViewModel orderline in Model.Cart.CartOrderlines)
+		{
+			bool isDiscount = orderline.IsDiscount;
+
+			if (isDiscount)
+			{
+			<div class="d-flex justify-content-between"><span>@orderline.ProductName</span><span class="text-price">@orderline.TotalPrice.Price.Formatted</span></div>
+			}
+		}
+
+		@* Shipping *@
+		@if (!string.IsNullOrEmpty(Model.Cart.ShippingMethod))
+		{
+			if (Model.Cart.ShippingFee.Price.Value != 0)
+			{
+			<div class="d-flex justify-content-between">
+				<span>@Translate("Delivery")</span>
+				<span>@Model.Cart.ShippingFee.Price.Formatted</span>
+			</div> 
+			}
+		}
+		else
+		{
+		<div class="d-flex justify-content-between">
+			<span>@Translate("Delivery")</span>
+			<span>@Translate("Calculated in next step")</span>
+		</div>
+		}
+
+		@* Payment *@
+		@if (!string.IsNullOrEmpty(Model.Cart.PaymentMethod))
+		{
+			if (Model.Cart.PaymentFee.Price.Value != 0)
+			{
+				<div class="d-flex justify-content-between">
+					<span>@Translate("Payment")</span>
+					<span class="text-price">@Model.Cart.PaymentFee.Price.Formatted</span>
+				</div>
+			}
+		}
+		else
+		{
+			<div class="d-flex justify-content-between">
+				<span>@Translate("Payment")</span>
+				<span>@Translate("Calculated in next step")</span>
+			</div>
+		}
+	</div>
+	<div class="fs-8 border-top pt-2 pt-lg-3">
+		<div class="d-flex justify-content-between fs-6 fw-bold">
+			<span>@Translate("Total")</span>
+			@if (!neverShowVat && showPricesWithVat == "false")
+			{
+			<span class="text-price text-end">
+				<span class="fs-5 d-block">@Model.Cart.TotalPrice.Price.Formatted</span>
+				<span class="fs-8 fw-normal d-block">@Translate("Excl. VAT")</span>
+			</span> 
+			}
+			else if (!neverShowVat && showPricesWithVat == "true")
+			{
+			<span class="text-price text-end">
+				<span class="fs-5 d-block">@Model.Cart.TotalPrice.Price.Formatted</span>
+				<span class="fs-8 fw-normal d-block">@Translate("Incl. VAT")</span>
+			</span>
+			}
+			else
+			{
+			<span class="text-price fs-5">@Model.Cart.TotalPrice.Price.Formatted</span>
+			}
+		</div>
+
+		@if (!neverShowVat)
+		{
+			<div class="d-flex justify-content-between"><span>@Translate("VAT")</span><span class="text-price">@Model.Cart.TotalPrice.Vat.Formatted</span></div> 
+			if (showPricesWithVat == "false")
+			{
+			<div class="d-flex justify-content-between"><span>@Translate("Total incl. VAT")</span><span class="text-price">@Model.Cart.TotalPrice.PriceWithVat.Formatted</span></div>
+			}
+		}
+
+		@if (Model.Cart.TotalDiscount.Price.Value != 0)
+		{
+		<div class="d-flex justify-content-between"><span>@Translate("Discount")</span><span class="text-price">@Model.Cart.TotalDiscount.Price.Formatted</span></div>
+		}
+	</div>
+	
+	<div class="mb-3 d-flex flex-column justify-content-end gap-3">
+		<a href="@checkoutUrl" class="btn btn-primary order-first order-md-last">
+			<div class="d-flex align-items-center justify-content-center position-relative">
+				<span>@Translate("Checkout")</span>
+				<span class="icon-2 ms-1 position-absolute position-md-static end-0">
+					@ReadFile(iconPath + "chevron-right.svg")
+				</span>
+			</div>
+		</a>
+	</div>
+</div>
+}
