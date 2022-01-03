@@ -200,15 +200,6 @@ const LocationsMap = function () {
 			}
 			var addressLineThree = addressLineThreeArr.join(", ");
 
-			var addressLineFourArr = [];
-			if (location.state != "") {
-				addressLineFourArr.push(location.state);
-			}
-			if (location.country != "") {
-				addressLineFourArr.push(location.country);
-			}
-			var addressLineFour = addressLineFourArr.join(", ");
-
 			// List element
 			var listÌtemElement = document.createElement('div');
 			listÌtemElement.style.cursor = "pointer";
@@ -242,12 +233,6 @@ const LocationsMap = function () {
 			if (addressLineThree != "") {
 				var addressLineElement = document.createElement('div');
 				addressLineElement.innerHTML = addressLineThree;
-				columnOneElement.appendChild(addressLineElement);
-			}
-
-			if (addressLineFour != "") {
-				var addressLineElement = document.createElement('div');
-				addressLineElement.innerHTML = addressLineFour;
 				columnOneElement.appendChild(addressLineElement);
 			}
 
