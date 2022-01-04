@@ -1,0 +1,239 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using System.Globalization
+@using System.Drawing
+
+@functions{
+	// Get Hex Color from color picker and translate to RGB color
+	public static string HexToRGB(string hexString)
+	{
+		if (hexString.Equals("none") || string.IsNullOrEmpty(hexString))
+			return hexString;
+
+		//replace # occurences
+		if (hexString.IndexOf('#') != -1)
+			hexString = hexString.Replace("#", "");
+		try
+		{
+			int r,g,b = 0;
+			r = int.Parse(hexString.Substring(0, 2), NumberStyles.AllowHexSpecifier);
+			g = int.Parse(hexString.Substring(2, 2), NumberStyles.AllowHexSpecifier);
+			b = int.Parse(hexString.Substring(4, 2), NumberStyles.AllowHexSpecifier);
+
+			string rgb = r + "," + g + "," + b;
+			return rgb;
+		}
+		catch (System.Exception)
+		{
+			return hexString;
+		}
+	}
+
+	public class HSL {
+		public double h { get; set; }
+		public double s { get; set; }
+		public double l { get; set; }
+	}
+
+	//Convert HEX to HSL
+	public static HSL HexToHsl(string hexString)
+	{
+		System.Drawing.Color color = System.Drawing.ColorTranslator.FromHtml(hexString);
+
+		float _R = (color.R / 255f);
+		float _G = (color.G / 255f);
+		float _B = (color.B / 255f);
+
+		float _Min = Math.Min(Math.Min(_R, _G), _B);
+		float _Max = Math.Max(Math.Max(_R, _G), _B);
+		float _Delta = _Max - _Min;
+
+		float S = 0;
+		float L = (float)((_Max + _Min) / 2.0f);
+
+		if (_Delta != 0)
+		{
+			if (L < 0.5f)
+			{
+				S = (float)(_Delta / (_Max + _Min));
+			}
+			else
+			{
+				S = (float)(_Delta / (2.0f - _Max - _Min));
+			}
+		}
+
+		HSL hsl = new HSL();
+		hsl.h = Math.Round(color.GetHue(), 2);
+		hsl.s = Math.Round(S, 2)*100;
+		hsl.l = Math.Round(L, 2)*100;
+
+		return hsl;
+	}
+
+	//Find contrast color (white, black)
+	public static Color GetContrastColor(string hexString)
+	{
+		System.Drawing.Color bg = System.Drawing.ColorTranslator.FromHtml(hexString);
+
+		int nThreshold = 105;
+		int bgDelta = Convert.ToInt32((bg.R * 0.299) + (bg.G * 0.587) +
+									  (bg.B * 0.114));
+
+		Color foreColor = (255 - bgDelta < nThreshold) ? Color.Black : Color.White;
+		return foreColor;
+	}
+
+	public string GetColorVariation(string hexString) {
+		var contrast = GetContrastColor(hexString);
+		HSL currentHslColor = HexToHsl(hexString);
+		HSL variantHslColor = currentHslColor;
+
+		if (contrast == Color.Black)
+		{
+			variantHslColor.l = 85; //The background is dark - Color should be light
+		}
+		else
+		{
+			variantHslColor.l = 40; //The background is light - Color should be less light
+		}
+
+		//Color is very light
+		if (currentHslColor.l > 85) {
+			variantHslColor.l = 95;
+		}
+
+		string colorString = variantHslColor.h + ", " + variantHslColor.s + "%, " + variantHslColor.l + "%";
+		return colorString;
+	}
+}
+
+@{
+	string badgeName = !string.IsNullOrWhiteSpace(Model.Item.GetString("BadgeText")) ? Model.Item.GetString("BadgeText") : "Default";
+	string badgeClassName = !string.IsNullOrWhiteSpace(Model.Item.GetString("CSSClassName")) ? Model.Item.GetString("CSSClassName").Replace(" ", "").Trim().ToLower() : "";
+
+
+	string foregroundColor = Model.Item.GetString("ForegroundColor") != null ? Model.Item.GetString("ForegroundColor") : "";
+	foregroundColor = foregroundColor == "" ? "none" : foregroundColor;
+	string backgroundColor = Model.Item.GetString("BackgroundColor") != null ? Model.Item.GetString("BackgroundColor") : "";
+	backgroundColor = backgroundColor == "" ? "none" : backgroundColor;
+	string borderColor = Model.Item.GetString("BorderColor") != null ? Model.Item.GetString("BorderColor") : "";
+	borderColor = borderColor == "" ? "none" : borderColor;
+
+	if (!string.IsNullOrEmpty(badgeClassName)) {
+		var sb = new System.Text.StringBuilder();
+
+		sb.AppendLine("." + badgeClassName + "{");
+		if (!string.IsNullOrEmpty(foregroundColor))
+		{
+			sb.AppendLine($"--swift-foreground-color: {foregroundColor};");
+			sb.AppendLine($"--swift-foreground-color-rgb: {HexToRGB(foregroundColor)};");
+		}
+		if (!string.IsNullOrEmpty(backgroundColor))
+		{
+			sb.AppendLine($"--swift-background-color: {backgroundColor};");
+			sb.AppendLine($"--swift-background-color-rgb: {HexToRGB(backgroundColor)};");
+		}
+		if (!string.IsNullOrEmpty(borderColor))
+		{
+			sb.AppendLine($"--swift-border-color: {borderColor};");
+			sb.AppendLine($"--swift-border-color-rgb: {HexToRGB(borderColor)};");
+		}
+		sb.AppendLine("}");
+
+		Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(sb.ToString() + Environment.NewLine, Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_ecommerce_badge_styles_{Dynamicweb.Services.Pages.GetPage(Model.PageID).AreaId}.tmp"), true);
+	}
+}
+
+@if (badgeClassName != "") {
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	<div class="g-col-12 g-col-lg-3 bg-light">
+		<div class="badge-option">
+			<span class="badge @badgeClassName mb-2">@badgeName</span>
+			<div class="h4">
+				<span class="badge @badgeClassName">@badgeName</span>
+			</div>
+		</div>
+	</div>
+	<div class="g-col-12 g-col-lg-9 mb-4 mb-lg-0">
+		<div class="grid fs-7">
+			<div class="g-col-12 g-col-lg-6">
+				<table class="table table-borderless table-sm w-100">
+					<thead>
+						<tr>
+							<th colspan="2" class="fw-bold">@Translate("Base")</th>
+						</tr>
+					</thead>
+					<tr>
+						<td>@Translate("Foreground")</td>
+						<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@foregroundColor');">@foregroundColor</a></td>
+					</tr>
+					<tr>
+						<td>@Translate("Background")</td>
+						<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@backgroundColor');">@backgroundColor</a></td>
+					</tr>
+					<tr>
+						<td>@Translate("Border")</td>
+						<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@borderColor');">@borderColor</a></td>
+					</tr>
+				</table>
+			</div>
+			<div class="g-col-12 g-col-lg-6">
+				<table class="table table-borderless table-sm w-100">
+					<tr>
+						<td class="fw-bold">@Translate("Implementation")</td>
+					</tr>
+					<tr>
+						<td>
+							@{ 
+								string implementation = "<span class=\"badge " + badgeClassName + "\"></span>";
+							}
+							<div class="text-muted">
+								<a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@badgeClassName');">
+									@Dynamicweb.Core.Encoders.HtmlEncoder.HtmlEncode(implementation)
+								</a>
+							</div>
+						</td>
+					</tr>
+				</table>
+			</div>
+		</div>
+	</div>
+}
+
+<script>
+	function fallbackCopyTextToClipboard(text) {
+	  var textArea = document.createElement("textarea");
+	  textArea.value = text;
+  
+	  // Avoid scrolling to bottom
+	  textArea.style.top = "0";
+	  textArea.style.left = "0";
+	  textArea.style.position = "fixed";
+
+	  document.body.appendChild(textArea);
+	  textArea.focus();
+	  textArea.select();
+
+	  try {
+		var successful = document.execCommand('copy');
+		var msg = successful ? 'successful' : 'unsuccessful';
+		console.log('Fallback: Copying text command was ' + msg);
+	  } catch (err) {
+		console.error('Fallback: Oops, unable to copy', err);
+	  }
+
+	  document.body.removeChild(textArea);
+	}
+	function copyTextToClipboard(text) {
+	  if (!navigator.clipboard) {
+		fallbackCopyTextToClipboard(text);
+		return;
+	  }
+	  navigator.clipboard.writeText(text).then(function() {
+		console.log('Async: Copying to clipboard was successful!');
+	  }, function(err) {
+		console.error('Async: Could not copy text: ', err);
+	  });
+	}
+</script>
