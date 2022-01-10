@@ -7,7 +7,7 @@
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
-	} else if (Pageview.Item["DummyProduct"] != null) {
+	} else if (Pageview.Item["DummyProduct"] != null && Pageview.IsVisualEditorMode) {
 		ProductViewModelSettings productSetting = new ProductViewModelSettings
 		{
 			LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
@@ -16,12 +16,16 @@
 			ShopId = Pageview.Area.EcomShopId
 		};
 
-		string dummyProductId = "PROD1";
+		string dummyProductId = "";
 		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
-		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel;
-		foreach (var p in productList.Products) { dummyProductId = p.Id; }
-		ProductViewModel dummyProduct = ViewModelFactory.CreateView(productSetting, dummyProductId);
-		product = dummyProduct;
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null) {
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		} else {
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
 	}
 
 	string imagePath = product?.DefaultImage?.Value ?? "";
@@ -36,40 +40,43 @@
 	int smallImageSize = 640;
 	int largeImageSize = width == "auto" ? 640 : Convert.ToInt32(width);
 
-	string imagePathXs       = "/Admin/Public/GetImage.ashx?width=" + smallImageSize + "&image=" + imagePath + "&format=webp";
-	string imagePathS        = "/Admin/Public/GetImage.ashx?width=" + largeImageSize + "&image=" + imagePath + "&format=webp";
+	string imagePathXs = "/Admin/Public/GetImage.ashx?width=" + smallImageSize + "&image=" + imagePath + "&format=webp";
+	string imagePathS = "/Admin/Public/GetImage.ashx?width=" + largeImageSize + "&image=" + imagePath + "&format=webp";
 	string imagePathFallBack = "/Admin/Public/GetImage.ashx?width=" + largeImageSize + "&image=" + imagePath + "&format=webp";
 
 	string imageId = "ProductImage_" + product.Id + product.VariantId;
-
 }
 
-@if (width != "auto") {
-	<style>
-		@@media (min-width: 768px) {
-			.product-image {
-				width: @(width)px !important;
+@if (product.Id != null) { 
+	if (width != "auto") {
+		<style>
+			@@media (min-width: 768px) {
+				.product-image {
+					width: @(width)px !important;
+				}
 			}
-		}
-	</style>
-}
+		</style>
+	}
 
-@if (!string.IsNullOrEmpty(imagePath)) {
-	<div class="w-100 product-image">
-		<div class="ratio" style="@(ratioVariable)">
-			<div class="d-flex justify-content-center align-items-center">
-				<img 
-					id="@imageId"
-					srcset="
-						@imagePathXs @(smallImageSize)w,
-						@imagePathS  @(largeImageSize)w"
-					sizes="(min-width: 992px) 33vw, 50vw"
-					src="@imagePathFallBack"
-					loading="lazy"
-					decoding="async"
-					class="mw-100 mh-100"
-					alt="@product.Name">
+	if (!string.IsNullOrEmpty(imagePath)) {
+		<div class="w-100 product-image">
+			<div class="ratio" style="@(ratioVariable)">
+				<div class="d-flex justify-content-center align-items-center">
+					<img 
+						id="@imageId"
+						srcset="
+							@imagePathXs @(smallImageSize)w,
+							@imagePathS  @(largeImageSize)w"
+						sizes="(min-width: 992px) 33vw, 50vw"
+						src="@imagePathFallBack"
+						loading="lazy"
+						decoding="async"
+						class="mw-100 mh-100"
+						alt="@product.Name">
+				</div>
 			</div>
 		</div>
-	</div>
+	}
+} else if (Pageview.IsVisualEditorMode) { 
+	<div class="alert alert-warning m-0">@Translate("No products available")</div>
 }

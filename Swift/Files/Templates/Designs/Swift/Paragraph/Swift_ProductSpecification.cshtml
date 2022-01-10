@@ -9,7 +9,7 @@
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
-	} else if (Pageview.Item["DummyProduct"] != null) {
+	} else if (Pageview.Item["DummyProduct"] != null && Pageview.IsVisualEditorMode) {
 		ProductViewModelSettings productSetting = new ProductViewModelSettings
 		{
 			LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
@@ -18,12 +18,17 @@
 			ShopId = Pageview.Area.EcomShopId
 		};
 
-		string dummyProductId = "PROD1";
+		string dummyProductId = "";
 		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
-		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel;
-		foreach (var p in productList.Products) { dummyProductId = p.Id; }
-		ProductViewModel dummyProduct = ViewModelFactory.CreateView(productSetting, dummyProductId);
-		product = dummyProduct;
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		} else {
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
 	}
 
 	IEnumerable<string> selectedDisplayGroupIds = Model.Item.GetList("DisplayGroups").SelectedValues;
@@ -32,11 +37,20 @@
 	foreach (var selection in selectedDisplayGroupIds)
 	{
 		foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
-		{		
+		{
 			if (selection == group.Id) {
 				displayGroups.Add(group);
 			}
 		}
+	}
+
+	bool showProductFields = Model.Item.GetBoolean("ProductFields");
+
+	if (Pageview.IsVisualEditorMode && (product.ProductFields == null && Model.Item.GetBoolean("ProductFields")) || (product.ProductCategories == null && Model.Item.GetBoolean("CategoryFields")) || (displayGroups.Count == 0)) {
+		product.ProductFields.Clear();
+		product.ProductFields.Add(Translate("Width"), new FieldValueViewModel { Name = Translate("Width"), Value = "99cm" });
+		product.ProductFields.Add(Translate("Height"), new FieldValueViewModel { Name = Translate("Height"), Value = "195cm" });
+		showProductFields = true;
 	}
 
 	bool hideTitle = Model.Item.GetBoolean("HideTitle");
@@ -57,57 +71,56 @@
 	alignment = alignment == "alignLeftMiddle" ? "d-flex align-items-center text-start" : alignment;
 }
 
-<div class="@(alignment) @(theme) h-100">
-	<div class="@contentPadding">
-		@if ((product.ProductFields != null && Model.Item.GetBoolean("ProductFields")) || (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields")) || (displayGroups.Count != 0)) {
-			if (!hideTitle)
-			{
-				<div class="text-start pb-2 pb-lg-4">
-					<h2 class="@titleFontSize">@Model.Item.GetString("Title")</h2>
-				</div>
-			}
-		}
-
-		@if (displayGroups.Count != 0) {
-			foreach (var group in displayGroups) {
-				bool hideHeader = Model.Item.GetBoolean("HideGroupHeaders");
-
-				if (!hideHeader) { 
-					<h4 class="h4 mb-4">@group.Name</h4>
+@if (product.Id != null) { 
+	<div class="@(alignment) @(theme) h-100">
+		<div class="@contentPadding">
+			@if ((product.ProductFields != null && Model.Item.GetBoolean("ProductFields")) || (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields")) || (displayGroups.Count != 0)) {
+				if (!hideTitle)
+				{
+					<div class="text-start pb-2 pb-lg-4">
+						<h2 class="@titleFontSize">@Model.Item.GetString("Title")</h2>
+					</div>
 				}
-
-				@RenderFieldsFromList(group.Fields, layout);
 			}
-		}
 
-		@if (product.ProductFields != null && Model.Item.GetBoolean("ProductFields")) {
-			if (product.ProductFields.Count > 0) {
-				@RenderFieldsFromList(product.ProductFields, layout);
-			}
-		}
-
-		@if (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields")) {
-			if (product.ProductCategories.Count > 0) {
-				foreach (var group in product.ProductCategories) {
-					CategoryFieldViewModel category = group.Value;
+			@if (displayGroups.Count != 0) {
+				foreach (var group in displayGroups) {
 					bool hideHeader = Model.Item.GetBoolean("HideGroupHeaders");
 
 					if (!hideHeader) { 
-						<h4 class="h4 mb-4">@group.Key</h4>
+						<h4 class="h4 mb-4">@group.Name</h4>
 					}
 
-					@RenderFieldsFromList(category.Fields, layout);
+					@RenderFieldsFromList(group.Fields, layout);
 				}
 			}
-		}
-	</div>
 
-	@if (isVisualEditor && (displayGroups.Count == 0 && !Model.Item.GetBoolean("ProductFields") && !Model.Item.GetBoolean("CategoryFields"))) {
-		<div class="alert alert-info m-0">
-			@Translate("Specifications will be shown here")
+			@if (product.ProductFields != null && showProductFields) {
+				if (product.ProductFields.Count > 0) {
+					@RenderFieldsFromList(product.ProductFields, layout);
+				}
+			}
+
+			@if (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields")) {
+				if (product.ProductCategories.Count > 0) {
+					foreach (var group in product.ProductCategories) {
+						CategoryFieldViewModel category = group.Value;
+						bool hideHeader = Model.Item.GetBoolean("HideGroupHeaders");
+
+						if (!hideHeader) { 
+							<h4 class="h4 mb-4">@group.Key</h4>
+						}
+
+						@RenderFieldsFromList(category.Fields, layout);
+					}
+				}
+			}
 		</div>
-	}
-</div>
+	</div>
+} else if (Pageview.IsVisualEditorMode) { 
+	<div class="alert alert-warning m-0">@Translate("No products available")</div>
+}
+
 
 @helper RenderFieldsFromList(Dictionary<string, FieldValueViewModel> fields, string layout) { 
 	string size = Model.Item.GetRawValueString("Size", "full");

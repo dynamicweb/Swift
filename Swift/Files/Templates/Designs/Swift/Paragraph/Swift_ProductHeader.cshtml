@@ -7,7 +7,9 @@
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
-	} else if (Pageview.Item["DummyProduct"] != null) {
+	}
+	else if (Pageview.Item["DummyProduct"] != null && Pageview.IsVisualEditorMode)
+	{
 		ProductViewModelSettings productSetting = new ProductViewModelSettings
 		{
 			LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
@@ -16,12 +18,17 @@
 			ShopId = Pageview.Area.EcomShopId
 		};
 
-		string dummyProductId = "PROD1";
+		string dummyProductId = "";
 		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
-		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel;
-		foreach (var p in productList.Products) { dummyProductId = p.Id; }
-		ProductViewModel dummyProduct = ViewModelFactory.CreateView(productSetting, dummyProductId);
-		product = dummyProduct;
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		} else {
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
 	}
 
 	string titleFontSize = Model.Item.GetRawValueString("HeaderSize", "fs-6");
@@ -30,4 +37,8 @@
 	horizontalAlign = horizontalAlign == "right" ? "text-end" : horizontalAlign;
 }
 
-<h2 class="@titleFontSize m-0 @horizontalAlign" itemprop="name">@product.Name</h2>
+@if (product.Id != null) {
+	<h2 class="@titleFontSize m-0 @horizontalAlign" itemprop="name">@product.Name</h2>
+} else if (Pageview.IsVisualEditorMode) { 
+	<div class="alert alert-warning m-0">@Translate("No products available")</div>
+}
