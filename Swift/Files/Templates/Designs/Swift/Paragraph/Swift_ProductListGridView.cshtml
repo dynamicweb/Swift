@@ -41,7 +41,10 @@
 	badgeParms.Add("saleBadgeCssClassName", Model.Item.GetRawValue("SaleBadgeDesign"));
 	badgeParms.Add("newBadgeCssClassName", Model.Item.GetRawValue("NewBadgeDesign"));
 	badgeParms.Add("newPublicationDays", Model.Item.GetInt32("NewPublicationDays"));
-	badgeParms.Add("campaignBadgesValues", string.Join(",", Model.Item.GetList("CampaignBadges").SelectedValues.ToArray()));
+	badgeParms.Add("campaignBadgesValues", Model.Item.GetRawValueString("CampaignBadges"));
+
+	bool saleBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("SaleBadgeDesign")) && Model.Item.GetRawValueString("SaleBadgeDesign") != "none" ? true : false;
+	bool newBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("NewBadgeDesign")) && Model.Item.GetRawValueString("NewBadgeDesign") != "none" ? true : false;
 
 	var favoriteParameters = new Dictionary<string, object>();
 	if (!anonymousUser && !hideFavoritesSelector)
@@ -95,6 +98,11 @@
 				string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
 				bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 
+				DateTime createdDate = product.Created.Value;
+				bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
+				showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
+				showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
+
 				IEnumerable<string> selectedDisplayGroups = Model.Item.GetList("MainFeatures").SelectedValues;
 				List<CategoryFieldViewModel> mainFeatures = new List<CategoryFieldViewModel>();
 
@@ -115,9 +123,11 @@
 						</div>
 					}
 
-					<div class="position-absolute top-0 left-0 p-1 p-lg-2" style="z-index: 2">
-						@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
-					</div>
+					@if (showBadges) { 
+						<div class="position-absolute top-0 left-0 p-1 p-lg-2" style="z-index: 2">
+							@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
+						</div>
+					}
 
 					<a href="@link" class="d-flex flex-column d-block h-100 text-decoration-none">
 

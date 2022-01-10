@@ -93,14 +93,23 @@
 	badgeParms.Add("saleBadgeCssClassName", Model.Item.GetRawValue("SaleBadgeDesign"));
 	badgeParms.Add("newBadgeCssClassName", Model.Item.GetRawValue("NewBadgeDesign"));
 	badgeParms.Add("newPublicationDays", Model.Item.GetInt32("NewPublicationDays"));
-	badgeParms.Add("campaignBadgesValues", string.Join(",", Model.Item.GetList("CampaignBadges").SelectedValues.ToArray()));
+	badgeParms.Add("campaignBadgesValues", Model.Item.GetRawValueString("CampaignBadges"));
+
+	bool saleBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("SaleBadgeDesign")) && Model.Item.GetRawValueString("SaleBadgeDesign") != "none" ? true : false;
+	bool newBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("NewBadgeDesign")) && Model.Item.GetRawValueString("NewBadgeDesign") != "none" ? true : false;
+	DateTime createdDate = product.Created.Value;
+	bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
+	showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
+	showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
 }
 
 <div class="h-100 @(contentPadding) @(theme)">
 	<div class="d-flex flex-column gap-4 js-product">
-		<div>
-			@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
-		</div>
+		@if (showBadges) {
+			<div>
+				@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
+			</div>
+        }
 
 		<div>
 			<h1 class="@titleFontSize" itemprop="name">@product.Name</h1>
