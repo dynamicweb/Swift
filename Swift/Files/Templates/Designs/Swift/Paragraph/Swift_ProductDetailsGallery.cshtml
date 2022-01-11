@@ -56,8 +56,6 @@
 }
 
 @{ 
-	bool isVisualEdit = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
-
 	@* Get the product data *@
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
@@ -71,11 +69,13 @@
 	allSupportedFormats = supportedImageFormats.Concat(supportedVideoFormats).Concat(supportedDocumentFormats).ToArray();
 
 	@* Collect the assets *@
-	var selectedAssetCategories = Model.Item.GetList("ImageAssets").SelectedValues;
+	var selectedAssetCategories = Model.Item.GetRawValueString("ImageAssets").Split(',').ToList();
 	bool includeImagePatternImages = Model.Item.GetBoolean("ImagePatternImages"); 
 	
 	@* Needed image data collection to support both DefaultImage, ImagePatterns and Image Assets *@
+	string defaultImage = product.DefaultImage != null ? product.DefaultImage.Value : "";
 	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedAssetCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
+	assetsImages = assetsImages.OrderByDescending(x => x.Value.Equals(defaultImage));
 	IEnumerable<MediaViewModel> assetsList = new MediaViewModel[]{};
 	assetsList = includeImagePatternImages && assetsImages.Count() == 0 ? assetsList.Append(product.DefaultImage) : assetsList;
 	assetsList = assetsList.Union(assetsImages);
@@ -112,6 +112,21 @@
 
 	galleryLayout = Model.Item.GetRawValueString("Layout", "grid");
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+
+	var badgeParms = new Dictionary<string, object>();
+	badgeParms.Add("size", "h5");
+	badgeParms.Add("saleBadgeType", Model.Item.GetRawValue("SaleBadgeType"));
+	badgeParms.Add("saleBadgeCssClassName", Model.Item.GetRawValue("SaleBadgeDesign"));
+	badgeParms.Add("newBadgeCssClassName", Model.Item.GetRawValue("NewBadgeDesign"));
+	badgeParms.Add("newPublicationDays", Model.Item.GetInt32("NewPublicationDays"));
+	badgeParms.Add("campaignBadgesValues", Model.Item.GetRawValueString("CampaignBadges"));
+
+	bool saleBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("SaleBadgeDesign")) && Model.Item.GetRawValueString("SaleBadgeDesign") != "none" ? true : false;
+	bool newBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("NewBadgeDesign")) && Model.Item.GetRawValueString("NewBadgeDesign") != "none" ? true : false;
+	DateTime createdDate = product.Created.Value;
+	bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
+	showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
+	showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
 }
 
 @* Get assets from selected categories or get all assets *@
@@ -122,7 +137,7 @@
 	int modalAssetNumber = 0;
 
 	@* Desktop: Show the gallery on large screens *@
-	<div class="d-none d-lg-block h-100 @theme">
+	<div class="d-none d-lg-block h-100 position-relative @theme">
 		<div class="grid @spacing">
 			@foreach (MediaViewModel asset in assetsList) {
 				var assetName = asset.Value.ToLower(); 
@@ -136,10 +151,16 @@
 				}
 			}
 		</div>
+
+		@if (showBadges) { 
+			<div class="position-absolute top-0 left-0 p-2 p-lg-3 w-100">
+				@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
+			</div>
+		}
 	</div>
 
 	@* Mobile: Show the thumbs on small screens *@
-	<div class="d-block d-lg-none mx-lg-0 @theme">
+	<div class="d-block d-lg-none mx-lg-0 position-relative @theme">
 		<div id="SmallScreenImages_@Model.ID" class="carousel" data-bs-ride="carousel">
 			<div class="carousel-inner h-100">
 				@foreach (MediaViewModel asset in assetsList) {
@@ -191,6 +212,12 @@
 						}
 					}
 				}
+			</div>
+		}
+
+		@if (showBadges) { 
+			<div class="position-absolute top-0 left-0 p-2 p-lg-3">
+				@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
 			</div>
 		}
 	</div>
@@ -250,7 +277,7 @@
 			</div>
 		</div>
 	</div>
-} else if (isVisualEdit) {
+} else if (Pageview.IsVisualEditorMode) {
 	RatioSettings ratioSettings = GetRatioSettings("desktop");
 
 	<div class="h-100 @theme">

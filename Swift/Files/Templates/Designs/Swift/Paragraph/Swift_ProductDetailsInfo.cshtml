@@ -5,8 +5,6 @@
 @using Dynamicweb.Frontend
 
 @{
-	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
-
 	ProductViewModel product = new ProductViewModel();
 
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
@@ -39,7 +37,7 @@
 		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
 	}
 
-	IEnumerable<string> selectedDisplayGroups = Model.Item.GetList("MainFeatures").SelectedValues;
+	IEnumerable<string> selectedDisplayGroups = Model.Item.GetRawValueString("MainFeatures").Split(',').ToList();
 	List<CategoryFieldViewModel> mainFeatures = new List<CategoryFieldViewModel>();
 
 	foreach (var selection in selectedDisplayGroups)
@@ -68,6 +66,12 @@
 	string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
 	string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : "";
 
+	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+
+	string priceMin = "";
+	string priceMax = "";
+
 	var favoriteParameters = new Dictionary<string, object>();
 	if (!anonymousUser && !hideFavoritesSelector)
 	{
@@ -79,13 +83,34 @@
 				defaultFavoriteListId = list.ListId;
 			}
 		}
-		
+
 		favoriteParameters.Add("ListId", defaultFavoriteListId);
 	}
+
+	var badgeParms = new Dictionary<string, object>();
+	badgeParms.Add("size", "h7");
+	badgeParms.Add("saleBadgeType", Model.Item.GetRawValue("SaleBadgeType"));
+	badgeParms.Add("saleBadgeCssClassName", Model.Item.GetRawValue("SaleBadgeDesign"));
+	badgeParms.Add("newBadgeCssClassName", Model.Item.GetRawValue("NewBadgeDesign"));
+	badgeParms.Add("newPublicationDays", Model.Item.GetInt32("NewPublicationDays"));
+	badgeParms.Add("campaignBadgesValues", Model.Item.GetRawValueString("CampaignBadges"));
+
+	bool saleBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("SaleBadgeDesign")) && Model.Item.GetRawValueString("SaleBadgeDesign") != "none" ? true : false;
+	bool newBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("NewBadgeDesign")) && Model.Item.GetRawValueString("NewBadgeDesign") != "none" ? true : false;
+	DateTime createdDate = product.Created.Value;
+	bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
+	showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
+	showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
 }
 
 <div class="h-100 @(contentPadding) @(theme)">
 	<div class="d-flex flex-column gap-4 js-product">
+		@if (showBadges) {
+			<div>
+				@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
+			</div>
+        }
+
 		<div>
 			<h1 class="@titleFontSize" itemprop="name">@product.Name</h1>
 			@if (!Model.Item.GetBoolean("HideProductNumber"))
@@ -170,11 +195,12 @@
 					@if (!Model.Item.GetBoolean("QuantitySelector"))
 					{
 						<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" type="hidden">
-						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary w-100 js-add-to-cart-button @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
+						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary w-100 js-add-to-cart-button @disableAddToCart" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
 					} else { 
 						<div class="input-group input-primary-button-group js-input-group d-flex flex-row flex-nowrap">
+							<label for="Quantity_@(product.Id)" class="visually-hidden">@Translate("Quantity")</label>
 							<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 96px; min-width:64px;" type="number">
-							<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
+							<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)">@Translate("Add to cart")</button>
 						</div>
 
 						if (stepQty != "1")

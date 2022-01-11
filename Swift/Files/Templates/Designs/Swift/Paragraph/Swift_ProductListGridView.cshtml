@@ -4,19 +4,23 @@
 
 @{ 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	string themePadding = theme != string.Empty ? "p-3" : string.Empty;
 }
 
-@if (!string.IsNullOrEmpty(theme)) {
-	<div class="h-100@(theme)">
+@if (!string.IsNullOrEmpty(theme))
+{
+	<div class="h-100@(theme) @themePadding">
 		@RenderProductList()
 	</div>
-} else {
+}
+else
+{
+<div class="pt-3">
 	@RenderProductList()
+</div>
 }
 
 @helper RenderProductList () { 
-	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
-
 	ProductListViewModel productList = new ProductListViewModel();
 
 	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
@@ -29,14 +33,24 @@
 	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
 
 	string detailsPageLink = Dynamicweb.Context.Current.Items["DetailsPageLink"] != null ? Dynamicweb.Context.Current.Items["DetailsPageLink"].ToString() : "";
-	string productTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductTheme")) ? " theme p-3 " + Model.Item.GetRawValueString("ProductTheme").Replace(" ", "").Trim().ToLower() : "";
-	string textPadding = productTheme != "" ? "px-2 px-lg-3 pb-2 pb-lg-3" : "";
+	string productTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductTheme")) ? " theme " + Model.Item.GetRawValueString("ProductTheme").Replace(" ", "").Trim().ToLower() : "";
+	string productThemePadding = productTheme != string.Empty ? "p-3" : string.Empty;
 
 	string url = Dynamicweb.Context.Current.Request.RawUrl;
 	bool hideFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("HideFavoritesSelector")) ? Model.Item.GetBoolean("HideFavoritesSelector") : false;
 	string staticVariantsLayout = Model.Item.GetRawValueString("StaticVariantsLayout", "hide");
 
 	string groupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GroupID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") : "";
+
+	var badgeParms = new Dictionary<string, object>();
+	badgeParms.Add("saleBadgeType", Model.Item.GetRawValue("SaleBadgeType"));
+	badgeParms.Add("saleBadgeCssClassName", Model.Item.GetRawValue("SaleBadgeDesign"));
+	badgeParms.Add("newBadgeCssClassName", Model.Item.GetRawValue("NewBadgeDesign"));
+	badgeParms.Add("newPublicationDays", Model.Item.GetInt32("NewPublicationDays"));
+	badgeParms.Add("campaignBadgesValues", Model.Item.GetRawValueString("CampaignBadges"));
+
+	bool saleBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("SaleBadgeDesign")) && Model.Item.GetRawValueString("SaleBadgeDesign") != "none" ? true : false;
+	bool newBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("NewBadgeDesign")) && Model.Item.GetRawValueString("NewBadgeDesign") != "none" ? true : false;
 
 	var favoriteParameters = new Dictionary<string, object>();
 	if (!anonymousUser && !hideFavoritesSelector)
@@ -60,7 +74,7 @@
 
 		int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
 
-		<div class="grid grid-2 grid-lg-3 pt-3">
+		<div class="grid grid-2 grid-lg-3">
 			@foreach (ProductViewModel product in productList.Products)
 			{
 				var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
@@ -83,14 +97,40 @@
 				string imagePathFallBack = "/Admin/Public/GetImage.ashx?width=" + 640 + "&image=" + imagePath + "&format=webp";
 
 				string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
+				string imageThemePadding = imageTheme != string.Empty ? "p-3" : string.Empty;
+				string imageOutlineStyle = imageTheme == string.Empty ? "style=\"border: 1px solid transparent\"" : string.Empty;
 
 				string imageId = "ProductImage_" + product.Id + product.VariantId;
 				string priceId = "ProductPrice_" + product.Id + product.VariantId;
 
 				string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
 				bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+				
+				@* Alternative image *@
+				var supportedImageFormats = new string[] { ".jpg", ".webp", ".png", ".gif" };
+				string defaultImage = product.DefaultImage != null ? product.DefaultImage.Value : "";
+				var selectedAssetCategories = Model.Item.GetRawValueString("AlternativeImageAssets");
+				IEnumerable<MediaViewModel> alternativeImagesList = product.AssetCategories.Where(x => selectedAssetCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
 
-				IEnumerable<string> selectedDisplayGroups = Model.Item.GetList("MainFeatures").SelectedValues;
+				if (alternativeImagesList.FirstOrDefault() != null) { 
+					alternativeImagesList = alternativeImagesList.OrderByDescending(x => x.Value.Equals(defaultImage));
+
+					if (alternativeImagesList.First().Value == defaultImage) { 
+						alternativeImagesList = alternativeImagesList.Skip(1);
+					}
+				}
+
+				string alternativeImage = alternativeImagesList.FirstOrDefault() != null ? alternativeImagesList.FirstOrDefault().Value : "";
+				alternativeImage = !string.IsNullOrEmpty(alternativeImage) ? "/Admin/Public/GetImage.ashx?width=" + 640 + "&image=" + alternativeImage + "&format=webp" : "";
+				
+				@* Badges *@
+				DateTime createdDate = product.Created.Value;
+				bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
+				showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
+				showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
+
+				@* Main features *@
+				IEnumerable<string> selectedDisplayGroups = Model.Item.GetRawValueString("MainFeatures").Split(',').ToList();
 				List<CategoryFieldViewModel> mainFeatures = new List<CategoryFieldViewModel>();
 
 				foreach (var selection in selectedDisplayGroups)
@@ -103,28 +143,47 @@
 					}
 				}
 
-				<article class="position-relative" itemscope itemtype="https://schema.org/Product">
+				<article class="position-relative@(productTheme)" itemscope itemtype="https://schema.org/Product">
 					@if (!anonymousUser && !hideFavoritesSelector && product.VariantInfo.VariantInfo == null) {
 						<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
 							@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
 						</div>
 					}
+
+					@if (showBadges) { 
+						<div class="position-absolute top-0 left-0 p-1 p-lg-2 ps-0 ps-lg-0" style="z-index: 2">
+							@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
+						</div>
+					}
+
 					<a href="@link" class="d-flex flex-column d-block h-100 text-decoration-none">
 
-						<div class="overflow-hidden @(imageTheme)">
+						<div class="overflow-hidden@(imageTheme)" @imageOutlineStyle>
 							<div class="ratio" style="@(ratioVariable)">
 								<div class="d-flex justify-content-center align-items-center">
-									<img 
-										id="@imageId"
-										srcset="
-											@imagePathXs 480w,
-											@imagePathS  640w"
-										sizes="(min-width: 992px) 33vw, 50vw"
-										src="@imagePathFallBack"
-										loading="lazy"
-										decoding="async"
-										class="mw-100 mh-100"
-										alt="@product.Name">
+									@if (string.IsNullOrEmpty(alternativeImage)) { 
+										<img 
+											id="@imageId"
+											srcset="
+												@imagePathXs 480w,
+												@imagePathS  640w"
+											sizes="(min-width: 992px) 33vw, 50vw"
+											src="@imagePathFallBack"
+											loading="lazy"
+											decoding="async"
+											class="mw-100 mh-100 @imageThemePadding"
+											alt="@product.Name">
+									} else { 
+										<img 
+											id="@imageId"
+											src="@imagePathFallBack"
+											loading="lazy"
+											decoding="async"
+											class="mw-100 mh-100 @imageThemePadding"
+											alt="@product.Name"
+											onmouseover="this.src='@alternativeImage'" 
+											onmouseout="this.src='@imagePathFallBack'">
+									}
 								</div>
 							</div>
 
@@ -159,12 +218,12 @@
 															<article class="static-variants-option @optionWidth @(productVariantTheme)" title="@product.Name @variant.Name" style="transition-delay: calc(var(--animation-speed-in) * @variantsCount); pointer-events: initial;">
 																@if (!string.IsNullOrEmpty(variant.Color))
 																{
-																	string defaultImage = Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value);
+																	string defaultProductImage = Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value);
 																	string variantImage = Dynamicweb.Context.Current.Server.UrlEncode(variant.Image.Value);
 																	string defaultPrice = !hidePrice ? product.Price.PriceFormatted : "0";
 																	string variantPrice = !hidePrice ? product.Price.PriceFormatted : "0";
 
-																	<figure class="figure w-100 d-block m-0" onmouseover="switchVariantProduct('@product.Id', '@defaultPrice', '@variantImage')" onmouseout="switchVariantProduct('@product.Id', '@variantPrice', '@defaultImage')">
+																	<figure class="figure w-100 d-block m-0" onmouseover="switchVariantProduct('@product.Id', '@defaultPrice', '@variantImage')" onmouseout="switchVariantProduct('@product.Id', '@variantPrice', '@defaultProductImage')">
 																		<div class="d-flex align-items-center justify-content-center">
 																			<img src="/admin/public/GetImage.ashx?image=@variantImage&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" height="75" width="75" class="p-1 text-small" loading="lazy" decoding="async" alt="@product.Name, @variant.Name">
 																		</div>
@@ -207,7 +266,7 @@
 								}
 							</div>
 						</div>
-						<div class="@(productTheme)">
+						<div class="@productThemePadding">
 							<div class="flex-grow-1">
 								<h3 class="h6 mb-0 text-break">@product.Name @product.VariantId</h3>
 								@if (!Model.Item.GetBoolean("HideProductNumber")) { 
@@ -365,7 +424,7 @@
 			}
 		</script>
 	} else {
-		if (!isVisualEditor) {
+		if (!Pageview.IsVisualEditorMode) {
 			<div class="alert alert-dark m-0">
 				@Translate("We did not find anything matching your search result")
 			</div>
