@@ -91,14 +91,32 @@
 			string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
 
 			string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
-
 			string imageId = "ProductImage_" + product.Id + product.VariantId;
 
+			@* Alternative image *@
+			var supportedImageFormats = new string[] { ".jpg", ".webp", ".png", ".gif" };
+			string defaultImage = product.DefaultImage != null ? product.DefaultImage.Value : "";
+			var selectedAssetCategories = Model.Item.GetRawValueString("AlternativeImageAssets");
+			IEnumerable<MediaViewModel> alternativeImagesList = product.AssetCategories.Where(x => selectedAssetCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
+
+			if (alternativeImagesList.FirstOrDefault() != null) { 
+				alternativeImagesList = alternativeImagesList.OrderByDescending(x => x.Value.Equals(defaultImage));
+
+				if (alternativeImagesList.First().Value == defaultImage) { 
+					alternativeImagesList = alternativeImagesList.Skip(1);
+				}
+			}
+
+			@* Badges *@
 			DateTime createdDate = product.Created.Value;
 			bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
 			showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
 			showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
 
+			string alternativeImage = alternativeImagesList.FirstOrDefault() != null ? alternativeImagesList.FirstOrDefault().Value : "";
+			alternativeImage = !string.IsNullOrEmpty(alternativeImage) ? "/Admin/Public/GetImage.ashx?width=" + 80 + "&image=" + alternativeImage + "&format=webp" : "";
+			
+			@* Main features *@
 			IEnumerable<string> selectedDisplayGroups = Model.Item.GetRawValueString("MainFeatures").Split(',').ToList();
 			List<CategoryFieldViewModel> mainFeatures = new List<CategoryFieldViewModel>();
 
@@ -125,7 +143,11 @@
 							<div class="@ratioCssClass m-0" style="@(ratioVariable)">
 								<figure class="m-0 d-flex justify-content-center">
 									<div class="d-flex justify-content-center align-items-center h-100 w-100">
-										<img src="@imagePath" alt="@product.Name" class="mw-100 mh-100" loading="lazy" style="object-fit: cover;"/>
+										@if (string.IsNullOrEmpty(alternativeImage)) { 
+											<img src="@imagePath" alt="@product.Name" class="mw-100 mh-100" loading="lazy" style="object-fit: cover;" />
+										} else { 
+											<img src="@imagePath" onmouseover="this.src='@alternativeImage'" onmouseout="this.src='@imagePath'" alt="@product.Name" class="mw-100 mh-100" loading="lazy" style="object-fit: cover;" />
+										}
 									</div>
 								</figure>
 							</div>
