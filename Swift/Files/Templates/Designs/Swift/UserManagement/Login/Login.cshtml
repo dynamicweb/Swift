@@ -3,19 +3,30 @@
 @using Dynamicweb.Environment
 
 @{ 
+	string pageTitle = Pageview.Page.GetDisplayName();
 	string pageId = GetGlobalValue("Global:Page.ID");
 	int signInProfilePageId = Pageview.Page.ID;
 	string currentUserId = GetGlobalValue("Global:Extranet.UserID");
 	string goBackToPage = Dynamicweb.Context.Current.Request.GetString("GoBackToPage"); //parameter from anonymous checkout
 	string absoluteUri = Dynamicweb.Context.Current?.Request?.UrlReferrer?.AbsoluteUri != null ? Dynamicweb.Context.Current.Request.UrlReferrer.AbsoluteUri : "";
 	string redirectPage = !string.IsNullOrEmpty(goBackToPage) ? "Default.aspx?Id=" + goBackToPage : absoluteUri;
-    string pathAndQuery = Dynamicweb.Context.Current?.Request?.UrlReferrer?.PathAndQuery != null ? Dynamicweb.Context.Current.Request.UrlReferrer.PathAndQuery : "";
-    redirectPage = string.IsNullOrEmpty(goBackToPage) && pathAndQuery == Pageview.SearchFriendlyUrl ? GetString("UserManagement:User.Login.SuccessRedirectToPage") : redirectPage;
+	string pathAndQuery = Dynamicweb.Context.Current?.Request?.UrlReferrer?.PathAndQuery != null ? Dynamicweb.Context.Current.Request.UrlReferrer.PathAndQuery : "";
+	redirectPage = string.IsNullOrEmpty(goBackToPage) && pathAndQuery == Pageview.SearchFriendlyUrl ? GetString("UserManagement:User.Login.SuccessRedirectToPage") : redirectPage;
 
 	string createAccountPageLink = Pageview.CurrentParagraph.Item["CreateAccountPage"] != null ? Pageview.CurrentParagraph.Item["CreateAccountPage"].ToString() : "";
+
+	string contentPadding = Pageview.CurrentParagraph.Item["ContentPadding"] != null ? Pageview.CurrentParagraph.Item["ContentPadding"].ToString() : "";
+	contentPadding = contentPadding == "none" ? "px-0" : contentPadding;
+	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
+	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
+	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", "").Trim().ToLower() : " theme light";
+
+	var loginProvider = GetLoop("DWExtranetExternalLoginProviders");
 }
 
-<div>
+<div class="@(contentPadding)">
+	
 	@if (!string.IsNullOrEmpty(GetString("DW_extranet_error_uk")))
 	{
 		<div class="alert alert-danger" role="alert">
@@ -23,52 +34,88 @@
 		</div>
 	}
 
-	<form method="post">
-		<input type="hidden" name="ID" value="@pageId" />
-		<input type="hidden" name="DWExtranetUsernameRemember" value="True" />
-		<input type="hidden" name="DWExtranetPasswordRemember" value="True" />
-		<input type="hidden" name="redirect" value="@redirectPage"> 
-		<input type="hidden" name="GoBackToPage" value="@goBackToPage"> 
-		<input type="hidden" name="LoginAction" value="Login" />
+	<div class="card border-0@(theme) mx-auto" style="max-width: 30rem;">
+	
+		<div class="card-header text-center p-4 border-bottom">
+			<h4 class="display-6 m-0">@pageTitle</h4>
+			@if (!string.IsNullOrEmpty(createAccountPageLink))
+			{
+				<p class="card-text mt-2">@Translate("Don't have an account yet?") <a href="@createAccountPageLink">@Translate("Create account here")</a></p>
+			}
+		</div>
+		
+		<div class="card-body p-4">
+			<form class="grid grid-1 gap-4">
+				<input type="hidden" name="ID" value="@pageId" />
+				<input type="hidden" name="DWExtranetUsernameRemember" value="True" />
+				<input type="hidden" name="DWExtranetPasswordRemember" value="True" />
+				<input type="hidden" name="redirect" value="@redirectPage">
+				<input type="hidden" name="GoBackToPage" value="@goBackToPage">
+				<input type="hidden" name="LoginAction" value="Login" />
 
-		<div class="grid gap-3">
+				@foreach(LoopItem provider in loginProvider)
+				{
+					string iconPath = "/Files/IconsLoginProviders/";
+					string providerName = provider.GetString("ProviderName").ToLower();
+					string providerIcon = string.Empty;
 
-			<div class="g-col-12 g-col-lg-6">
-				<div class="form-floating">
-					<input type="text" class="form-control" id="login-username" name="username" placeholder="@Translate("Email")" required>
-					<label for="login-username">@Translate("Email")</label>
+					if(providerName.Contains("azure"))
+					{
+						providerIcon = "azure";
+					}
+					if(providerName.Contains("google"))
+					{
+						providerIcon = "google";
+					}
+
+					<div class="d-grid">
+						<a class="btn btn-primary-outline btn-lg" href="/Admin/Public/Social/ExternalLogin.aspx?action=login&providerID=@provider.GetValue("ProviderID")">
+							<span class="d-flex justify-content-center align-items-center">
+								<span class="icon-3 me-2">
+									@ReadFile(iconPath + providerIcon + ".svg")
+								</span>
+								<span>@Translate("Sign in with") @provider.GetString("ProviderName")</span>
+							</span>
+						</a>
+					</div>
+
+					<div class="d-flex align-items-center gap-3">
+						<span class="border-top flex-fill"></span>
+						<span class="text-uppercase">@Translate("or")</span>
+						<span class="border-top flex-fill"></span>
+					</div>
+				}
+
+				<div>
+					<label class="form-label fs-7 mb-0 opacity-75" for="username">@Translate("Your email")</label>
+					<div class="form-floating">
+						<input type="text" class="form-control" id="login-username" name="username" placeholder="@Translate("Email")" required>
+						<label for="login-username">@Translate("Email")</label>
+					</div>
+
 				</div>
-			</div>
 
-			<div class="g-col-12 g-col-lg-6">
-				<div class="form-floating">
-					<input type="password" class="form-control" id="login-password" name="password" placeholder="@Translate("Password")" required>
-					<label for="login-password">@Translate("Password")</label>
+				<div>
+					<div class="d-flex justify-content-between align-items-center">
+						<label class="form-label fs-7 mb-0 opacity-75" for="password">@Translate("Your password")</label>
+						<a tabindex="-1" class="form-label-link" href="/Default.aspx?id=@(signInProfilePageId)&LoginAction=Recovery">@Translate("Forgot password?")</a>
+					</div>
+
+					<div class="form-floating">
+						<input type="password" class="form-control" id="login-password" name="password" placeholder="@Translate("Password")" required>
+						<label for="login-password">@Translate("Password")</label>
+					</div>
 				</div>
-			</div> 
 
-			<div class="g-col-12">
 				<div class="form-check">
 					<input class="form-check-input" type="checkbox" value="True" name="Autologin" id="rememberMe">
 					<label class="form-check-label" for="rememberMe">@Translate("Remember me")</label>
 				</div>
-			</div>
 
-
-			<div class="g-col-12">
-				<div class="d-grid d-lg-block">
-					<button type="submit" class="btn btn-primary d-inline" id="SignInButton">@Translate("Sign in")</button>
-					<a class="btn btn-link d-inline" href="/Default.aspx?id=@(signInProfilePageId)&LoginAction=Recovery" id="ForgotPasswordButton">@Translate("Forgot password?")</a>
+				<div class="d-grid">
+					<button type="submit" class="btn btn-primary btn-lg" id="SignInButton">@Translate("Sign in")</button>
 				</div>
-			</div>
-
+			</form>
 		</div>
-
-		@if (!string.IsNullOrEmpty(createAccountPageLink))
-		{
-			<div class="d-block d-lg-none border-top w-100 text-center pt-1 pt-lg-3">
-				<a class="btn btn-link d-inline px-0" href="@createAccountPageLink">@Translate("Create account?")</a>
-			</div>
-		}
-	</form>
+	</div>
 </div>
