@@ -42,6 +42,16 @@ else
 
 	string groupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GroupID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") : "";
 
+	var badgeParms = new Dictionary<string, object>();
+	badgeParms.Add("saleBadgeType", Model.Item.GetRawValue("SaleBadgeType"));
+	badgeParms.Add("saleBadgeCssClassName", Model.Item.GetRawValue("SaleBadgeDesign"));
+	badgeParms.Add("newBadgeCssClassName", Model.Item.GetRawValue("NewBadgeDesign"));
+	badgeParms.Add("newPublicationDays", Model.Item.GetInt32("NewPublicationDays"));
+	badgeParms.Add("campaignBadgesValues", Model.Item.GetRawValueString("CampaignBadges"));
+
+	bool saleBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("SaleBadgeDesign")) && Model.Item.GetRawValueString("SaleBadgeDesign") != "none" ? true : false;
+	bool newBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("NewBadgeDesign")) && Model.Item.GetRawValueString("NewBadgeDesign") != "none" ? true : false;
+
 	var favoriteParameters = new Dictionary<string, object>();
 	if (!anonymousUser && !hideFavoritesSelector)
 	{
@@ -112,7 +122,13 @@ else
 
 				string alternativeImage = alternativeImagesList.FirstOrDefault() != null ? alternativeImagesList.FirstOrDefault().Value : "";
 				alternativeImage = !string.IsNullOrEmpty(alternativeImage) ? "/Admin/Public/GetImage.ashx?width=" + 640 + "&image=" + alternativeImage + "&format=webp" : "";
-			
+				
+				@* Badges *@
+				DateTime createdDate = product.Created.Value;
+				bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
+				showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
+				showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
+
 				@* Main features *@
 				IEnumerable<string> selectedDisplayGroups = Model.Item.GetRawValueString("MainFeatures").Split(',').ToList();
 				List<CategoryFieldViewModel> mainFeatures = new List<CategoryFieldViewModel>();
@@ -133,6 +149,13 @@ else
 							@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
 						</div>
 					}
+
+					@if (showBadges) { 
+						<div class="position-absolute top-0 left-0 p-1 p-lg-2 ps-0 ps-lg-0" style="z-index: 2">
+							@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
+						</div>
+					}
+
 					<a href="@link" class="d-flex flex-column d-block h-100 text-decoration-none">
 
 						<div class="overflow-hidden@(imageTheme)" @imageOutlineStyle>
