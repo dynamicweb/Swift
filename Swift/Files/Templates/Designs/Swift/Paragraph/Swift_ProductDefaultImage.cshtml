@@ -45,6 +45,23 @@
 	string imagePathFallBack = "/Admin/Public/GetImage.ashx?width=" + largeImageSize + "&image=" + imagePath + "&format=webp";
 
 	string imageId = "ProductImage_" + product.Id + product.VariantId;
+
+	var badgeParms = new Dictionary<string, object>();
+	badgeParms.Add("size", "h7");
+	badgeParms.Add("saleBadgeType", Model.Item.GetRawValue("SaleBadgeType"));
+	badgeParms.Add("saleBadgeCssClassName", Model.Item.GetRawValue("SaleBadgeDesign"));
+	badgeParms.Add("newBadgeCssClassName", Model.Item.GetRawValue("NewBadgeDesign"));
+	badgeParms.Add("newPublicationDays", Model.Item.GetInt32("NewPublicationDays"));
+	badgeParms.Add("campaignBadgesValues", Model.Item.GetRawValueString("CampaignBadges"));
+
+	bool saleBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("SaleBadgeDesign")) && Model.Item.GetRawValueString("SaleBadgeDesign") != "none" ? true : false;
+	bool newBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("NewBadgeDesign")) && Model.Item.GetRawValueString("NewBadgeDesign") != "none" ? true : false;
+	DateTime createdDate = product.Created.Value;
+	bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
+	showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
+	showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
+
+	string badgeSize = Model.Item.GetRawValueString("BadgeSize", "fs-2");
 }
 
 @if (product.Id != null) { 
@@ -59,7 +76,7 @@
 	}
 
 	if (!string.IsNullOrEmpty(imagePath)) {
-		<div class="w-100 product-image">
+		<div class="w-100 position-relative">
 			<div class="ratio" style="@(ratioVariable)">
 				<div class="d-flex justify-content-center align-items-center">
 					<img 
@@ -75,6 +92,12 @@
 						alt="@product.Name">
 				</div>
 			</div>
+
+			@if (showBadges) { 
+				<div class="position-absolute top-0 left-0 p-2 p-lg-3 ps-0 ps-lg-0 @badgeSize">
+					@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
+				</div>
+			}
 		</div>
 	}
 } else if (Pageview.IsVisualEditorMode) { 
