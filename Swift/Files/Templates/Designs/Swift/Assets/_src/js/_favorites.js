@@ -122,16 +122,20 @@ const Favorites = function () {
 
 							if (found == true) { //Chech if anything changed in any of the favorite lists. If yes, change the icon on the product favorite button.
 								if (inAnyCurrentList != inAnyList) {
-									var icon = productButton.querySelector('img');
-									var currentIcon = icon.src;
-									icon.src = icon.getAttribute("data-alt-icon");
-									icon.setAttribute("data-alt-icon", currentIcon);
+									var icon = productButton.querySelector('.favorite-icon');
+
+									if (icon.querySelector('.not-in-list').classList.contains('d-none')) {
+										icon.querySelector('.in-list').classList.add('d-none');
+										icon.querySelector('.not-in-list').classList.remove('d-none');
+									} else {
+										icon.querySelector('.in-list').classList.remove('d-none');
+										icon.querySelector('.not-in-list').classList.add('d-none');
+									}
 								}
 							} else {
-								var icon = productButton.querySelector('img');
-								var currentIcon = icon.src;
-								icon.src = icon.getAttribute("data-alt-icon");
-								icon.setAttribute("data-alt-icon", currentIcon);
+								var icon = productButton.querySelector('.favorite-icon');
+								icon.querySelector('.in-list').classList.remove('d-none');
+								icon.querySelector('.not-in-list').classList.add('d-none');
 							}
 						}
 					}
