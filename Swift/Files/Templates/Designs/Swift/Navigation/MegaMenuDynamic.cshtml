@@ -1,0 +1,218 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using Dynamicweb
+@using Dynamicweb.Frontend
+@using System.IO
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	string theme = Model.Parameters["theme"] != null ? Model.Parameters["theme"].ToString() : string.Empty;
+	string navAlignment = Model.Parameters["NavAlignment"] != null ? Model.Parameters["NavAlignment"].ToString() : string.Empty;
+	string linkFontWeight = Model.Parameters["LinkFontWeight"] != null ? Model.Parameters["LinkFontWeight"].ToString() : string.Empty;
+	string linkCasing = Model.Parameters["LinkCasing"] != null ? Model.Parameters["LinkCasing"].ToString() : string.Empty;
+	string linkFontSize = Model.Parameters["LinkFontSize"] != null ? Model.Parameters["LinkFontSize"].ToString() : string.Empty;
+}
+
+<nav class="navbar navbar-expand d-flex mx-n2 position-static megamenu-wrapper py-0 @navAlignment">
+	@RenderFirstLevelNodes(Model.Nodes, theme, linkFontWeight, linkCasing, linkFontSize)
+</nav>
+
+@helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string theme, string linkFontWeight, string linkCasing, string linkFontSize)
+{
+	<ul class="navbar-nav">
+		@foreach (var node in nodes)
+		{
+			var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+			var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page);
+			string submenuType = pageViewModel?.PropertyItem != null ? pageViewModel.PropertyItem.GetRawValueString("SubmenuType", "auto") : "auto";
+
+			var hasChildren = node.Nodes.Count() > 0;
+			string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
+
+			bool hasManyChildren = false;
+			foreach (var subnode in node.Nodes)
+			{
+				if (subnode.Nodes.Any())
+				{
+					hasManyChildren = true;
+				}
+			}
+
+			submenuType = submenuType == "auto" && hasManyChildren ? "megamenu" : submenuType;
+			submenuType = submenuType == "auto" && !hasManyChildren ? "dropdown" : submenuType;
+			string submenuTypeCss = submenuType == "dropdown" ? " dropdown" : "";
+			submenuTypeCss = submenuType == "megamenu" ? " dropdown has-megamenu" : submenuTypeCss;
+
+			string nodeId = !string.IsNullOrEmpty(node.GroupId) ? node.GroupId : "Page_" + node.PageId.ToString();
+			string dataType = !string.IsNullOrEmpty(node.GroupId) ? "group" : "page";
+
+			<li id="@(nodeId)" data-type="@dataType" class="nav-item@(node.IsActive ? " active" : "")@submenuTypeCss">
+				@if (node.IsClickable)
+				{
+					<a class="nav-link nav-link-clean nav-link-underline @linkFontWeight @linkCasing @linkFontSize@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" @dropdownAttributes>
+						@RenderNavigationItem(node, pageViewModel)
+					</a>
+				}
+				else
+				{
+					<span class="nav-link nav-link-clean @linkFontWeight @linkCasing @linkFontSize">
+						@RenderNavigationItem(node, pageViewModel)
+					</span>
+				}
+
+				@if (hasChildren)
+				{
+					if (submenuType == "megamenu")
+					{
+						int sourcePageId = Model.Parameters["SourcePageId"] != null ? Convert.ToInt32(Model.Parameters["SourcePageId"].ToString()) : 0;
+
+						<div class="dropdown-menu megamenu py-4@(theme)" id="NavGroup@(node.PageId)">
+							<div class="container-xl">
+								@if (sourcePageId != 0) {
+									//Put the PageId up in context items
+									if (Dynamicweb.Context.Current.Items.Contains("NodePageId"))
+									{
+										Dynamicweb.Context.Current.Items["NodePageId"] = node.PageId;
+									}
+									else
+									{
+										Dynamicweb.Context.Current.Items.Add("NodePageId", node.PageId);
+									}
+
+									@RenderGrid(sourcePageId)
+								}
+							</div>
+						</div>
+					}
+					else
+					{
+						string pageType = page.ItemType;
+
+						<ul class="dropdown-menu@(theme)">
+							@if (pageType == "Swift_SignIn")
+							{
+								if (Pageview.User == null)
+								{
+									<li>
+										<a href="@node.Link" class="dropdown-item nav-link-underline  @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")>@node.Name</a>
+									</li>
+								}
+							}
+
+							@foreach (var subnode in node.Nodes)
+							{
+								<li>
+									<a class="dropdown-item nav-link-underline  @linkFontWeight @linkCasing @linkFontSize" href="@subnode.Link" @(node.IsActive ? " aria-current='page'" : "")>@subnode.Name</a>
+								</li>
+							}
+
+							@if (pageType == "Swift_SignIn")
+							{
+								if (Pageview.User != null)
+								{
+									string link = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
+
+									<li><hr class="dropdown-divider"></li>
+
+									if (Pageview.User.CurrentSecondaryUser != null)
+									{
+										<li>
+											<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item nav-link-underline @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")>@Translate("Sign out as a customer")</a>
+										</li>
+									}
+									<li>
+										<a href="@link" class="dropdown-item nav-link-underline @linkFontWeight @linkCasing @linkFontSize" @(node.IsActive ? " aria-current='page'" : "")>@Translate("Sign out")</a>
+									</li>
+								}
+
+							}
+						</ul>
+					}
+				}
+			</li>
+		}
+	</ul>
+}
+
+
+@helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node, PageInfoViewModel pageViewModel)
+{
+	string pageType = pageViewModel?.Item?.SystemName != null ? pageViewModel.Item.SystemName : "Swift_Page";
+	string linkFontSize = Model.Parameters["LinkFontSize"].ToString();
+	string layout = Model?.Parameters["Layout"].ToString();
+	string icon = pageViewModel?.PropertyItem != null ? pageViewModel.PropertyItem.GetRawValueString("Icon", "") : "";
+	string iconSize = "icon-3";
+
+	if (linkFontSize == "fs-7")
+	{
+		iconSize = "icon-2";
+	}
+	if (linkFontSize == "fs-5")
+	{
+		iconSize = "icon-4";
+	}
+
+	if (pageType == "Swift_Cart")
+	{
+		double totalProducts = 0;
+
+		if (Dynamicweb.Ecommerce.Common.Context.Cart != null)
+		{
+			totalProducts = Dynamicweb.Ecommerce.Common.Context.Cart.GetParentProductLineQuantityCount(Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines);
+		}
+
+		switch (layout)
+		{
+			case "linksOnly":
+				<span class="align-middle">@node.Name</span>
+				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
+				break;
+			case "iconsOnly":
+				@RenderIcon(icon, iconSize)
+				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
+				break;
+			case "iconsAndLinks":
+				@RenderIcon(icon, iconSize)
+				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
+				<span class="align-middle">@node.Name</span>
+				break;
+			case "linksAndIcons":
+				<span class="align-middle">@node.Name</span>
+				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
+				@RenderIcon(icon, iconSize)
+				break;
+		}
+	}
+	else
+	{
+		switch (layout)
+		{
+			case "linksOnly":
+				<span class="align-middle">@node.Name</span>
+				break;
+
+			case "iconsOnly":
+				@RenderIcon(icon, iconSize)
+				break;
+			case "iconsAndLinks":
+				@RenderIcon(icon, iconSize)
+				<span class="align-middle">@node.Name</span>
+				break;
+			case "linksAndIcons":
+				<span class="align-middle">@node.Name</span>
+				@RenderIcon(icon, iconSize)
+				break;
+		}
+	}
+}
+
+@helper RenderIcon(string icon, string iconSize)
+{
+	if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none"))
+	{
+		string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
+
+		<span class="@iconSize">
+			@ReadFile(iconPath)
+		</span>
+	}
+}
