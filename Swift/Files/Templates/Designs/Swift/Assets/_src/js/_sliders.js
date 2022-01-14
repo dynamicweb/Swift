@@ -1,4 +1,4 @@
-const Sliders = function() {
+const Sliders = function () {
     
     return {
 
