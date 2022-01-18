@@ -240,7 +240,6 @@ const Typeahead = function() {
 					placeholder.outerHTML = html;
 				});
 			}
-			window.scrollTo(0, 0);
 		},
 
 		init: function(){
