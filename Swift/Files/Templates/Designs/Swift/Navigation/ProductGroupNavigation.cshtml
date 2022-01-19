@@ -1,0 +1,63 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+
+@GetNodes(Model.Nodes)
+
+@helper GetNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
+{
+    foreach (var node in nodes)
+    {
+        if (node.IsActive) {
+            if (node.Nodes.Count() > 0)
+            {
+                @RenderNodes(node.Nodes)
+            }
+        } else {
+            if (node.Nodes.Count() > 0)
+            {
+                @GetNodes(node.Nodes)
+            }
+        }
+    }
+}
+
+@helper RenderNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
+{
+    string theme = !string.IsNullOrEmpty(Model.Parameters["theme"].ToString()) ? Model.Parameters["theme"].ToString() : "";
+    string groupTheme = !string.IsNullOrEmpty(Model.Parameters["groupTheme"].ToString()) ? Model.Parameters["groupTheme"].ToString() : "";
+
+    string ratio = !string.IsNullOrEmpty(Model.Parameters["ratio"].ToString()) ? Model.Parameters["ratio"].ToString() : "";
+	ratio = ratio != "0" ? ratio : string.Empty;
+	string ratioCssClass = ratio != string.Empty ? " ratio" : string.Empty;
+	string ratioVariable = ratio != string.Empty ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : string.Empty;
+
+    <nav class="swiffy-slider slider-item-reveal slider-nav-round slider-item-nosnap swiffy-gap-lg-3 slider-item-show6 my-3 my-lg-4 @theme" aria-label="@Translate("Product groups")">
+		<ul class="slider-container slider-nav-scrollbar">
+			@foreach (var node in nodes) {
+                string groupImage = "/Files/images/missing_image.jpg";
+
+                if (!string.IsNullOrEmpty(node.GroupId)) {
+                    groupImage = !string.IsNullOrEmpty(Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(node.GroupId).LargeImage) ? "/Files" + Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(node.GroupId).LargeImage : groupImage;
+                }
+
+                <li class="d-flex flex-column gap-2 overflow-hidden @groupTheme">
+                    <a href="@node.Link" tabindex="-1" class="text-decoration-none">
+					    <figure class="overflow-hidden m-0 mx-auto @ratioCssClass" @ratioVariable>
+						    <img src="/Admin/Public/GetImage.ashx?width=640&crop=0&image=@groupImage" alt="">
+					    </figure>
+                        <div class="fs-7 text-center p-2 m-0">
+                            @node.Name
+                        </div>
+				    </a>
+                </li>
+            }
+		</ul>
+
+		<script type="module" src="~/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
+		<script type="module">
+			swift.AssetLoader.Load('Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
+			document.addEventListener('load.swift.assetloader', function () {
+				swiffyslider.init()
+			});
+		</script>
+	</nav>
+}
