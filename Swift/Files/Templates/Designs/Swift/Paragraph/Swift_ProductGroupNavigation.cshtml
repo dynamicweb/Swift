@@ -1,7 +1,9 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Rendering
 @using Dynamicweb.Frontend.Navigation
-@using System.Web
+@using Dynamicweb.Ecommerce.Products
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using System.IO
 
 @{ 
     var navigationSettings = new NavigationSettings();
@@ -37,6 +39,8 @@
 }
 
 @helper RenderNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes) { 
+    string layout = Model.Item.GetRawValueString("Layout", "text-bottom");
+
     string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
     string groupTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("GroupTheme")) ? " theme " + Model.Item.GetRawValueString("GroupTheme").Replace(" ", "").Trim().ToLower() : "";
     
@@ -45,35 +49,139 @@
 	string ratioCssClass = ratio != string.Empty ? " ratio" : string.Empty;
 	string ratioVariable = ratio != string.Empty ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : string.Empty;
 
+    if (layout != "pill-button") { 
+        <nav class="swiffy-slider slider-item-reveal slider-nav-round slider-item-nosnap swiffy-gap-lg-3 slider-item-show6 my-3 my-lg-4 @theme" style="--swiffy-slider-item-count: 10;" aria-label="@Translate("Product groups")">
+		    <ul class="slider-container slider-nav-scrollbar">
+			    @foreach (var node in nodes) {
 
-    <nav class="swiffy-slider slider-item-reveal slider-nav-round slider-item-nosnap swiffy-gap-lg-3 slider-item-show6 my-3 my-lg-4 @theme" aria-label="@Translate("Product groups")">
-		<ul class="slider-container slider-nav-scrollbar">
-			@foreach (var node in nodes) {
-                string groupImage = "/Files/images/missing_image.jpg";
+					string groupImage = "";
+					var group = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(node.GroupId);
+					IList<FieldValueViewModel> groupFields = node.GetProductGroup().GroupFields;
 
-                if (!string.IsNullOrEmpty(node.GroupId)) {
-                    groupImage = !string.IsNullOrEmpty(Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(node.GroupId).LargeImage) ? "/Files" + Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(node.GroupId).LargeImage : groupImage;
+					if (!string.IsNullOrEmpty(node.GroupId)) {
+						groupImage = !string.IsNullOrEmpty(group.LargeImage) ? "/Files" + group.LargeImage : groupImage;
+					}
+
+					bool showGroup = false;
+					if (groupFields != null) {
+						foreach (FieldValueViewModel field in groupFields) {
+							if (field.SystemName == "FeaturedGroup" && !string.IsNullOrEmpty(field.Value.ToString())) {
+								if (Convert.ToBoolean(field.Value.ToString())) {
+									showGroup = true;
+								}
+							}
+						}
+					}
+
+                    if (showGroup) { 
+                        <li class="d-flex flex-column gap-2 @groupTheme">
+                            <a href="@node.Link" tabindex="-1" class="text-decoration-none position-relative">
+                                @if (layout == "text-bottom") { 
+                                    if (!string.IsNullOrWhiteSpace(groupImage)) { 
+					                    <figure class="overflow-hidden m-0 mx-auto @ratioCssClass" @ratioVariable>
+						                    <img loading="lazy" src="/Admin/Public/GetImage.ashx?width=640&crop=0&image=@groupImage" class="image-zoom-2-hover" style="object-fit: cover" alt="">
+					                    </figure>
+                                    }
+
+                                    <div class="fs-7 text-center p-2">
+                                        @node.Name
+                                    </div>
+                                }
+                                @if (layout == "poster") { 
+                                    <div class="position-absolute h-100 w-100" style="z-index: 1">
+			                            <div class="h-100 grid grid-1 h5 text-center justify-content-center align-items-center shadow" @ratioVariable>
+				                             @node.Name
+			                            </div>
+		                            </div>
+
+                                    if (!string.IsNullOrWhiteSpace(groupImage)) { 
+		                                <div class="position-relative">
+			                                <figure class="overflow-hidden m-0@(ratioCssClass)" @ratioVariable>
+				                               <img loading="lazy" src="/Admin/Public/GetImage.ashx?width=640&crop=0&image=@groupImage" class="image-zoom-2-hover" style="object-fit: cover" alt="">
+			                                </figure>
+		                                </div>
+                                    }
+                                }
+                                @if (layout == "ball") { 
+                                    if (!string.IsNullOrWhiteSpace(groupImage)) { 
+					                    <figure class="overflow-hidden m-0 mx-auto rounded-pill @ratioCssClass" @ratioVariable>
+						                    <img loading="lazy" src="/Admin/Public/GetImage.ashx?width=640&crop=0&image=@groupImage" class="image-zoom-2-hover" style="object-fit: cover" alt="">
+					                    </figure>
+                                    }
+
+                                    <div class="fs-7 text-center p-2">
+                                        @node.Name
+                                    </div>
+                                }
+				            </a>
+                        </li>
+                    }
                 }
+		    </ul>
 
-                <li class="d-flex flex-column gap-2 overflow-hidden @groupTheme">
-                    <a href="@node.Link" tabindex="-1" class="text-decoration-none">
-					    <figure class="overflow-hidden m-0 mx-auto @ratioCssClass" @ratioVariable>
-						    <img src="/Admin/Public/GetImage.ashx?width=640&crop=0&image=@groupImage" alt="">
-					    </figure>
-                        <div class="fs-7 text-center p-2 py-3 m-0">
-                            @node.Name
-                        </div>
-				    </a>
-                </li>
-            }
-		</ul>
+		    <script type="module" src="~/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
+		    <script type="module">
+			    swift.AssetLoader.Load('Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
+			    document.addEventListener('load.swift.assetloader', function () {
+				    swiffyslider.init()
+			    });
+		    </script>
+	    </nav>
+    } else { 
+        <nav class="my-3 my-lg-4 @theme overflow-x-auto overflow-y-visible" aria-label="@Translate("Product groups")">
+		    <div class="d-flex gap-3 align-items-center">
+			    @foreach (var node in nodes) {
+				    string groupImage = "";
+                    IList<FieldValueViewModel> groupFields = node.GetProductGroup().GroupFields;
 
-		<script type="module" src="~/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
-		<script type="module">
-			swift.AssetLoader.Load('Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
-			document.addEventListener('load.swift.assetloader', function () {
-				swiffyslider.init()
-			});
-		</script>
-	</nav>
+				    if (layout == "pill-button" && groupFields != null) {
+					    foreach (FieldValueViewModel field in groupFields) {
+						    if (field.SystemName == "ProductGroupNavigationImage" && !string.IsNullOrEmpty(field.Value.ToString())) {
+							    groupImage = "/Files/Images/" + field.Value.ToString();
+						    }
+					    }
+				    }
+
+                    bool showGroup = false;
+					if (groupFields != null) {
+						foreach (FieldValueViewModel field in groupFields) {
+							if (field.SystemName == "FeaturedGroup" && !string.IsNullOrEmpty(field.Value.ToString())) {
+								if (Convert.ToBoolean(field.Value.ToString())) {
+									showGroup = true;
+								}
+							}
+						}
+					}
+
+					if (showGroup) { 
+						<div class="@groupTheme">
+							<a href="@node.Link" tabindex="-1" class="text-decoration-none btn btn-secondary rounded-pill shadow-none">
+								<div class="d-flex flex-row align-items-center">
+									@if (!string.IsNullOrWhiteSpace(groupImage)) {
+										if (Path.GetExtension(groupImage).ToLower() == ".svg")
+										{
+											<div class="icon-3 me-1" style="width: 35px">
+												@ReadFile(groupImage)
+											</div>
+										}
+										else
+										{
+											<div class="p-1 me-1" style="width: 35px">
+												<div class="mx-auto @ratioCssClass" @ratioVariable>
+    												<img loading="lazy" src="/Admin/Public/GetImage.ashx?width=35&crop=0&image=@groupImage" style="object-fit: cover" alt="" >
+												</div>
+											</div>
+										}
+									}
+									<div class="fs-7 text-center text-nowrap m-0 px-2">
+										@node.Name
+									</div>
+								</div>
+							</a>
+						</div>
+					}
+                }
+		    </div>
+	    </nav>
+    }
 }
