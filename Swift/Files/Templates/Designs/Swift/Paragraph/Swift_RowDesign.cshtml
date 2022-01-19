@@ -1,0 +1,236 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using System.Globalization
+@using System.Drawing
+
+@functions{
+	// Get Hex Color from color picker and translate to RGB color
+	public static string HexToRGB(string hexString)
+	{
+		if (hexString.Equals("none") || string.IsNullOrEmpty(hexString))
+			return hexString;
+
+		//replace # occurences
+		if (hexString.IndexOf('#') != -1)
+			hexString = hexString.Replace("#", "");
+		try
+		{
+			int r, g, b = 0;
+			r = int.Parse(hexString.Substring(0, 2), NumberStyles.AllowHexSpecifier);
+			g = int.Parse(hexString.Substring(2, 2), NumberStyles.AllowHexSpecifier);
+			b = int.Parse(hexString.Substring(4, 2), NumberStyles.AllowHexSpecifier);
+
+			string rgb = r + "," + g + "," + b;
+			return rgb;
+		}
+		catch (System.Exception)
+		{
+			return hexString;
+		}
+	}
+
+	public class HSL
+	{
+		public double h { get; set; }
+		public double s { get; set; }
+		public double l { get; set; }
+	}
+
+	//Convert HEX to HSL
+	public static HSL HexToHsl(string hexString)
+	{
+		System.Drawing.Color color = System.Drawing.ColorTranslator.FromHtml(hexString);
+
+		float _R = (color.R / 255f);
+		float _G = (color.G / 255f);
+		float _B = (color.B / 255f);
+
+		float _Min = Math.Min(Math.Min(_R, _G), _B);
+		float _Max = Math.Max(Math.Max(_R, _G), _B);
+		float _Delta = _Max - _Min;
+
+		float S = 0;
+		float L = (float)((_Max + _Min) / 2.0f);
+
+		if (_Delta != 0)
+		{
+			if (L < 0.5f)
+			{
+				S = (float)(_Delta / (_Max + _Min));
+			}
+			else
+			{
+				S = (float)(_Delta / (2.0f - _Max - _Min));
+			}
+		}
+
+		HSL hsl = new HSL();
+		hsl.h = Math.Round(color.GetHue(), 2);
+		hsl.s = Math.Round(S, 2) * 100;
+		hsl.l = Math.Round(L, 2) * 100;
+
+		return hsl;
+	}
+
+	//Find contrast color (white, black)
+	public static Color GetContrastColor(string hexString)
+	{
+		System.Drawing.Color bg = System.Drawing.ColorTranslator.FromHtml(hexString);
+
+		int nThreshold = 105;
+		int bgDelta = Convert.ToInt32((bg.R * 0.299) + (bg.G * 0.587) +
+									  (bg.B * 0.114));
+
+		Color foreColor = (255 - bgDelta < nThreshold) ? Color.Black : Color.White;
+		return foreColor;
+	}
+
+	public string GetColorVariation(string hexString)
+	{
+		var contrast = GetContrastColor(hexString);
+		HSL currentHslColor = HexToHsl(hexString);
+		HSL variantHslColor = currentHslColor;
+
+		if (contrast == Color.Black)
+		{
+			variantHslColor.l = 85; //The background is dark - Color should be light
+		}
+		else
+		{
+			variantHslColor.l = 40; //The background is light - Color should be less light
+		}
+
+		//Color is very light
+		if (currentHslColor.l > 85)
+		{
+			variantHslColor.l = 95;
+		}
+
+		string colorString = variantHslColor.h + ", " + variantHslColor.s + "%, " + variantHslColor.l + "%";
+		return colorString;
+	}
+}
+
+@{
+	string rowDesignName = !string.IsNullOrWhiteSpace(Model.Item.GetString("Name")) ? Model.Item.GetString("Name") : "Default";
+	string rowDesignClassName = !string.IsNullOrWhiteSpace(Model.Item.GetString("CSSClassName")) ? Model.Item.GetString("CSSClassName").Replace(" ", "").Trim().ToLower() : "";
+
+	//string imagePath = "files/templates/designs/r4/assets/images/gray.jpg";
+
+	string linearGradientDeg = Model.Item.GetString("LinearGradient", "0");
+
+	if (!string.IsNullOrEmpty(rowDesignClassName))
+	{
+		var sb = new System.Text.StringBuilder();
+
+		sb.AppendLine("." + rowDesignClassName + "{");
+		if (!string.IsNullOrEmpty(linearGradientDeg))
+		{
+			sb.AppendLine($"--swift-linear-gradient-deg:{linearGradientDeg}deg;");
+		}
+		sb.AppendLine("}");
+
+		Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(sb.ToString() + Environment.NewLine, Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_row_design_styles_{Dynamicweb.Services.Pages.GetPage(Model.PageID).AreaId}.tmp"), true);
+	}
+}
+
+@*@if (themeClassName != "")
+{
+	string backgroundImage = "";
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	<div class="g-col-12 g-col-lg-4">
+		<div class="theme-option theme @themeClassName" @backgroundImage>
+			<div class="mb-2 pb-1 border-bottom d-flex align-items-center">
+				<span class="icon-2 me-2">
+					@ReadFile(iconPath + "sun.svg")
+				</span>
+				<span class="text-uppercase">@themeName</span>
+			</div>
+			<div>
+				<button class="btn btn-sm btn-primary me-1">Primary</button>
+				<button class="btn btn-sm btn-secondary">Secondary</button>
+			</div>
+		</div>
+	</div>
+	<div class="g-col-12 g-col-lg-8 mb-4 mb-lg-0">
+		<div class="grid fs-7">
+			<div class="g-col-12 g-col-lg-3">
+				<table class="table table-borderless table-sm w-100">
+					<thead>
+						<tr>
+							<th colspan="2" class="fw-bold">@Translate("Base")</th>
+						</tr>
+					</thead>
+					<tr>
+						<td>@Translate("Foreground")</td>
+						<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@foregroundColor');">@foregroundColor</a></td>
+					</tr>
+					<tr>
+						<td>@Translate("Background")</td>
+						<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@backgroundColor');">@backgroundColor</a></td>
+					</tr>
+					<tr>
+						<td>@Translate("Border")</td>
+						<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@borderColor');">@borderColor</a></td>
+					</tr>
+				</table>
+			</div>
+			<div class="g-col-12 g-col-lg-3">
+				<table class="table table-borderless table-sm w-100">
+					<tr>
+						<td class="fw-bold">@Translate("Implementation")</td>
+					</tr>
+					<tr>
+						<td>
+							@{
+								string implementation = "<div class=\"theme " + themeClassName + "\"></div>";
+							}
+							<div class="text-muted">
+								<a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@themeClassName');">
+									@Dynamicweb.Core.Encoders.HtmlEncoder.HtmlEncode(implementation)
+								</a>
+							</div>
+						</td>
+					</tr>
+				</table>
+			</div>
+		</div>
+	</div>
+}*@
+
+<script>
+	function fallbackCopyTextToClipboard(text) {
+		var textArea = document.createElement("textarea");
+		textArea.value = text;
+
+		// Avoid scrolling to bottom
+		textArea.style.top = "0";
+		textArea.style.left = "0";
+		textArea.style.position = "fixed";
+
+		document.body.appendChild(textArea);
+		textArea.focus();
+		textArea.select();
+
+		try {
+			var successful = document.execCommand('copy');
+			var msg = successful ? 'successful' : 'unsuccessful';
+			console.log('Fallback: Copying text command was ' + msg);
+		} catch (err) {
+			console.error('Fallback: Oops, unable to copy', err);
+		}
+
+		document.body.removeChild(textArea);
+	}
+	function copyTextToClipboard(text) {
+		if (!navigator.clipboard) {
+			fallbackCopyTextToClipboard(text);
+			return;
+		}
+		navigator.clipboard.writeText(text).then(function () {
+			console.log('Async: Copying to clipboard was successful!');
+		}, function (err) {
+			console.error('Async: Could not copy text: ', err);
+		});
+	}
+</script>
