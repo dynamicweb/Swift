@@ -45,9 +45,9 @@
 	}
 
 	@* Supported formats *@
-	supportedImageFormats = new string[] { ".jpg", ".webp", ".png", ".gif" };
-	supportedVideoFormats = new string[] { "youtu.be", "youtube", "vimeo", ".mp4" };
-	supportedDocumentFormats = new string[] { ".pdf" };
+	supportedImageFormats = new string[] { ".jpg", ".jpeg", ".webp", ".png", ".gif", ".bmp", ".tiff" };
+	supportedVideoFormats = new string[] { "youtu.be", "youtube", "vimeo", ".mp4", ".webm" };
+	supportedDocumentFormats = new string[] { ".pdf", ".docx", ".xlsx", ".ppt", "pptx" };
 	allSupportedFormats = supportedImageFormats.Concat(supportedVideoFormats).Concat(supportedDocumentFormats).ToArray();
 
 	@* Collect the assets *@
@@ -86,6 +86,21 @@
 
 	@* Theme settings *@
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+
+	var badgeParms = new Dictionary<string, object>();
+	badgeParms.Add("size", "h5");
+	badgeParms.Add("saleBadgeType", Model.Item.GetRawValue("SaleBadgeType"));
+	badgeParms.Add("saleBadgeCssClassName", Model.Item.GetRawValue("SaleBadgeDesign"));
+	badgeParms.Add("newBadgeCssClassName", Model.Item.GetRawValue("NewBadgeDesign"));
+	badgeParms.Add("newPublicationDays", Model.Item.GetInt32("NewPublicationDays"));
+	badgeParms.Add("campaignBadgesValues", Model.Item.GetRawValueString("CampaignBadges"));
+
+	bool saleBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("SaleBadgeDesign")) && Model.Item.GetRawValueString("SaleBadgeDesign") != "none" ? true : false;
+	bool newBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("NewBadgeDesign")) && Model.Item.GetRawValueString("NewBadgeDesign") != "none" ? true : false;
+	DateTime createdDate = product.Created.Value;
+	bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
+	showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
+	showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
 }
 
 @* Get assets from selected categories or get all assets *@
@@ -94,7 +109,7 @@
 	int thumbnailNumber = 0;
 	int modalAssetNumber = 0;
 
-	<div class="h-100@(theme)">
+	<div class="h-100@(theme) position-relative">
 		<div id="SmallScreenImages_@Model.ID" class="carousel" data-bs-ride="carousel">
 			<div class="carousel-inner h-100">
 				@foreach (MediaViewModel asset in assetsList) {
@@ -150,11 +165,17 @@
 									<img src="@imagePathThumb" alt="@assetName" @assetTitle class="p-0 p-lg-1 @vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
 								</div>
                             } else {
-								<a href="@assetValue" class="ratio ratio-4x3 border outline-none" style="cursor: pointer" download>
-									<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-										<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
-									</div>
-									<img src="@imagePathThumb" alt="@assetName" @assetTitle class="p-0 p-lg-1 mw-100 mh-100" style="object-fit: cover;">
+								<a href="@assetValue" class="ratio ratio-4x3 border outline-none" style="cursor: pointer" download alt="@asset.Value">
+									@if (asset.Value.Contains(".pdf")) {
+										<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+											<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
+										</div>
+										<img src="@imagePathThumb" alt="@assetName" @assetTitle class="p-0 p-lg-1 mw-100 mh-100" style="object-fit: cover;">
+									} else { 
+										<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+											<div class="icon-3 position-absolute" style="z-index: 1">@ReadFile(iconPath + "file-text.svg")</div>
+										</div>
+									}
 								</a>
                             }
 
@@ -162,6 +183,12 @@
 						}
 					}
 				}
+			</div>
+		}
+
+		@if (showBadges) { 
+			<div class="position-absolute top-0 left-0 p-2 p-lg-3">
+				@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
 			</div>
 		}
 	</div>
@@ -317,7 +344,7 @@
 	string videoId = asset.Value.Substring(asset.Value.LastIndexOf('/') + 1);
 	string type = assetValue.Contains("youtu.be") || assetValue.Contains("youtube") ? "youtube" : "";
 	type = assetValue.Contains("vimeo") ? "vimeo" : type;
-	type = assetValue.Contains(".mp4") ? "selfhosted" : type;
+	type = assetValue.Contains(".mp4") || assetValue.Contains(".webm") ? "selfhosted" : type;
 
 	string openInModal = Model.Item.GetString("OpenVideoInModal");
 	bool autoPlay = Model.Item.GetBoolean("VideoAutoPlay");
@@ -337,6 +364,7 @@
 			</div>
 
 			<script type="module" src="~/Files/Templates/Designs/Swift/Assets/js/plyr.js"></script>
+
 			<script type="module">
 				var player = new Plyr('#player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size', {
 					type: 'video',
@@ -412,7 +440,9 @@
 	<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download alt="@Translate("Download")">
 		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
 			<div class="icon-5 position-absolute" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
-			@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+			@if (asset.Value.Contains(".pdf")) {
+				@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+			}
 		</div>
 	</a>
 }
