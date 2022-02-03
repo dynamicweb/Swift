@@ -134,8 +134,14 @@ const Favorites = function () {
 								}
 							} else {
 								var icon = productButton.querySelector('.favorite-icon');
-								icon.querySelector('.in-list').classList.remove('d-none');
-								icon.querySelector('.not-in-list').classList.add('d-none');
+
+								if (icon.querySelector('.not-in-list').classList.contains('d-none')) {
+									icon.querySelector('.in-list').classList.add('d-none');
+									icon.querySelector('.not-in-list').classList.remove('d-none');
+								} else {
+									icon.querySelector('.in-list').classList.remove('d-none');
+									icon.querySelector('.not-in-list').classList.add('d-none');
+								}
 							}
 						}
 					}
