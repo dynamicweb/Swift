@@ -19,6 +19,8 @@
 * Itemtype: Duplicated default image on ProductDetailsGallery and productDetailsImage
 * Order receipt: Total price section on print receipt has wrong placement
 * Product Detail: Product specification - product fields shows system name in instead of catagory name
+* Product Detail: Product with variants can be added to cart when it is out of stock
+* Product List: Render option name instead of option on ProductListGridView
 
 ##Changed
 * Itemtype: Edit restriction, product list should not contain newsletter paragraphs
