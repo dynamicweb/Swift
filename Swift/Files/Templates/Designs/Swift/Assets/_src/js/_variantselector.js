@@ -152,27 +152,6 @@ const VariantSelector = function () {
 					swift.PageUpdater.Update(variantSelectorElement);
 				}
 			}
-
-			var productElement = variantSelectorElement.closest(".js-product");
-			if (productElement) {
-				var addToCartElement = productElement.querySelector(".js-add-to-cart-button");
-				if (addToCartElement) {
-					if (selectionCount != totalGroups) {
-						addToCartElement.disabled = true;
-						addToCartElement.classList.add("disabled");
-					} else {
-						addToCartElement.disabled = false;
-						addToCartElement.classList.remove("disabled");
-					}
-				}
-
-				var stockStateElement = productElement.querySelector(".js-stock-state");
-				if (stockStateElement) {
-					if (selectionCount != totalGroups) {
-						stockStateElement.classList.add("d-none");
-					}
-				}
-			}
 		}
 	}
 }();
