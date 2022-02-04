@@ -30,7 +30,7 @@ This repository contains a `./Files` with design files, images, and other static
 1. Prepare the hosting environment
 2. Install the Dynamicweb application
 3. Set up a website in IIS Manager and add the Swift-folder as a virtual directory
-4. Download the [Swift Product Image folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.6.0/Swift_20220203_DemoProductImages.zip "Download Swift Product Image folder") and insert the folder here `Swift/Files/Files/Images/Products`
+4. Download the [Swift Product Image folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.6.1/Swift_20220203_DemoProductImages.zip "Download Swift Product Image folder") and insert the folder here `Swift/Files/Files/Images/Products`
 5. Build the Swift design
 6. Install the Swift database & connect solution to it
 7. Log in and install a license
@@ -63,8 +63,8 @@ After following these guides you will have a freshly installed Dynamicweb soluti
 
 | Download |      |
 | ------ | ------ |
-| Database | [Swift database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.6.0/Swift_20220203_Database.zip "Download Swift database")|
-| Image folder | [Swift Product Image](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.6.0/Swift_20220203_DemoProductImages.zip "Download Swift Product Image folder") |
+| Database | [Swift database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.6.1/Swift_20220203_Database.zip "Download Swift database")|
+| Image folder | [Swift Product Image](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.6.1/Swift_20220203_DemoProductImages.zip "Download Swift Product Image folder") |
 
 
 ## Add Swift-folder as virtual directory
