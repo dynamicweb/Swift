@@ -1,5 +1,12 @@
 # Changelog
 
+## [v1.6.1] - 04-02-2022
+
+## Bugfixes
+* General: Missing version bump on Master
+* Integration Customer Center: Show only date when time is 00:00 
+
+
 ## [v1.6.0] - 03-02-2022
 
 ## Bugfixes
@@ -22,7 +29,7 @@
 * Product Detail: Product with variants can be added to cart when it is out of stock
 * Product List: Render option name instead of option on ProductListGridView
 
-##Changed
+## Changed
 * Itemtype: Edit restriction, product list should not contain newsletter paragraphs
 * Itemtype: Group image and promotion image - Remove height keep only width
 * General: Updates theme and branding using rem instead of px
@@ -31,7 +38,7 @@
 * General: Hide information when there is free shipping 
 * Product List: Use VariantName instead of VariantId from viewmodel
 
-##Removed
+## Removed
 * General: Removed custom mapped breakpoint + markup clean up
 * General: Window scrollto bug from typeahead on popstate
 
