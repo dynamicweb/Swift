@@ -11,12 +11,14 @@
 
 	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
 	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+	string currencyCode = !string.IsNullOrEmpty(GetString("CurrencyCode")) ? " " + GetString("CurrencyCode") : "";
 }
 
 <div class="@(contentPadding)">
 	<header class="p-3 border-bottom @(theme)">
 		<div class="d-flex flex-row align-items-center gap-3">
 			<h1 class="h6 m-0 flex-fill text-muted">@Translate("Your order")</h1>
+			<a href="/Admin/public/CustomerCenter/RequestExternalPdf.aspx?type=OpenOrder&id=@GetString("ID")&forceDownload=true" class="d-inline me-2" title="@Translate("Download PDF")">@Translate("Download")</a>
 			<button onclick="javascript:print()" class="btn btn-link p-0">@Translate("Print")</button>
 		</div>
 	</header>
@@ -159,35 +161,37 @@
 		@foreach (var orderline in GetLoop("OrderLinesLoop"))
 		{
 			string productName = !string.IsNullOrEmpty(orderline.GetString("ProductName")) ? orderline.GetString("ProductName") + " " + orderline.GetString("ProductNumber") : orderline.GetString("ProductNumber");
-			string productPrice = showPricesWithVat.ToLower() == "true" ? GetString("UnitPriceWithVAT") : GetString("UnitPriceWithoutVAT");
-			string productPriceTotal = showPricesWithVat.ToLower() == "true" ? GetString("PriceWithVAT") : GetString("PriceWithoutVAT");
+			string productPrice = showPricesWithVat.ToLower() == "true" ? orderline.GetString("UnitPriceWithVAT") + currencyCode : orderline.GetString("UnitPriceWithoutVAT") + currencyCode;
+			string productPriceTotal = showPricesWithVat.ToLower() == "true" ? orderline.GetString("PriceWithVAT") + currencyCode : orderline.GetString("PriceWithoutVAT") + currencyCode;
 
 			var orderlineQuantity = orderline.GetString("Quantity");
 			var productId = orderline.GetString("ProductNumber");
 			var variantId = orderline.GetString("ProductVariantID");
 
-			var orderlineType = orderline.GetString("Type");
+			var orderlineType = !string.IsNullOrEmpty(orderline.GetString("ParentLineID")) ? "discountOrFee" : "product";
 
 			<article>
 				<div class="grid grid-9 h-100">
 					<div class="g-col-9 g-col-md-5">
-						<h2 class="h6 mb-3 fw-bold">@productName</h2>
+						@if (orderlineType == "product") { 
+							<h2 class="h6 mb-3 fw-bold">@productName</h2>
 
-						<ul class="list-unstyled text-muted mb-0">
-							<li>
-								<span>@Translate("Price"):</span>
-								<span>@productPrice</span>
+							<ul class="list-unstyled text-muted mb-0">
+								<li>
+									<span>@Translate("Price"):</span>
+									<span>@productPrice</span>
 
-							</li>
-							<li>
-								<span>@Translate("Quantity"):</span>
-								<span>@orderlineQuantity</span>
-							</li>
-						</ul>
+								</li>
+								<li>
+									<span>@Translate("Quantity"):</span>
+									<span>@orderlineQuantity</span>
+								</li>
+							</ul>
+						} 
 					</div>
 
 					<div class="g-col-9 g-col-md-4 text-end">
-						<h6 class="h6 fw-bold m-0">
+						<h6 class="h6 m-0">
 							<span class="text-price">@productPriceTotal</span>
 						</h6>
 					</div>
@@ -204,7 +208,7 @@
 						<div class="d-flex my-1 pt-4 border-dark border-top"></div>
 						<dt class="flex-fill fw-bold">@Translate("Total")</dt>
 						<dd class="flex-fill mb-0 text-end">
-							<span class="text-price fw-bold">@orderSubtotal</span>
+							<span class="text-price fw-bold">@(orderSubtotal)@(currencyCode)</span>
 							@if (!neverShowVat && showPricesWithVat == "false")
 							{
 								<span class="fs-7 fw-normal d-block">@Translate("Excl. VAT")</span>
@@ -220,4 +224,3 @@
 		}
 	</section>
 </div>
-
