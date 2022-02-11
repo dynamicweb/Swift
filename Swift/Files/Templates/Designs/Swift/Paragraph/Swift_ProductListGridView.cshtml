@@ -1,6 +1,8 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+@using System.Linq
+@using Dynamicweb.Core
 
 @{ 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
@@ -73,8 +75,24 @@ else
 		pageSize += pageSizeSetting;
 
 		int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
+		bool isLiveProductInfoActive = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled();
+		string productInfoFeed = "";
+		string liveInfoClass = "";
 
-		<div class="grid grid-2 grid-lg-3">
+		if (isLiveProductInfoActive)
+		{
+			var productIds = string.Join(",", productList.Products.Select(p => p.Id));
+			productInfoFeed = $@"data-product-info-feed='/dwapi/Products/GetProductList?ProductIds={productIds}
+								&UserId={Converter.ToString(Pageview.User?.ID)}
+								&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
+								&ProductSettings.FilledProperties=Id,Price,PriceBeforeDiscount
+								&ProductSettings.PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
+								&ProductSettings.PriceSettings.FilledProperties=Price,PriceFormatted
+								&getproductinfo=true'";
+			liveInfoClass = "js-live-info";
+		}
+
+		<div class="grid grid-2 grid-lg-3" @productInfoFeed>
 			@foreach (ProductViewModel product in productList.Products)
 			{
 				var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
@@ -143,7 +161,7 @@ else
 					}
 				}
 
-				<article class="position-relative@(productTheme) product-list-item product" itemscope itemtype="https://schema.org/Product">
+				<article class="position-relative@(productTheme) product-list-item product @liveInfoClass" data-product-id="@product.Id" itemscope itemtype="https://schema.org/Product">
 					@if (!anonymousUser && !hideFavoritesSelector && product.VariantInfo.VariantInfo == null) {
 						<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
 							@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
@@ -222,12 +240,23 @@ else
 																	string variantImage = Dynamicweb.Context.Current.Server.UrlEncode(variant.Image.Value);
 																	string defaultPrice = !hidePrice ? product.Price.PriceFormatted : "0";
 																	string variantPrice = !hidePrice ? product.Price.PriceFormatted : "0";
-
-																	<figure class="figure w-100 d-block m-0" onmouseover="switchVariantProduct('@product.Id', '@defaultPrice', '@variantImage')" onmouseout="switchVariantProduct('@product.Id', '@variantPrice', '@defaultProductImage')">
-																		<div class="d-flex align-items-center justify-content-center">
-																			<img src="/admin/public/GetImage.ashx?image=@variantImage&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" height="75" width="75" class="p-1 text-small" loading="lazy" decoding="async" alt="@product.Name, @variant.Name">
-																		</div>
-																	</figure>
+																	
+																	if (isLiveProductInfoActive)
+																	{
+																		<figure class="figure w-100 d-block m-0" data-price-formatted="" onmouseover="switchVariantProduct('@product.Id', this.getAttribute('data-price-formatted'), '@variantImage')" onmouseout="switchVariantProduct('@product.Id', this.getAttribute('data-price-formatted'), '@defaultProductImage')">
+																			<div class="d-flex align-items-center justify-content-center">
+																				<img src="/admin/public/GetImage.ashx?image=@variantImage&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" height="75" width="75" class="p-1 text-small" loading="lazy" decoding="async" alt="@product.Name, @variant.Name">
+																			</div>
+																		</figure>
+																	}
+																	else
+																	{
+																		<figure class="figure w-100 d-block m-0" onmouseover="switchVariantProduct('@product.Id', '@defaultPrice', '@variantImage')" onmouseout="switchVariantProduct('@product.Id', '@variantPrice', '@defaultProductImage')">
+																			<div class="d-flex align-items-center justify-content-center">
+																				<img src="/admin/public/GetImage.ashx?image=@variantImage&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" height="75" width="75" class="p-1 text-small" loading="lazy" decoding="async" alt="@product.Name, @variant.Name">
+																			</div>
+																		</figure>
+																	}
 																}
 																else
 																{
@@ -240,7 +269,14 @@ else
 																	<p>@product.Name, @variant.Name</p>
 																	@if (!hidePrice) { 
 																		<h4>@Translate("Variant Price")</h4>
-																		<p><span class="text-price">@product.Price.PriceFormatted</span></p>
+																		if (isLiveProductInfoActive)
+																		{
+																			<p><span class="text-price"></span></p>
+																		}
+																		else
+																		{
+																			<p><span class="text-price">@product.Price.PriceFormatted</span></p>
+																		}
 																	}
 																</div>
 															</article>
@@ -295,41 +331,72 @@ else
 										<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
 				
 										@if (showPricesWithVat == "false" && !neverShowVat) {
-											string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
-
-											<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
-											if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-												<span class="text-decoration-line-through opacity-75 me-3 text-price">@beforePrice</span>
+											if (isLiveProductInfoActive)
+											{
+												<span itemprop="price" content="" class="d-none"></span>
+												<span class="text-decoration-line-through opacity-75 me-3 text-price d-none" data-show-if="product.Price.Price != product.PriceBeforeDiscount.Price"></span>
 											}
-										} else {
-											string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
+											else
+											{
+												string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
+												<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
+												if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+													<span class="text-decoration-line-through opacity-75 me-3 text-price">@beforePrice</span>
+												}
+											}
 
-											<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
-											if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-												<span class="text-decoration-line-through opacity-75 me-3 text-price">@beforePrice</span>
+										} else {
+
+											if (isLiveProductInfoActive)
+											{
+												<span itemprop="price" content="" class="d-none"></span>
+												<span class="text-decoration-line-through opacity-75 me-3 text-price d-none" data-show-if="product.Price.Price != product.PriceBeforeDiscount.Price"></span>
+											}
+											else
+											{
+												string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
+
+												<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
+												if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+													<span class="text-decoration-line-through opacity-75 me-3 text-price">@beforePrice</span>
+												}
 											}
 										}
 			
 										@if (showPricesWithVat == "false" && !neverShowVat) {
-											string price = product.Price.PriceWithoutVatFormatted;
-											if (product?.VariantInfo?.VariantInfo != null) {
-												priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
-												priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
+											if (isLiveProductInfoActive)
+											{
+												<span class="text-price"><div class="spinner-border" role="status"></div></span>
 											}
-											if (priceMin != priceMax) {
-												price = priceMin + " - " + priceMax;
-											} 
-											<span class="text-price">@price</span>
+											else
+											{
+												string price = product.Price.PriceWithoutVatFormatted;
+												if (product?.VariantInfo?.VariantInfo != null) {
+													priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
+													priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
+												}
+												if (priceMin != priceMax) {
+													price = priceMin + " - " + priceMax;
+												} 
+												<span class="text-price">@price</span>
+											}
 										} else {
-											string price = product.Price.PriceFormatted;
-											if (product?.VariantInfo?.VariantInfo != null) {
-												priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
-												priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
+											if (isLiveProductInfoActive)
+											{
+												<span class="text-price"><div class="spinner-border" role="status"></div></span>
 											}
-											if (priceMin != priceMax) {
-												price = priceMin + " - " + priceMax;
+											else
+											{
+												string price = product.Price.PriceFormatted;
+												if (product?.VariantInfo?.VariantInfo != null) {
+													priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
+													priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
+												}
+												if (priceMin != priceMax) {
+													price = priceMin + " - " + priceMax;
+												}
+												<span class="text-price">@price</span>
 											}
-											<span class="text-price">@price</span>
 										}
 									</div>
 									@if (showPricesWithVat == "false" && !neverShowVat) {

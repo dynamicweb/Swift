@@ -1,0 +1,141 @@
+﻿let LiveProductInfo = function () {
+	this.config = {
+		productInfoFeedAttr: "data-product-info-feed",
+		priceFormattedAttr: "data-price-formatted",
+		contentAttr: "content",
+		productIdAttr: "data-product-id",
+		showIfAttr: "data-show-if",
+		innerSliderId: "tns1-iw"
+	}
+	
+	this.selectors = {
+		productInfoFeed: "[" + this.config.productInfoFeedAttr + "]",
+		liveInfo: ".js-live-info",
+		price: ".text-price",
+		priceFormatted: "[" + this.config.priceFormattedAttr + "]",
+		priceProp: "[itemprop='price']",
+		priceBeforeDiscount: ".text-decoration-line-through",
+		stock: ".text-stock",
+		expectedDelivery: ".text-expected-delivery",
+		stockMessages: ".js-stock-state small, .js-stock-state p",
+		relatedProducts: "[id^='RelatedProducts']",
+		content: "#content",
+	}
+}
+
+LiveProductInfo.prototype.UpdateProductInfo = function(selector) {
+	const self = this;
+	const feedUrlElements = selector ? selector.querySelectorAll(self.selectors.productInfoFeed) : document.querySelectorAll(self.selectors.productInfoFeed);
+	feedUrlElements.forEach(function (el) {
+		const liveInfoContainers = el.querySelectorAll(self.selectors.liveInfo);
+		if (liveInfoContainers.length) {
+			let feedUrl = el.getAttribute(self.config.productInfoFeedAttr);
+			fetch(feedUrl, {
+				method: "GET"
+			})
+			.then(function (response) {
+				return response.json()
+			})
+			.then(function (data) {
+				return self.UpdateValues(data, liveInfoContainers)
+			})
+			.catch(function (error) {
+				console.error(error)
+			})
+		}
+	})
+}
+
+let product;
+LiveProductInfo.prototype.UpdateValues = function (data, liveInfoContainers) {
+	const self = this;
+	liveInfoContainers.forEach(function (container) {
+		product = self.GetProductData(container, data)
+		if (product.hasOwnProperty("Price")) {
+			self.UpdateValue(container.querySelectorAll(self.selectors.price), product.Price.PriceFormatted);
+			self.UpdateDataAttribute(container.querySelectorAll(self.selectors.priceFormatted), self.config.priceFormattedAttr, product.Price.PriceFormatted);
+			self.UpdateDataAttribute(container.querySelectorAll(self.selectors.priceProp), self.config.contentAttr, product.Price.Price);
+		}
+
+		if (product.hasOwnProperty("Price") && product.hasOwnProperty("PriceBeforeDiscount")) {
+			self.UpdateValue(container.querySelectorAll(self.selectors.priceBeforeDiscount), product.PriceBeforeDiscount.PriceFormatted);
+			self.ShowConditionalElement(container.querySelectorAll(self.selectors.priceBeforeDiscount));
+		}
+
+		if (product.hasOwnProperty("StockLevel")) {
+			self.UpdateValue(container.querySelectorAll(self.selectors.stock), product.StockLevel);
+			self.ShowConditionalElement(container.querySelectorAll(self.selectors.stockMessages));
+		}
+
+		if (product.hasOwnProperty("ExpectedDelivery")) {
+			self.UpdateValue(container.querySelectorAll(self.selectors.expectedDelivery), product.ExpectedDelivery);
+			self.ShowConditionalElement(container.querySelectorAll(self.selectors.expectedDelivery));
+		}
+	})
+}
+
+LiveProductInfo.prototype.GetProductData = function (container, data) {
+	const productId = container.getAttribute(this.config.productIdAttr);
+	return data.Products ? data.Products.filter(function (el) {
+		return el.Id === productId;
+	})[0] : data;
+}
+
+LiveProductInfo.prototype.UpdateValue = function (containers, value) {
+	containers.forEach(function (c) {
+		c.innerHTML = value;
+	})
+}
+
+LiveProductInfo.prototype.UpdateDataAttribute = function (containers, attribute, value) {
+	containers.forEach(function (c) {
+		c.setAttribute(attribute, value)
+	})
+}
+
+LiveProductInfo.prototype.ShowConditionalElement = function (containers) {
+	const self = this;
+	containers.forEach(function (c) {
+		if (eval(c.getAttribute(self.config.showIfAttr))) {
+			c.classList.remove("d-none");
+		}
+	})
+}
+
+LiveProductInfo = new LiveProductInfo();
+
+document.addEventListener("DOMContentLoaded", function () {
+	LiveProductInfo.UpdateProductInfo();
+
+	// NOTE: don't have a custom event that is fired after slider is loaded
+	// https://doc.dynamicweb.com/forum/cms-standard-features/cms-standard-features/js-event-for-loaded-related-products
+	const relatedProducts = document.querySelector(LiveProductInfo.selectors.relatedProducts);
+	if (relatedProducts) {
+		const observer = new MutationObserver(function (mutationsList, observer) {
+			mutationsList.forEach(function (m) {
+				if (m.target.id === LiveProductInfo.config.innerSliderId) {
+					observer.disconnect();
+					LiveProductInfo.UpdateProductInfo(relatedProducts);
+				}
+			})	
+		});
+
+		observer.observe(relatedProducts, {childList: true, subtree: true});
+	}
+})
+
+document.addEventListener("updated.swift.pageupdater", function () {
+	const feedUrlElements = document.querySelectorAll(LiveProductInfo.selectors.productInfoFeed);
+	
+	if (feedUrlElements.length) {
+		const content = document.querySelector(LiveProductInfo.selectors.content);
+		if (content) {
+			const observer = new MutationObserver(function (mutationsList, observer) {
+				observer.disconnect();
+				LiveProductInfo.UpdateProductInfo();
+			});
+	
+			observer.observe(content, { childList: true });
+		}
+	}
+})
