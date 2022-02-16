@@ -2,112 +2,165 @@
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
-	string layout = Model.Item.GetRawValueString("Layout", "image-top");
-
-	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
-	contentPadding = contentPadding == "none" ? "" : contentPadding;
-	contentPadding = contentPadding == "small" ? " p-3 p-md-3" : contentPadding;
-	contentPadding = contentPadding == "large" ? " p-5 p-md-5" : contentPadding;
-
-	string maxWidth = Model.Item.GetRawValueString("TextReadability", "max-width-on");
-	maxWidth = maxWidth == "max-width-on" ? " mw-75ch" : maxWidth;
-	maxWidth = maxWidth == "max-width-off" ? "" : maxWidth;
-
-	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "h3");
-	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
-
-	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
-
-	string buttonLabel = Model.Item.GetString("ButtonLabel");
-	string linkType = Model.Item.GetRawValueString("LinkType", "page");
+	bool hideTitle = Model.Item?.GetBoolean("HideTitle") ?? false;
+	string title = !hideTitle ? Model.Item.GetString("Title") : string.Empty;
+	string lead = Model.Item.GetString("Lead", string.Empty);
+	string text = Model.Item.GetString("Text", string.Empty);
+	string buttonLabel = Model.Item.GetString("ButtonLabel", string.Empty);
+	string buttonLabel2 = Model.Item.GetString("ButtonLabel2", string.Empty);
 	Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
+	Dynamicweb.Frontend.LinkViewModel link2 = new Dynamicweb.Frontend.LinkViewModel();
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : string.Empty;
+	string layout = Model.Item.GetRawValueString("Layout", "image-top");
+	string maxWidth = Model.Item.GetRawValueString("TextReadability") == "max-width-on" ? " mw-75ch" : string.Empty;
+	string contentPadding = Model.Item.GetRawValueString("ContentPadding", string.Empty);
+	string contentPaddingClass = string.Empty;
+	string gapClass = " gap-3";
 
-	if (linkType == "page" && Model.Item.GetLink("ButtonLink") != null)
+	switch (contentPadding)
 	{
-		link = Model.Item.GetLink("ButtonLink");
-	}
-
-	if (linkType == "product-group")
-	{
-		IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
-		IList<string> groupIds = new List<string> { };
-
-		if (selectedGroups != null)
-		{
-			foreach (var fromGroup in selectedGroups)
-			{
-				groupIds.Add(fromGroup.Id);
-			}
-		}
-
-		link = new Dynamicweb.Frontend.LinkViewModel()
-		{
-			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds)
-		};
-	}
-
-	if (linkType == "product")
-	{
-		ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink");
-		IList<string> productIds = new List<string> { };
-
-		if (products != null)
-		{
-			foreach (var product in products.Products)
-			{
-				productIds.Add(product.Id);
-			}
-		}
-
-		string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
-		string pageTag = productIds.Count == 1 ? "ProductDetailPage" : "Shop";
-		link = new Dynamicweb.Frontend.LinkViewModel()
-		{
-			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds)
-		};
+		case "small":
+			contentPaddingClass = " p-3";
+			gapClass = " gap-0";
+			break;
+		case "large":
+			contentPaddingClass = " p-5";
+			gapClass = " gap-0";
+			break;
 	}
 }
 
-<div class="h-100 position-relative@(theme) mb-0-last-child">
+<div class="d-flex flex-column@(gapClass) h-100 position-relative@(theme)">
 	@switch (layout)
 	{
-
 		case "image-top":
 			{
-				@RenderImageTop(contentPadding, titleFontSize, subtitleFontSize, maxWidth, link)
+				@RenderImage()
+
+				if (!string.IsNullOrEmpty(title) || !string.IsNullOrEmpty(lead) || !string.IsNullOrEmpty(text) || link != null && !string.IsNullOrEmpty(link.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
+				{
+					<div class="d-flex flex-column gap-3 h-100@(contentPaddingClass)">
+						@RenderTitle(maxWidth, title)
+						@RenderLead(maxWidth, lead)
+						@RenderText(maxWidth, text)
+						@RenderButtons(layout,link, link2, buttonLabel, buttonLabel2, title)
+					</div>
+				}
 			}
 			break;
 
 		case "title-top":
 			{
-				@RenderTitleTop(contentPadding, titleFontSize, subtitleFontSize, maxWidth, link)
+				if (!string.IsNullOrEmpty(title))
+				{ 
+					<div class="@(contentPaddingClass)">
+						@RenderTitle(maxWidth, title)
+					</div>				
+				}
+				
+				@RenderImage()
+				
+				if (!string.IsNullOrEmpty(lead) || !string.IsNullOrEmpty(text) || !string.IsNullOrEmpty(buttonLabel) || link != null && !string.IsNullOrEmpty(link.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
+				{ 
+					<div class="d-flex flex-column gap-3@(contentPaddingClass)">
+						@RenderLead(maxWidth, lead)
+						@RenderText(maxWidth, text)
+						@RenderButtons(layout,link, link2, buttonLabel, buttonLabel2, title)
+					</div>
+				}
 			}
 			break;
 
 		case "title-lead-top":
 			{
-				@RenderTitleLeadTop(contentPadding, titleFontSize, subtitleFontSize, maxWidth, link)
+				if (!string.IsNullOrEmpty(title) || !string.IsNullOrEmpty(lead))
+				{
+					<div class="d-flex flex-column gap-3@(contentPaddingClass)">
+						@RenderTitle(maxWidth, title)
+						@RenderLead(maxWidth, lead)
+					</div>				
+				}
+				
+				@RenderImage()
+				
+				if (!string.IsNullOrEmpty(text) || link != null && !string.IsNullOrEmpty(link.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
+				{
+					<div class="d-flex flex-column gap-3@(contentPaddingClass)">
+						@RenderText(maxWidth, text)
+						@RenderButtons(layout,link, link2, buttonLabel, buttonLabel2, title)
+					</div>
+				}
 			}
 			break;
 
 		case "text-center":
 			{
-				@RenderTextCenter(contentPadding, titleFontSize, subtitleFontSize, maxWidth, link)
+				@RenderImage()
+				
+				if (!string.IsNullOrEmpty(title) || !string.IsNullOrEmpty(lead) || !string.IsNullOrEmpty(text) || link != null && !string.IsNullOrEmpty(link.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
+				{
+					<div class="d-flex flex-column gap-3 align-items-center text-center h-100@(contentPaddingClass)">
+						@RenderTitle(maxWidth, title)
+						@RenderLead(maxWidth, lead)
+						@RenderText(maxWidth, text)
+						@RenderButtons(layout,link, link2, buttonLabel, buttonLabel2, title)
+					</div>
+				}
 			}
 			break;
 
 		case "image-bottom":
 			{
-				@RenderImageBottom(contentPadding, titleFontSize, subtitleFontSize, maxWidth, link)
+				if (!string.IsNullOrEmpty(title) || !string.IsNullOrEmpty(lead) || !string.IsNullOrEmpty(text) || link != null && !string.IsNullOrEmpty(link.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
+				{
+				<div class="d-flex flex-column gap-3@(contentPaddingClass)">
+					@RenderTitle(maxWidth, title)
+					@RenderLead(maxWidth, lead)
+					@RenderText(maxWidth, text)
+					@RenderButtons(layout,link, link2, buttonLabel, buttonLabel2, title)
+				</div>
+				}
+
+				@RenderImage()
 			}
 			break;
-
 	}
 </div>
 
+@helper RenderTitle(string maxWidth, string title)
+{
+	string titleFontSize = Model.Item.GetString("TitleFontSize", "h3");
+
+	<h3 class="m-0 @titleFontSize@(maxWidth)">
+		@title
+	</h3>
+}
+
+@helper RenderLead(string maxWidth, string lead)
+{
+	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
+
+	if (!string.IsNullOrEmpty(lead))
+	{
+		<p class="m-0 lead @(subtitleFontSize)@(maxWidth)">
+			@lead
+		</p>
+	}
+}
+
+@helper RenderText(string maxWidth, string text)
+{
+	if (!string.IsNullOrEmpty(text))
+	{
+		<div class="mb-0-last-child@(maxWidth)">
+			@text
+		</div>
+	}
+}
 
 @helper RenderImage()
 {
+	string image = Model.Item.GetString("Image", string.Empty);
 	int xPos = Model.Item?.GetFile("Image")?.FocalPositionFromLeft ?? 50;
 	int yPos = Model.Item?.GetFile("Image")?.FocalPositionFromTop ?? 50;
 	string ratioCssClass = Model.Item.GetRawValueString("ImageAspectRatio") != "0" && Model.Item.GetRawValueString("ImageAspectRatio") != "" ? "ratio" : "";
@@ -117,7 +170,7 @@
 	ImageObjectFit = ImageObjectFit == "cover" ? "" : ImageObjectFit;
 	ImageObjectFit = ImageObjectFit == "contain" ? "object-fit:contain" : ImageObjectFit;
 
-	if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
+	if (!string.IsNullOrEmpty(image))
 	{
 		var parms = new Dictionary<string, object>();
 		parms.Add("loading", "lazy");
@@ -145,7 +198,7 @@
 		}
 		else
 		{
-			<figure class="@ratioCssClass" @ratioVariable>
+			<figure class="mb-0 @ratioCssClass" @ratioVariable>
 				@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
 			</figure>
             
@@ -153,166 +206,170 @@
 	}
 }
 
-@helper RenderTitle()
+@helper RenderButtons(string layout, Dynamicweb.Frontend.LinkViewModel link, Dynamicweb.Frontend.LinkViewModel link2, string buttonLabel, string buttonLabel2, string title)
 {
+	string linkType = Model.Item.GetRawValueString("LinkType", "page");
+	string linkType2 = Model.Item.GetRawValueString("LinkType2", "page2");
 
-	if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
+	if (linkType == "page" && Model.Item.GetLink("ButtonLink") != null)
 	{
-		@Model.Item.GetString("Title")
+		link = Model.Item.GetLink("ButtonLink");
 	}
-}
 
-@helper RenderLead()
-{
-
-	if (!string.IsNullOrEmpty(Model.Item.GetString("Lead")))
+	if (linkType2 == "page2" && Model.Item.GetLink("ButtonLink2") != null)
 	{
-		@Model.Item.GetString("Lead")
+		link2 = Model.Item.GetLink("ButtonLink2");
 	}
-}
 
-@helper RenderText(string maxWidth)
-{
-	if (!string.IsNullOrEmpty(Model.Item.GetString("Text")))
+	if (linkType == "product-group")
 	{
-		<div class="mb-3 mb-0-last-child@(maxWidth)">
-			@Model.Item.GetString("Text")
+		IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
+		IList<string> groupIds = new List<string> { };
+
+		if (selectedGroups != null)
+		{
+			foreach (var fromGroup in selectedGroups)
+			{
+				groupIds.Add(fromGroup.Id);
+			}
+		}
+
+		link = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
+			IsExternal = false
+		};
+	}
+
+	if (linkType2 == "product-group2")
+	{
+		IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink2");
+		IList<string> groupIds = new List<string> { };
+
+		if (selectedGroups != null)
+		{
+			foreach (var fromGroup in selectedGroups)
+			{
+				groupIds.Add(fromGroup.Id);
+			}
+		}
+
+		link2 = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
+			IsExternal = false
+		};
+	}
+
+	if (linkType == "product")
+	{
+		ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink");
+		IList<string> productIds = new List<string> { };
+
+		if (products != null)
+		{
+			foreach (var product in products.Products)
+			{
+				productIds.Add(product.Id);
+			}
+		}
+
+		string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
+		string pageTag = productIds.Count == 1 ? "ProductDetailPage" : "Shop";
+		link = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds).Trim(),
+			IsExternal = false
+		};
+	}
+
+	if (linkType == "product2")
+	{
+		ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink2");
+		IList<string> productIds = new List<string> { };
+
+		if (products != null)
+		{
+			foreach (var product in products.Products)
+			{
+				productIds.Add(product.Id);
+			}
+		}
+
+		string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
+		string pageTag = productIds.Count == 1 ? "ProductDetailPage" : "Shop";
+		link2 = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds).Trim(),
+			IsExternal = false
+		};
+	}
+
+	string buttonSize = Model.Item.GetRawValueString("buttonSize", "regular");
+	string buttonSizeClass = string.Empty;
+
+	switch (buttonSize)
+	{
+		case "small":
+			buttonSizeClass = " btn-sm";
+			break;
+		case "large":
+			buttonSizeClass = " btn-lg";
+			break;
+	}
+
+	if (link != null && !string.IsNullOrEmpty(link.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
+	{
+		string alignmentClass = string.Empty;
+
+		if (layout == "text-center")
+        {
+			alignmentClass = " justify-content-center";
+        }
+		<div class="d-flex flex-wrap@(alignmentClass) gap-3">
+			@RenderButton1(link, link2, buttonSizeClass, buttonLabel, title)
+			@RenderButton2(link, link2 ,buttonSizeClass, buttonLabel2, title)
 		</div>
 	}
+
 }
 
-@helper RenderButton(Dynamicweb.Frontend.LinkViewModel link)
-{
-	string StretchedLink = Model.Item.GetRawValueString("StretchedLink", "");
-	StretchedLink = StretchedLink == "column-not-clickable" ? "" : StretchedLink;
-	StretchedLink = StretchedLink == "column-clickable" ? " stretched-link" : StretchedLink;
-	if (link != null && !string.IsNullOrEmpty(Model.Item.GetString("ButtonLabel")))
+@helper RenderButton1 (Dynamicweb.Frontend.LinkViewModel link, Dynamicweb.Frontend.LinkViewModel link2, string buttonSizeClass, string buttonLabel, string title)
+{	
+	string stretchedLink = Model.Item.GetRawValueString("StretchedLink", "column-not-clickable");
+	string buttonStyle = Model.Item.GetRawValueString("ButtonStyle") == "primary" ? " btn-primary" : " btn-secondary";
+	string target = link.IsExternal ? "target=\"_blank\"" : string.Empty;
+	string stretchedLinkClass = stretchedLink == "column-clickable" && string.IsNullOrEmpty(link2.Url) ? " stretched-link" : string.Empty;
+
+	if (link != null && !string.IsNullOrEmpty(link.Url) && !string.IsNullOrEmpty(buttonLabel))
 	{
-		string target = link.IsExternal ? "target=\"_blank\"" : "";
-		string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "");
-		buttonStyle = buttonStyle == "primary" ? "btn-primary" : buttonStyle;
-		buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
-		<a href="@link.Url" @target class="btn @buttonStyle@(StretchedLink)">@Model.Item.GetString("ButtonLabel")</a>
+		<a href="@link.Url" @target class="text-nowrap btn@(buttonStyle)@(buttonSizeClass)@(stretchedLinkClass)">@buttonLabel</a>
 	}
-
-	else if (link != null && !string.IsNullOrEmpty(link.Url))
-	{
-		string target = link.IsExternal ? "target=\"_blank\"" : "";
-
-		<a href="@link.Url" @target class="@StretchedLink">
-			<span class="visually-hidden">@Model.Item.GetString("Title")</span>
+	
+	else if (link != null && !string.IsNullOrEmpty(link.Url) && string.IsNullOrEmpty(buttonLabel))
+	{	
+		<a href="@link.Url" @target class="@(stretchedLinkClass)">
+			<span class="visually-hidden">@title</span>
 		</a>
 	}
 }
 
-@helper RenderImageTop(string contentPadding, string titleFontSize, string subtitleFontSize, string maxWidth, Dynamicweb.Frontend.LinkViewModel link)
-{
-	@RenderImage()
-	<div class="flex-fill@(contentPadding) mb-0-last-child">
-		@if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
-		{
-			<h3 class="mb-3 @titleFontSize@(maxWidth)">@RenderTitle()</h3>
-		}
-		@if (!string.IsNullOrEmpty(Model.Item.GetString("Lead")))
-		{
-			<p class="@subtitleFontSize lead@(maxWidth)">@RenderLead()</p>
-		}
-		@RenderText(maxWidth)
+@helper RenderButton2 (Dynamicweb.Frontend.LinkViewModel link, Dynamicweb.Frontend.LinkViewModel link2, string buttonSizeClass, string buttonLabel2, string title)
+{	
+	string stretchedLink2 = Model.Item.GetRawValueString("StretchedLink2", "column-not-clickable");
+	string buttonStyle2 = Model.Item.GetRawValueString("ButtonStyle2") == "secondary" ? " btn-secondary" : " btn-primary";
+	string target2 = link2.IsExternal ? "target=\"_blank\"" : string.Empty;
+	string stretchedLinkClass = stretchedLink2 == "column-clickable" && string.IsNullOrEmpty(link.Url) ? " stretched-link" : string.Empty;
 
-		<div class="mb-3">
-			@RenderButton(link)
-		</div>
-
-	</div>
-}
-
-@helper RenderTitleTop(string contentPadding, string titleFontSize, string subtitleFontSize, string maxWidth, Dynamicweb.Frontend.LinkViewModel link)
-{
-	<div class="d-flex flex-column h-100 mb-0-last-child">
-		@if (!string.IsNullOrEmpty(Model.Item.GetString("Title")))
-		{
-			<div class="flex-fill@(contentPadding) mb-3">
-				@if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
-				{
-					<h3 class="mb-0 @titleFontSize@(maxWidth)">@RenderTitle()</h3>
-				}
-			</div>
-		}
-		@RenderImage()
-		<div class="flex-fill@(contentPadding) mb-0-last-child">
-			@if (!string.IsNullOrEmpty(Model.Item.GetString("Lead")))
-			{
-				<p class="@subtitleFontSize lead@(maxWidth)">@RenderLead()</p>
-			}
-			@RenderText(maxWidth)
-			<div class="mb-3">
-				@RenderButton(link)
-			</div>
-		</div>
-	</div>
-}
-
-@helper RenderTitleLeadTop(string contentPadding, string titleFontSize, string subtitleFontSize, string maxWidth, Dynamicweb.Frontend.LinkViewModel link)
-{
-	if (
-		!string.IsNullOrEmpty(Model.Item.GetString("Title")) ||
-		!string.IsNullOrEmpty(Model.Item.GetString("lead"))
-		)
+	if (link2 != null && !string.IsNullOrEmpty(link2.Url) && !string.IsNullOrEmpty(buttonLabel2))
 	{
-		<div class="flex-fill mb-3 mb-0-last-child@(contentPadding)">
-			@if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
-			{
-				<h3 class="@titleFontSize mb-3@(maxWidth)">@RenderTitle()</h3>
-			}
-			@if (!string.IsNullOrEmpty(Model.Item.GetString("Lead")))
-			{
-				<p class="@subtitleFontSize lead mb-3@(maxWidth)">@RenderLead()</p>
-			}
-		</div>
+		<a href="@link2.Url" @target2 class="text-nowrap btn@(buttonStyle2)@(buttonSizeClass)@(stretchedLinkClass)">@buttonLabel2</a>
 	}
-	@RenderImage()
-	<div class="flex-fill@(contentPadding) mb-0-last-child">
-		@RenderText(maxWidth)
-		<div class="mb-3">
-			@RenderButton(link)
-		</div>
-	</div>
-}
-
-@helper RenderTextCenter(string contentPadding, string titleFontSize, string subtitleFontSize, string maxWidth, Dynamicweb.Frontend.LinkViewModel link)
-{
-	@RenderImage()
-	<div class="d-flex flex-column align-items-center text-center flex-fill mb-0-last-child @(contentPadding)">
-		@if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
-		{
-			<h3 class="mb-3 @titleFontSize@(maxWidth)">@RenderTitle()</h3>
-		}
-		@if (!string.IsNullOrEmpty(Model.Item.GetString("Lead")))
-		{
-			<p class="mb-3 @subtitleFontSize lead@(maxWidth)">@RenderLead()</p>
-		}
-		@RenderText(maxWidth)
-		<div class="mb-3">
-			@RenderButton(link)
-		</div>
-	</div>
-}
-
-@helper RenderImageBottom(string contentPadding, string titleFontSize, string subtitleFontSize, string maxWidth, Dynamicweb.Frontend.LinkViewModel link)
-{
-	<div class="flex-fill mb-3 mb-0-last-child@(contentPadding)">
-		@if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
-		{
-			<h3 class="@titleFontSize mb-3@(maxWidth)">@RenderTitle()</h3>
-		}
-		@if (!string.IsNullOrEmpty(Model.Item.GetString("Lead")))
-		{
-			<p class="mb-3 @subtitleFontSize lead@(maxWidth)">@RenderLead()</p>
-		}
-		@RenderText(maxWidth)
-		<div class="mb-3">
-			@RenderButton(link)
-		</div>
-	</div>
-	@RenderImage()
+	
+	else if (link2 != null && !string.IsNullOrEmpty(link2.Url) && string.IsNullOrEmpty(buttonLabel2))
+	{	
+		<a href="@link2.Url" @target2 class="@(stretchedLinkClass)">
+			<span class="visually-hidden">@title</span>
+		</a>
+	}
 }
