@@ -6,22 +6,42 @@
 
 @functions
 {
-	bool isLiveProductInfoActive;
-	string liveInfoClass = "";
+	bool isLiveProductInfoActive = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled();
+	string liveInfoClass = isLiveProductInfoActive ? "js-live-info" : "";
+	string productInfoFeed = "";
 }
 @{
+	ProductListViewModel productList = new ProductListViewModel();
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
+	{
+		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
+	}
+	
+	if (isLiveProductInfoActive)
+	{
+		var productIds = string.Join("&ProductIds=", productList.Products.Select(p => p.Id));
+		productInfoFeed = $@"/dwapi/ecommerce/products/search?ProductIds={productIds}&PageSize={productList.PageSize}
+								&UserId={Converter.ToString(Pageview.User?.ID)}
+								&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
+								&ProductSettings.FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel,VariantInfo,NeverOutOfstock
+								&ProductSettings.PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
+								&ProductSettings.PriceSettings.FilledProperties=Price,PriceFormatted
+								&getproductinfo=true";
+		liveInfoClass = "js-live-info";
+	}
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 }
 
 @if (!string.IsNullOrEmpty(theme))
 {
-	<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()">
+	<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower() @liveInfoClass" data-product-info-feed="@productInfoFeed">
 		@RenderProductList()
 	</div>
 }
 else
 {
-	<div class="item_@Model.Item.SystemName.ToLower()">
+	<div class="item_@Model.Item.SystemName.ToLower() @liveInfoClass" data-product-info-feed="@productInfoFeed">">
 		@RenderProductList()
 	</div>
 }
@@ -38,19 +58,6 @@ else
 	isLiveProductInfoActive = Converter.ToBoolean(Pageview.GlobalTags.GetTagByName("Global:LiveIntegration.IsLazyLoadingForProductInfoEnabled")?.Value);
 	isLiveProductInfoActive = true; // Note: GlobalTags not working, LiveIntegration issue?
 	string productInfoFeed = "";
-
-	if (isLiveProductInfoActive)
-	{
-		var productIds = string.Join(",", productList.Products.Select(p => p.Id));
-		productInfoFeed = $@"data-product-info-feed='/dwapi/Products/GetProductList?ProductIds={productIds}
-								&UserId={Converter.ToString(Pageview.User?.ID)}
-								&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
-								&ProductSettings.FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel
-								&ProductSettings.PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
-								&ProductSettings.PriceSettings.FilledProperties=Price,PriceFormatted
-								&getproductinfo=true'";
-		liveInfoClass = "js-live-info";
-	}
 
 	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
 	bool anonymousUser = Pageview.User == null;
@@ -493,6 +500,11 @@ else
 	disableAddToCart = isDiscontinued ? "disabled" : disableAddToCart;
 	disableAddToCart = IsNeverOutOfStock ? "" : disableAddToCart;
 
+	if (isLiveProductInfoActive)
+	{
+		disableAddToCart = "disabled";
+	}
+
 	if (!hideAddToCart)
 	{
 		if (product.VariantInfo.VariantInfo == null)
@@ -540,12 +552,14 @@ else
 
 			string variantSelectorServicePageId = !string.IsNullOrEmpty(Model.Item.GetString("VariantSelectorServicePageId")) ? Model.Item.GetLink("VariantSelectorServicePageId").PageId.ToString() : "";
 			variantSelectorServicePageId = variantSelectorServicePageId != "" ? variantSelectorServicePageId : GetPageIdByNavigationTag("RelatedProductsListService").ToString();
+			
+			string disableVariantSelector = isLiveProductInfoActive ? "disabled" : "";
 
 			<form action="/Default.aspx?ID=@variantSelectorServicePageId" data-response-target-element="VariantSelectorModalContent_@Model.ID" data-preloader="inline" class="d-inline-block my-auto">
 				<input type="hidden" name="ProductID" value="@product.Id" />
 				<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
 				<input type="hidden" name="ViewType" value="ModalContent" />
-				<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-primary" title="@Translate("Select")" style="@buttonWidth" data-bs-toggle="modal" data-bs-target="#VariantSelectorModal_@Model.ID">@buttonText</button>
+				<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-primary js-variant-selector-button" @disableVariantSelector title="@Translate("Select")" style="@buttonWidth" data-bs-toggle="modal" data-bs-target="#VariantSelectorModal_@Model.ID">@buttonText</button>
 			</form>
 		}
 	}

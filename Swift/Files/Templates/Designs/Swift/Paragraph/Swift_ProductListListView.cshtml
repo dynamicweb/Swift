@@ -11,19 +11,7 @@
 }
 @{ 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
-}
-
-@if (!string.IsNullOrEmpty(theme)) {
-	<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()">
-		@RenderProductList()
-	</div>
-} else {
-	<div class="item_@Model.Item.SystemName.ToLower()">
-		@RenderProductList()
-	</div>
-}
-
-@helper RenderProductList () { 
+	
 	ProductListViewModel productList = new ProductListViewModel();
 
 	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
@@ -37,17 +25,29 @@
 
 	if (isLiveProductInfoActive)
 	{
-		var productIds = string.Join(",", productList.Products.Select(p => p.Id));
-		productInfoFeed = $@"data-product-info-feed='/dwapi/Products/GetProductList?ProductIds={productIds}
+		var productIds = string.Join("&ProductIds=", productList.Products.Select(p => p.Id));
+		productInfoFeed = $@"/dwapi/ecommerce/products/search?ProductIds={productIds}&PageSize={productList.PageSize}
 								&UserId={Converter.ToString(Pageview.User?.ID)}
 								&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
-								&ProductSettings.FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel
+								&ProductSettings.FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel,VariantInfo,NeverOutOfstock
 								&ProductSettings.PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
 								&ProductSettings.PriceSettings.FilledProperties=Price,PriceFormatted
-								&getproductinfo=true'";
+								&getproductinfo=true";
 		liveInfoClass = "js-live-info";
 	}
-	
+}
+
+@if (!string.IsNullOrEmpty(theme)) {
+	<div class="h-100@(theme) @liveInfoClass" data-product-info-feed="@productInfoFeed">
+		@RenderProductList(productList)
+	</div>
+} else {
+	<div class="@liveInfoClass" data-product-info-feed="@productInfoFeed">
+		@RenderProductList(productList)
+	</div>
+}
+
+@helper RenderProductList (ProductListViewModel productList) { 
 	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
 	bool anonymousUser = Pageview.User == null;
 	bool hideProductNumber =  !string.IsNullOrEmpty(Model.Item.GetString("HideProductNumber")) ? Model.Item.GetBoolean("HideProductNumber") : false;
@@ -480,6 +480,11 @@
 	string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : "";
 	disableAddToCart = isDiscontinued ? "disabled" : disableAddToCart;
 	disableAddToCart = IsNeverOutOfStock ? "" : disableAddToCart;
+	
+	if (isLiveProductInfoActive)
+	{
+		disableAddToCart = "disabled";
+	} 
 
 	if (!hideAddToCart) { 
 		if (product.VariantInfo.VariantInfo == null) { 
@@ -519,12 +524,14 @@
 
 			string variantSelectorServicePageId = !string.IsNullOrEmpty(Model.Item.GetString("VariantSelectorServicePageId")) ? Model.Item.GetLink("VariantSelectorServicePageId").PageId.ToString() : "";
 			variantSelectorServicePageId = variantSelectorServicePageId != "" ? variantSelectorServicePageId : GetPageIdByNavigationTag("RelatedProductsListService").ToString();
+			
+			string disableVariantSelector = isLiveProductInfoActive ? "disabled" : "";
 
 			<form action="/Default.aspx?ID=@variantSelectorServicePageId" data-response-target-element="VariantSelectorModalContent_@Model.ID" data-preloader="inline" class="d-inline-block">
 				<input type="hidden" name="ProductID" value="@product.Id" />
 				<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
 				<input type="hidden" name="ViewType" value="ModalContent" />							
-				<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-primary" title="@Translate("Select")" style="@buttonWidth" data-bs-toggle="modal" data-bs-target="#VariantSelectorModal_@Model.ID">@buttonText</button>
+				<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-primary js-variant-selector-button" @disableVariantSelector title="@Translate("Select")" style="@buttonWidth" data-bs-toggle="modal" data-bs-target="#VariantSelectorModal_@Model.ID">@buttonText</button>
 			</form>
 		}
 	}

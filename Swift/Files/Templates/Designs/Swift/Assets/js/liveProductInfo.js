@@ -5,12 +5,16 @@
 		contentAttr: "content",
 		productIdAttr: "data-product-id",
 		showIfAttr: "data-show-if",
-		innerSliderId: "tns1-iw"
+		innerSliderId: "tns1-iw",
+		loaderClass: "spinner-border",
 	}
 	
 	this.selectors = {
 		productInfoFeed: "[" + this.config.productInfoFeedAttr + "]",
 		liveInfo: ".js-live-info",
+		loader: "." + this.config.loaderClass,
+		addToCart: ".js-add-to-cart-button",
+		variantSelector: ".js-variant-selector-button",
 		price: ".text-price",
 		priceFormatted: "[" + this.config.priceFormattedAttr + "]",
 		priceProp: "[itemprop='price']",
@@ -51,27 +55,55 @@ LiveProductInfo.prototype.UpdateValues = function (data, liveInfoContainers) {
 	const self = this;
 	liveInfoContainers.forEach(function (container) {
 		product = self.GetProductData(container, data)
-		if (product.hasOwnProperty("Price")) {
-			self.UpdateValue(container.querySelectorAll(self.selectors.price), product.Price.PriceFormatted);
+
+		container.querySelectorAll(self.selectors.loader).forEach(function (el){
+			el.classList.remove(self.config.loaderClass);
+		});
+		
+		if (product.Price != null) {
+			let price = product.Price.PriceFormatted;
+			
+			if(product.VariantInfo != null)
+			{
+				if(product.VariantInfo.PriceMin != null && product.VariantInfo.PriceMax != null && product.VariantInfo.PriceMin.Price != product.VariantInfo.PriceMax.Price)
+				{
+					price = product.VariantInfo.PriceMin.PriceFormatted + " - " + product.VariantInfo.PriceMax.PriceFormatted;
+				}
+			}
+			
+			self.UpdateValue(container.querySelectorAll(self.selectors.price), price);
 			self.UpdateDataAttribute(container.querySelectorAll(self.selectors.priceFormatted), self.config.priceFormattedAttr, product.Price.PriceFormatted);
 			self.UpdateDataAttribute(container.querySelectorAll(self.selectors.priceProp), self.config.contentAttr, product.Price.Price);
+		
+			if (product.PriceBeforeDiscount != null) {
+				self.UpdateValue(container.querySelectorAll(self.selectors.priceBeforeDiscount), product.PriceBeforeDiscount.PriceFormatted);
+				self.ShowConditionalElement(container.querySelectorAll(self.selectors.priceBeforeDiscount));
+			}
 		}
 
-		if (product.hasOwnProperty("Price") && product.hasOwnProperty("PriceBeforeDiscount")) {
-			self.UpdateValue(container.querySelectorAll(self.selectors.priceBeforeDiscount), product.PriceBeforeDiscount.PriceFormatted);
-			self.ShowConditionalElement(container.querySelectorAll(self.selectors.priceBeforeDiscount));
-		}
-
-		if (product.hasOwnProperty("StockLevel")) {
-			self.UpdateValue(container.querySelectorAll(self.selectors.stock), product.StockLevel);
+		if (product.StockLevel != null) {
+			let stockLevel = product.StockLevel > 100 ? "100+" : product.StockLevel;
+			self.UpdateValue(container.querySelectorAll(self.selectors.stock), stockLevel);
 			self.ShowConditionalElement(container.querySelectorAll(self.selectors.stockMessages));
 		}
 
-		if (product.hasOwnProperty("ExpectedDelivery")) {
+		if (product.ExpectedDelivery != null) {
 			self.UpdateValue(container.querySelectorAll(self.selectors.expectedDelivery), product.ExpectedDelivery);
 			self.ShowConditionalElement(container.querySelectorAll(self.selectors.expectedDelivery));
 		}
-	})
+
+		if (product.NeverOutOfstock || (product.StockLevel != null && product.StockLevel > 0)) {
+			let addToCart = container.querySelector(self.selectors.addToCart);
+			if(addToCart != null){
+				addToCart.removeAttribute("disabled");
+			}
+		}
+
+		let variantSelector = container.querySelector(self.selectors.variantSelector);
+		if(variantSelector != null){
+			variantSelector.removeAttribute("disabled");
+		}
+	});
 }
 
 LiveProductInfo.prototype.GetProductData = function (container, data) {
