@@ -5,6 +5,7 @@
 	bool movePageBehind = false;
 	bool isFirstPoster = false;
 	string movePageBehindClass = string.Empty;
+
 	if (Pageview.Page.PropertyItem != null)
 	{
 		string headerCssClass = Pageview.Page.PropertyItem["MoveThisPageBehindTheHeader"] != null ? Pageview.Page.PropertyItem["MoveThisPageBehindTheHeader"].ToString() : "sticky-top";
@@ -20,6 +21,10 @@
 		}
 	}
 
+	Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
+	Dynamicweb.Frontend.LinkViewModel link2 = new Dynamicweb.Frontend.LinkViewModel();
+	string buttonSize = Model.Item.GetRawValueString("buttonSize", "regular");
+	string buttonSizeClass = string.Empty;
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : string.Empty;
 	string layout = Model.Item.GetRawValueString("Layout", "align-middle-center-text-center");
 	string alignment = string.Empty;
@@ -91,6 +96,16 @@
 			posterHeightClass = " min-vh-75 min-vh-md-100";
 			break;
 	}
+
+	switch (buttonSize)
+	{
+		case "small":
+			buttonSizeClass = " btn-sm";
+			break;
+		case "large":
+			buttonSizeClass = " btn-lg";
+			break;
+	}
 }
 
 <div class="position-relative@(theme)@(movePageBehindClass)">
@@ -101,26 +116,33 @@
 			@RenderImage(image, posterSizeBase, posterHeight, imageFilter)
 		}
 
-		<div class="container-xl h-100">
-			<div class="h-100 position-relative d-flex flex-column gap-3 gap-md-4@(posterPaddingClass)@(alignment)@(posterHeightClass)" id="Poster_@Pageview.CurrentParagraph.ID">
-				@RenderTitle(maxWidth, title)
-				@RenderText(maxWidth, text)
-				@RenderButtons(title)
+		if (!string.IsNullOrEmpty(title) || !string.IsNullOrEmpty(text) || link != null && !string.IsNullOrEmpty(link.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
+		{
+			<div class="container-xl h-100">
+				<div class="h-100 position-relative d-flex flex-column gap-3 gap-md-4@(posterPaddingClass)@(alignment)@(posterHeightClass)" id="Poster_@Pageview.CurrentParagraph.ID">
+					@RenderTitle(maxWidth, title)
+					@RenderText(maxWidth, text)
+					@RenderButtons(link, link2, buttonSizeClass, title)
+				</div>
 			</div>
-		</div>
-    }
+		}
+	}
 
 	@if (posterSizeBase == "aspect-ratio") {
 
 		if (!string.IsNullOrEmpty(image)) {
 			@RenderImage(image, posterSizeBase, posterHeight, imageFilter)
 		}
+
+		if (!string.IsNullOrEmpty(title) || !string.IsNullOrEmpty(text) || link != null && !string.IsNullOrEmpty(link.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
+		{
 			<div class="container-xl h-100 position-absolute top-0 bottom-0 end-0 start-0 d-flex flex-column gap-3 gap-md-4@(posterPaddingClass)@(alignment)@(posterHeightClass)" id="Poster_@Pageview.CurrentParagraph.ID">
 				@RenderTitle(maxWidth, title)
 				@RenderText(maxWidth, text)
-				@RenderButtons(title)
+				@RenderButtons(link, link2, buttonSizeClass, title)
 			</div>
-    }
+		}
+	}
 
 </div>
 
@@ -160,12 +182,14 @@
 
 @helper RenderTitle(string maxWidth, string title)
 {
-	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-1");
+	if (!string.IsNullOrEmpty(title))
+    {
+		string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-1");
 
-	<h2 class="@titleFontSize mb-0">
-		<span class="@maxWidth">@title</span>
-	</h2>
-	
+		<h2 class="@titleFontSize mb-0">
+			<span class="@maxWidth">@title</span>
+		</h2>
+	}
 }
 
 @helper RenderText(string maxWidth, string text)
@@ -180,11 +204,8 @@
 	}
 }
 
-@helper RenderButtons(string title)
+@helper RenderButtons(Dynamicweb.Frontend.LinkViewModel link, Dynamicweb.Frontend.LinkViewModel link2, string buttonSizeClass, string title)
 {
-	Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
-	Dynamicweb.Frontend.LinkViewModel link2 = new Dynamicweb.Frontend.LinkViewModel();
-
 	string linkType = Model.Item.GetRawValueString("LinkType", "page");
 	string linkType2 = Model.Item.GetRawValueString("LinkType2", "page2");
 
@@ -282,18 +303,6 @@
 		};
 	}
 
-	string buttonSize = Model.Item.GetRawValueString("buttonSize", "regular");
-	string buttonSizeClass = string.Empty;
-
-	switch (buttonSize)
-	{
-		case "small":
-			buttonSizeClass = " btn-sm";
-			break;
-		case "large":
-			buttonSizeClass = " btn-lg";
-			break;
-	}
 	if (link != null && !string.IsNullOrEmpty(link.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
 	{
 		<div class="d-flex flex-wrap gap-3">
@@ -305,43 +314,49 @@
 
 @helper RenderButton1 (Dynamicweb.Frontend.LinkViewModel link, Dynamicweb.Frontend.LinkViewModel link2, string buttonSizeClass, string title)
 {	
-	string buttonLabel = Model.Item.GetString("ButtonLabel", string.Empty);
 	string stretchedLink = Model.Item.GetRawValueString("StretchedLink", "column-not-clickable");
 	string buttonStyle = Model.Item.GetRawValueString("ButtonStyle") == "primary" ? " btn-primary" : " btn-secondary";
 	string target = link.IsExternal ? "target=\"_blank\"" : string.Empty;
 	string stretchedLinkClass = stretchedLink == "column-clickable" && string.IsNullOrEmpty(link2.Url) ? " stretched-link" : string.Empty;
+	string buttonLabel = Model.Item.GetString("ButtonLabel", string.Empty);
 
-	if (link != null && !string.IsNullOrEmpty(link.Url) && !string.IsNullOrEmpty(buttonLabel))
+	if (link != null && !string.IsNullOrEmpty(link.Url))
 	{
-		<a href="@link.Url" @target class="text-nowrap btn@(buttonStyle)@(buttonSizeClass)@(stretchedLinkClass)">@buttonLabel</a>
-	}
-	
-	else if (link != null && !string.IsNullOrEmpty(link.Url) && string.IsNullOrEmpty(buttonLabel))
-	{	
-		<a href="@link.Url" @target class="@(stretchedLinkClass)">
-			<span class="visually-hidden">@title</span>
-		</a>
+		if (!string.IsNullOrEmpty(buttonLabel))
+		{ 
+			<a href="@link.Url" @target class="text-nowrap btn@(buttonStyle)@(buttonSizeClass)@(stretchedLinkClass)">@buttonLabel</a>
+		}
+
+		else if (string.IsNullOrEmpty(buttonLabel))
+		{
+			<a href="@link.Url" @target class="@(stretchedLinkClass)">
+				<span class="visually-hidden">@title</span>
+			</a>
+		}
 	}
 }
 
 @helper RenderButton2 (Dynamicweb.Frontend.LinkViewModel link, Dynamicweb.Frontend.LinkViewModel link2, string buttonSizeClass, string title)
 {	
-	string buttonLabel2 = Model.Item.GetString("ButtonLabel2", string.Empty);
 	string stretchedLink2 = Model.Item.GetRawValueString("StretchedLink2", "column-not-clickable");
 	string buttonStyle2 = Model.Item.GetRawValueString("ButtonStyle2") == "secondary" ? " btn-secondary" : " btn-primary";
 	string target2 = link2.IsExternal ? "target=\"_blank\"" : string.Empty;
 	string stretchedLinkClass = stretchedLink2 == "column-clickable" && string.IsNullOrEmpty(link.Url) ? " stretched-link" : string.Empty;
+	string buttonLabel2 = Model.Item.GetString("ButtonLabel2", string.Empty);
 
-	if (link2 != null && !string.IsNullOrEmpty(link2.Url) && !string.IsNullOrEmpty(buttonLabel2))
+	if (link2 != null && !string.IsNullOrEmpty(link2.Url))
 	{
-		<a href="@link2.Url" @target2 class="text-nowrap btn@(buttonStyle2)@(buttonSizeClass)@(stretchedLinkClass)">@buttonLabel2</a>
-	}
-	
-	else if (link2 != null && !string.IsNullOrEmpty(link2.Url) && string.IsNullOrEmpty(buttonLabel2))
-	{	
-		<a href="@link2.Url" @target2 class="@(stretchedLinkClass)">
-			<span class="visually-hidden">@title</span>
-		</a>
+		if (!string.IsNullOrEmpty(buttonLabel2))
+		{ 
+			<a href="@link2.Url" @target2 class="text-nowrap btn@(buttonStyle2)@(buttonSizeClass)@(stretchedLinkClass)">@buttonLabel2</a>
+		}
+
+		else if (string.IsNullOrEmpty(buttonLabel2))
+		{
+			<a href="@link2.Url" @target2 class="@(stretchedLinkClass)">
+				<span class="visually-hidden">@title</span>
+			</a>
+		}
 	}
 }
 
