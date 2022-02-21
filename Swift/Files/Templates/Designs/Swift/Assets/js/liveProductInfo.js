@@ -11,6 +11,7 @@
 	
 	this.selectors = {
 		productInfoFeed: "[" + this.config.productInfoFeedAttr + "]",
+		showIfAttr: "[" + this.config.showIfAttr + "]",
 		liveInfo: ".js-live-info",
 		loader: "." + this.config.loaderClass,
 		addToCart: ".js-add-to-cart-button",
@@ -19,6 +20,11 @@
 		priceFormatted: "[" + this.config.priceFormattedAttr + "]",
 		priceProp: "[itemprop='price']",
 		priceBeforeDiscount: ".text-decoration-line-through",
+		productPricesContainer: ".product-prices-container",
+		productPrices: ".product-prices",
+		productPriceTemplate: ".product-prices-template",
+		productPriceQuantity: ".text-price-quantity",
+		productPricePrice: ".text-price-price",
 		stock: ".text-stock",
 		expectedDelivery: ".text-expected-delivery",
 		stockMessages: ".js-stock-state small, .js-stock-state p",
@@ -51,6 +57,7 @@ LiveProductInfo.prototype.UpdateProductInfo = function(selector) {
 }
 
 let product;
+let productPrice;
 LiveProductInfo.prototype.UpdateValues = function (data, liveInfoContainers) {
 	const self = this;
 	liveInfoContainers.forEach(function (container) {
@@ -79,6 +86,27 @@ LiveProductInfo.prototype.UpdateValues = function (data, liveInfoContainers) {
 				self.UpdateValue(container.querySelectorAll(self.selectors.priceBeforeDiscount), product.PriceBeforeDiscount.PriceFormatted);
 				self.ShowConditionalElement(container.querySelectorAll(self.selectors.priceBeforeDiscount));
 			}
+		}
+
+		if (product.Prices != null && product.Prices.length > 0) {
+			let productPricesContainers = container.querySelectorAll(self.selectors.productPricesContainer);
+
+			productPricesContainers.forEach(function (productPricesTopContainer){
+				let productPricesContainer = productPricesTopContainer.querySelector(self.selectors.productPrices);
+				let template = productPricesContainer.querySelector(self.selectors.productPriceTemplate);
+				productPricesContainer.innerHTML = "";
+				
+				product.Prices.forEach(function (quantityPrice){
+					productPrice = quantityPrice;
+					let priceContainer = template.cloneNode(true);
+					self.UpdateValue(priceContainer.querySelectorAll(self.selectors.productPriceQuantity), quantityPrice.Quantity);
+					self.UpdateValue(priceContainer.querySelectorAll(self.selectors.productPricePrice), quantityPrice.Price.PriceFormatted);
+					self.ShowConditionalElement(priceContainer.querySelectorAll(self.selectors.showIfAttr));
+					productPricesContainer.append(priceContainer);
+				});
+			});
+			
+			self.ShowConditionalElement(productPricesContainers);
 		}
 
 		if (product.StockLevel != null) {
