@@ -67,9 +67,9 @@
 	}
 
 	@* Supported formats *@
-	supportedImageFormats = new string[] { ".jpg", ".webp", ".png", ".gif" };
-	supportedVideoFormats = new string[] { "youtu.be", "youtube", "vimeo", ".mp4" };
-	supportedDocumentFormats = new string[] { ".pdf" };
+	supportedImageFormats = new string[] { ".jpg", ".jpeg", ".webp", ".png", ".gif", ".bmp", ".tiff" };
+	supportedVideoFormats = new string[] { "youtu.be", "youtube", "vimeo", ".mp4", ".webm" };
+	supportedDocumentFormats = new string[] { ".pdf", ".docx", ".xlsx", ".ppt", "pptx" };
 	allSupportedFormats = supportedImageFormats.Concat(supportedVideoFormats).Concat(supportedDocumentFormats).ToArray();
 
 	@* Collect the assets *@
@@ -84,9 +84,10 @@
 	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedAssetCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
 	assetsImages = assetsImages.OrderByDescending(x => x.Value.Equals(defaultImage));
 	IEnumerable<MediaViewModel> assetsList = new MediaViewModel[]{};
-	assetsList = includeImagePatternImages && assetsImages.Count() == 0 ? assetsList.Append(product.DefaultImage) : assetsList;
+
 	assetsList = assetsList.Union(assetsImages);
 	assetsList = includeImagePatternImages ? assetsList.Union(product.ImagePatternImages) : assetsList;
+	assetsList = includeImagePatternImages && assetsList.Count() == 0 ? assetsList.Append(product.DefaultImage) : assetsList;
 
 	bool defaultImageFallback = Model.Item.GetBoolean("DefaultImageFallback"); 
 	bool showOnlyPrimaryImage = Model.Item.GetBoolean("ShowOnlyPrimaryImage");
@@ -133,14 +134,14 @@
 		int thumbnailNumber = 0;
 		int modalAssetNumber = 0;
 
-		<div class="h-100@(theme) position-relative">
-			<div id="SmallScreenImages_@Model.ID" class="carousel" data-bs-ride="carousel">
-				<div class="carousel-inner h-100">
-					@foreach (MediaViewModel asset in assetsList) {
-						var assetValue = asset.Value.ToLower();
-						foreach (string format in allSupportedFormats) {
-							if ( assetValue.Contains(format) ) {
-								string activeSlide = assetNumber == 0 ? "active" : "";
+	<div class="h-100@(theme) position-relative">
+		<div id="SmallScreenImages_@Model.ID" class="carousel" data-bs-ride="carousel">
+			<div class="carousel-inner h-100">
+				@foreach (MediaViewModel asset in assetsList) {
+					var assetValue = asset.Value.ToLower();
+					foreach (string format in allSupportedFormats) {
+						if (assetValue.Contains(format) ) {
+							string activeSlide = assetNumber == 0 ? "active" : "";
 
 								<div class="carousel-item @activeSlide" data-bs-interval="99999">
 									@RenderAsset(asset, assetNumber, "mobile")
@@ -177,25 +178,31 @@
 								assetName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
 								string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
 
-								if (!isDocument) {
-									<div class="ratio ratio-4x3 border outline-none" data-bs-target="#SmallScreenImages_@Model.ID" data-bs-slide-to="@thumbnailNumber" style="cursor: pointer">
-										<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-											@foreach (string videoFormat in supportedVideoFormats) { //Videos
-												if (assetValue.Contains(videoFormat)) {
-													<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
-												}
+							if (!isDocument) {
+								<div class="ratio ratio-4x3 border outline-none" data-bs-target="#SmallScreenImages_@Model.ID" data-bs-slide-to="@thumbnailNumber" style="cursor: pointer">
+									<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+										@foreach (string videoFormat in supportedVideoFormats) { //Videos
+											if (assetValue.Contains(videoFormat)) {
+												<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
 											}
-										</div>
-										<img src="@imagePathThumb" alt="@assetName" @assetTitle class="p-0 p-lg-1 @vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
+										}
 									</div>
-								} else {
-									<a href="@assetValue" class="ratio ratio-4x3 border outline-none" style="cursor: pointer" download>
+									<img src="@imagePathThumb" alt="@assetName" @assetTitle class="p-0 p-lg-1 @vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
+								</div>
+                            } else {
+								<a href="@assetValue" class="ratio ratio-4x3 border outline-none" style="cursor: pointer" download alt="@asset.Value">
+									@if (asset.Value.Contains(".pdf")) {
 										<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
 											<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
 										</div>
 										<img src="@imagePathThumb" alt="@assetName" @assetTitle class="p-0 p-lg-1 mw-100 mh-100" style="object-fit: cover;">
-									</a>
-								}
+									} else { 
+										<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+											<div class="icon-3 position-absolute" style="z-index: 1">@ReadFile(iconPath + "file-text.svg")</div>
+										</div>
+									}
+								</a>
+                            }
 
 								thumbnailNumber++;
 							}
@@ -365,7 +372,7 @@
 	string videoId = asset.Value.Substring(asset.Value.LastIndexOf('/') + 1);
 	string type = assetValue.Contains("youtu.be") || assetValue.Contains("youtube") ? "youtube" : "";
 	type = assetValue.Contains("vimeo") ? "vimeo" : type;
-	type = assetValue.Contains(".mp4") ? "selfhosted" : type;
+	type = assetValue.Contains(".mp4") || assetValue.Contains(".webm") ? "selfhosted" : type;
 
 	string openInModal = Model.Item.GetString("OpenVideoInModal");
 	bool autoPlay = Model.Item.GetBoolean("VideoAutoPlay");
@@ -383,6 +390,8 @@
 				data-plyr-embed-id="@videoId" 
 				style="--plyr-color-main: var(--swift-foreground-color); height: 100%">
 			</div>
+
+			<script type="module" src="~/Files/Templates/Designs/Swift/Assets/js/plyr.js"></script>
 
 			<script type="module">
 				var player = new Plyr('#player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size', {
@@ -459,7 +468,9 @@
 	<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download alt="@Translate("Download")">
 		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
 			<div class="icon-5 position-absolute" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
-			@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+			@if (asset.Value.Contains(".pdf")) {
+				@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+			}
 		</div>
 	</a>
 }

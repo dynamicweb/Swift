@@ -1,5 +1,96 @@
 # Changelog
 
+## [v1.6.1] - 04-02-2022
+
+## Bugfixes
+* General: Missing version bump on Master
+* Integration Customer Center: Show only date when time is 00:00 
+
+
+## [v1.6.0] - 03-02-2022
+
+## Bugfixes
+* Customer Center: Theme pagination 
+* Email: Use own email icons and not external
+* Email: Email order receipt throws an error
+* General: MasterNoLayout is missing theme on body classes
+* General: selectedDetailPage null checks
+* General: Favorite icon should follow the image theme, if set
+* General: Preferences languages, broken on mobile
+* General: Uncaught TypeError when adding addToFavorites button on product slider and Related products
+* General: Use correct default value on Header from page property
+* Itemtype: Article list overlaps slider on mobile
+* Itemtype: Product Slider, text alignment
+* Itemtype: Related product list use proper micro template for title size
+* Itemtype: Product group poster min view height 
+* Itemtype: Duplicated default image on ProductDetailsGallery and productDetailsImage
+* Order receipt: Total price section on print receipt has wrong placement
+* Product Detail: Product specification - product fields shows system name in instead of catagory name
+* Product Detail: Product with variants can be added to cart when it is out of stock
+* Product List: Render option name instead of option on ProductListGridView
+
+## Changed
+* Itemtype: Edit restriction, product list should not contain newsletter paragraphs
+* Itemtype: Group image and promotion image - Remove height keep only width
+* General: Updates theme and branding using rem instead of px
+* General: Branding letter spacing + lineheight increment itemtype field change to HTML5
+* General: Preferences languages, use hreflang instead of lang
+* General: Hide information when there is free shipping 
+* Product List: Use VariantName instead of VariantId from viewmodel
+
+## Removed
+* General: Removed custom mapped breakpoint + markup clean up
+* General: Window scrollto bug from typeahead on popstate
+
+## Added
+* General: Re-introduce ecommerce product badges due to merging conflicts
+* General: Support for more asset formats
+* Itemtype: Selected Product group 
+* Itemtype: Location map include styling/themes 
+* Itemtype: Footer Navigation dropdown, option to only show first level
+* Itemtype: Mega menu possible to choose group image aspect ratio
+* Itemtype: Possible to add background image and gradient to row
+* Itemtype Article carousel possible to hide scrollbar
+* Order receipt: Add ERP order number, if exist
+
+- Database: A new database is uploaded for Swift version 1.6.0
+
+## [v1.5.0] - 13-01-2022
+
+Dynamicweb proudly presents **Swift 1.5 (Q4-2021)**. This update introduces more fundamental B2B- features to Swift,  
+such as a quick way to add products to cart and an integrated customer center able to show orders, invoices,  
+and credit notes from an ERP system. The main headlines for this service release are:   
+
+## B2B - Express buy & better product overview 
+* Search for SKUs and add products to cart quickly using the **express buy page**
+* See orders, invoices, and credit notes from an ERP system with through **integrated Customer Center** 
+* Two new **product list designs** – compact & list – make it easy to set up B2B-friendly product lists with more products & more technical details per page. 
+* Support for adding **order references** during checkout, for solutions where references to an external system, like a procurement system, is a requirement. 
+* You can now block out certain dates – single days, recurring weekdays & date ranges – from being selected via the **delivery date selector** 
+
+## Enriched Product list & Detail 
+* Support for adding sections with **downloadable files/documents** to product detail pages – e.g., datasheets, manuals, and other assets 
+* Create **differentiated product detail designs** for product groups to highlight different types of products in the best way possible 
+* Product lists now support showing **product group images and descriptions** – this makes it easier for the customer to distinguish between product groups at a glance 
+* The **mega menu** and **off-canvas menu** now supports **product group images** and **promotional images** – this can help the customer locate the category they want to find and highlight sales or special events. Implemented both for desktop and mobile.  
+* Present your products in a different perspective by showing an **alternative image** when hovering over a product in a product list 
+* Native support for implementing **favorite lists** – studies show, that customers are more likely to return to a shop if they can save products for later 
+* Highlight discounted, new, or campaign-products with **product badges** – this helps attract and retain customers and has been proven to increase conversion rates  
+
+## Improves support for content marketing 
+* Create beautiful content marketing **articles** – for instance blog posts, news items, press releases – with full creative freedom using the same content elements (rows, columns & presets) used to create other content on Swift. 
+* Use **Animation On Scroll** to add small content animation on a site when scrolling. This creates a more dynamic feeling to the site and draws user attention to specific areas. 
+* A new row with **6 columns** can be used when creating content, for instance to highlight and promote brand logos from associated businesses 
+
+## General improvements and Maintenance 
+* You can now add a **name** and **keywords** to images and other assets in PIM – this leads to better search engine results for e.g. Google image search 
+* The content element **Poster** now supports adding an aspect ratio on the images, making it easier to control different poster heights 
+* The content element **Text** now supports center vertical alignment 
+* In the navigation you can now choose between **automated menu**, **mega menu**, and **dropdown**. And automated menu changes according to the navigation content. 
+* Beautifications to the **Log in** screen to ensure an up-to-date experience 
+* **Extra padding** can now be added to rows 
+* JS modules now load dynamically for better performance 
+
 ## [v1.4.0] - 03-12-2021
 
 ## Bugfixes

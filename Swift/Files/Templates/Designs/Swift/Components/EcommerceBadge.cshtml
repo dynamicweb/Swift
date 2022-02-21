@@ -20,53 +20,56 @@
 	List<string> campaignBadgesValues = GetViewParameter("campaignBadgesValues") != null ? GetViewParameterString("campaignBadgesValues").Split(new char[] { ',' }).ToList() : new List<string>();
 
 	var badgesPage =  Pageview.AreaSettings.GetLink("EcommerceBadgesPage") != null ? Pageview.AreaSettings.GetLink("EcommerceBadgesPage").PageId : 0;
-	var allBadges = Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(badgesPage);
+	var allBadges = badgesPage != 0 ? Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(badgesPage) : null;
 }
 
 
 @if (saleBadgeEnabled && Model.Discount.Price != 0) {
-	string title = saleBadgeType == "amount" ? "-" + Model.Discount.PriceFormatted : Translate("Sale");
+	string title = saleBadgeType == "amount" ? "-" + Model.Discount.PriceFormatted : "";
 	title = saleBadgeType == "percentage" ? "-" + Math.Floor((Model.Discount.Price / Model.PriceBeforeDiscount.Price)*100) + "%" : title;
 
-	<style>
-		.@(saleBadgeCssClassName)::before {
-			display: none;
-		}
-	</style>
+	if (saleBadgeType == "amount" || saleBadgeType == "percentage") { 
+		<style>
+			#Badge_@(saleBadgeCssClassName)_@(Pageview.CurrentParagraph.ID)::before {
+				display: none;
+			}
+		</style>
+	}
 
-
-	<span class="@sizeCssClass"><span class="badge @saleBadgeCssClassName rounded-0">@title</span></span>
+	<span class="@sizeCssClass"><span class="badge @(saleBadgeCssClassName) rounded-0" id="Badge_@(saleBadgeCssClassName)_@(Pageview.CurrentParagraph.ID)">@title</span></span>
 }
 
 @if ((newBadgeEnabled && newPublicationDays == 0) || (newBadgeEnabled && (createdDate.AddDays(newPublicationDays) > DateTime.Now))) {
 	<span class="@sizeCssClass"><span class="badge @newBadgeCssClassName rounded-0"></span></span>
 } 
 
-@foreach (string campaign in campaignBadgesValues) {
-	string campaignType = "";
+@if (allBadges != null) { 
+	foreach (string campaign in campaignBadgesValues) {
+		string campaignType = string.Empty;
 
-	foreach (Paragraph badge in allBadges) {
-		var paragraphviewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(badge);
+		foreach (Paragraph badge in allBadges) {
+			var paragraphviewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(badge);
 
-		if (campaign == paragraphviewModel.Item.GetString("CssClassName")) {
-			campaignType = paragraphviewModel.Item.GetRawValueString("CampaignType");
-        }
-	}
+			if (campaign == paragraphviewModel.Item.GetString("CssClassName").Trim().ToLower()) {
+				campaignType = paragraphviewModel.Item.GetRawValueString("CampaignType");
+			}
+		}
 
-	if (!string.IsNullOrEmpty(campaign)) {
-		FieldValueViewModel availableCampaignsObject;
-		Model.ProductFields.TryGetValue("Campaign", out availableCampaignsObject);
+		if (!string.IsNullOrEmpty(campaign)) {
+			FieldValueViewModel availableCampaignsObject;
+			Model.ProductFields.TryGetValue("Campaign", out availableCampaignsObject);
 
-		if (availableCampaignsObject != null) {
-		 	List<FieldOptionValueViewModel> availableCampaigns = (List<FieldOptionValueViewModel>)availableCampaignsObject.Value;
+			if (availableCampaignsObject != null) {
+		 		List<FieldOptionValueViewModel> availableCampaigns = (List<FieldOptionValueViewModel>)availableCampaignsObject.Value;
 
-			foreach (FieldOptionValueViewModel availableOption in availableCampaigns) {
+				foreach (FieldOptionValueViewModel availableOption in availableCampaigns) {
 
-				if (campaignType == availableOption.Value)
-				{
-					<span class="@sizeCssClass"><span class="badge @campaign.Trim().ToLower() rounded-0"></span></span>
+					if (campaignType == availableOption.Value)
+					{
+						<span class="@sizeCssClass"><span class="badge @campaign.Trim().ToLower() rounded-0"></span></span>
+					}
 				}
 			}
 		}
-    }
+	}
 }

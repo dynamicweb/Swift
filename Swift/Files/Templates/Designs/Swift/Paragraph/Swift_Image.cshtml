@@ -1,4 +1,5 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
 	string ratio = Model.Item.GetRawValueString("ImageAspectRatio") != string.Empty ? Model.Item.GetRawValueString("ImageAspectRatio") : string.Empty;
@@ -12,7 +13,8 @@
 	parms.Add("style", "");
 	parms.Add("alt", Model.Item.GetString("ImageAltText"));
 
-	if (ratio == "fill") {
+	if (ratio == "fill")
+	{
 		parms.Add("cssClass", "w-100 h-100");
 	}
 	if (ratio == "0")
@@ -20,10 +22,72 @@
 		parms.Add("fullwidth", true);
 		parms.Add("cssClass", "img-fluid");
 	}
+
+	string linkType = Model.Item.GetRawValueString("LinkType", "page") != string.Empty ? Model.Item.GetRawValueString("LinkType", "page") : string.Empty;
+	Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
+
+	if (linkType == "page" && Model.Item.GetLink("ButtonLink") != null)
+	{
+		link = Model.Item.GetLink("ButtonLink");
+	}
+
+	if (linkType == "product-group")
+	{
+		IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
+		IList<string> groupIds = new List<string> { };
+
+		if (selectedGroups != null)
+		{
+			foreach (var fromGroup in selectedGroups)
+			{
+				groupIds.Add(fromGroup.Id);
+			}
+		}
+
+		link = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds)
+		};
+	}
+
+	if (linkType == "product")
+	{
+		ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink");
+		IList<string> productIds = new List<string> { };
+
+		if (products != null)
+		{
+			foreach (var product in products.Products)
+			{
+				productIds.Add(product.Id);
+			}
+		}
+
+		string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
+		string pageTag = productIds.Count == 1 ? "ProductDetailPage" : "Shop";
+		link = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds)
+		};
+	}
 }
 
-@if (!string.IsNullOrEmpty(Model.Item.GetString("Image"))) {
-	<figure class="m-0@(ratioCssClass)@(fillClass)" @ratioVariable>
-		@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
-	</figure>
+@if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
+{
+	if (link != null && !string.IsNullOrEmpty(link.Url))
+	{
+		string target = link.IsExternal ? "target=\"_blank\"" : "";
+		
+		<a href="@link.Url" @target>
+			<figure class="m-0@(ratioCssClass)@(fillClass)" @ratioVariable>
+				@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+			</figure>
+		</a>
+	}
+	else 
+	{ 
+		<figure class="m-0@(ratioCssClass)@(fillClass)" @ratioVariable>
+			@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+		</figure>
+	}
 }

@@ -1,0 +1,178 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
+@using System;
+@using System.Web;
+@using System.Collections.Generic;
+@using System.Linq;
+@using Dynamicweb.Ecommerce.Products;
+@using Dynamicweb.Frontend.Navigation;
+
+@{
+	var masterArea = Pageview.Area;
+	if (Pageview.Area.IsLanguage)
+	{
+		masterArea = Pageview.Area.MasterArea;
+	}
+
+	List<int> masterWebsiteAndLanguages = new List<int>();
+	masterWebsiteAndLanguages.Add(masterArea.ID);
+	if (masterArea.Languages is object && masterArea.Languages.Any())
+	{
+		foreach (var language in masterArea.Languages)
+		{
+			masterWebsiteAndLanguages.Add(language.ID);
+		}
+	}
+
+
+	string hostname = HttpContext.Current.Request.Url.GetLeftPart(UriPartial.Authority);
+	List<NavigationTreeNodeViewModel> allWebsiteAndLanguageNodes = new List<NavigationTreeNodeViewModel>();
+
+	foreach (int areaid in masterWebsiteAndLanguages)
+	{
+		var navigationSettingsMain = new Dynamicweb.Frontend.Navigation.NavigationSettings()
+		{
+			StartLevel = 1,
+			StopLevel = 10,
+			RootAreaId = areaid,
+			ExpandMode = Dynamicweb.Frontend.Navigation.ExpandMode.All
+		};
+
+		allWebsiteAndLanguageNodes.AddRange(GetNavigation(navigationSettingsMain)?.Nodes);
+	}
+}
+<?xml version="1.0" encoding="UTF-8" ?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+	@RenderNodes(allWebsiteAndLanguageNodes, hostname)
+
+</urlset>
+
+@helper RenderNodes(IEnumerable<NavigationTreeNodeViewModel> nodes, string hostname)
+{
+	foreach (NavigationTreeNodeViewModel node in nodes)
+	{
+		@RenderNode(node, hostname)
+
+	}
+}
+
+@helper RenderNode(NavigationTreeNodeViewModel node, string hostname)
+{
+	var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+
+	bool isEcommerceNavigation = false;
+	string navsettings = string.Empty;
+	if (page.NavigationSettings != null && page.NavigationSettings.UseEcomGroups)
+	{
+		isEcommerceNavigation = true;
+		navsettings = page.NavigationSettings.Groups;
+	}
+
+	if (isEcommerceNavigation)
+	{
+		if (page.Allowclick && page.ShowInSitemap && !page.Noindex)
+		{
+			<url>
+				<loc pageid="@node.PageId" groups="@navsettings">@hostname@node.Link</loc>
+				<lastmod>@page.Audit.LastModifiedAt.ToString("s")</lastmod>
+			</url>
+			@RenderEcommerceGroupNodes(GetGroupsBySettings(page.NavigationSettings), node, hostname)
+		}
+	}
+	else
+	{
+		if (page.Allowclick && page.ShowInSitemap && !page.Noindex)
+		{
+			<url>
+				<loc>@hostname@node.Link</loc>
+				<lastmod>@page.Audit.LastModifiedAt.ToString("s")</lastmod>
+			</url>
+		}
+		if (node.Nodes.Any())
+		{
+			@RenderNodes(node.Nodes, hostname)
+		}
+	}
+}
+
+@helper RenderEcommerceGroupNodes(IEnumerable<Dynamicweb.Ecommerce.Products.Group> groups, NavigationTreeNodeViewModel node, string hostname)
+{
+	foreach (Group group in groups)
+	{
+
+		if (group.NavigationClickable && group.NavigationShowInSiteMap)
+		{
+			//Remember to check if this group is not having another primary page
+			//Remember to check if this group does not have multiple parents - and if it has, decide if the group should be shown here
+			//int primarypageid = group.Meta.PrimaryPageId; //Use this if needed - send it into the product
+			string url = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl("Default.aspx?ID=" + node.PageId + "&GroupID=" + group.IdUrlEncoded);
+
+			<url>
+				<loc pageid="@node.PageId" groupid="@group.Id" group="@Dynamicweb.Core.Encoders.HtmlEncoder.HtmlEncode(group.Name)">@hostname@url</loc>
+			</url>
+		}
+		@RenderEcommerceProductNodes(Dynamicweb.Ecommerce.Services.Products.GetProductsByGroupId(group.Id, true, group.LanguageId, false), node, hostname, group)
+		@RenderEcommerceGroupNodes(group.Subgroups, node, hostname)
+
+	}
+}
+
+@helper RenderEcommerceProductNodes(IEnumerable<Dynamicweb.Ecommerce.Products.Product> products, NavigationTreeNodeViewModel node, string hostname, Group group)
+{
+	//Locate the right pageid. This group is shown on a page that might link to another page to show product detail. So on this page, find the paragraph, lookup the setting, change pageid to the detail page.
+	//The product might be in 2 groups - ensure this is the primary or default group of the product - if not, do not render
+	foreach (Product product in products)
+	{
+		string url = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl("Default.aspx?ID=" + node.PageId + "&GroupID=" + group.IdUrlEncoded + "&ProductID=" + product.Id);
+		<url>
+			<loc pageid="@node.PageId" groupid="@group.Id" group="@Dynamicweb.Core.Encoders.HtmlEncoder.HtmlEncode(group.Name)" productid="@product.Id" product="@Dynamicweb.Core.Encoders.HtmlEncoder.HtmlEncode(product.Name)" variantid="@product.VariantId">@hostname@url</loc>
+		</url>
+	}
+}
+
+@functions{
+
+	public IEnumerable<Dynamicweb.Ecommerce.Products.Group> GetGroupsBySettings(Dynamicweb.Content.PageNavigationSettings ecomSettings)
+	{
+		IEnumerable<Dynamicweb.Ecommerce.Products.Group> topLevelGroups;
+
+		string languageId = Dynamicweb.Ecommerce.Common.Context.LanguageID;
+		switch (ecomSettings.ParentType)
+		{
+			case Dynamicweb.Content.EcommerceNavigationParentType.Groups:
+				{
+					Dynamicweb.Ecommerce.Extensibility.Controls.ProductsAndGroupsHandler groupHandler = new Dynamicweb.Ecommerce.Extensibility.Controls.ProductsAndGroupsHandler(ecomSettings.Groups);
+					if (groupHandler.Type == Dynamicweb.Ecommerce.Extensibility.Controls.HandlerConfigurationType.All)
+					{
+						Dynamicweb.Ecommerce.Shops.Shop shop = Dynamicweb.Ecommerce.Services.Shops.GetShop(string.IsNullOrEmpty(groupHandler.ShopSelected) ? ecomSettings.ShopID : groupHandler.ShopSelected);
+						if (shop == null)
+							topLevelGroups = Enumerable.Empty<Dynamicweb.Ecommerce.Products.Group>();
+						else
+							topLevelGroups = shop.get_TopLevelGroups(languageId);
+					}
+					else
+						topLevelGroups = groupHandler.GroupsSelected;
+					break;
+				}
+
+			case Dynamicweb.Content.EcommerceNavigationParentType.Shop:
+				{
+					Dynamicweb.Ecommerce.Shops.Shop shop = Dynamicweb.Ecommerce.Services.Shops.GetShop(ecomSettings.ShopID);
+					if (shop == null)
+						topLevelGroups = Enumerable.Empty<Dynamicweb.Ecommerce.Products.Group>();
+					else
+						topLevelGroups = shop.get_TopLevelGroups(languageId);
+					break;
+				}
+
+			default:
+				{
+					topLevelGroups = Enumerable.Empty<Dynamicweb.Ecommerce.Products.Group>();
+					break;
+				}
+		}
+
+		return topLevelGroups;
+	}
+
+}

@@ -3,20 +3,21 @@
 @using Dynamicweb.Ecommerce.Frontend
 @using Dynamicweb.Ecommerce.Orders
 
-@{ string contentPadding = Pageview.CurrentParagraph.Item["ContentPadding"] != null ? Pageview.CurrentParagraph.Item["ContentPadding"].ToString() : "";
-				contentPadding = contentPadding == "none" ? "px-0" : contentPadding;
-				contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
-				contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
-				var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
-				string theme = !string.IsNullOrEmpty(themeRaw) ? " shadow theme " + themeRaw.Replace(" ", "").Trim().ToLower() : " shadow theme light";
-				string ordersPageLink = Pageview.CurrentParagraph.Item["OrdersPage"] != null ? Pageview.CurrentParagraph.Item["OrdersPage"].ToString() : "";
+@{ 
+	string contentPadding = Pageview.CurrentParagraph.Item["ContentPadding"] != null ? Pageview.CurrentParagraph.Item["ContentPadding"].ToString() : "";
+	contentPadding = contentPadding == "none" ? "px-0" : contentPadding;
+	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
+	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
+	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " h-100 theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
+	string ordersPageLink = Pageview.CurrentParagraph.Item["OrdersPage"] != null ? Pageview.CurrentParagraph.Item["OrdersPage"].ToString() : "";
 
-				string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
-				bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 }
 
-<div class="@(contentPadding)">
-	<header class="p-3 border-bottom@(theme)">
+<div class="@(contentPadding)@(theme)">
+	<header class="p-3 border-bottom">
 		<div class="d-flex flex-row align-items-center gap-3">
 			<h1 class="h6 m-0 flex-fill text-muted">@Translate("Your order")</h1>
 			<button onclick="javascript:print()" class="btn btn-link p-0">Print</button>
@@ -28,7 +29,13 @@
 		{
 			<tr>
 				<td class="">@Translate("Order number")</td>
-				<td class="text-end">@Model.Id</td>
+				<td class="text-end">
+					@if (!string.IsNullOrEmpty(Model.IntegrationOrderId)) { 
+						<text>@Model.IntegrationOrderId (@Model.Id)</text>
+					} else {
+						@Model.Id
+					}
+				</td>
 			</tr>
 		}
 
@@ -214,7 +221,7 @@
 			string detailsPageLink = GetPageIdByNavigationTag("ProductDetailPage").ToString();
 
 			var defaultGroupId = orderline.PrimaryOrDefaultGroup.Id;
-			var selectedDetailPage = !string.IsNullOrEmpty(defaultGroupId) ? Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId).Meta.PrimaryPage : "";
+			var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
 
 			string link = string.IsNullOrEmpty(selectedDetailPage) ? $"/Default.aspx?ID={detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
 			link += "&productid=" + productId;
@@ -323,15 +330,15 @@
 					</div>
 				}
 
-				<div class="d-flex my-1">
-					<dt class="flex-fill fw-normal">@Translate("Delivery")</dt>
-					<dd class="flex-fill mb-0 text-end">
-						@if (!string.IsNullOrEmpty(shippingFee))
-						{
+				@if (!string.IsNullOrEmpty(shippingFee) && Model.ShippingFee.Price != 0.0) 
+				{
+					<div class="d-flex my-1">
+						<dt class="flex-fill fw-normal">@Translate("Delivery")</dt>
+						<dd class="flex-fill mb-0 text-end">
 							<span>@shippingFee</span>
-						}
-					</dd>
-				</div>
+						</dd>
+					</div>
+				}
 
 				@* Discounts (only order discounts) *@
 				@foreach (OrderLineViewModel orderline in Model.OrderLines)

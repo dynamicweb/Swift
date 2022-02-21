@@ -9,6 +9,7 @@ import { LocationsMap } from './_locationsmap';
 import { VariantSelector } from './_variantselector';
 import { Video } from './_video';
 import { Typeahead } from './_typeahead';
+import { AssetLoader } from './_assetLoader';
 
 //Bootstrap
 window.bootstrap = bootstrap;
@@ -25,7 +26,8 @@ const swift = function () {
 		LocationsMap: LocationsMap,
 		VariantSelector: VariantSelector,
 		Typeahead: Typeahead,
-		Video: Video
+		Video: Video,
+		AssetLoader: AssetLoader
 	}
 }();
 export { swift };
