@@ -19,6 +19,7 @@
 	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
 	bool hideFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("HideFavoritesSelector")) ? Model.Item.GetBoolean("HideFavoritesSelector") : false;
 
+	bool isDiscontinued = product.Discontinued;
 	bool IsNeverOutOfStock = product.NeverOutOfstock;
 	string[] variantId = product.VariantId.Split('.');
 	string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : "";
@@ -288,7 +289,7 @@
 		}
 
 		<div class="d-flex flex-row flex-nowrap gap-2">
-			@if (!hideAddToCart)
+			@if (!hideAddToCart && !isDiscontinued)
 			{
 				<form method="post" action="@url" class="flex-fill">
 					<input type="hidden" name="redirect" value="false" />
@@ -323,17 +324,70 @@
 					@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
 				}
 			}
-			else if (!anonymousUser && !hideFavoritesSelector)
+			else if (!anonymousUser && !hideFavoritesSelector && !isDiscontinued)
 			{
 				<div class="flex-fill">
 					@Translate("Add to favorites") @RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
 				</div>
 			}
+
+			@if (isDiscontinued && product.ReplacementProduct != null) {
+				List<ProductInfoViewModel> replacementProductList = new List<ProductInfoViewModel>();
+				replacementProductList.Add(product.ReplacementProduct);
+				var replacementProduct = replacementProductList.GetProducts().FirstOrDefault();
+
+				if (product.DiscontinuedAction == 0) {
+					var parms = new Dictionary<string, object>();
+					parms.Add("cssClass", "d-block mw-100 mh-100 m-auto");
+					parms.Add("fullwidth", true);
+					parms.Add("columns", Model.GridRowColumnCount);
+
+					string imagePath = replacementProduct?.DefaultImage?.Value != null ? replacementProduct.DefaultImage.Value : "";
+
+					var defaultGroupId = replacementProduct.PrimaryOrDefaultGroup.Id;
+					var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
+
+					string link = string.IsNullOrEmpty(selectedDetailPage) ? $"/Default.aspx?ID={Pageview.Page.ID}&groupid={defaultGroupId}" : selectedDetailPage;
+					link += "&productid=" + replacementProduct.Id;
+					link += !string.IsNullOrEmpty(replacementProduct.VariantId) ? "&variantid=" + replacementProduct.VariantId : "";
+
+					<div class="w-100">
+						<div class="alert alert-dark w-100">@Translate("This product is discontinued")</div>
+						<div>@Translate("You may be interested in"):</div>
+
+						<h3>@replacementProduct.Name</h3>
+						@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+						<a href="@link" class="btn btn-primary w-100">@Translate("Go to replacement product")</a>
+					</div>
+
+				}
+				if (product.DiscontinuedAction == 1) {
+					var defaultGroupId = replacementProduct.PrimaryOrDefaultGroup.Id;
+					var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
+
+					string link = string.IsNullOrEmpty(selectedDetailPage) ? $"/Default.aspx?ID={Pageview.Page.ID}&groupid={defaultGroupId}" : selectedDetailPage;
+					link += "&productid=" + replacementProduct.Id;
+					link += !string.IsNullOrEmpty(replacementProduct.VariantId) ? "&variantid=" + replacementProduct.VariantId : "";
+
+					<script>
+						window.location = "@link";
+					</script>
+				}
+				if (product.DiscontinuedAction == 2) { 
+					var defaultGroupId = replacementProduct.PrimaryOrDefaultGroup.Id;
+					var productListPageId = GetPageIdByNavigationTag("Shop");
+					string link = $"/Default.aspx?ID={productListPageId}&groupid={defaultGroupId}";
+
+					<script>
+						window.location = "@link";
+					</script>
+				}
+			}
 		</div>
 	</div>
 	@if (!Model.Item.GetBoolean("HideStockState"))
 	{
-		if (!IsNeverOutOfStock)
+		if (!IsNeverOutOfStock && !isDiscontinued)
 		{
 			<div class="mt-3 js-stock-state">
 
