@@ -1,0 +1,167 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+
+@{
+	string name = Model.Item.GetRawValueString("Name", string.Empty);
+	string jobTitle = Model.Item.GetRawValueString("Title", string.Empty);
+	string layout = Model.Item.GetRawValueString("Layout", string.Empty);
+	string layoutClass = string.Empty;
+	string imageGridSize = string.Empty;
+	string contentGridSize = string.Empty;
+	string informationItemsAlignment = Model.Item.GetRawValueString("IconItemsAlignment", "Column");
+	string informationItemsAlignmentClass = "flex-column";
+	int imageRatio = 100;
+	string imageShape = " overflow-hidden";
+	string contentAlignmentClass = "d-flex flex-column gap-3";
+	string imageAlignmentClass = string.Empty;
+	int imageWidth = 400;
+	int imageHeight = 400;
+	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
+	string contentPaddingClass = string.Empty;
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : string.Empty;
+	var informationItems = Model.Item?.GetItems("InformationItems") ?? Enumerable.Empty<Dynamicweb.Frontend.ItemViewModel>().ToList();
+	Dynamicweb.Frontend.FileViewModel image = Model.Item.GetFile("Image");
+	string imagePath = image?.PathUrlEncoded ?? string.Empty;
+	int xPos = image?.FocalPositionFromLeft ?? 50;
+	int yPos = image?.FocalPositionFromTop ?? 50;
+	string imagePosition = $"{xPos}% {yPos}%";
+
+	switch (contentPadding)
+	{
+		case "small":
+			contentPaddingClass = " p-3";
+			break;
+		case "large":
+			contentPaddingClass = " p-4";
+			break;
+	}
+
+	switch (informationItemsAlignment)
+	{
+		case "Row":
+			informationItemsAlignmentClass = "flex-row";
+			break;
+	}
+
+	switch (layout)
+	{
+		case "CircleImageTopCenter":
+			layoutClass += " d-flex flex-column gap-3 gap-lg-4";
+			imageShape += " rounded-circle";
+			contentAlignmentClass += " align-items-center text-center";
+			imageAlignmentClass = " mx-auto";
+			informationItemsAlignmentClass += " align-items-center justify-content-center text-center";
+			break;
+		case "BoxedImageTopCenter1X1":
+			layoutClass += " d-flex flex-column gap-3 gap-lg-4";
+			contentAlignmentClass += " align-items-center text-center";
+			imageAlignmentClass = " mx-auto";
+			informationItemsAlignmentClass += " align-items-center justify-content-center text-center";
+			break;
+		case "BoxedImageTopLeft1X1":
+			layoutClass += " d-flex flex-column gap-3 gap-lg-4";
+			break;
+		case "BoxedImageTopCenter3X4":
+			layoutClass += " d-flex flex-column gap-3 gap-lg-4";
+			imageRatio = 133;
+			contentAlignmentClass += " align-items-center text-center";
+			imageAlignmentClass = " mx-auto";
+			imageWidth = 300;
+			informationItemsAlignmentClass += " align-items-center justify-content-center text-center";
+			break;
+		case "BoxedImageTopLeft3X4":
+			layoutClass += " d-flex flex-column gap-3 gap-lg-4";
+			imageRatio = 133;
+			imageWidth = 300;
+			break;
+		case "BoxedImageTopCenter4X3":
+			layoutClass += " d-flex flex-column gap-3 gap-lg-4";
+			imageRatio = 75;
+			contentAlignmentClass += " align-items-center text-center";
+			imageAlignmentClass = " mx-auto";
+			imageHeight = 300;
+			informationItemsAlignmentClass += " align-items-center justify-content-center text-center";
+			break;
+		case "BoxedImageTopLeft4X3":
+			layoutClass += " d-flex flex-column gap-3 gap-lg-4";
+			imageRatio = 75;
+			imageHeight = 300;
+			break;
+		case "BoxedImageLeftLeft1X1":
+			layoutClass += " grid grid-12 gap-lg-4 align-items-start";
+			imageGridSize = " g-col-4 g-col-lg-6";
+			contentGridSize = "g-col-8 g-col-lg-6 ";
+			break;
+		case "CircleImageLeftLeft":
+			layoutClass += " grid grid-12 gap-lg-4 align-items-center";
+			imageShape += " rounded-circle";
+			imageGridSize = " g-col-4 g-col-lg-6";
+			contentGridSize = "g-col-8 g-col-lg-6 ";
+			break;
+	}
+}
+
+<div class="h-100@(layoutClass)@(contentPaddingClass)@(theme)">
+
+	@if(!string.IsNullOrEmpty(imagePath))
+	{
+		<div class="ratio@(imageGridSize)@(imageShape)@(imageAlignmentClass)" style="--bs-aspect-ratio:@imageRatio%;">
+			<img src="/Admin/Public/GetImage.ashx?image=@imagePath&width=@(imageWidth*2)&crop=0&format=webp;" width="@imageWidth" height="@imageHeight" alt="@name" style="object-fit:cover;object-position:@imagePosition" />
+		</div>
+	}
+
+	<div class="@(contentGridSize)@(contentAlignmentClass)">
+		
+		<div>
+			<h5 class="mb-1">@name</h5>
+			@if (!string.IsNullOrEmpty(jobTitle))
+			{ 
+				<h6 class="fs-7 opacity-85">@jobTitle</h6>
+			}
+		</div>
+	
+		<div class="d-flex flex-wrap @informationItemsAlignmentClass gap-3">
+			@foreach (var item in informationItems)
+			{
+				string label = item.GetString("Label", string.Empty);
+				string icon = item.GetString("Icon", string.Empty);
+				Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
+
+				if (item.GetLink("Link") != null)
+				{
+					link = item.GetLink("Link");
+				}
+
+				if (link != null && !string.IsNullOrEmpty(link.Url))
+				{
+					string target = link.IsExternal ? "target=\"_blank\"" : "";
+
+					<a href="@link.Url" @target class="d-flex lh-1 align-items-center gap-2 text-decoration-none text-decoration-underline-hover">
+
+						@if (!string.IsNullOrEmpty(icon) && !icon.ToLower().Contains("none"))
+						{
+							<span class="icon-2">@ReadFile(icon)</span>
+						}
+						@if (!string.IsNullOrEmpty(label))
+						{
+							<div class="opacity-85 fs-8 text-break">@label</div>
+						}
+					</a>
+				}
+				else
+				{
+					<div class="d-flex gap-2">
+						@if (!string.IsNullOrEmpty(icon) && !icon.ToLower().Contains("none"))
+						{
+							<span class="icon-2">@ReadFile(icon)</span>
+						}
+						@if (!string.IsNullOrEmpty(label))
+						{
+							<div class="opacity-85 fs-8 text-break">@label</div>
+						}
+					</div>
+				}
+			}
+		</div>
+
+	</div>
+</div>
