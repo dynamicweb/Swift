@@ -1,8 +1,8 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 
 @{
-	string blockType = "unsubscribeLink_block";
-
+	string blockType = "article_block";
+	
 	var page = Dynamicweb.Services.Pages.GetPage(Pageview.ID);
 	var settings = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page?.Parent).Item;
 	var blockId = Model.ID;
@@ -46,19 +46,86 @@
 			break;
 	}
 
+	string title = block.GetString("Title", string.Empty);
 	string padding = "padding:" + block.GetRawValueString("Padding", "0") + "px;";
 	string align = block.GetRawValueString("Align", "left");
-	string linkText = Model.Item.GetString("LinkText", string.Empty);
-	string leadingText = Model.Item.GetString("LeadingText", string.Empty);
+	string text = Model.Item.GetString("Text", string.Empty);
 	string lineHeight = "line-height:" + block.GetRawValueString("LineHeight", "1.5") + ";";
+	var link = Model.Item.GetLink("Link");
 }
 
-<table id="@blockId" class="@blockType" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; color: inherit; width: 100%;">
+<table id="@blockId" class="@blockType" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;color:inherit;width:100%;">
 	<tbody>
 		<tr>
-			<td style="mso-line-height-rule:exactly;mso-text-raise:11px;mso-table-lspace:0pt;mso-table-rspace:0pt;font-weight:400;text-align:@align;@(backgroundColor)@(foregroundColor)@(padding)@(borderClass)@(borderColor)@(lineHeight)" width="100%">
-				@leadingText
-				<a style="@(foregroundColor)" href="{{EmailMarketing:Email.UnsubscribeLink.Clean}}">@linkText</a>
+			<td style="mso-line-height-rule:exactly;mso-text-raise:11px;mso-table-lspace:0pt;mso-table-rspace:0pt;font-weight:400;text-align:@align; @(backgroundColor)@(foregroundColor)@(padding)@(borderClass)@(borderColor) @(lineHeight)" width="100%">
+				@RenderImage()
+				@if (!string.IsNullOrEmpty(title)) {
+					@RenderHeading(block, title)
+				}
+				@if (!string.IsNullOrEmpty(text))
+				{
+					@RenderText()
+				}
+				@if(link != null)
+				{
+					@RenderButton(link, blockTheme, align)
+				}
+			</td>
 		</tr>
 	</tbody>
 </table>
+
+@helper RenderHeading(Dynamicweb.Frontend.ItemViewModel block, string title)
+{
+	string heading = block.GetRawValueString("Heading", "h2");
+	string fontStyle = block.GetRawValueString("FontStyle", "header");
+	string fontSize = !string.IsNullOrEmpty(block.GetRawValueString("FontSize")) ? "font-size:" + block.GetRawValueString("FontSize") + "px;" : string.Empty;
+	string lineHeight = "line-height:" + block.GetRawValueString("LineHeight", "1.5") + ";";
+
+	string startTag = $"<{heading} class=\"{fontStyle}\" style=\"mso-line-height-rule: exactly; mso-text-raise: 11px; vertical-align: middle; margin-top: 0; margin-bottom: 8px;{fontSize}{lineHeight}\">";
+	string endTag = $"</{heading}>";
+
+	@startTag
+	@title
+	@endTag
+}
+
+@helper RenderText()
+{
+	string text = Model.Item.GetString("Text", string.Empty);
+
+	<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle; margin-top:0; margin-bottom:8px;">
+		@text
+	</div>
+}
+
+@helper RenderButton(Dynamicweb.Frontend.LinkViewModel link, Dynamicweb.Frontend.ItemViewModel theme, string align)
+
+{
+	var title = Model.Item.GetString("Title");
+	var themeCssName = theme?.GetString("CssClassName",string.Empty);
+	var backgroundColor = theme?.GetColor("ButtonPrimaryBackgroundColor");
+	var backgroundColorDarken = backgroundColor?.Darken(10);
+	var foregroundColor = theme?.GetColor("ButtonPrimaryForegroundColor");
+	var borderColor = theme?.GetColor("ButtonPrimaryBorderColor");
+
+	var parms = new Dictionary<string, object>();
+	parms.Add("backgroundColor", backgroundColor);
+	parms.Add("backgroundColorDarken", backgroundColorDarken);
+	parms.Add("foregroundColor", foregroundColor);
+	parms.Add("borderColor", borderColor);
+	parms.Add("align", align);
+	parms.Add("title", title);
+	parms.Add("themeCssName", themeCssName);
+
+	@RenderPartial("Swift_Email/Components/Button.cshtml", link ?? new Dynamicweb.Frontend.LinkViewModel(), parms)
+}
+
+@helper RenderImage()
+{
+	var parms = new Dictionary<string, object>();
+	parms.Add("alt", Model.Item.GetString("ImageAltText"));
+	parms.Add("columns", Model.GridRowColumnCount);
+
+	@RenderPartial("Swift_Email/Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+}
