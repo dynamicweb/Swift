@@ -8,13 +8,15 @@
 
 @if (!string.IsNullOrEmpty(theme))
 {
-	<div class="h-100@(theme)">
+	<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()">
 		@RenderProductList()
 	</div>
 }
 else
 {
-	@RenderProductList()
+	<div class="item_@Model.Item.SystemName.ToLower()">
+		@RenderProductList()
+	</div>
 }
 
 @helper RenderProductList()
@@ -131,7 +133,7 @@ else
 				}
 			}
 
-			<article class="grid gap-2 gap-lg-3 mb-3 @(productTheme)">
+			<article class="grid gap-2 gap-lg-3 mb-3 @(productTheme) product">
 				<a href="@link" class="g-col-12 g-col-lg-8 d-flex text-decoration-none mb-2 mb-lg-0">
 
 					@if (!Model.Item.GetBoolean("HideImage"))
@@ -198,13 +200,16 @@ else
 			</article>
 		}
 
-		<div class="my-3">
+		<div class="my-3" id="LoadMoreButton">
 			<div class="text-center d-flex flex-column gap-3">
 				<div class="opacity-85">@loadedProducts @Translate("out of") @productList.TotalProductsCount @Translate("products")</div>
 				@if (productList.PageCount != 1)
 				{
 					string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "NameForSort";
 					sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
+
+					string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
+					string searchLayout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout") : "";
 
 					<form method="get" action="@url" data-response-target-element="content" class="w-100">
 						@foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
@@ -230,6 +235,11 @@ else
 						<input type="hidden" name="SortBy" value="@sortBySelection" />
 						<input type="hidden" name="RequestType" value="UpdateList" />
 
+						@if (!string.IsNullOrEmpty(searchQuery)) { 
+							<input type="hidden" name="q" value="@searchQuery" />
+							<input type="hidden" name="SearchLayout" value="@searchLayout" />
+						}
+
 						<button class="btn btn-primary" type="button" onclick="swift.ProductList.Update(event)">@Translate("Load more products")</button>
 					</form>
 				}
@@ -247,15 +257,15 @@ else
 			</div>
 		}
 
-} else {
+	} else {
 		if (!Pageview.IsVisualEditorMode) {
-<div class="alert alert-dark m-0">
-	@Translate("We did not find anything matching your search result")
-</div>
-		} else {
-<div class="alert alert-dark m-0" role="alert">
-	<span>@Translate("Product list: The list will be shown here, if any")</span>
-</div>
+			<div class="alert alert-dark m-0">
+				@Translate("We did not find anything matching your search result")
+			</div>
+					} else {
+			<div class="alert alert-dark m-0" role="alert">
+				<span>@Translate("Product list: The list will be shown here, if any")</span>
+			</div>
 		}
 	}
 }
@@ -430,9 +440,11 @@ else
 	hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser ? true : hideAddToCart;
 	bool quantitySelector = !string.IsNullOrEmpty(Model.Item.GetString("QuantitySelector")) ? Model.Item.GetBoolean("QuantitySelector") : false;
 
+	bool isDiscontinued = product.Discontinued;
+	bool IsNeverOutOfStock = product.NeverOutOfstock;
 	string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : "";
-	bool isNeverOutOfStock = product.NeverOutOfstock;
-	disableAddToCart = isNeverOutOfStock ? "" : disableAddToCart;
+	disableAddToCart = isDiscontinued ? "disabled" : disableAddToCart;
+	disableAddToCart = IsNeverOutOfStock ? "" : disableAddToCart;
 
 	if (!hideAddToCart)
 	{
