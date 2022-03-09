@@ -1,20 +1,35 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 
 @{
-	var settings = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page.Parent)?.Item ?? null;
-	var blockId = Model.ID;
 	string blockType = "heading_block";
+
+	var page = Dynamicweb.Services.Pages.GetPage(Pageview.ID);
+	var settings = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page?.Parent).Item;
+	var blockId = Model.ID;
 	var block = Model.Item;
+
+	var emailContentThemeId = settings.GetRawValueString("EmailContentTheme");
+	var emailContentThemeParagraph = emailContentThemeId != null && emailContentThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(emailContentThemeId)) : null;
+	var emailContentTheme = emailContentThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph)?.Item : null;
+
+	var rowId = Pageview.CurrentParagraph.GridRowId;
+	var row = Dynamicweb.Services.Grids.GetGridRowById(rowId);
+	var rowItem = Dynamicweb.Services.Items.GetItem(row.ItemType, row.ItemId);
+	var rowThemeId = Dynamicweb.Core.Converter.ToString(rowItem["ColumnBackground"]);
+	var rowThemeParagraph = rowThemeId != null && rowThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(rowThemeId)) : null;
+	var rowTheme = rowThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph)?.Item : null;
+
 	var blockThemeId = block.GetRawValueString("Theme");
-	var blockThemeParagraph = blockThemeId != null && blockThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Convert.ToInt32(blockThemeId)) : null;
-	var blockTheme = blockThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph)?.Item : null;
+	var blockThemeParagraph = blockThemeId != null && blockThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(blockThemeId)) : null;
+	var blockTheme = blockThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph)?.Item : rowTheme is object ? rowTheme : emailContentTheme;
+
 	string backgroundColor = blockTheme != null ? "background-color: " + blockTheme.GetString("BackgroundColor") + ";" : string.Empty;
-	string foregroundColor = blockTheme != null ? "color: " + blockTheme.GetString("ForegroundColor") + ";" : string.Empty;
+	string foregroundColor = blockTheme != null ? "color:" + blockTheme.GetString("ForegroundColor", "inherit") + ";" : string.Empty;
 	string borderColor = blockTheme != null ? "border-color: " + blockTheme.GetString("BorderColor", "transparent") + ";" : string.Empty;
-	string borders = !string.IsNullOrEmpty(block.GetRawValueString("Borders")) ? block.GetRawValueString("Borders") : string.Empty;
-	string borderThicknes = !string.IsNullOrEmpty(block.GetRawValueString("BorderThicknes")) ? block.GetString("BorderThicknes") + "px;" : string.Empty;
-	string align = block.GetRawValueString("Align", "left");
+	string borders = block.GetRawValueString("Borders", "none");
+	string borderThicknes = block.GetRawValueString("BorderThicknes", "0") + "px;";
 	string borderClass = string.Empty;
+
 	switch (borders)
 	{
 		case "top":
@@ -32,6 +47,7 @@
 	}
 
 	string padding = "padding: " + Model.Item.GetString("Padding", "0") + "px;";
+	string align = block.GetRawValueString("Align", "left");
 }
 
 <table id="@blockId" class="@blockType" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace: 0pt; mso-table-rspace: 0pt; color: inherit; width: 100%;">
@@ -49,7 +65,7 @@
 	string title = block.GetString("Title", string.Empty);
 	string heading = block.GetRawValueString("Heading", "h2");
 	string fontStyle = block.GetRawValueString("FontStyle", "header");
-	string fontSize = !string.IsNullOrEmpty(block.GetRawValueString("FontSize")) ? "font-size:" + block.GetRawValueString("FontSize") + "px;" : string.Empty;
+	string fontSize = !string.IsNullOrEmpty(block.GetRawValueString("FontSize")) ? "font-size:" + block.GetRawValueString("FontSize", "28") + "px;" : string.Empty;
 	string lineHeight = "line-height:" + block.GetRawValueString("LineHeight", "1.5") + ";";
 
 	<@heading class="@(fontStyle)" style="margin: 0px; @(fontSize)@(lineHeight)">
