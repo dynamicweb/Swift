@@ -135,6 +135,9 @@ const Typeahead = function() {
 						var productDetailPage = formElm.getAttribute("data-product-details-page");
 						productDetailPage = elm.getAttribute("data-selected-details-page") != null ? elm.getAttribute("data-selected-details-page") : productDetailPage;
 
+						formElm.querySelector("input[name='SearchLayout']").disabled = true;
+						formElm.querySelector("input[name='q']").disabled = true;
+
 						formElm.setAttribute("action", productDetailPage);
 					} else {
 						var productListPage = formElm.getAttribute("data-product-list-page");
