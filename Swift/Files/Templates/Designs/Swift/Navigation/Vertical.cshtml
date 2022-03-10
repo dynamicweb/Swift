@@ -11,13 +11,13 @@
 
 @if (layoutSetting != "lines")
 {
-	@RenderNodes(Model.Nodes)
+	@RenderNodes(Model.Nodes, false, 1)
 }
 else
 {
 	@* Desktop *@
 	<div class="d-none d-lg-block">
-		@RenderNodes(Model.Nodes)
+		@RenderNodes(Model.Nodes, false, 1)
 	</div>
 
 	@* Mobile *@
@@ -39,12 +39,12 @@ else
 			</div>
 		</div>
 		<div class="collapse hide" id="VerticalNavigation_@paragraphId">
-			@RenderNodes(Model.Nodes)
+			@RenderNodes(Model.Nodes, false, 1)
 		</div>
 	</div>
 }
 
-@helper RenderNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, bool isSubmenu = false)
+@helper RenderNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, bool isSubmenu, int level)
 {
 	string uniqueId = Model.Parameters.ContainsKey("ID") ? "_" + Model.Parameters["ID"].ToString().ToLower() : "";
 	string contentPadding = Model.Parameters.ContainsKey("ContentPadding") ? Model.Parameters["ContentPadding"].ToString().ToLower() : "";
@@ -55,79 +55,84 @@ else
 	int totalNodes = nodes.Count();
 
 
-	<div class="navbar navbar-expand py-0">
-		<ul class="navbar-nav flex-column flex-fill">
-			@foreach (var node in nodes)
-			{
-				var hasChildren = node.Nodes.Count() > 0;
-				string groupId = !string.IsNullOrEmpty(node.GroupId) ? node.GroupId : node.PageId.ToString();
-
-				string linesLayout = layoutSetting == "lines" && isSubmenu == false ? " border-top" : "";
-				linesLayout = layoutSetting == "lines" && isSubmenu == false && nodeCount == (0) ? "" : linesLayout;
-
-				bool hideTexts = Model.Parameters.ContainsKey("HideTexts") ? Convert.ToBoolean(Model.Parameters["HideTexts"].ToString()) : false;
-				bool hideIcons = Model.Parameters.ContainsKey("HideIcons") ? Convert.ToBoolean(Model.Parameters["HideIcons"].ToString()) : false;
-
-				var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
-				string icon = "";
-				if (page.PropertyItem != null)
+	if (level >= 2)
+    {
+		<div class="navbar navbar-expand py-0">
+			<ul class="navbar-nav flex-column flex-fill">
+				@foreach (var node in nodes)
 				{
-					icon = page.PropertyItem["Icon"] != null ? page.PropertyItem["Icon"].ToString() : "";
-				}
+					var hasChildren = node.Nodes.Count() > 0;
+					string groupId = !string.IsNullOrEmpty(node.GroupId) ? node.GroupId : node.PageId.ToString();
 
-				<li class="nav-item@(linesLayout)@(node.IsActive ? " active" : "")">
-					<div class="d-flex align-items-center">
-						<a class="nav-link flex-fill text-reset@(contentPadding)@(small)" @(node.IsActive ? "aria-current='page'" : "") href="@node.Link">
-							@if (!hideIcons)
+					string linesLayout = layoutSetting == "lines" && isSubmenu == false ? " border-top" : "";
+					linesLayout = layoutSetting == "lines" && isSubmenu == false && nodeCount == (0) ? "" : linesLayout;
+
+					bool hideTexts = Model.Parameters.ContainsKey("HideTexts") ? Convert.ToBoolean(Model.Parameters["HideTexts"].ToString()) : false;
+					bool hideIcons = Model.Parameters.ContainsKey("HideIcons") ? Convert.ToBoolean(Model.Parameters["HideIcons"].ToString()) : false;
+
+					var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
+					string icon = "";
+					if (page.PropertyItem != null)
+					{
+						icon = page.PropertyItem["Icon"] != null ? page.PropertyItem["Icon"].ToString() : "";
+					}
+
+					<li class="nav-item@(linesLayout)@(node.IsActive ? " active" : "")">
+						<div class="d-flex align-items-center">
+							<a class="nav-link flex-fill text-reset@(contentPadding)@(small)" @(node.IsActive ? "aria-current='page'" : "") href="@node.Link">
+								@if (!hideIcons)
+								{
+									@RenderIcon(icon)
+								}
+								@if (!hideTexts)
+								{
+									<span class="@(node.IsActive ? "fw-bold" : "")">@node.Name</span>
+								}
+							</a>
+							@if (hasChildren)
 							{
-								@RenderIcon(icon)
+								string collapseCSS = node.InPath ? "" : "collapsed ";
+								string collapseIconStyle = contentPadding == " px-0 py-2" ? collapseIconStyle = "style=" + "-webkit-mask-position:right;mask-position:right;" : "";
+								<div class="@(collapseCSS)m-0 collapse-icon@(small)@(contentPadding)" @collapseIconStyle data-bs-toggle="collapse" data-bs-target="#NavigationGroup_@(groupId)_@(uniqueId)" role="button" aria-expanded="true" aria-controls="NavigationGroup_@(groupId)_@(uniqueId)"></div>
 							}
-							@if (!hideTexts)
-							{
-								<span class="@(node.IsActive ? "fw-bold" : "")">@node.Name</span>
-							}
-						</a>
+
+						</div>
 						@if (hasChildren)
 						{
-							string collapseCSS = node.InPath ? "" : "collapsed ";
-							string collapseIconStyle = contentPadding == " px-0 py-2" ? collapseIconStyle = "style=" + "-webkit-mask-position:right;mask-position:right;" : "";
-							<div class="@(collapseCSS)m-0 collapse-icon@(small)@(contentPadding)" @collapseIconStyle data-bs-toggle="collapse" data-bs-target="#NavigationGroup_@(groupId)_@(uniqueId)" role="button" aria-expanded="true" aria-controls="NavigationGroup_@(groupId)_@(uniqueId)"></div>
+							string collapsed = node.InPath ? "show" : "";
+
+							<div class="ms-3 collapse @collapsed" id="NavigationGroup_@(groupId)_@(uniqueId)">
+								@RenderNodes(node.Nodes, true, level+1)
+							</div>
 						}
+					</li>
 
-					</div>
-					@if (hasChildren)
-					{
-						string collapsed = node.InPath ? "show" : "";
-
-						<div class="ms-3 collapse @collapsed" id="NavigationGroup_@(groupId)_@(uniqueId)">
-							@RenderNodes(node.Nodes, true)
-						</div>
-					}
-				</li>
-
-				nodeCount++;
-			}
-			@if (ShowSignOutLink)
-			{
-				if (Pageview.User != null)
+					nodeCount++;
+				}
+				@if (ShowSignOutLink)
 				{
-					string linesLayout = layoutSetting == "lines" ? " border-top" : "";
-					string link = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
-
-					if (Pageview.User.CurrentSecondaryUser != null)
+					if (Pageview.User != null)
 					{
+						string linesLayout = layoutSetting == "lines" ? " border-top" : "";
+						string link = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
+
+						if (Pageview.User.CurrentSecondaryUser != null)
+						{
+							<li class="nav-item@(linesLayout)">
+								<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="nav-link text-reset@(contentPadding)@(small)">@Translate("Sign out as a customer")</a>
+							</li>
+						}
 						<li class="nav-item@(linesLayout)">
-							<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="nav-link text-reset@(contentPadding)@(small)">@Translate("Sign out as a customer")</a>
+							<a href="@link" class="nav-link text-reset@(contentPadding)@(small)">@Translate("Sign out")</a>
 						</li>
 					}
-					<li class="nav-item@(linesLayout)">
-						<a href="@link" class="nav-link text-reset@(contentPadding)@(small)">@Translate("Sign out")</a>
-					</li>
 				}
-			}
 
-		</ul>
-	</div>
+			</ul>
+		</div>
+    } else { 
+		@RenderNodes(nodes, true, level + 1)
+	}
 }
 
 @helper RenderIcon(string icon)
