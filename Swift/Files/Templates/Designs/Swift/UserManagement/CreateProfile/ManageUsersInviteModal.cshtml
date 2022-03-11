@@ -37,42 +37,98 @@
 <div class="modal fade" id="inviteUserModal" tabindex="-1" aria-labelledby="inviteUserModalLabel" aria-hidden="true">
 	<div class="modal-dialog modal-dialog-centered">
 		<div class="modal-content">
-			@GetString("UserManagement:User.FormStart")
-			<div class="modal-header">
-				<h5 class="modal-title" id="inviteUserModalLabel">@Translate("Invite user")</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-			</div>
-			<div class="modal-body">
-				<p>@Translate("An email will be sent to the user. The user must accept the request to complete the sign-up")</p>
+			<form id="InviteUserForm" method="post">
+				@GetString("UserManagement:User.FormHidden")
 
-				<input type="hidden" name="UserManagementForm" value="1">
-				<input type="hidden" name="UserManagement_Form_CustomerNumber" value="@Pageview.User.CustomerNumber" />
-				<input type="hidden" name="UserManagement_Form_NewPassword" value="@tempPassword" />
-				<input type="hidden" name="UserManagement_Form_NewPasswordConfirm" value="@tempPassword" />
-
-				<div class="form-floating mb-3">
-					<input type="text" class="form-control @invalidName" placeholder="@Translate("Name")" name="UserManagement_Form_Name" id="UserManagement_Form_Name" value="@GetString("UserManagement:User.Name")" required />
-					<div class="invalid-feedback">@GetString("UserManagement:User.Name.Input.Error")</div>
-					<label for="UserManagement_Form_Name" class="form-label">@Translate("Name")</label>
+				<div class="modal-header">
+					<h5 class="modal-title" id="inviteUserModalLabel">@Translate("Invite user")</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 				</div>
+				<div class="modal-body">
+					<p>@Translate("An email will be sent to the user. The user must accept the request to complete the sign-up")</p>
 
-				<div class="form-floating mb-4">
-					<input type="email" class="form-control @invalidEmail" placeholder="@Translate("Email")" name="UserManagement_Form_Email" id="UserManagement_Form_Email" value="@GetString("UserManagement:User.Email")" required />
-					<div class="invalid-feedback">@GetString("UserManagement:User.Email.Input.Error")</div>
-					<label for="UserManagement_Form_Email" class="form-label">@Translate("Email")</label>
+					<input type="hidden" name="UserManagementForm" value="1">
+					<input type="hidden" name="UserManagement_Form_CustomerNumber" value="@Pageview.User.CustomerNumber" />
+					<input type="hidden" name="UserManagement_Form_NewPassword" value="@tempPassword" />
+					<input type="hidden" name="UserManagement_Form_NewPasswordConfirm" value="@tempPassword" />
+
+					<div class="form-floating mb-3">
+						<input type="text" class="form-control @invalidName" placeholder="@Translate("Name")" name="UserManagement_Form_Name" id="UserManagement_Form_Name" value="@GetString("UserManagement:User.Name")" required />
+						<div class="invalid-feedback">@GetString("UserManagement:User.Name.Input.Error")</div>
+						<label for="UserManagement_Form_Name" class="form-label">@Translate("Name")</label>
+					</div>
+
+					<div class="form-floating mb-4">
+						<input type="email" class="form-control @invalidEmail" placeholder="@Translate("Email")" name="UserManagement_Form_Email" id="UserManagement_Form_Email" value="@GetString("UserManagement:User.Email")" required />
+						<div class="invalid-feedback">@GetString("UserManagement:User.Email.Input.Error")</div>
+						<label for="UserManagement_Form_Email" class="form-label">@Translate("Email")</label>
+					</div>
+
 				</div>
-
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Translate("Close")</button>
-				<button type="submit" class="btn btn-primary" id="InviteUserButton">@Translate("Invite user")</button>
-			</div>
-			@GetString("UserManagement:User.FormEnd")
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Translate("Close")</button>
+					<button type="button" onclick="InviteUser();" class="btn btn-primary" id="InviteUserButton" data-bs-dismiss="modal">@Translate("Invite user")</button>
+				</div>
+			</form>
 		</div>
 	</div>
 </div>
 
-@if (Pageview.IsVisualEditorMode) {
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+	<div id="UserInviteNotificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+		<div class="toast-header">
+			<strong class="me-auto" id="UserInviteNotificationToastLabel">@Translate("User invitation sent")</strong>
+			<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+		</div>
+	</div>
+</div>
+
+@{ 
+	string secretCode = GetString("UserManagement:User.FormSubmit");
+	int startIndex = secretCode.IndexOf("['FormCH1_h'].value='") + "['FormCH1_h'].value='".Length;
+	secretCode = secretCode.Substring(startIndex, 32);
+}
+
+<script>
+	async function InviteUser() {
+		var notificationToast = document.querySelector("#UserInviteNotificationToast");
+
+		//Required to prevent spam
+		document.querySelector('input[name="FormCH1_h"]').value = '@secretCode';
+		document.querySelector('input[name="_sys_to_email"]').value = '';
+
+		var form = document.querySelector("#InviteUserForm");
+
+		let formData = new FormData(form);
+		var fetchOptions = {
+			method: 'POST',
+			body: formData
+		};
+
+		let response = await fetch(form.action, fetchOptions);
+
+		if (response.ok) {
+			if (notificationToast) {
+				document.querySelector("#UserInviteNotificationToastLabel").innerHTML = '@Translate("User invitation sent")';
+				var toast = new bootstrap.Toast(notificationToast);
+				toast.show();
+			}
+
+			return false;
+		} else {
+			if (notificationToast) {
+				document.querySelector("#UserInviteNotificationToastLabel").innerHTML = '@Translate("Something went wrong")';
+				var toast = new bootstrap.Toast(notificationToast);
+				toast.show();
+			}
+
+			return false;
+		}
+	}
+</script>
+
+@if (Pageview.IsVisualEditorMode)
+{
 	<div class="alert alert-info text-center mt-3" role="alert">
 		@Translate("Invite user modal")
 	</div>
