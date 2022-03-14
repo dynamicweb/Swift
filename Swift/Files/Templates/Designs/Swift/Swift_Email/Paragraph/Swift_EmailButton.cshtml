@@ -1,4 +1,5 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
 	string blockType = "button_block";
@@ -46,25 +47,74 @@
 			break;
 	}
 
-	string link = Model.Item?.GetString("Link") ?? "";
+	string title = block.GetString("Title", string.Empty);
 	string padding = "padding:" + block.GetRawValueString("Padding", "0") + "px;";
 	string align = block.GetRawValueString("Align", "left");
+	var link = new Dynamicweb.Frontend.LinkViewModel();
+	string linkType = block.GetRawValueString("LinkType", "page");
+
+	if (linkType == "page" && block.GetLink("PageLink") != null)
+	{
+		link = block.GetLink("PageLink");
+	}
+
+	if (linkType == "product-group")
+	{
+		IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
+		IList<string> groupIds = new List<string> { };
+
+		if (selectedGroups != null)
+		{
+			foreach (var fromGroup in selectedGroups)
+			{
+				groupIds.Add(fromGroup.Id);
+			}
+		}
+
+		link = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds)
+		};
+	}
+
+	if (linkType == "product")
+	{
+		ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink");
+		IList<string> productIds = new List<string> { };
+
+		if (products != null)
+		{
+			foreach (var product in products.Products)
+			{
+				productIds.Add(product.Id);
+			}
+		}
+
+		string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
+		string pageTag = productIds.Count == 1 ? "ProductDetailPage" : "Shop";
+		link = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds)
+		};
+	}
 }
 
 <table id="@blockId" class="@blockType" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;color:inherit;width:100%;">
 	<tbody>
 		<tr>
-			<td style="mso-line-height-rule:exactly;mso-text-raise:11px;mso-table-lspace:0pt;mso-table-rspace:0pt;font-weight:400;text-align:@align;@(backgroundColor)@(foregroundColor)@(padding)@(borderClass)@(borderColor)" width="100%">	
-				@RenderButton(blockTheme, align)
+			<td style="mso-line-height-rule:exactly;mso-text-raise:11px;mso-table-lspace:0pt;mso-table-rspace:0pt;font-weight:400;text-align:@align;@(backgroundColor)@(foregroundColor)@(padding)@(borderClass)@(borderColor)" width="100%">
+				@if (link is object)
+				{
+					@RenderButton(link, blockTheme, align, title)
+				}
 			</td>
 		</tr>
 	</tbody>
 </table>
 
-@helper RenderButton(Dynamicweb.Frontend.ItemViewModel theme, string align)
+@helper RenderButton(Dynamicweb.Frontend.LinkViewModel link, Dynamicweb.Frontend.ItemViewModel theme, string align, string title)
+
 {
-	var title = Model.Item.GetString("Title");
-	var link = Model.Item.GetLink("Link");
 	var backgroundColor = theme?.GetColor("ButtonPrimaryBackgroundColor");
 	var foregroundColor = theme?.GetColor("ButtonPrimaryForegroundColor");
 	var borderColor = theme?.GetColor("ButtonPrimaryBorderColor");
@@ -77,5 +127,4 @@
 	parms.Add("title", title);
 
 	@RenderPartial("Swift_Email/Components/Button.cshtml", link ?? new Dynamicweb.Frontend.LinkViewModel(), parms)
-
 }

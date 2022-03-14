@@ -1,8 +1,9 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
 	string blockType = "article_block";
-	
+
 	var page = Dynamicweb.Services.Pages.GetPage(Pageview.ID);
 	var settings = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page?.Parent).Item;
 	var blockId = Model.ID;
@@ -49,40 +50,86 @@
 	string title = block.GetString("Title", string.Empty);
 	string padding = "padding:" + block.GetRawValueString("Padding", "0") + "px;";
 	string align = block.GetRawValueString("Align", "left");
-	string text = Model.Item.GetString("Text", string.Empty);
+	string text = block.GetString("Text", string.Empty);
 	string lineHeight = "line-height:" + block.GetRawValueString("LineHeight", "1.5") + ";";
-	var link = Model.Item.GetLink("Link");
+	string linkLabel = block.GetString("LinkLabel", title);
+	var link = new Dynamicweb.Frontend.LinkViewModel();
+	string linkType = block.GetRawValueString("LinkType", "page");
+
+	if (linkType == "page" && block.GetLink("PageLink") != null)
+	{
+		link = block.GetLink("PageLink");
+	}
+
+	if (linkType == "product-group")
+	{
+		IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
+		IList<string> groupIds = new List<string> { };
+
+		if (selectedGroups != null)
+		{
+			foreach (var fromGroup in selectedGroups)
+			{
+				groupIds.Add(fromGroup.Id);
+			}
+		}
+
+		link = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds)
+		};
+	}
+
+	if (linkType == "product")
+	{
+		ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink");
+		IList<string> productIds = new List<string> { };
+
+		if (products != null)
+		{
+			foreach (var product in products.Products)
+			{
+				productIds.Add(product.Id);
+			}
+		}
+
+		string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
+		string pageTag = productIds.Count == 1 ? "ProductDetailPage" : "Shop";
+		link = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds)
+		};
+	}
+
 }
 
 <table id="@blockId" class="@blockType" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;color:inherit;width:100%;">
 	<tbody>
 		<tr>
-			<td style="mso-line-height-rule:exactly;mso-text-raise:11px;mso-table-lspace:0pt;mso-table-rspace:0pt;font-weight:400;font-family:inherit;text-align:@align; @(backgroundColor)@(foregroundColor)@(padding)@(borderClass)@(borderColor) @(lineHeight)" width="100%">
+			<td style="mso-line-height-rule:exactly;mso-text-raise:11px;mso-table-lspace:0pt;mso-table-rspace:0pt;font-weight:400;font-family:inherit;text-align:@align;@(backgroundColor)@(foregroundColor)@(padding)@(borderClass)@(borderColor) @(lineHeight)" width="100%">
 				@RenderImage()
 				@if (!string.IsNullOrEmpty(title)) {
-					@RenderHeading(block, title)
+					@RenderHeading(block, title, lineHeight)
 				}
 				@if (!string.IsNullOrEmpty(text))
 				{
-					@RenderText()
+					@RenderText(text,lineHeight)
 				}
-				@if(link != null)
+				@if(link is object)
 				{
-					@RenderButton(link, blockTheme, align)
+					@RenderButton(link, blockTheme, align, linkLabel)
 				}
 			</td>
 		</tr>
 	</tbody>
 </table>
 
-@helper RenderHeading(Dynamicweb.Frontend.ItemViewModel block, string title)
+@helper RenderHeading(Dynamicweb.Frontend.ItemViewModel block, string title, string lineHeight)
 {
 	string heading = block.GetRawValueString("Heading", "h2");
 	string fontStyle = block.GetRawValueString("FontStyle", "header");
 	string fontSize = !string.IsNullOrEmpty(block.GetRawValueString("FontSize")) ? "font-size:" + block.GetRawValueString("FontSize") + "px;" : string.Empty;
-	string lineHeight = "line-height:" + block.GetRawValueString("LineHeight", "1.5") + ";";
-
-	string startTag = $"<{heading} class=\"{fontStyle}\" style=\"mso-line-height-rule: exactly; mso-text-raise: 11px; vertical-align: middle; margin-top: 0; margin-bottom: 8px; font-family:sans-serif;{fontSize}{lineHeight}\">";
+	string startTag = $"<{heading} class=\"{fontStyle}\" style=\"mso-line-height-rule:exactly;mso-text-raise:11px;vertical-align:middle;margin-top:16px;margin-bottom:16px;font-family:sans-serif;{fontSize}{lineHeight}\">";
 	string endTag = $"</{heading}>";
 
 	@startTag
@@ -90,33 +137,26 @@
 	@endTag
 }
 
-@helper RenderText()
+@helper RenderText(string text, string lineHeight)
 {
-	string text = Model.Item.GetString("Text", string.Empty);
-
-	<div style="mso-line-height-rule: exactly;mso-text-raise: 11px;vertical-align: middle; margin-top:0; margin-bottom:8px;">
+	<div style="mso-line-height-rule:exactly;mso-text-raise:11px;vertical-align:middle;margin-top:0;margin-bottom:16px;font-family:sans-serif;@lineHeight">
 		@text
 	</div>
 }
 
-@helper RenderButton(Dynamicweb.Frontend.LinkViewModel link, Dynamicweb.Frontend.ItemViewModel theme, string align)
+@helper RenderButton(Dynamicweb.Frontend.LinkViewModel link, Dynamicweb.Frontend.ItemViewModel theme, string align, string title)
 
 {
-	var title = Model.Item.GetString("Title");
-	var themeCssName = theme?.GetString("CssClassName",string.Empty);
 	var backgroundColor = theme?.GetColor("ButtonPrimaryBackgroundColor");
-	var backgroundColorDarken = backgroundColor?.Darken(10);
 	var foregroundColor = theme?.GetColor("ButtonPrimaryForegroundColor");
 	var borderColor = theme?.GetColor("ButtonPrimaryBorderColor");
 
 	var parms = new Dictionary<string, object>();
 	parms.Add("backgroundColor", backgroundColor);
-	parms.Add("backgroundColorDarken", backgroundColorDarken);
 	parms.Add("foregroundColor", foregroundColor);
 	parms.Add("borderColor", borderColor);
 	parms.Add("align", align);
 	parms.Add("title", title);
-	parms.Add("themeCssName", themeCssName);
 
 	@RenderPartial("Swift_Email/Components/Button.cshtml", link ?? new Dynamicweb.Frontend.LinkViewModel(), parms)
 }
