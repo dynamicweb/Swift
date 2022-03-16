@@ -1,5 +1,7 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 @using Dynamicweb.Data
+@using System.Diagnostics
+@using System.Threading.Tasks
 
 @{
 	string pageTitle = Pageview.Page.GetDisplayName();
@@ -39,20 +41,40 @@
 	}
 
 	string action = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("Action")) ? Dynamicweb.Context.Current.Request.Form.Get("Action") : "";
+	string confirmation = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Confirmation")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Confirmation") : "";
 
 	if (action == "DeleteUser")
 	{
 		int userId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("UserId")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.Form.Get("UserId")) : 0;
 		Dynamicweb.Security.UserManagement.User newUser = Dynamicweb.Security.UserManagement.User.GetUserByID(userId);
 		newUser.Delete();
+
+		string repository = "Secondary users";
+		string indexName = "Users.index";
+		string buildName = "Users";
+
+		Dynamicweb.Indexing.IndexHelper.BuildIndexInstances(repository, indexName, buildName);
+
+		var indexService = Dynamicweb.Extensibility.ServiceLocator.Current.GetInstance<Dynamicweb.Indexing.IIndexService>();
+		var index = indexService.LoadIndex(repository, indexName);
+		Stopwatch stopwatch = new Stopwatch();
+		stopwatch.Start();
+
+		Task.WaitAll(Task.Delay(250));
+
+		while (indexService.GetActiveBuildTasks(index).Any() && stopwatch.ElapsedMilliseconds < 5000)
+		{
+			Task.WaitAll(Task.Delay(1000));
+		}
+		stopwatch.Stop();
+
+		Dynamicweb.Context.Current.Response.Redirect("/Default.aspx?ID=" + Pageview.Page.ID + "&LayoutTemplate=Swift_PageClean.cshtml&Confirmation=UserDeleted");
 	}
 
 	<div class="modal fade" id="inviteUserModal" tabindex="-1" aria-labelledby="inviteUserModalLabel" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered">
 			<div class="modal-content">
 				<form id="InviteUserForm" method="post" action="/Default.aspx?ID=@(Pageview.Page.ID)">
-					<input type="hidden" name="redirect" value="false" />
-
 					@GetString("UserManagement:User.FormHidden")
 
 					<div class="modal-header">
@@ -102,7 +124,6 @@
 		@secretJavascript
 
 		async function InviteUser() {
-			var notificationToast = document.querySelector("#UserInviteNotificationToast");
 			var form = document.querySelector("#InviteUserForm");
 
 			//Required to prevent spam (Calls the secret js method)
@@ -114,7 +135,7 @@
 				body: formData
 			};
 
-			let response = await fetch(form.action + "&LayoutTemplate=Swift_PageClean.cshtml", fetchOptions);
+			let response = await fetch(form.action + "&LayoutTemplate=Swift_PageNoLayout.cshtml", fetchOptions);
 
 			if (response.ok) {
 				let html = await response.text().then(function (text) {
@@ -122,19 +143,10 @@
 				});
 
 				document.querySelector('#content').innerHTML = html;
-
-				if (notificationToast) {
-					document.querySelector("#UserInviteNotificationToastLabel").innerHTML = '@Translate("An invite has been sent to")';
-						document.querySelector("#UserInviteNotificationToastLabel").innerHTML += " <b>" + document.querySelector('#UserManagement_Form_Email').value + "</b>";
-					var toast = new bootstrap.Toast(notificationToast);
-					toast.show();
-
-					document.querySelector('#UserManagement_Form_Name').value = '';
-					document.querySelector('#UserManagement_Form_Email').value = '';
-				}
-
 				return false;
 			} else {
+				var notificationToast = document.querySelector("#UserInviteNotificationToast");
+
 				if (notificationToast) {
 					document.querySelector("#UserInviteNotificationToastLabel").innerHTML = '@Translate("Something went wrong")';
 					var toast = new bootstrap.Toast(notificationToast);
@@ -151,5 +163,7 @@
 		<div class="alert alert-info text-center mt-3" role="alert">
 			@Translate("Invite user modal")
 		</div>
-	}
+	} 
 }
+
+
