@@ -1,5 +1,6 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
 
 @{
 	ProductViewModel product = new ProductViewModel();
@@ -7,7 +8,9 @@
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
-	} else if (Pageview.Item["DummyProduct"] != null) {
+	}
+	else if (Pageview.Item["DummyProduct"] != null)
+	{
 		ProductViewModelSettings productSetting = new ProductViewModelSettings
 		{
 			LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
@@ -19,14 +22,19 @@
 		string dummyProductId = "";
 		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
 		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
-		if (productList.Products != null) {
+		if (productList.Products != null)
+		{
 			foreach (var p in productList.Products) { dummyProductId = p.Id; }
 			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
 			product = dummyProduct;
-		} else {
+		}
+		else
+		{
 			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 		}
-	} else if (Pageview.Item["DummyProduct"] == null) {
+	}
+	else if (Pageview.Item["DummyProduct"] == null)
+	{
 		ProductViewModelSettings productSetting = new ProductViewModelSettings
 		{
 			LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
@@ -63,9 +71,31 @@
 	badgeParms.Add("campaignBadgesValues", Model.Item.GetRawValueString("CampaignBadges"));
 
 	string badgeSize = Model.Item.GetRawValueString("BadgeSize", "fs-2");
+
+	bool showFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("ShowAddToFavorites")) ? Model.Item.GetBoolean("ShowAddToFavorites") : false;
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+
+	var favoriteParameters = new Dictionary<string, object>();
+	if (!anonymousUser && showFavoritesSelector)
+	{
+		int defaultFavoriteListId = 0;
+
+		IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
+		if (favoreiteLists.Count() == 1)
+		{
+			foreach (FavoriteList list in favoreiteLists)
+			{
+				defaultFavoriteListId = list.ListId;
+			}
+		}
+
+		favoriteParameters.Add("ListId", defaultFavoriteListId);
+	}
 }
 
-@if (product.Id != null) {
+@if (product.Id != null)
+{
 	string imageId = "ProductImage_" + product.Id + product.VariantId;
 
 	bool saleBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("SaleBadgeDesign")) && Model.Item.GetRawValueString("SaleBadgeDesign") != "none" ? true : false;
@@ -75,7 +105,8 @@
 	showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
 	showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
 
-	if (width != "auto") {
+	if (width != "auto")
+	{
 		<style>
 			@@media (min-width: 768px) {
 				.product-image {
@@ -85,32 +116,42 @@
 		</style>
 	}
 
-	if (!string.IsNullOrEmpty(imagePath)) {
+	if (!string.IsNullOrEmpty(imagePath))
+	{
 		<div class="w-100 position-relative item_@Model.Item.SystemName.ToLower()">
 			<div class="ratio" style="@(ratioVariable)">
 				<div class="d-flex justify-content-center align-items-center">
-					<img 
-						id="@imageId"
-						srcset="
+					<img id="@imageId"
+						 srcset="
 							@imagePathXs @(smallImageSize)w,
 							@imagePathS  @(largeImageSize)w"
-						sizes="(min-width: 992px) 33vw, 50vw"
-						src="@imagePathFallBack"
-						loading="lazy"
-						decoding="async"
-						class="h-100 w-100 product-image"
-						style="object-fit: contain"
-						alt="@product.Name">
+						 sizes="(min-width: 992px) 33vw, 50vw"
+						 src="@imagePathFallBack"
+						 loading="lazy"
+						 decoding="async"
+						 class="h-100 w-100 product-image"
+						 style="object-fit: contain"
+						 alt="@product.Name">
 				</div>
 			</div>
 
-			@if (showBadges) { 
+			@if (showBadges)
+			{
 				<div class="position-absolute top-0 left-0 p-2 p-lg-3 ps-0 ps-lg-0 @badgeSize">
 					@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
 				</div>
 			}
+
+			@if (!anonymousUser && showFavoritesSelector && product.VariantInfo.VariantInfo == null)
+			{
+				<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
+					@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+				</div>
+			}
 		</div>
 	}
-} else if (Pageview.IsVisualEditorMode) { 
+}
+else if (Pageview.IsVisualEditorMode)
+{
 	<div class="alert alert-dark m-0">@Translate("No products available")</div>
 }
