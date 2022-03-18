@@ -1,26 +1,60 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.FileViewModel>
 
+@functions { private static double GetImageHeight(string imageRatio, double imageWidth)
+	{
+		string[] ratioValues = imageRatio.Split('-');
+		double ratio = ratioValues.Length == 2 ? Dynamicweb.Core.Converter.ToDouble(ratioValues[1]) / Dynamicweb.Core.Converter.ToDouble(ratioValues[0]) : 1;
+		return imageWidth * ratio;
+	} }
+
 @if (!string.IsNullOrEmpty(Model.Path))
 {
 	string imagePath = Model?.Path ?? "";
 	imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
 	int columnCount = GetViewParameterInt32("columns");
+	int columnWidth = 640;
 	int padding = GetViewParameterInt32("padding");
+	string ratio = GetViewParameterString("imageRatio");
+	string backgroundColor = GetViewParameterString("backgroundColor");
+	string imageHeight = string.Empty;
 
 	var imageWidth = 640 - (padding * 2);
+	columnWidth = imageWidth / columnCount;
 
-	if (columnCount == 2)
+	string image = $"/Admin/Public/GetImage.ashx?width={imageWidth}";
+	string crop = "7";
+
+	if (ratio != "original")
 	{
-		imageWidth = (imageWidth - (padding * 2)) / 2;
-	}
-	else if (columnCount == 3)
-	{
-		imageWidth = (imageWidth - (padding * 2)) / 3;
+		if (!string.IsNullOrEmpty(ratio))
+		{
+			imageHeight = $"height='{GetImageHeight(ratio, imageWidth)}'";
+			image += $"&height={GetImageHeight(ratio, imageWidth)}&fillcanvas=true";
+		}
 	}
 
-	string image = $"/Admin/Public/GetImage.ashx?image={imagePath}&width={imageWidth}&format=webp";
+	image += $"&crop={crop}&image={imagePath}&quality=100&format=webp";
+
 	var cssClass = GetViewParameter("cssClass");
 	string alt = GetViewParameterString("alt");
 
-	<img src="@image" class="@cssClass" style="border:0;display:block;height:auto;max-width:100%;" border="0" alt="@alt"/>
+	@*<img src="@image" class="@cssClass" style="border:0;margin:0;outline:0;padding:0;max-width:@imageWidth;" border="0" alt="@alt" @imageHeight width="@(imageWidth)" />*@
+	
+	<!--[if mso]>
+	<table width="@(columnWidth)" border="0" cellpadding="0" cellspacing="0" role="presentation">
+		<tr style="border:0;margin:0;outline:0;padding:0;">
+			<td style="border:0;margin:0;outline:0;padding:0;">
+			<![endif]-->
+	<table width="100%" style="max-width:@(columnWidth)px;" border="0" cellpadding="0" cellspacing="0" role="presentation">
+		<tr style="border:0;margin:0;outline:0;padding:0;">
+			<td style="border:0;margin:0;outline:0;padding:0;line-height:0;">
+				<img src="@image" class="@cssClass" style="border:0;margin:0;outline:0;padding:0;width:100%;" border="0" alt="@alt" width="100%" />
+			</td>
+		</tr>
+	</table>
+	<!--[if mso]>
+			</td>
+		</tr>
+		</table>
+	<![endif]-->
 }

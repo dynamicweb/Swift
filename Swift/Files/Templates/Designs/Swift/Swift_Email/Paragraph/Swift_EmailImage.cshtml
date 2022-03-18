@@ -2,9 +2,28 @@
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
-	var blockId = Model.ID;
 	string blockType = "image_block";
+
+	var page = Dynamicweb.Services.Pages.GetPage(Pageview.ID);
+	var settings = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page?.Parent).Item;
+	var blockId = Model.ID;
 	var block = Model.Item;
+
+	var emailContentThemeId = settings.GetRawValueString("EmailContentTheme");
+	var emailContentThemeParagraph = emailContentThemeId != null && emailContentThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(emailContentThemeId)) : null;
+	var emailContentTheme = emailContentThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph)?.Item : null;
+
+	var rowId = Pageview.CurrentParagraph.GridRowId;
+	var row = Dynamicweb.Services.Grids.GetGridRowById(rowId);
+	var rowItem = Dynamicweb.Services.Items.GetItem(row.ItemType, row.ItemId);
+	var rowThemeId = Dynamicweb.Core.Converter.ToString(rowItem["ColumnBackground"]);
+	var rowThemeParagraph = rowThemeId != null && rowThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(rowThemeId)) : null;
+	var rowTheme = rowThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph)?.Item : null;
+
+	var blockThemeId = block.GetRawValueString("Theme");
+	var blockThemeParagraph = blockThemeId != null && blockThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(blockThemeId)) : null;
+	var blockTheme = blockThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph)?.Item : rowTheme is object ? rowTheme : emailContentTheme;
+
 	string padding = block.GetRawValueString("Padding", "0");
 	var link = new Dynamicweb.Frontend.LinkViewModel();
 	string linkType = block.GetRawValueString("LinkType", "page");
@@ -55,20 +74,20 @@
 	}
 }
 
-<table id="@blockId" class="@blockType" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;color:inherit;width:100%;">
+<table id="@blockId" class="@blockType" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;border:0;margin:0;outline:0;padding:0;color:inherit;width:100%;">
 	<tbody>
-		<tr>
-			<td class="column" style="mso-table-lspace:0pt;mso-table-rspace:0pt;text-align:left;padding:@(padding)px;vertical-align:top;border:0px;" width="100%">
+		<tr style="border:0;margin:0;outline:0;padding:0;">
+			<td class="column" style="mso-table-lspace:0pt;mso-table-rspace:0pt;text-align:left;border:0;margin:0;outline:0;padding:@(padding)px;vertical-align:top;" width="100%">
 				<div align="center">
 					@if (link is object)
 					{
 						<a href="@link" target="_blank">
-							@RenderImage(padding)
+							@RenderImage(padding, blockTheme)
 						</a>
 					}
 					else
 					{
-						@RenderImage(padding)
+						@RenderImage(padding, blockTheme)
 					}
 				</div>
 			</td>
@@ -76,12 +95,16 @@
 	</tbody>
 </table>
 
-@helper RenderImage(string padding)
+@helper RenderImage(string padding, Dynamicweb.Frontend.ItemViewModel theme)
 {
+	var backgroundColor = theme?.GetColor("BackgroundColor").ToString().Replace("#",string.Empty);
+	var imageRatio = Model.Item.GetRawValueString("ImageAspectRatio", "4-3").ToLower();
 	var parms = new Dictionary<string, object>();
 	parms.Add("alt", Model.Item.GetString("ImageAltText"));
 	parms.Add("columns", Model.GridRowColumnCount);
 	parms.Add("padding", padding);
+	parms.Add("imageRatio", imageRatio);
+	parms.Add("backgroundColor", backgroundColor);
 
 	@RenderPartial("Swift_Email/Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
 }
