@@ -84,7 +84,8 @@ const Typeahead = function() {
 
 		getSuggestions: async function (searchField) {
 			var resultsPageId = searchField.closest(".js-suggest-form").getAttribute("data-search-results-page");
-			var searchUrl = "/Default.aspx?ID=" + resultsPageId + "&feed=true&redirect=false&eq=" + encodeURIComponent(searchField.value.toLowerCase());
+			var defaultDetailsPageId = searchField.closest(".js-suggest-form").getAttribute("data-product-details-page-id");
+			var searchUrl = "/Default.aspx?ID=" + resultsPageId + "&defaultpdpId=" + defaultDetailsPageId + "&feed=true&redirect=false&eq=" + encodeURIComponent(searchField.value.toLowerCase());
 			let response = await fetch(searchUrl);
 
 			if (!response.ok) {
@@ -128,9 +129,7 @@ const Typeahead = function() {
 				var parm = formElm.querySelector(".js-type-ahead-parameter");
 
 				if (elm.getAttribute("data-param") && elm.getAttribute("data-paramvalue")) {
-					parm.setAttribute("name", elm.getAttribute("data-param"));
-					parm.setAttribute("value", elm.getAttribute("data-paramvalue"));
-
+					
 					if (elm.getAttribute("data-param").includes("ProductId")) {
 						var productDetailPage = formElm.getAttribute("data-product-details-page");
 						productDetailPage = elm.getAttribute("data-selected-details-page") != null ? elm.getAttribute("data-selected-details-page") : productDetailPage;
@@ -140,6 +139,9 @@ const Typeahead = function() {
 
 						formElm.setAttribute("action", productDetailPage);
 					} else {
+						parm.setAttribute("name", elm.getAttribute("data-param"));
+						parm.setAttribute("value", elm.getAttribute("data-paramvalue"));
+
 						var productListPage = formElm.getAttribute("data-product-list-page");
 						formElm.setAttribute("action", productListPage);
 					}
