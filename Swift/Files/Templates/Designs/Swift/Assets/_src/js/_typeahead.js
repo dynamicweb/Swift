@@ -136,7 +136,9 @@ const Typeahead = function() {
 
 						formElm.querySelector("input[name='SearchLayout']").disabled = true;
 						formElm.querySelector("input[name='q']").disabled = true;
+						formElm.querySelector(".js-type-ahead-parameter").disabled = true;
 
+						formElm.method = "post";
 						formElm.setAttribute("action", productDetailPage);
 					} else {
 						parm.setAttribute("name", elm.getAttribute("data-param"));
@@ -173,7 +175,6 @@ const Typeahead = function() {
 
 		selectSuggestion: function (elm) {
 			Typeahead.preSelectSuggestion(elm);
-
 			elm.closest(".js-type-ahead-dropdown").querySelector(".js-suggest-form").submit();
 		},
 
