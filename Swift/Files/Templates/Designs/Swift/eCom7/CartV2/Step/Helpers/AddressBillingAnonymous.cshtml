@@ -1,15 +1,27 @@
 @helper RenderAddressBillingAnonymous() {
+	string apiKey = !string.IsNullOrEmpty(Pageview.AreaSettings.GetString("Google_APIKey")) ? Pageview.AreaSettings.GetString("Google_APIKey") : "";
+
 	string deliveryAddressString = GetString("Ecom:Order.Delivery.Company") + GetString("Ecom:Order.Delivery.Address") + GetString("Ecom:Order.Delivery.Zip") + GetString("Ecom:Order.Delivery.City") + GetString("Ecom:Order.Delivery.Phone");
 	string billingAddressString = GetString("Ecom:Order.Customer.Company") + GetString("Ecom:Order.Customer.Address") + GetString("Ecom:Order.Customer.Zip") + GetString("Ecom:Order.Customer.City") + GetString("Ecom:Order.Customer.Phone");
 	string disabled = (deliveryAddressString != billingAddressString) && billingAddressString != "" ? "" : "disabled";
+	bool enableFindLocation = Pageview.CurrentParagraph.Item["EnableFindLocation"] != null ? (Boolean)Pageview.CurrentParagraph.Item["EnableFindLocation"] : false;
 
-	string currentCountry = GetString("Ecom:Order.Customer.Country.Code");
+	string currentCountry = Pageview.Area.EcomCountryCode;
 	string countrySelectorColumnSize = "g-col-6";
 	string customerRegionLabel = "State";
 
 	<div class="mt-0 checkout_swift_billing-anonymous">
 
 		<div class="grid">
+			@if (enableFindLocation) { 
+				<div class="g-col-12">
+					<div class="form-floating">
+						<input type="text" class="form-control" id="FindLocationField" placeholder="@Translate("Find location")" form="nosubmit">
+						<label for="FindLocationField">@Translate("Find location")</label>
+					</div>
+				</div>
+			}
+
 			<div class="g-col-12">
 				<div class="form-floating">
 					<input @disabled type="text" class="form-control" name="EcomOrderCustomerCompany" id="EcomOrderCustomerCompany" value="@GetString("Ecom:Order.Customer.Company")" placeholder="@Translate("Company")">
@@ -116,5 +128,68 @@
 
 	</div>
 
+	if (enableFindLocation) { 
+		<script defer src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)&libraries=places"></script>
 
+		<script type="module">
+			const input = document.getElementById("FindLocationField");
+			const options = {
+				componentRestrictions: { country: "@currentCountry" },
+				fields: ["address_components"],
+				strictBounds: false,
+				types: ["address"]
+			};
+			const autocomplete = new google.maps.places.Autocomplete(input, options);
+			autocomplete.addListener("place_changed", fillInAddress);
+
+			function fillInAddress() {
+				// Get the place details from the autocomplete object.
+				const place = autocomplete.getPlace();
+
+				// Get each component of the address from the place details,
+				// and then fill-in the corresponding field on the form.
+				// place.address_components are google.maps.GeocoderAddressComponent objects
+				// which are documented at http://goo.gle/3l5i5Mr
+
+				if (place.address_components != undefined) {
+					for (const component of place.address_components) {
+						const componentType = component.types[0];
+
+						switch (componentType) {
+							case "route": {
+								document.querySelector("#EcomOrderCustomerAddress").value = component.long_name;
+								break;
+							}
+
+							case "postal_code": {
+								document.querySelector("#EcomOrderCustomerZip").value = component.long_name;
+								break;
+							}
+
+							case "locality": {
+								document.querySelector("#EcomOrderCustomerCity").value = component.long_name;
+								break;
+							}
+
+							case "postal_town": {
+								document.querySelector("#EcomOrderCustomerCity").value = component.long_name;
+								break;
+							}
+
+							case "administrative_area_level_1": {
+								document.querySelector("#EcomOrderCustomerRegion").value = component.short_name;
+								break;
+							}
+
+							case "country":
+								document.querySelector("#EcomOrderCustomerCountry").value = component.short_name;
+								break;
+						}
+					}
+
+					document.querySelector("#EcomOrderCustomerCompany").focus();
+				}
+			}
+		</script>
+	}
 }

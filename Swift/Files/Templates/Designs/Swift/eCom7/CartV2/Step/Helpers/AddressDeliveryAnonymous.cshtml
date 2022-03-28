@@ -2,11 +2,14 @@
 
 @helper RenderAddressDeliveryAnonymous()
 {
+	string apiKey = !string.IsNullOrEmpty(Pageview.AreaSettings.GetString("Google_APIKey")) ? Pageview.AreaSettings.GetString("Google_APIKey") : "";
+
 	string userCheckoutPage = Pageview.CurrentParagraph.Item["CheckoutUserPageLink"] != null ? Pageview.CurrentParagraph.Item["CheckoutUserPageLink"].ToString().Replace("Default.aspx?Id=", "") : "";
 	string signInPage = Pageview.CurrentParagraph.Item["SignInPageLink"] != null ? Pageview.CurrentParagraph.Item["SignInPageLink"].ToString() + "&GoBackToPage=" + userCheckoutPage : "";
 	bool enableAdditionalAddress = Pageview.CurrentParagraph.Item["EnableAdditionalAddress"] != null ? (Boolean)Pageview.CurrentParagraph.Item["EnableAdditionalAddress"] : false;
+	bool enableFindLocation = Pageview.CurrentParagraph.Item["EnableFindLocation"] != null ? (Boolean)Pageview.CurrentParagraph.Item["EnableFindLocation"] : false;
 
-	string currentCountry = GetString("Ecom:Order.Delivery.Country.Code");
+	string currentCountry = Pageview.Area.EcomCountryCode;
 	string countrySelectorColumnSize = "g-col-6";
 	string deliveryRegionLabel = "State";
 
@@ -64,6 +67,15 @@
 		<h3 class="fs-6 fw-normal mb-3">@Translate("Delivery address")</h3>
 
 		<div class="grid gap-3">
+			@if (enableFindLocation) { 
+				<div class="g-col-12">
+					<div class="form-floating">
+						<input type="text" class="form-control" id="FindLocationField" placeholder="@Translate("Find location")" form="nosubmit">
+						<label for="FindLocationField">@Translate("Find location")</label>
+					</div>
+				</div>
+			}
+
 			<div class="g-col-12">
 				<div class="form-floating">
 					<input type="text" class="form-control" name="EcomOrderDeliveryCompany" id="EcomOrderDeliveryCompany" value="@GetString("Ecom:Order.Delivery.Company")" placeholder="@Translate("Company")">
@@ -105,7 +117,8 @@
 						</div>
 					</div>
 
-					@if (GetLoop("DeliveryRegions").Count > 0) {
+					@if (GetLoop("DeliveryRegions").Count > 0)
+					{
 						countrySelectorColumnSize = "g-col-3";
 					}
 
@@ -116,7 +129,8 @@
 						</div>
 					</div>
 
-					@if (GetLoop("DeliveryRegions").Count > 0) {
+					@if (GetLoop("DeliveryRegions").Count > 0)
+					{
 						if (currentCountry == "CA")
 						{
 							deliveryRegionLabel = Translate("Province");
@@ -133,25 +147,31 @@
 						<div class="g-col-3">
 							<div class="form-floating">
 								<select class="form-select" name="EcomOrderDeliveryRegion" id="EcomOrderDeliveryRegion" onchange="submitForm()">
-									@foreach (LoopItem region in GetLoop("DeliveryRegions")) {
-										if (region.GetString("Ecom:DeliveryRegion.IsDeliveryRegion") == "true") {
+									@foreach (LoopItem region in GetLoop("DeliveryRegions"))
+									{
+										if (region.GetString("Ecom:DeliveryRegion.IsDeliveryRegion") == "true")
+										{
 											<option value="@region.GetString("Ecom:DeliveryRegion.RegionCode")" selected>@region.GetString("Ecom:DeliveryRegion.Name")</option>
-										} else {
+										}
+										else
+										{
 											<option value="@region.GetString("Ecom:DeliveryRegion.RegionCode")">@region.GetString("Ecom:DeliveryRegion.Name")</option>
-                                        }
+										}
 									}
 								</select>
 								<label for="EcomOrderDeliveryRegion">@deliveryRegionLabel</label>
 							</div>
 						</div>
-                    }
+					}
 
 					<div class="g-col-12 g-col-md-3">
 						<div class="form-floating">
 
 							<select class="form-select" name="EcomOrderDeliveryCountry" id="EcomOrderDeliveryCountry" onchange="submitForm()">
-							@foreach (LoopItem country in GetLoop("Countries")) {
-								if (country.GetString("Ecom:Country.IsDeliveryCountryOrDefault") == "true") {
+								@foreach (LoopItem country in GetLoop("Countries"))
+								{
+									if (country.GetString("Ecom:Country.IsDeliveryCountryOrDefault") == "true")
+									{
 										<option value="@country.GetString("Ecom:Country.Code2")" selected>@country.GetString("Ecom:Country.Name")</option>
 									}
 									else
@@ -229,4 +249,71 @@
 		</div>
 
 	</div>
+
+	if (enableFindLocation) { 
+		<script defer src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)&libraries=places"></script>
+
+		<script type="module">
+			const input = document.getElementById("FindLocationField");
+			const options = {
+				componentRestrictions: { country: "@currentCountry" },
+				fields: ["address_components"],
+				strictBounds: false,
+				types: ["address"]
+			};
+			const autocomplete = new google.maps.places.Autocomplete(input, options);
+			autocomplete.addListener("place_changed", fillInAddress);
+
+			function fillInAddress() {
+				// Get the place details from the autocomplete object.
+				const place = autocomplete.getPlace();
+
+				// Get each component of the address from the place details,
+				// and then fill-in the corresponding field on the form.
+				// place.address_components are google.maps.GeocoderAddressComponent objects
+				// which are documented at http://goo.gle/3l5i5Mr
+
+				if (place.address_components != undefined) {
+					for (const component of place.address_components) {
+						const componentType = component.types[0];
+
+						switch (componentType) {
+							case "route": {
+								document.querySelector("#EcomOrderDeliveryAddress").value = component.long_name;
+								break;
+							}
+
+							case "postal_code": {
+								document.querySelector("#EcomOrderDeliveryZip").value = component.long_name;
+								break;
+							}
+
+							case "locality": {
+								document.querySelector("#EcomOrderDeliveryCity").value = component.long_name;
+								break;
+							}
+
+							case "postal_town": {
+								document.querySelector("#EcomOrderDeliveryCity").value = component.long_name;
+								break;
+							}
+
+							case "administrative_area_level_1": {
+								document.querySelector("#EcomOrderDeliveryRegion").value = component.short_name;
+								break;
+							}
+
+							case "country":
+								document.querySelector("#EcomOrderDeliveryCountry").value = component.short_name;
+								break;
+						}
+					}
+
+					document.querySelector("#EcomOrderDeliveryCompany").focus();
+				}
+			}
+		</script>
+	}
 }
+
+
