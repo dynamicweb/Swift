@@ -44,12 +44,6 @@ else
 
 		<div class="g-col-12">
 			<div class="form-floating">
-				<input type="text" class="form-control" id="FindLocationField" placeholder="@Translate("Find location")" form="nosubmit">
-				<label for="FindLocationField">@Translate("Find location")</label>
-			</div>
-		</div>
-		<div class="g-col-12">
-			<div class="form-floating">
 				<input type="text" class="form-control" placeholder="@Translate("Name")" name="UserManagement_Form_Name" id="UserManagement_Form_Name" value="@GetString("UserManagement:User.Name")" />
 				<label for="UserManagement_Form_Name" class="form-label">@Translate("Name")</label>
 				<div class="invalid-feedback">@GetString("UserManagement:User.Name.Input.Error")</div>
@@ -64,7 +58,7 @@ else
 		</div>
 		<div class="g-col-12">
 			<div class="form-floating">
-				<input type="text" class="form-control" placeholder="@Translate("Street & number")" name="UserManagement_Form_Address" id="UserManagement_Form_Address" value="@GetString("UserManagement:User.Address")" required />
+				<input type="text" class="form-control" placeholder="@Translate("Street & number")" name="UserManagement_Form_Address" id="UserManagement_Form_Address" value="@GetString("UserManagement:User.Address")" form="nosubmit" required />
 				<label for="UserManagement_Form_Address" class="form-label">@Translate("Street & number")</label>
 				<div class="invalid-feedback">@GetString("UserManagement:User.Address.Input.Error")</div>
 			</div>
@@ -230,81 +224,84 @@ else
 <input type="hidden" name="ID" value="@pageId" />
 @GetString("UserManagement:User.FormEnd")
 
-<script defer src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)&libraries=places"></script>
-
-<script type="module">
-	const input = document.getElementById("FindLocationField");
-	const options = {
-		componentRestrictions: { country: "@currentCountry" },
-		fields: ["address_components"],
-		strictBounds: false,
-		types: ["address"]
-	};
-	const autocomplete = new google.maps.places.Autocomplete(input, options);
-	autocomplete.addListener("place_changed", fillInAddress);
-
-	function fillInAddress() {
-		// Get the place details from the autocomplete object.
-		const place = autocomplete.getPlace();
-
-		// Get each component of the address from the place details,
-		// and then fill-in the corresponding field on the form.
-		// place.address_components are google.maps.GeocoderAddressComponent objects
-		// which are documented at http://goo.gle/3l5i5Mr
-
-		if (place.address_components != undefined) {
-			var locality = "";
-			var sublocality = "";
-
-			for (const component of place.address_components) {
-				const componentType = component.types[0];
-
-				switch (componentType) {
-					case "route": {
-						document.querySelector("#UserManagement_Form_Address").value = component.long_name;
-						break;
-					}
-
-					case "postal_code": {
-						document.querySelector("#UserManagement_Form_Zip").value = component.long_name;
-						break;
-					}
-
-					case "postal_town": {
-						locality = locality == "" ? component.long_name : locality;
-						break;
-					}
-
-					case "locality": {
-						locality = locality == "" ? component.long_name : locality;
-						break;
-					}
-
-					case "sublocality_level_1": {
-						sublocality = component.long_name;
-						break;
-					}
-
-					case "administrative_area_level_1": {
-						document.querySelector("#UserManagement_Form_Region").value = component.short_name;
-						break;
-					}
-
-					case "country":
-						document.querySelector("#UserManagement_Form_CountryCode").value = component.short_name;
-						break;
-				}
-			}
-
-			document.querySelector("#UserManagement_Form_City").value = sublocality != "" ? sublocality : locality;
-			document.querySelector("#UserManagement_Form_Company").focus();
-		}
-	}
-</script>
-
 <script>
 	function submitForm() {
 		var form = document.querySelector("#UserManagementEditForm");
 		form.requestSubmit();
 	}
 </script>
+
+@if (!string.IsNullOrEmpty(apiKey))
+{
+	<script defer src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)&libraries=places"></script>
+
+	<script type="module">
+		const input = document.getElementById("UserManagement_Form_Address");
+		const options = {
+			componentRestrictions: { country: "@currentCountry" },
+			fields: ["address_components"],
+			strictBounds: false,
+			types: ["address"]
+		};
+		const autocomplete = new google.maps.places.Autocomplete(input, options);
+		autocomplete.addListener("place_changed", fillInAddress);
+
+		function fillInAddress() {
+			// Get the place details from the autocomplete object.
+			const place = autocomplete.getPlace();
+
+			// Get each component of the address from the place details,
+			// and then fill-in the corresponding field on the form.
+			// place.address_components are google.maps.GeocoderAddressComponent objects
+			// which are documented at http://goo.gle/3l5i5Mr
+
+			if (place.address_components != undefined) {
+				var locality = "";
+				var sublocality = "";
+
+				for (const component of place.address_components) {
+					const componentType = component.types[0];
+
+					switch (componentType) {
+						case "route": {
+							document.querySelector("#UserManagement_Form_Address").value = component.long_name;
+							break;
+						}
+
+						case "postal_code": {
+							document.querySelector("#UserManagement_Form_Zip").value = component.long_name;
+							break;
+						}
+
+						case "postal_town": {
+							locality = locality == "" ? component.long_name : locality;
+							break;
+						}
+
+						case "locality": {
+							locality = locality == "" ? component.long_name : locality;
+							break;
+						}
+
+						case "sublocality_level_1": {
+							sublocality = component.long_name;
+							break;
+						}
+
+						case "administrative_area_level_1": {
+							document.querySelector("#UserManagement_Form_Region").value = component.short_name;
+							break;
+						}
+
+						case "country":
+							document.querySelector("#UserManagement_Form_CountryCode").value = component.short_name;
+							break;
+					}
+				}
+
+				document.querySelector("#UserManagement_Form_City").value = sublocality != "" ? sublocality : locality;
+				document.querySelector("#UserManagement_Form_Address").focus();
+			}
+		}
+	</script>
+}
