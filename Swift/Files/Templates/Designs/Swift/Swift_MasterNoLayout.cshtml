@@ -1,11 +1,14 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
 @using Dynamicweb
+@using Dynamicweb.Environment
 
 @{ 
 	string swiftVersion = ReadFile("~/Files/Templates/Designs/Swift/swift_version.txt");
 	@* Branding Themes Fonts *@
 	var brandingPageId = Model.Area.Item.GetLink("BrandingPage") != null ? Model.Area.Item.GetLink("BrandingPage").PageId : 0;
 	var themePageId = Model.Area.Item.GetLink("ThemesPage") != null ? Model.Area.Item.GetLink("ThemesPage").PageId : 0;
+
+	string customHeaderInclude = Model.Area.Item.GetFile("CustomHeaderInclude") != null ? Model.Area.Item.GetFile("CustomHeaderInclude").Name : string.Empty;
 
 	string masterTheme = !string.IsNullOrWhiteSpace(Model.Area.Item.GetRawValueString("Theme")) ? " theme " + Model.Area.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 
@@ -17,6 +20,9 @@
 
 	var cssStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("~/Files/Templates/Designs/Swift/Assets/css/styles.css"));
 	var jsFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("~/Files/Templates/Designs/Swift/Assets/js/scripts.js"));
+
+	string googleAnalyticsTrackingID = Model.Area.Item.GetString("GoogleAnalyticsTrackingID");
+	bool allowCookies = CookieManager.GetCookieOptInLevel() == 0 || !CookieManager.CookieOptInLevelExists ? false : true;
 }
 
 <!doctype html>
@@ -49,7 +55,23 @@
 		<link href="~/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_@(Model.Area.ID).min.css?@cssLastModified.Ticks" rel="stylesheet" media="all" type="text/css" data-last-modified-content="@cssLastModified">
 		<script src="~/Files/Templates/Designs/Swift/Assets/js/aos.js?@jsFileInfo.LastWriteTime.Ticks" defer></script>
 		<script src="~/Files/Templates/Designs/Swift/Assets/js/scripts.js?@jsFileInfo.LastWriteTime.Ticks" async></script>
-	</head>
+
+		@* Global site tag (gtag.js) - Google Analytics *@
+		@if (!string.IsNullOrWhiteSpace(googleAnalyticsTrackingID) && allowCookies)
+		{
+			<script src="https://www.googletagmanager.com/gtag/js?id=@googleAnalyticsTrackingID" async></script>
+			<script>
+				window.dataLayer = window.dataLayer || [];
+				function gtag() { window.dataLayer.push(arguments); }
+				gtag('js', new Date());
+				gtag('config', '@googleAnalyticsTrackingID');
+			</script>
+		}
+
+		@if (!string.IsNullOrWhiteSpace(customHeaderInclude)) {
+			@RenderPartial($"Components/Custom/{customHeaderInclude}")
+		}
+</head>
 
     <body class="brand @(masterTheme)" onload="@aosInitScript">
 		@* Fix for rendering in Visual Editor *@

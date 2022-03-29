@@ -71,7 +71,7 @@
 
 	//Desktop
 	if (layout == "vertical") {
-		<form method="post" action="@url" data-response-target-element="content" id="FacetsForm_Desktop" class="d-none d-lg-block h-100 @theme">
+		<form method="post" action="@url" data-response-target-element="content" id="FacetsForm_Desktop_@Model.ID" class="d-none d-lg-block h-100 @theme item_@Model.Item.SystemName.ToLower()">
 			@RenderForm(productList, "desktop", enableSorting, layout)
 		</form>
     }
@@ -79,7 +79,7 @@
 		contentPadding = Model.Item.GetRawValueString("ContentPadding", "") == "small" ? " p-3" : contentPadding;
 
 		<div class="@theme @contentPadding h-100">
-			<form method="post" action="@url" data-response-target-element="content" id="FacetsForm_Desktop" class="d-none d-lg-flex gap-3 flex-row flex-wrap">
+			<form method="post" action="@url" data-response-target-element="content" id="FacetsForm_Desktop_@Model.ID" class="d-none d-lg-flex gap-3 flex-row flex-wrap item_@Model.Item.SystemName.ToLower()">
 				@RenderForm(productList, "desktop", enableSorting, layout)
 
 				@if (selectedFacetsCount > 0) {
@@ -90,7 +90,7 @@
     }
 
 	//Mobile
-	<div class="d-block d-lg-none mt-lg-0@(theme)">
+	<div class="d-block d-lg-none mt-lg-0@(theme) FacetsForm_Mobile_@Model.Item.SystemName.ToLower()_@Model.ID">
 		<button type="button" class="btn btn-primary w-100 d-flex" data-bs-toggle="modal" data-bs-target="#FacetsModal">
 			<span class="flex-fill text-start">
 				@Translate("Filter") @selectedFacetsLabel
@@ -105,7 +105,7 @@
 				<div class="modal-content">
 					<div class="modal-header@(modalTheme)">
 						<h5 class="modal-title">@Translate("Filters and sorting")</h5>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="document.querySelector('body').style = ''"></button>
 					</div>
 					<div class="modal-body@(modalTheme)">
 						@RenderForm(productList, "mobile", enableSorting)
@@ -132,7 +132,7 @@ else
 	}
 	else
 	{
-		<div class="alert alert-dark m-0">
+		<div class="alert alert-dark m-0" id="NoFiltersAlert_@Model.ID">
 			@Translate("No filters are available")
 		</div>
 	}
@@ -144,6 +144,9 @@ else
 
 	string groupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GroupID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") : "";
 	string pageSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("PageSize")) ? Dynamicweb.Context.Current.Request.QueryString.Get("PageSize") : productList.PageSize.ToString();
+
+	string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
+	string searchLayout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout") : "";
 
 	string groupsTheme = "";
 	string extraBottomMargin = "";
@@ -165,6 +168,11 @@ else
 
 	<input type="hidden" name="PageSize" value="@pageSize" />
 
+	if (!string.IsNullOrEmpty(searchQuery)) { 
+		<input type="hidden" name="q" value="@searchQuery" />
+		<input type="hidden" name="SearchLayout" value="@searchLayout" />
+	}
+
 	if (Model.Item.GetBoolean("EnableGroupNavigation"))
 	{
 		var navigationSettings = new NavigationSettings();
@@ -179,11 +187,11 @@ else
 			navigationSettings.StopLevel = 10;
 			
 			<div class="border-bottom@(contentPadding)@(@groupsTheme)">
-				<div class="d-flex@(contentPadding)" data-bs-toggle="collapse" data-bs-target="#ProductGroupNavigation_@deviceType" role="button" aria-expanded="true" aria-controls="ProductGroupNavigation_@deviceType">
+				<div class="d-flex@(contentPadding)" data-bs-toggle="collapse" data-bs-target="#ProductGroupNavigation_@(deviceType)_@Model.ID" role="button" aria-expanded="true" aria-controls="ProductGroupNavigation_@(deviceType)_@Model.ID">
 					<h2 class="opacity-85 m-0 flex-fill h6">@Translate("Navigation")</h2>
 					<div class="my-auto collapse-chevron-icon"></div>
 				</div>
-				<div class="collapse show" id="ProductGroupNavigation_@deviceType">
+				<div class="collapse show" id="ProductGroupNavigation_@(deviceType)_@Model.ID">
 					@Navigation.RenderNavigation("Navigation/Vertical.cshtml", navigationSettings)
 				</div>
 			</div>
@@ -195,16 +203,16 @@ else
 		if (layout == "vertical") {
 			<div class="border-bottom@(contentPadding)@(groupsTheme)">
 				<h2 class="opacity-85 m-0 my-2 flex-fill h6">@Translate("Sort by")</h2>
-				<div class="d-flex flex-column gap-2">
+				<div class="d-flex flex-column gap-2" id="SortBy_@(deviceType)_@Model.ID">
 					@RenderSorting(deviceType)
 				</div>
 			</div>
         }
 		if (layout == "horizontal") {
-			<button class="btn @(groupsTheme) dropdown-toggle" type="button" id="#SortBy_@deviceType" data-bs-toggle="dropdown" aria-expanded="false">
+			<button class="btn @(groupsTheme) dropdown-toggle" type="button" id="SortBy_@(deviceType)_@Model.ID" data-bs-toggle="dropdown" aria-expanded="false">
 				@Translate("Sort by")
 			</button>
-			<div class="dropdown-menu p-3 @(groupsTheme)" aria-labelledby="#SortBy_@deviceType" style="min-width: 280px">
+			<div class="dropdown-menu p-3 @(groupsTheme)" aria-labelledby="SortBy_@(deviceType)_@Model.ID" style="min-width: 280px">
 				<div class="d-flex flex-column gap-2">
 					@RenderSorting(deviceType)
 				</div>
@@ -226,11 +234,11 @@ else
 			{
 				if (layout == "vertical") {
 					<div class="@border@(contentPadding)@(@groupsTheme)">
-						<div class="d-flex" data-bs-toggle="collapse" data-bs-target="#FacetGroup_@facet.Name.Replace(" ", "")_@deviceType" role="button" aria-expanded="true" aria-controls="FacetGroup_@facet.Name.Replace(" ", "")_@deviceType">
+						<div class="d-flex" data-bs-toggle="collapse" data-bs-target="#FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID" role="button" aria-expanded="true" aria-controls="FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID">
 							<h2 class="opacity-85 m-0 flex-fill h6 my-2">@Translate(facet.Name)</h2>
 							<div class="my-auto collapse-chevron-icon"></div>
 						</div>
-						<div class="collapse show" id="FacetGroup_@facet.Name.Replace(" ", "")_@deviceType">
+						<div class="collapse show" id="FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID">
 							@foreach (FacetOptionViewModel facetOption in facet.Options)
 							{
 								string renderType = facet.RenderType;
@@ -259,13 +267,13 @@ else
 						}
 					}
 
-					string label = selectedFacetsInGroup > 0 ? facet.Name + "<span class=\"badge bg-dark opacity-50 ms-2\">" + selectedFacetsInGroup + "</span>" : facet.Name;	
+					string label = selectedFacetsInGroup > 0 ? facet.Name + "<span class=\"badge bg-dark opacity-50 text-white ms-2\">" + selectedFacetsInGroup + "</span>" : facet.Name;	
 
 					<div class="dropdown @hideSelector js-facets-selector">
-						  <button class="btn @(groupsTheme) dropdown-toggle" type="button" id="#FacetGroup_@facet.Name.Replace(" ", "")_@deviceType" data-bs-toggle="dropdown" aria-expanded="false">
+						  <button class="btn @(groupsTheme) dropdown-toggle" type="button" id="FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID" data-bs-toggle="dropdown" aria-expanded="false">
 								@label
 						  </button>
-						  <div class="dropdown-menu p-3 @(groupsTheme)" aria-labelledby="#FacetGroup_@facet.Name.Replace(" ", "")_@deviceType" style="min-width: 280px">
+						  <div class="dropdown-menu p-3 @(groupsTheme)" aria-labelledby="FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID" style="min-width: 280px">
 								@foreach (FacetOptionViewModel facetOption in facet.Options)
 								{
 									string renderType = facet.RenderType;
@@ -310,8 +318,8 @@ else
 	if (Model.Item.GetBoolean("SortByNameAZ"))
 	{
 		<div class="form-check">
-			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="NameForSort" id="SortByNameAZ_@deviceType" @sortNameSelectedAZ>
-			<label class="form-check-label" for="SortByNameAZ_@deviceType">
+			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="NameForSort" id="SortByNameAZ_@(deviceType)_@Model.ID" @sortNameSelectedAZ>
+			<label class="form-check-label" for="SortByNameAZ_@(deviceType)_@Model.ID">
 				@Translate("Name (A-Z)")
 			</label>
 		</div>
@@ -319,8 +327,8 @@ else
 	if (Model.Item.GetBoolean("SortByNameZA"))
 	{
 		<div class="form-check">
-			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-NameForSort" id="SortByNameZA_@deviceType" @sortNameSelectedZA>
-			<label class="form-check-label" for="SortByNameZA_@deviceType">
+			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-NameForSort" id="SortByNameZA_@(deviceType)_@Model.ID" @sortNameSelectedZA>
+			<label class="form-check-label" for="SortByNameZA_@(deviceType)_@Model.ID">
 				@Translate("Name (Z-A)")
 			</label>
 		</div>
@@ -328,8 +336,8 @@ else
 	if (Model.Item.GetBoolean("SortByNewest"))
 	{
 		<div class="form-check">
-			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-created" id="SortByNew_@deviceType" @sortNewSelected>
-			<label class="form-check-label" for="SortByNew_@deviceType">
+			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-created" id="SortByNew_@(deviceType)_@Model.ID" @sortNewSelected>
+			<label class="form-check-label" for="SortByNew_@(deviceType)_@Model.ID">
 				@Translate("Newest")
 			</label>
 		</div>
@@ -339,8 +347,8 @@ else
 		if (Model.Item.GetBoolean("SortByLowestPrice"))
 		{
 			<div class="form-check">
-				<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="Price" id="SortByPriceLow_@deviceType" @sortPriceLowSelected>
-				<label class="form-check-label" for="SortByPriceLow_@deviceType">
+				<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="Price" id="SortByPriceLow_@(deviceType)_@Model.ID" @sortPriceLowSelected>
+				<label class="form-check-label" for="SortByPriceLow_@(deviceType)_@Model.ID">
 					@Translate("Lowest price")
 				</label>
 			</div>
@@ -348,8 +356,8 @@ else
 		if (Model.Item.GetBoolean("SortByHighestPrice"))
 		{
 			<div class="form-check">
-				<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-Price" id="SortByPriceHigh_@deviceType" @sortPriceHighSelected>
-				<label class="form-check-label" for="SortByPriceHigh_@deviceType">
+				<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-Price" id="SortByPriceHigh_@(deviceType)_@Model.ID" @sortPriceHighSelected>
+				<label class="form-check-label" for="SortByPriceHigh_@(deviceType)_@Model.ID">
 					@Translate("Highest price")
 				</label>
 			</div>
@@ -358,8 +366,8 @@ else
 	if (Model.Item.GetBoolean("SortByMostSold"))
 	{
 		<div class="form-check">
-			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-OrderCount" id="SortByMostSold_@deviceType" @sortMostSoldSelected>
-			<label class="form-check-label" for="SortByMostSold_@deviceType">
+			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-OrderCount" id="SortByMostSold_@(deviceType)_@Model.ID" @sortMostSoldSelected>
+			<label class="form-check-label" for="SortByMostSold_@(deviceType)_@Model.ID">
 				@Translate("Most sold")
 			</label>
 		</div>

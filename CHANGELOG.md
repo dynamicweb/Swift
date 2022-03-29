@@ -1,5 +1,53 @@
 # Changelog
 
+## [v1.7.0] - 16-03-2022
+
+## Bugfixes 
+* Customer Center: Favorite images width issue 
+* Email: Fixed internal/external links for emails 
+* Itemtype: Poster fixed missing ratio when poster has no  image and alignment 
+* Itemtype: Product detail media table. better fallback 
+* Itemtype: Improve favorite icon position on slider 
+* General: gtag script is not outputted correctly 
+* General: Improve language check implementation 
+* General: Always hide title property 
+* General: Remember search parameters 
+* General: Login screen typo fix 
+* Product Catalog: Badge validation error fixes 
+* Product list: Re-introduction of variant images on product list 
+* Product Detail: Fixed PDP and PageNoLayout template error 
+* Product Catalog: Improve theme implementation on product list 
+* Product Catalog: use Ecommerce badge text 
+* Product Catalog: Facets counter text is not readable in horizontal  
+* Product Catalog: Product group list remove scroll bar 
+
+## Changed   
+* Itemtype: enabled block quote for article page 
+
+## Added   
+* Checkout: Possible to hide edit address and manage address link 
+* Checkout: Hide/show comment field 
+* Checkout: Possible to hide terms and condition 
+* Customer Center: Track and trace number on Order detail 
+* Customer Center: Read only Manage address templates 
+* Dynamic article header column for article page 
+* General: Locator ids 
+* Integration Customer Center: OpenOrder details page 
+* Itemtype: Possible to add CTA on header 
+* Itemtype: Add new rows with 5 and 6 columns 
+* Itemtype Possible to add 2 CTA on Poster and Text & Image 
+* Itemtype: Feature column element - more icon size options 
+* Itemtype: Simple employee - content element 
+* Itemtype: Block quote - content element 
+* Product Detail: discontinued products - Support show another replacement product 
+
+## [v1.6.1] - 04-02-2022
+
+## Bugfixes
+* General: Missing version bump on Master
+* Integration Customer Center: Show only date when time is 00:00 
+
+
 ## [v1.6.0] - 03-02-2022
 
 ## Bugfixes
@@ -22,7 +70,7 @@
 * Product Detail: Product with variants can be added to cart when it is out of stock
 * Product List: Render option name instead of option on ProductListGridView
 
-##Changed
+## Changed
 * Itemtype: Edit restriction, product list should not contain newsletter paragraphs
 * Itemtype: Group image and promotion image - Remove height keep only width
 * General: Updates theme and branding using rem instead of px
@@ -31,7 +79,7 @@
 * General: Hide information when there is free shipping 
 * Product List: Use VariantName instead of VariantId from viewmodel
 
-##Removed
+## Removed
 * General: Removed custom mapped breakpoint + markup clean up
 * General: Window scrollto bug from typeahead on popstate
 
