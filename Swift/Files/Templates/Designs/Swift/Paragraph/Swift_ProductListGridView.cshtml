@@ -4,32 +4,52 @@
 @using System.Linq
 @using Dynamicweb.Core
 
+@functions
+{
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled();
+	string liveInfoClass = "";
+	string productInfoFeed = "";
+	
+	ProductListViewModel productList = new ProductListViewModel();
+}
 @{ 
+	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
+	{
+		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
+	}
+	
+	if (isLazyLoadingForProductInfoEnabled)
+	{
+		var productIds = string.Join("&ProductIds=", productList.Products.Select(p => p.Id));
+		productInfoFeed = $@"/dwapi/ecommerce/products/search?ProductIds={productIds}&PageSize={productList.PageSize}
+								&UserId={Converter.ToString(Pageview.User?.ID)}
+								&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
+								&ProductSettings.FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel,VariantInfo,NeverOutOfstock
+								&ProductSettings.PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
+								&ProductSettings.PriceSettings.FilledProperties=Price,PriceFormatted
+								&getproductinfo=true";
+		liveInfoClass = "js-live-info";
+	}
+	
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 	string themePadding = theme != string.Empty ? "p-3" : string.Empty;
 }
 
 @if (!string.IsNullOrEmpty(theme))
 {
-	<div class="h-100@(theme) @themePadding item_@Model.Item.SystemName.ToLower()">
+	<div class="h-100@(theme) @themePadding item_@Model.Item.SystemName.ToLower() @liveInfoClass" data-product-info-feed="@productInfoFeed">
 		@RenderProductList()
 	</div>
 }
 else
 {
-<div class="pt-3 item_@Model.Item.SystemName.ToLower()">
-	@RenderProductList()
-</div>
+	<div class="pt-3 item_@Model.Item.SystemName.ToLower() @liveInfoClass" data-product-info-feed="@productInfoFeed">">
+		@RenderProductList()
+	</div>
 }
 
-@helper RenderProductList () { 
-	ProductListViewModel productList = new ProductListViewModel();
-
-	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
-	{
-		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
-	}
-
+@helper RenderProductList ()
+{ 
 	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
 	bool anonymousUser = Pageview.User == null;
 	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
@@ -75,22 +95,6 @@ else
 		pageSize += pageSizeSetting;
 
 		int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
-		bool isLiveProductInfoActive = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled();
-		string productInfoFeed = "";
-		string liveInfoClass = "";
-
-		if (isLiveProductInfoActive)
-		{
-			var productIds = string.Join("&ProductIds=", productList.Products.Select(p => p.Id));
-			productInfoFeed = $@"/dwapi/ecommerce/products/search?ProductIds={productIds}&PageSize={productList.PageSize}
-								&UserId={Converter.ToString(Pageview.User?.ID)}
-								&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
-								&ProductSettings.FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel,VariantInfo,NeverOutOfstock
-								&ProductSettings.PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
-								&ProductSettings.PriceSettings.FilledProperties=Price,PriceFormatted
-								&getproductinfo=true";
-			liveInfoClass = "js-live-info";
-		}
 
 		<div class="grid grid-2 grid-lg-3" data-product-info-feed="@productInfoFeed">
 			@foreach (ProductViewModel product in productList.Products)
@@ -241,7 +245,7 @@ else
 																	string defaultPrice = !hidePrice ? product.Price.PriceFormatted : "0";
 																	string variantPrice = !hidePrice ? product.Price.PriceFormatted : "0";
 																	
-																	if (isLiveProductInfoActive)
+																	if (isLazyLoadingForProductInfoEnabled)
 																	{
 																		<figure class="figure w-100 d-block m-0" data-price-formatted="" onmouseover="switchVariantProduct('@product.Id', this.getAttribute('data-price-formatted'), '@variantImage')" onmouseout="switchVariantProduct('@product.Id', this.getAttribute('data-price-formatted'), '@defaultProductImage')">
 																			<div class="d-flex align-items-center justify-content-center">
@@ -269,7 +273,7 @@ else
 																	<p>@product.Name, @variant.Name</p>
 																	@if (!hidePrice) { 
 																		<h4>@Translate("Variant Price")</h4>
-																		if (isLiveProductInfoActive)
+																		if (isLazyLoadingForProductInfoEnabled)
 																		{
 																			<p><span class="text-price"></span></p>
 																		}
@@ -331,7 +335,7 @@ else
 										<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
 				
 										@if (showPricesWithVat == "false" && !neverShowVat) {
-											if (isLiveProductInfoActive)
+											if (isLazyLoadingForProductInfoEnabled)
 											{
 												<span itemprop="price" content="" class="d-none"></span>
 												<span class="text-decoration-line-through opacity-75 me-3 text-price d-none" data-show-if="product.Price.Price != product.PriceBeforeDiscount.Price"></span>
@@ -347,7 +351,7 @@ else
 
 										} else {
 
-											if (isLiveProductInfoActive)
+											if (isLazyLoadingForProductInfoEnabled)
 											{
 												<span itemprop="price" content="" class="d-none"></span>
 												<span class="text-decoration-line-through opacity-75 me-3 text-price d-none" data-show-if="product.Price.Price != product.PriceBeforeDiscount.Price"></span>
@@ -364,7 +368,7 @@ else
 										}
 			
 										@if (showPricesWithVat == "false" && !neverShowVat) {
-											if (isLiveProductInfoActive)
+											if (isLazyLoadingForProductInfoEnabled)
 											{
 												<span class="text-price"><div class="spinner-border" role="status"></div></span>
 											}
@@ -381,7 +385,7 @@ else
 												<span class="text-price">@price</span>
 											}
 										} else {
-											if (isLiveProductInfoActive)
+											if (isLazyLoadingForProductInfoEnabled)
 											{
 												<span class="text-price"><div class="spinner-border" role="status"></div></span>
 											}
