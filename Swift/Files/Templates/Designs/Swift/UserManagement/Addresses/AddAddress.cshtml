@@ -2,6 +2,9 @@
 @using Dynamicweb.Environment
 
 @{
+	string apiKey = !string.IsNullOrEmpty(Pageview.AreaSettings.GetString("Google_APIKey")) ? Pageview.AreaSettings.GetString("Google_APIKey") : "";
+	string currentCountry = Pageview.User.CountryCode;
+
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
 	string theme = !string.IsNullOrEmpty(themeRaw) ? " h-100 theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
 }
@@ -45,6 +48,12 @@ else
 
 	<div class="p-3">
 		<div class="grid gap-3">
+			<div class="g-col-12">
+				<div class="form-floating">
+					<input type="text" class="form-control" id="FindLocationField" placeholder="@Translate("Find location")" form="nosubmit">
+					<label for="FindLocationField">@Translate("Find location")</label>
+				</div>
+			</div>
 
 			<div class="g-col-12">
 				<div class="form-floating">
@@ -141,9 +150,9 @@ else
 							</div>
 						</div>
 
-									}
-									else
-									{
+					}
+					else
+					{
 						<div class="g-col-12 g-col-lg-3">
 							<div class="form-floating">
 								<input type="text" class="form-control" placeholder="@regionLabel (@Translate("optional"))" id="UserManagement_Form_State" name="State" value="@GetString("UserManagement:User.UserAddress.State.Value")" />
@@ -151,10 +160,10 @@ else
 								<label for="UserManagement_Form_State" class="form-label">@regionLabel (@Translate("optional"))</label>
 							</div>
 						</div>
-										}
-									}
-									else
-									{
+					}
+				}
+				else
+				{
 					<div class="g-col-12 g-col-lg-3">
 						<div class="form-floating">
 							<input type="text" class="form-control" placeholder="@regionLabel (@Translate("optional"))" id="UserManagement_Form_State" name="State" value="@GetString("UserManagement:User.UserAddress.State.Value")" />
@@ -162,8 +171,8 @@ else
 							<label for="UserManagement_Form_State" class="form-label">@regionLabel (@Translate("optional"))</label>
 						</div>
 					</div>
-										}
-									}
+				}
+			}
 
 			<div class="g-col-12 g-col-lg-3">
 				<div class="form-floating">
@@ -243,5 +252,68 @@ else
 	function submitForm() {
 		var form = document.querySelector("#AddressForm");
 		form.requestSubmit();
+	}
+</script>
+
+<script defer src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)&libraries=places"></script>
+
+<script type="module">
+	const input = document.getElementById("FindLocationField");
+	const options = {
+		componentRestrictions: { country: "@currentCountry" },
+		fields: ["address_components"],
+		strictBounds: false,
+		types: ["address"]
+	};
+	const autocomplete = new google.maps.places.Autocomplete(input, options);
+	autocomplete.addListener("place_changed", fillInAddress);
+
+	function fillInAddress() {
+		// Get the place details from the autocomplete object.
+		const place = autocomplete.getPlace();
+
+		// Get each component of the address from the place details,
+		// and then fill-in the corresponding field on the form.
+		// place.address_components are google.maps.GeocoderAddressComponent objects
+		// which are documented at http://goo.gle/3l5i5Mr
+
+		if (place.address_components != undefined) {
+			for (const component of place.address_components) {
+				const componentType = component.types[0];
+
+				switch (componentType) {
+					case "route": {
+						document.querySelector("#UserManagement_Form_Address").value = component.long_name;
+						break;
+					}
+
+					case "postal_code": {
+						document.querySelector("#UserManagement_Form_Zip").value = component.long_name;
+						break;
+					}
+
+					case "locality": {
+						document.querySelector("#UserManagement_Form_City").value = component.long_name;
+						break;
+					}
+
+					case "postal_town": {
+						document.querySelector("#UserManagement_Form_City").value = component.long_name;
+						break;
+					}
+
+					case "administrative_area_level_1": {
+						document.querySelector("#UserManagement_Form_Region").value = component.short_name;
+						break;
+					}
+
+					case "country":
+						document.querySelector("#UserManagement_Form_CountryCode").value = component.short_name;
+						break;
+				}
+			}
+
+			document.querySelector("#UserManagement_Form_Description").focus();
+		}
 	}
 </script>
