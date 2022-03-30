@@ -1,7 +1,7 @@
 
 ![alt text](https://github.com/dynamicweb/Swift/blob/main/Swift/Files/Images/Logos/Logo_Swift_transparent-background-black.png?raw=true)
 
-![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/Dynamicweb%20Release-v9.13.2-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/)
+![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/Dynamicweb%20Release-v9.13.4-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/)
 
 
 ![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Swift-Bikeshop.png)

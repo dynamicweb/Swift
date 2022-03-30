@@ -1,5 +1,23 @@
 # Changelog
 
+## [v1.8.0] - 30-03-2022
+
+## Bugfixes 
+* Checkout: Improve implementation and fallback, back to cart link
+* Checkout: Do not check on countrycodes before rendering regions
+* Customer Center: Null check for the item identifier regarding redirect
+* General: Clean up the url for products from search
+* General: Include custom header in MasterNoLayout 
+* Itemtype: Improve the Product detail image thumbnails
+* Itemtype: Fix broken facets modal and scroll after modal close
+
+## Changed
+* Itemtypes: Optimize micro templates for theming and fonts
+
+## Added   
+* General: Frontend user start page setup. Decide which page should be presented after sign in
+* Itemtypes: Possible to set start and stoplevels on navigation at facets
+
 ## [v1.7.0] - 16-03-2022
 
 ## Bugfixes 
