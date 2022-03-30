@@ -2,13 +2,14 @@
 @using Dynamicweb.Rendering;
 
 @{
+	//Create recovery token (48 hours)
 	string resultUserName = "",
-		firstName = GetString("UserManagement:User.FirstName"),
-		lastName = GetString("UserManagement:User.LastName"),
-		name = GetString("UserManagement:User.Name");
+	firstName = GetString("UserManagement:User.FirstName"),
+	lastName = GetString("UserManagement:User.LastName"),
+	name = GetString("UserManagement:User.Name");
 	string email = GetString("UserManagement:User.Email");
 	string website = Dynamicweb.Context.Current.Request.Url.Scheme + "://" + GetGlobalValue("Global:Request.Host");
-	string approvalUrl = GetString("UserManagement.ApprovalUrl").Replace("id=1590&", "id=1599&");
+
 
 	if (!string.IsNullOrEmpty(firstName) && !string.IsNullOrEmpty(lastName))
 	{
@@ -27,18 +28,24 @@
 		resultUserName = "";
 	}
 
-	//Create recovery token (48 hours)
 	int newUserId = GetInteger("UserManagement:User.ID");
 	Dynamicweb.Security.UserManagement.User newUser = Dynamicweb.Security.UserManagement.User.GetUserByID(newUserId);
 
 	DateTime time = DateTime.UtcNow.AddHours(48);
-	string token = Guid.NewGuid().ToString();
+	string passwordToken = Guid.NewGuid().ToString();
 	newUser.PasswordRecoveryTokenExpirationTime = time;
-	newUser.PasswordRecoveryToken = token;
+	newUser.PasswordRecoveryToken = passwordToken;
 	newUser.Save();
 
+	Uri approvalUri = new Uri(GetString("UserManagement.ApprovalUrl"));
+	var queryDictionary = System.Web.HttpUtility.ParseQueryString(approvalUri.Query);
+	string approvalKeyFromUrl = approvalUri != null ? queryDictionary["approvalKey"] : "";
+	string approvalQuerystring = $"/Default.aspx?id={GetPageIdByNavigationTag("CreatePasswordPage")}&approvalKey={approvalKeyFromUrl}";
+	string hostname = Dynamicweb.Context.Current.Request.Url.Host;
+	string approvalUrl = hostname + approvalQuerystring;
+
 	approvalUrl += "&UserID=" + GetString("UserManagement:User.ID");
-	approvalUrl += "&RecoveryToken=" + token;
+	approvalUrl += "&RecoveryToken=" + passwordToken;
 	approvalUrl += "&SetTokenCorrectly=true";
 }
 
