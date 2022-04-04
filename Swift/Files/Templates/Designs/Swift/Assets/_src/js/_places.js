@@ -29,6 +29,12 @@ const Places = function () {
 			}
 		},
 
+		changeCountry: function (countryCode) {
+			autocomplete.setComponentRestrictions({
+				country: [countryCode],
+			});
+		},
+
 		fillInAddress: function () {
 			var fieldPrefix = settings.fieldPrefix;
 			fieldPrefix = document.querySelector("#EcomOrderDeliveryAddress") && fieldPrefix == null ? "EcomOrderDelivery" : fieldPrefix;
