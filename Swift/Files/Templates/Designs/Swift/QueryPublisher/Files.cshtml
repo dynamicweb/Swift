@@ -25,9 +25,18 @@
 
 	</div>
 	<div class="g-col-12 g-col-lg-9">
-		@if (assetsList.Count > 0) { 
+		@if (assetsList.Count > 0)
+		{
+			int pageSizeSetting = 10;
+			int pageSize = GetInteger("DwPaging.PageSize");
+			pageSize += pageSizeSetting;
+
+			int totalAssets = GetInteger("DwPaging.TotalItems");
+			int loadedAssets = pageSize > totalAssets ? totalAssets : pageSize;
+
 			<div class="grid gap-4">
-				@foreach (var asset in assetsList) {
+				@foreach (var asset in assetsList)
+				{
 					foreach (string format in allSupportedFormats)
 					{
 						string fileName = asset.GetString("FileName");
@@ -35,7 +44,7 @@
 
 						if (fileName.Contains(format))
 						{
-							<div class="g-col-6 g-col-lg-3">
+							<div class="g-col-6 g-col-lg-3 d-flex flex-column">
 								<div class="ratio mb-3" style="--bs-aspect-ratio: 100%">
 									@foreach (string imageFormat in supportedImageFormats)
 									{
@@ -45,27 +54,75 @@
 											<img src="@imagePath" loading="lazy" style="object-fit: cover" />
 
 											imageFound = true;
-										} 
+										}
 									}
 
-									@if (imageFound == false) { 
+									@if (imageFound == false)
+									{
 										<div class="position-absolute bg-black bg-opacity-10 w-100 h-100"></div>
 										<div class="d-flex align-items-center justify-content-center">
 											<span class="icon-4">@ReadFile(iconPath + "file.svg")</span>
 										</div>
 									}
 								</div>
-								<div class="d-flex">
-									<h3 class="h6 flex-fill">@fileName</h3>
+								<div class="flex-fill d-flex">
+									<h3 class="h6 flex-fill" style="word-break: break-all">@fileName</h3>
 									<span class="icon-2">@ReadFile(iconPath + "info.svg")</span>
 								</div>
-								<div class="fs-6 opacity-75">
+								<div class="fs-6 opacity-50">
 									@(asset.GetString("FileSize"))kb
 								</div>
 							</div>
 						}
 					}
 				}
+
+				<div class="g-col-12 border-top w-100 mt-4"></div>
+			</div>
+
+			<div class="mt-5" id="LoadMoreButton">
+				<div class="text-center d-flex flex-column gap-3">
+					<div class="opacity-85">@loadedAssets @Translate("out of") @totalAssets @Translate("products")</div>
+					@if (GetInteger("DwPaging.PageCount") != 1)
+					{
+						string url = Dynamicweb.Context.Current.Request.RawUrl;
+
+						string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "NameForSort";
+						sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
+
+						string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
+						string searchLayout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout") : "";
+
+						<form method="get" action="@url" data-response-target-element="content" class="w-100">
+							@*@foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+							{
+								foreach (FacetViewModel facetItem in facetGroup.Facets)
+								{
+									foreach (FacetOptionViewModel facetOption in facetItem.Options)
+									{
+										if (facetOption.Selected)
+										{
+											<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]" />
+										}
+									}
+								}
+							}*@
+
+							<input type="hidden" name="PageSize" value="@pageSize" />
+							<input type="hidden" name="SortBy" value="@sortBySelection" />
+							<input type="hidden" name="RequestType" value="UpdateList" />
+
+							@if (!string.IsNullOrEmpty(searchQuery))
+							{
+								<input type="hidden" name="q" value="@searchQuery" />
+								<input type="hidden" name="SearchLayout" value="@searchLayout" />
+							}
+
+							<button class="btn btn-primary" type="button" onclick="swift.ProductList.Update(event)">@Translate("Load more products")</button>
+						</form>
+						<button class="btn" type="button" onclick="document.body.scrollTop = 0; document.documentElement.scrollTop = 0;">@Translate("Back to top")</button>
+					}
+				</div>
 			</div>
 		}
 	</div>
