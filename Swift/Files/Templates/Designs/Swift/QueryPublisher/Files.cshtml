@@ -28,11 +28,59 @@
 
 	var facetGroups = GetLoop("FacetGroups");
 	int facetGroupsCount = 0;
-	int maxFacetGroups = 12;
 	int totalFacetGroups = facetGroups.Count();
+
+	int facetOptionsCount = 0;
 }
 
+
+
+<form method="post" action="@url" data-response-target-element="content" class="w-100 mb-3">
+	<input type="hidden" name="PageSize" value="12" />
+	<input type="hidden" name="SortBy" value="@sortBySelection">
+	<input type="hidden" name="RequestType" value="UpdateList" />
+
+	@if (!string.IsNullOrEmpty(searchQuery))
+	{
+		<input type="hidden" name="q" value="@searchQuery" />
+		<input type="hidden" name="SearchLayout" value="@searchLayout" />
+	}
+
+	@foreach (var facetGroup in facetGroups)
+	{
+		foreach (var facetItem in facetGroup.GetLoop("Facets"))
+		{
+			var facetOptions = facetItem.GetLoop("FacetOptions");
+			string groupName = facetItem.GetString("Facet.Name");
+
+			foreach (var facetOption in facetOptions)
+			{
+				if (facetOption.GetBoolean("FacetOption.Selected"))
+				{
+					string facetLabel = HtmlEncoder.HtmlEncode(facetOption.GetString("FacetOption.Name"));
+
+					<input class="visually-hidden" id="Selected_@facetOption.GetString("FacetOption.Value")" name="@facetItem.GetString("Facet.QueryParameter")" onclick="swift.ProductList.Update(event)" type="checkbox" value="[@facetOption.GetString("FacetOption.Value")]" title="@facetLabel" checked>
+					<label class="btn btn-secondary d-inline-flex align-items-center" for="Selected_@facetOption.GetString("FacetOption.Value")">
+						<span>@(groupName): @facetLabel.Replace("/Product assets/", "")</span>
+						<span class="icon-2 ms-2 my-auto">
+							@ReadFile(iconPath + "check.svg")
+						</span>
+					</label>
+
+					facetOptionsCount++;
+				}
+			}
+		}
+	}
+
+	@if (facetOptionsCount > 2)
+	{
+		<button type="button" class="btn btn-clean btn-sm me-sm-1 me-lg-2" onclick="swift.ProductList.ResetFacets(event)"><span class="icon-2">@ReadFile(iconPath + "rotate-ccw.svg")</span> @Translate("Clear filters")</button>
+	}
+</form>
+
 <form method="post" action="@url" data-response-target-element="content" class="w-100">
+	<input type="hidden" name="PageSize" value="12" id="PageSize" />
 	<input type="hidden" name="RequestType" value="UpdateList" />
 
 	@if (!string.IsNullOrEmpty(searchQuery))
@@ -42,11 +90,8 @@
 	}
 
 	<div class="grid gap-4">
-		<div class="g-col-12">
-
-		</div>
 		<div class="g-col-12 g-col-lg-3">
-			<div class="border-bottom">
+			<div class="border-top border-bottom">
 				<h2 class="opacity-85 m-0 my-2 flex-fill h6">@Translate("Sort by")</h2>
 				<div class="d-flex flex-column gap-2 mb-4">
 					<div class="form-check">
@@ -170,7 +215,6 @@
 
 				<div class="mt-5" id="LoadMoreButton">
 					<div class="text-center d-flex flex-column gap-3">
-						<input type="hidden" name="PageSize" value="@pageSize" id="PageSize" />
 						<div class="opacity-85">@loadedAssets @Translate("out of") @totalAssets @Translate("products")</div>
 						@if (GetInteger("DwPaging.PageCount") != 1)
 						{
