@@ -15,115 +15,133 @@
 	supportedImageFormats = new string[] { ".jpg", ".jpeg", ".webp", ".png", ".gif", ".bmp", ".tiff" };
 	supportedDocumentFormats = new string[] { ".pdf", ".docx", ".xlsx", ".ppt", "pptx" };
 	allSupportedFormats = supportedImageFormats.Concat(supportedDocumentFormats).ToArray();
+
+	string url = Dynamicweb.Context.Current.Request.RawUrl;
+	string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
+	string searchLayout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout") : "";
+
+	string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "FileName";
+	sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
+	string sortNameSelectedAZ = sortBySelection.ToLower() == "filename" ? "checked" : "";
+	string sortNameSelectedZA = sortBySelection.ToLower() == "-filename" ? "checked" : "";
 }
 
-<div class="grid">
-	<div class="g-col-12">
+<form method="post" action="@url" data-response-target-element="content" class="w-100">
+	<input type="hidden" name="RequestType" value="UpdateList" />
 
-	</div>
-	<div class="g-col-12 g-col-lg-3">
+	@if (!string.IsNullOrEmpty(searchQuery))
+	{
+		<input type="hidden" name="q" value="@searchQuery" />
+		<input type="hidden" name="SearchLayout" value="@searchLayout" />
+	}
 
-	</div>
-	<div class="g-col-12 g-col-lg-9">
-		@if (assetsList.Count > 0)
-		{
-			int pageSizeSetting = 10;
-			int pageSize = GetInteger("DwPaging.PageSize");
-			pageSize += pageSizeSetting;
+	<div class="grid">
+		<div class="g-col-12">
 
-			int totalAssets = GetInteger("DwPaging.TotalItems");
-			int loadedAssets = pageSize > totalAssets ? totalAssets : pageSize;
-
-			<div class="grid gap-4">
-				@foreach (var asset in assetsList)
-				{
-					foreach (string format in allSupportedFormats)
-					{
-						string fileName = asset.GetString("FileName");
-						bool imageFound = false;
-
-						if (fileName.Contains(format))
-						{
-							<div class="g-col-6 g-col-lg-3 d-flex flex-column">
-								<div class="ratio mb-3" style="--bs-aspect-ratio: 100%">
-									@foreach (string imageFormat in supportedImageFormats)
-									{
-										if (fileName.Contains(imageFormat))
-										{
-											string imagePath = !string.IsNullOrEmpty(asset.GetString("DirectoryRelativePath")) ? "/Admin/Public/GetImage.ashx?image=/Files" + asset.GetString("DirectoryRelativePath") + "/" + fileName + "&width=640&format=webp" : "";
-											<img src="@imagePath" loading="lazy" style="object-fit: cover" />
-
-											imageFound = true;
-										}
-									}
-
-									@if (imageFound == false)
-									{
-										<div class="position-absolute bg-black bg-opacity-10 w-100 h-100"></div>
-										<div class="d-flex align-items-center justify-content-center">
-											<span class="icon-4">@ReadFile(iconPath + "file.svg")</span>
-										</div>
-									}
-								</div>
-								<div class="flex-fill d-flex">
-									<h3 class="h6 flex-fill" style="word-break: break-all">@fileName</h3>
-									<span class="icon-2">@ReadFile(iconPath + "info.svg")</span>
-								</div>
-								<div class="fs-6 opacity-50">
-									@(asset.GetString("FileSize"))kb
-								</div>
-							</div>
-						}
-					}
-				}
-
-				<div class="g-col-12 border-top w-100 mt-4"></div>
-			</div>
-
-			<div class="mt-5" id="LoadMoreButton">
-				<div class="text-center d-flex flex-column gap-3">
-					<div class="opacity-85">@loadedAssets @Translate("out of") @totalAssets @Translate("products")</div>
-					@if (GetInteger("DwPaging.PageCount") != 1)
-					{
-						string url = Dynamicweb.Context.Current.Request.RawUrl;
-
-						string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "NameForSort";
-						sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
-
-						string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
-						string searchLayout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout") : "";
-
-						<form method="get" action="@url" data-response-target-element="content" class="w-100">
-							@*@foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
-							{
-								foreach (FacetViewModel facetItem in facetGroup.Facets)
-								{
-									foreach (FacetOptionViewModel facetOption in facetItem.Options)
-									{
-										if (facetOption.Selected)
-										{
-											<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]" />
-										}
-									}
-								}
-							}*@
-
-							<input type="hidden" name="PageSize" value="@pageSize" />
-							<input type="hidden" name="SortBy" value="@sortBySelection" />
-							<input type="hidden" name="RequestType" value="UpdateList" />
-
-							@if (!string.IsNullOrEmpty(searchQuery))
-							{
-								<input type="hidden" name="q" value="@searchQuery" />
-								<input type="hidden" name="SearchLayout" value="@searchLayout" />
-							}
-
-							<button class="btn btn-primary" type="button" onclick="swift.ProductList.Update(event)">@Translate("Load more products")</button>
-						</form>
-						<button class="btn" type="button" onclick="document.body.scrollTop = 0; document.documentElement.scrollTop = 0;">@Translate("Back to top")</button>
-					}
+		</div>
+		<div class="g-col-12 g-col-lg-3">
+			<div class="border-bottom">
+				<h2 class="opacity-85 m-0 my-2 flex-fill h6">@Translate("Sort by")</h2>
+				<div class="d-flex flex-column gap-2 mb-4">
+					<div class="form-check">
+						<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="FileName" id="SortByNameAZ" @sortNameSelectedAZ>
+						<label class="form-check-label" for="SortByNameAZ">
+							@Translate("Filename (A-Z)")
+						</label>
+					</div>
+					<div class="form-check">
+						<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-FileName" id="SortByNameZA" @sortNameSelectedZA>
+						<label class="form-check-label" for="SortByNameZA">
+							@Translate("Filename (Z-A)")
+						</label>
+					</div>
 				</div>
 			</div>
-		}
+
+			@*@foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+		{
+			foreach (FacetViewModel facetItem in facetGroup.Facets)
+			{
+				foreach (FacetOptionViewModel facetOption in facetItem.Options)
+				{
+					if (facetOption.Selected)
+					{
+						<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]" />
+					}
+				}
+			}
+		}*@
+		</div>
+		<div class="g-col-12 g-col-lg-9">
+			@if (assetsList.Count > 0)
+			{
+				int pageSizeSetting = 12;
+				int pageSize = GetInteger("DwPaging.PageSize");
+
+				int totalAssets = GetInteger("DwPaging.TotalItems");
+				int loadedAssets = pageSize > totalAssets ? totalAssets : pageSize;
+
+				<div class="grid gap-4">
+					@foreach (var asset in assetsList)
+					{
+						foreach (string format in allSupportedFormats)
+						{
+							string fileName = asset.GetString("FileName");
+							bool imageFound = false;
+
+							if (fileName.Contains(format))
+							{
+								<div class="g-col-6 g-col-lg-3 d-flex flex-column">
+									<div class="ratio mb-3" style="--bs-aspect-ratio: 100%">
+										@foreach (string imageFormat in supportedImageFormats)
+										{
+											if (fileName.Contains(imageFormat))
+											{
+												string imagePath = !string.IsNullOrEmpty(asset.GetString("DirectoryRelativePath")) ? "/Admin/Public/GetImage.ashx?image=/Files" + asset.GetString("DirectoryRelativePath") + "/" + fileName + "&width=640&format=webp" : "";
+												<img src="@imagePath" loading="lazy" style="object-fit: cover" />
+
+												imageFound = true;
+											}
+										}
+
+										@if (imageFound == false)
+										{
+											<div class="position-absolute bg-black bg-opacity-10 w-100 h-100"></div>
+											<div class="d-flex align-items-center justify-content-center">
+												<span class="icon-4">@ReadFile(iconPath + "file.svg")</span>
+											</div>
+										}
+									</div>
+									<div class="flex-fill d-flex">
+										<h3 class="h6 flex-fill" style="word-break: break-all">@fileName</h3>
+										<span class="icon-2">@ReadFile(iconPath + "info.svg")</span>
+									</div>
+									<div class="fs-6 opacity-50">
+										@(asset.GetString("FileSize"))kb
+									</div>
+								</div>
+							}
+						}
+					}
+
+					<div class="g-col-12 border-top w-100 mt-4"></div>
+				</div>
+
+				<div class="mt-5" id="LoadMoreButton">
+					<div class="text-center d-flex flex-column gap-3">
+						<input type="hidden" name="PageSize" value="@pageSize" id="PageSize" />
+						<div class="opacity-85">@loadedAssets @Translate("out of") @totalAssets @Translate("products")</div>
+						@if (GetInteger("DwPaging.PageCount") != 1)
+						{
+							int nextPageSize = pageSize += pageSizeSetting;
+							<button class="btn btn-primary" type="button" onclick="document.querySelector('#PageSize').value = '@nextPageSize'; swift.ProductList.Update(event)">@Translate("Load more assets")</button>
+							<button class="btn" type="button" onclick="document.body.scrollTop = 0; document.documentElement.scrollTop = 0;">@Translate("Back to top")</button>
+						}
+					</div>
+				</div>
+			}
+		</div>
 	</div>
-</div>
+</form>
+
+@TemplateTags()
