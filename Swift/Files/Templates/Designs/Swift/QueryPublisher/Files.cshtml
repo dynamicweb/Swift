@@ -1,5 +1,6 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 @using Dynamicweb
+@using Dynamicweb.Core.Encoders
 
 @functions {
 	public string[] supportedImageFormats { get; set; }
@@ -7,7 +8,7 @@
 	public string[] allSupportedFormats { get; set; }
 }
 
-@{ 
+@{
 	var assetsList = GetLoop("QueryResultItem");
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 
@@ -70,20 +71,23 @@
 				foreach (var facet in facetGroup.GetLoop("Facets"))
 				{
 					var facetOptions = facet.GetLoop("FacetOptions");
+					string groupName = facet.GetString("Facet.Name");
 
 					if (facetOptions.Count() > 0)
 					{
 						<div class="@border">
-							<div class="d-flex" data-bs-toggle="collapse" data-bs-target="#FacetGroup_@facet.GetString("Facet.Name").Replace(" ", "")" role="button" aria-expanded="true" aria-controls="FacetGroup_@facet.GetString("Facet.Name").Replace(" ", "")">
-								<h2 class="opacity-85 m-0 flex-fill h6 my-2">@Translate(facet.GetString("Facet.Name"))</h2>
+							<div class="d-flex" data-bs-toggle="collapse" data-bs-target="#FacetGroup_@groupName.Replace(" ", "")" role="button" aria-expanded="true" aria-controls="FacetGroup_@groupName.Replace(" ", "")">
+								<h2 class="opacity-85 m-0 flex-fill h6 my-2">@Translate(groupName)</h2>
 								<div class="my-auto collapse-chevron-icon"></div>
 							</div>
 							<div class="collapse show" id="FacetGroup_@facet.GetString("Facet.Name").Replace(" ", "")">
 								@foreach (var option in facetOptions)
 								{
-									@*string facetLabel = HtmlEncoder.HtmlEncode(facetOption.Label);
-									string disabled = facetOption.Count <= 0 ? "disabled" : "";
-									string selected = facetOption.Selected ? "checked" : "";
+									@option.TemplateTags()
+
+									string facetLabel = HtmlEncoder.HtmlEncode(option.GetString("FacetOption.Name"));
+									string disabled = option.GetInteger("FacetOption.Count") <= 0 ? "disabled" : "";
+									string selected = option.GetBoolean("facetOption.Selected") ? "checked" : "";
 
 									if (facetLabel.ToLower() == "true")
 									{
@@ -96,15 +100,12 @@
 									}
 
 									<label class="form-check mt-1" @disabled>
-										<input type="checkbox" onclick="swift.ProductList.Update(event)" class="form-check-input" name="@facet.QueryParameter" value="[@facetOption.Value]" data-filter-value="@facetLabel" @selected>
+										<input type="checkbox" onclick="swift.ProductList.Update(event)" class="form-check-input" name="@facet.GetString("Facet.QueryParameter")" value="[@option.GetString("FacetOption.Value")]" data-filter-value="@facetLabel" @selected>
 										<span class="form-check-label d-flex align-items-center">
 											<span class="flex-fill">@facetLabel </span>
-											@if (facet.FacetType.ToLower() == "field")
-											{
-												<small class="opacity-85">@facetOption.Count</small>
-											}
+											<small class="opacity-85">@option.GetInteger("FacetOption.Count")</small>
 										</span>
-									</label>*@
+									</label>
 								}
 							</div>
 						</div>
@@ -115,18 +116,18 @@
 			}
 
 			@*@foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
-		{
-			foreach (FacetViewModel facetItem in facetGroup.Facets)
-			{
-				foreach (FacetOptionViewModel facetOption in facetItem.Options)
 				{
-					if (facetOption.Selected)
+					foreach (FacetViewModel facetItem in facetGroup.Facets)
 					{
-						<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]" />
+						foreach (FacetOptionViewModel facetOption in facetItem.Options)
+						{
+							if (facetOption.Selected)
+							{
+								<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]" />
+							}
+						}
 					}
-				}
-			}
-		}*@
+				}*@
 		</div>
 		<div class="g-col-12 g-col-lg-9">
 			@if (assetsList.Count > 0)
@@ -195,7 +196,9 @@
 						}
 					</div>
 				</div>
-			} else { 
+			}
+			else
+			{
 				<div class="alert alert-dark m-0" id="NoFiltersAlert">
 					@Translate("No assets found")
 				</div>
@@ -203,5 +206,3 @@
 		</div>
 	</div>
 </form>
-
-@TemplateTags()
