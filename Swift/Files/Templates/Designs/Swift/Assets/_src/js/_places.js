@@ -24,8 +24,15 @@ const Places = function () {
 					types: ["address"]
 				};
 
+				input.addEventListener("keypress", function (e) {
+					if (e.key === 'Enter') {
+						e.preventDefault();
+					}
+				});
+
 				autocomplete = new google.maps.places.Autocomplete(input, options)
 				autocomplete.addListener("place_changed", swift.Places.fillInAddress);
+				input.setAttribute("autocomplete", "none");
 			}
 		},
 
