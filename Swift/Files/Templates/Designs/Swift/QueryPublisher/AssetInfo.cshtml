@@ -20,16 +20,19 @@
 	allSupportedFormats = supportedImageFormats.Concat(supportedDocumentFormats).ToArray();
 
 	bool imageFound = false;
+	string fileName;
+	string filePath = "";
 }
 
 
 <div class="d-flex flex-column p-4 pe-0 vh-100">
 	@foreach (var asset in assetsList)
 	{
-		<div class="flex-fill overflow-y-auto overflow-x-hidden pe-4">
+		<div class="flex-fill overflow-y-auto overflow-x-hidden pe-4 mb-4">
 			@foreach (string format in allSupportedFormats)
 			{
-				string fileName = asset.GetString("FileName");
+				fileName = asset.GetString("FileName");
+				filePath = !string.IsNullOrEmpty(asset.GetString("DirectoryRelativePath")) ? asset.GetString("DirectoryRelativePath") + "/" + fileName : "";
 
 				if (fileName.Contains(format))
 				{
@@ -40,7 +43,7 @@
 								{
 									if (fileName.Contains(imageFormat))
 									{
-										string imagePath = !string.IsNullOrEmpty(asset.GetString("DirectoryRelativePath")) ? "/Admin/Public/GetImage.ashx?image=/Files" + asset.GetString("DirectoryRelativePath") + "/" + fileName + "&width=120&format=webp" : "";
+										string imagePath = "/Admin/Public/GetImage.ashx?image=/Files" + filePath + "&width=120&format=webp";
 										<img src="@imagePath" loading="lazy" style="object-fit: cover" />
 
 										imageFound = true;
@@ -77,8 +80,8 @@
 					</dl>
 
 					if (imageFound) {
-						string filePath = HttpContext.Current.Server.MapPath("Files" + asset.GetString("DirectoryRelativePath") + "/" + asset.GetString("FileName"));
-						var attributes = Dynamicweb.Imaging.Image.GetImageAttributes(filePath);
+						string fileServerPath = HttpContext.Current.Server.MapPath("Files" + asset.GetString("DirectoryRelativePath") + "/" + asset.GetString("FileName"));
+						var attributes = Dynamicweb.Imaging.Image.GetImageAttributes(fileServerPath);
 						var dimensions = string.Format("{0} x {1}px", attributes.Size.Width, attributes.Size.Height);
 						var colors = string.Format("{0} ({1} {2})", attributes.ColorType, attributes.ColorDepth, Translate("bits"));
 
@@ -100,88 +103,94 @@
 							</div>
 						</dl>
 
-						if (Dynamicweb.Imaging.Image.LoadImageMetadata(filePath, ref IPTC, ref EXIF, ref XMP)) { 
+						if (Dynamicweb.Imaging.Image.LoadImageMetadata(fileServerPath, ref IPTC, ref EXIF, ref XMP)) { 
 
 							@* IPTC image data *@
-							<div class="border-bottom">
-								<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#IPTC_Group" role="button" aria-expanded="true" aria-controls="IPTC_Group">
-									<h2 class="my-3 opacity-85 m-0 flex-fill h6">IPTC</h2>
-									<div class="my-auto collapse-chevron-icon"></div>
-								</div>
-								<div class="collapse" id="IPTC_Group">
-									<dl class="pb-3">
-										@foreach (var metadata in EXIF)
-										{
-											if (!String.IsNullOrEmpty(metadata.Value))
+							if (EXIF.Count > 0) { 
+								<div class="border-bottom">
+									<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#IPTC_Group" role="button" aria-expanded="true" aria-controls="IPTC_Group">
+										<h2 class="my-3 opacity-85 m-0 flex-fill h6">IPTC</h2>
+										<div class="my-auto collapse-chevron-icon"></div>
+									</div>
+									<div class="collapse" id="IPTC_Group">
+										<dl class="pb-3">
+											@foreach (var metadata in EXIF)
 											{
-												if (metadata.Value.Length < 20) { 
-													<div class="d-flex flex-row">
+												if (!String.IsNullOrEmpty(metadata.Value))
+												{
+													if (metadata.Value.Length < 20) { 
+														<div class="d-flex flex-row">
+															<dt class="flex-fill">@metadata.Key</dt>
+															<dd>@metadata.Value</dd>
+														</div>
+													} else { 
 														<dt class="flex-fill">@metadata.Key</dt>
 														<dd>@metadata.Value</dd>
-													</div>
-												} else { 
-													<dt class="flex-fill">@metadata.Key</dt>
-													<dd>@metadata.Value</dd>
+													}
 												}
 											}
-										}
-									</dl>
+										</dl>
+									</div>
 								</div>
-							</div>
-							
+							}			
+
 							@* XMP image data *@
-							<div class="border-bottom">
-								<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#XMP_Group" role="button" aria-expanded="true" aria-controls="XMP_Group">
-									<h2 class="my-3 opacity-85 m-0 flex-fill h6">XMP</h2>
-									<div class="my-auto collapse-chevron-icon"></div>
-								</div>
-								<div class="collapse" id="XMP_Group">
-									<dl class="pb-3">
-										@foreach (var metadata in IPTC)
-										{
-											if (!String.IsNullOrEmpty(metadata.Value))
+							if (XMP.Count > 0) { 
+								<div class="border-bottom">
+									<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#XMP_Group" role="button" aria-expanded="true" aria-controls="XMP_Group">
+										<h2 class="my-3 opacity-85 m-0 flex-fill h6">XMP</h2>
+										<div class="my-auto collapse-chevron-icon"></div>
+									</div>
+									<div class="collapse" id="XMP_Group">
+										<dl class="pb-3">
+											@foreach (var metadata in IPTC)
 											{
-												if (metadata.Value.Length < 20) { 
-													<div class="d-flex flex-row">
+												if (!String.IsNullOrEmpty(metadata.Value))
+												{
+													if (metadata.Value.Length < 20) { 
+														<div class="d-flex flex-row">
+															<dt class="flex-fill">@metadata.Key</dt>
+															<dd>@metadata.Value</dd>
+														</div>
+													} else { 
 														<dt class="flex-fill">@metadata.Key</dt>
 														<dd>@metadata.Value</dd>
-													</div>
-												} else { 
-													<dt class="flex-fill">@metadata.Key</dt>
-													<dd>@metadata.Value</dd>
+													}
 												}
 											}
-										}
-									</dl>
+										</dl>
+									</div>
 								</div>
-							</div>
+							}
 
 							@* EXIF image data *@
-							<div class="border-bottom">
-								<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#EXIF_Group" role="button" aria-expanded="true" aria-controls="EXIF_Group">
-									<h2 class="my-3 opacity-85 m-0 flex-fill h6">EXIF</h2>
-									<div class="my-auto collapse-chevron-icon"></div>
-								</div>
-								<div class="collapse" id="EXIF_Group">
-									<dl class="pb-3">
-										@foreach (var metadata in XMP)
-										{
-											if (!String.IsNullOrEmpty(metadata.Value))
+							if (EXIF.Count > 0) { 
+								<div class="border-bottom">
+									<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#EXIF_Group" role="button" aria-expanded="true" aria-controls="EXIF_Group">
+										<h2 class="my-3 opacity-85 m-0 flex-fill h6">EXIF</h2>
+										<div class="my-auto collapse-chevron-icon"></div>
+									</div>
+									<div class="collapse" id="EXIF_Group">
+										<dl class="pb-3">
+											@foreach (var metadata in XMP)
 											{
-												if (metadata.Value.Length < 20) { 
-													<div class="d-flex flex-row">
+												if (!String.IsNullOrEmpty(metadata.Value))
+												{
+													if (metadata.Value.Length < 20) { 
+														<div class="d-flex flex-row">
+															<dt class="flex-fill">@metadata.Key</dt>
+															<dd>@metadata.Value</dd>
+														</div>
+													} else { 
 														<dt class="flex-fill">@metadata.Key</dt>
 														<dd>@metadata.Value</dd>
-													</div>
-												} else { 
-													<dt class="flex-fill">@metadata.Key</dt>
-													<dd>@metadata.Value</dd>
+													}
 												}
 											}
-										}
-									</dl>
+										</dl>
+									</div>
 								</div>
-							</div>
+							}
 						}
 					}
 				}
@@ -189,27 +198,52 @@
 		</div>
 
 		<form class="pe-4">
-			@if (imageFound) { 
+			@if (imageFound) {
+				filePath = "/Admin/Public/GetImage.ashx?image=/Files" + filePath;
+				
+
 				<div class="mb-2">
 					<h3 class="h5">@Translate("Image settings")</h3>
 					<div>@Translate("Select a resolution for your images")</div>
 				</div>
 
 				<div class="form-floating mb-4">
-					<input type="hidden" name="Dpi" id="Dpi" value="72" />
-					<input type="hidden" name="ImageFormat" id="ImageFormat" value="webp" />
-
-					<select class="form-select bg-white" id="ImageSettingsSelector" aria-label="@Translate("Resolution")"
-							onchange="document.querySelector('#Dpi').value = this.options[this.selectedIndex].getAttribute('data-dpi'); document.querySelector('#ImageFormat').value = this.options[this.selectedIndex].getAttribute('data-image-format');">
-						<option data-dpi="72" data-image-format="webp" selected>@Translate("Web images") (dpi: 72)</option>
-						<option data-dpi="300" data-image-format="png">@Translate("Print images") (dpi: 300)</option>
+					<select class="form-select bg-white" id="ImageSettingsSelector" aria-label="@Translate("Resolution")">
+						<option data-dpi="72" data-image-format="webp" data-image-width="1000" selected>@Translate("Web images") (dpi: 72)</option>
+						<option data-dpi="300" data-image-format="png" data-image-width="2000">@Translate("Print images") (dpi: 300)</option>
 						<option data-dpi="600">@Translate("HQ images") (dpi: 600)</option>
 					</select>
 					<label for="ImageFormatSelector">@Translate("Resolution")</label>
 				</div>
+				 
+				<script type="module">
+					document.querySelector("#ImageSettingsSelector").addEventListener("change", function (e) {
+						var selector = e.currentTarget;
+
+						var href = "@(filePath)";
+
+						if (selector.options[selector.selectedIndex].getAttribute('data-dpi')) {
+							href += "&resolution=" + selector.options[selector.selectedIndex].getAttribute('data-dpi');
+						}
+
+						if (selector.options[selector.selectedIndex].getAttribute('data-image-format')) {
+							href += "&format=" + selector.options[selector.selectedIndex].getAttribute('data-image-format');
+						}
+
+						if (selector.options[selector.selectedIndex].getAttribute('data-image-width')) {
+							href += "&width=" + selector.options[selector.selectedIndex].getAttribute('data-image-width');
+						}
+
+						document.querySelector('#AssetDownloadButton').href = href;
+					});
+				</script>
+
+				filePath = filePath + "&resolution=72&format=webp";
+			} else {
+				filePath = "/Files" + filePath;
 			}
 
-			<button type="submit" class="btn btn-primary w-100">@Translate("Download asset")</button>
+			<a href="@filePath" download class="btn btn-primary w-100" id="AssetDownloadButton">@Translate("Download asset")</a>
 		</form>
 	}
 </div>
