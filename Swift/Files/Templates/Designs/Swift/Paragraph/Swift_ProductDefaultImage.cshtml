@@ -1,0 +1,149 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+
+@{
+	ProductViewModel product = new ProductViewModel();
+
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Item["DummyProduct"] != null)
+	{
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		}
+		else
+		{
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	}
+	else if (Pageview.Item["DummyProduct"] == null)
+	{
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+	}
+
+	string imagePath = product?.DefaultImage?.Value ?? "";
+	imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
+
+	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
+	ratio = ratio != "0" ? ratio : "";
+	string ratioCssClass = ratio != "" ? " ratio" : "";
+	string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
+
+	string width = Model.Item.GetRawValueString("Width", "auto");
+	int smallImageSize = 640;
+	int largeImageSize = width == "auto" ? 640 : Convert.ToInt32(width);
+
+	string imagePathXs = "/Admin/Public/GetImage.ashx?width=" + smallImageSize + "&image=" + imagePath + "&format=webp";
+	string imagePathS = "/Admin/Public/GetImage.ashx?width=" + largeImageSize + "&image=" + imagePath + "&format=webp";
+	string imagePathFallBack = "/Admin/Public/GetImage.ashx?width=" + largeImageSize + "&image=" + imagePath + "&format=webp";
+
+	var badgeParms = new Dictionary<string, object>();
+	badgeParms.Add("size", "h7");
+	badgeParms.Add("saleBadgeType", Model.Item.GetRawValue("SaleBadgeType"));
+	badgeParms.Add("saleBadgeCssClassName", Model.Item.GetRawValue("SaleBadgeDesign"));
+	badgeParms.Add("newBadgeCssClassName", Model.Item.GetRawValue("NewBadgeDesign"));
+	badgeParms.Add("newPublicationDays", Model.Item.GetInt32("NewPublicationDays"));
+	badgeParms.Add("campaignBadgesValues", Model.Item.GetRawValueString("CampaignBadges"));
+
+	string badgeSize = Model.Item.GetRawValueString("BadgeSize", "fs-2");
+
+	bool showFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("ShowAddToFavorites")) ? Model.Item.GetBoolean("ShowAddToFavorites") : false;
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+
+	var favoriteParameters = new Dictionary<string, object>();
+	if (!anonymousUser && showFavoritesSelector)
+	{
+		int defaultFavoriteListId = 0;
+
+		IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
+		if (favoreiteLists.Count() == 1)
+		{
+			foreach (FavoriteList list in favoreiteLists)
+			{
+				defaultFavoriteListId = list.ListId;
+			}
+		}
+
+		favoriteParameters.Add("ListId", defaultFavoriteListId);
+	}
+}
+
+@if (product.Id != null)
+{
+	string imageId = "ProductImage_" + product.Id + product.VariantId;
+
+	bool saleBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("SaleBadgeDesign")) && Model.Item.GetRawValueString("SaleBadgeDesign") != "none" ? true : false;
+	bool newBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("NewBadgeDesign")) && Model.Item.GetRawValueString("NewBadgeDesign") != "none" ? true : false;
+	DateTime createdDate = product.Created.Value;
+	bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
+	showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
+	showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
+
+	if (width != "auto")
+	{
+		<style>
+			@@media (min-width: 768px) {
+				.product-image {
+					width: @(width)px !important;
+				}
+			}
+		</style>
+	}
+
+	if (!string.IsNullOrEmpty(imagePath))
+	{
+		<div class="w-100 position-relative item_@Model.Item.SystemName.ToLower()">
+			<div class="ratio" style="@(ratioVariable)">
+				<div class="d-flex justify-content-center align-items-center">
+					<img id="@imageId"
+						 srcset="
+							@imagePathXs @(smallImageSize)w,
+							@imagePathS  @(largeImageSize)w"
+						 sizes="(min-width: 992px) 33vw, 50vw"
+						 src="@imagePathFallBack"
+						 loading="lazy"
+						 decoding="async"
+						 class="h-100 w-100 product-image"
+						 style="object-fit: contain"
+						 alt="@product.Name">
+				</div>
+			</div>
+
+			@if (showBadges)
+			{
+				<div class="position-absolute top-0 left-0 p-2 p-lg-3 ps-0 ps-lg-0 @badgeSize">
+					@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
+				</div>
+			}
+
+			@if (!anonymousUser && showFavoritesSelector && product.VariantInfo.VariantInfo == null)
+			{
+				<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
+					@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+				</div>
+			}
+		</div>
+	}
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0">@Translate("No products available")</div>
+}

@@ -6,12 +6,42 @@
 @{
 	ProductListViewModel productList = new ProductListViewModel();
 
+	ProductListViewModelSettings productSetting = new ProductListViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
 	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
 	{
 		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
 	}
+	else if (Pageview.Item["DummyProductGroup"] != null)
+	{
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel groupList = pageViewModel.Item.GetValue("DummyProductGroup") != null ? pageViewModel.Item.GetValue("DummyProductGroup") as ProductListViewModel : new ProductListViewModel();
 
-	string searchParameter = Dynamicweb.Context.Current.Request.GetString("q");	
+		if (groupList?.Group?.Id != null)
+		{
+			productList = ViewModelFactory.CreateView(productSetting, groupList.Group.Id);
+			Dynamicweb.Context.Current.Items.Add("ProductList", productList);
+		}
+		else
+		{
+			productList = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.ProductGroups.GetGroups(Dynamicweb.Ecommerce.Common.Context.LanguageID).FirstOrDefault().Id);
+
+			Dynamicweb.Context.Current.Items.Add("ProductList", productList);
+		}
+	}
+	else if (Pageview.Item["DummyProductGroup"] == null)
+	{
+		productList = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.ProductGroups.GetGroups(Dynamicweb.Ecommerce.Common.Context.LanguageID).FirstOrDefault().Id);
+		Dynamicweb.Context.Current.Items.Add("ProductList", productList);
+	}
+
+	string searchParameter = Dynamicweb.Context.Current.Request.GetString("q");
 
 	bool hideTitle = Model.Item.GetBoolean("HideGroupTitle");
 	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-4");

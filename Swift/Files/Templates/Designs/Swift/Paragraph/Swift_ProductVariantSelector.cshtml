@@ -1,0 +1,89 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	ProductViewModel product = new ProductViewModel();
+
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails")) {
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	} else if (Pageview.Item["DummyProduct"] != null) {
+
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		} else {
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	} else if (Pageview.Item["DummyProduct"] == null) {
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+	}
+}
+
+@if (product.Id != null) {
+	if (product.VariantGroups().Count != 0)
+	{
+		string[] variantId = product.VariantId.Split('.');
+		int groupNumber = 1;
+
+		<form class="mb-3 js-variant-selector item_@Model.Item.SystemName.ToLower()" data-combinations="@string.Join(",", product.VariantCombinations())">
+			<input type="hidden" name="variantid" value="@variantId" />
+
+			@foreach (var variantGroup in product.VariantGroups())
+			{
+				VariantGroupViewModel group = variantGroup;
+
+				<h3 class="h6">@group.Name</h3>
+				<div class="mb-3 js-variant-group" data-group-id="@groupNumber">
+					@foreach (var option in group.Options)
+					{
+						string active = variantId.Contains(option.Id) ? "active" : "";
+
+						if (!string.IsNullOrEmpty(option.Color))
+						{
+							<button type="button" class="btn colorbox rounded-circle me-1 mb-2 d-inline-block variant-option js-variant-option @active" style="background-color: @option.Color" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID"></button>
+						}
+						else if (!string.IsNullOrEmpty(option.Color) && !string.IsNullOrEmpty(option.Image.Value))
+						{
+							<button type="button" class="btn p-0 d-inline-block mb-2 variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
+								<img src="/Admin/Public/GetImage.ashx?image=@(option.Image.Value)&width=42&Format=WebP&Quality=70" />
+							</button>
+						}
+						else
+						{
+							<button type="button" class="btn btn-secondary d-inline-block mb-2 variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
+								@option.Name
+							</button>
+						}
+					}
+				</div>
+
+				groupNumber++;
+			}
+		</form>
+
+		<script type="module">
+			swift.VariantSelector.init();
+		</script>
+	} else if (Pageview.IsVisualEditorMode) {
+		<div class="alert alert-dark m-0" role="alert">
+			<span>@Translate("Variant selector will be shown here")</span>
+		</div>
+	}
+} else if (Pageview.IsVisualEditorMode) {
+	<div class="alert alert-dark m-0" role="alert">
+		<span>@Translate("No products available")</span>
+	</div>
+}

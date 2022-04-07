@@ -1,0 +1,127 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	ProductViewModel product = new ProductViewModel();
+
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	} else if (Pageview.Item["DummyProduct"] != null) {
+
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		} else {
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	} else if (Pageview.Item["DummyProduct"] == null) {
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+	}
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+
+	string priceFontSize = Model.Item.GetRawValueString("PriceSize", "fs-2");
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
+	horizontalAlign = horizontalAlign == "center" ? "text-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "end" ? "text-end" : horizontalAlign;
+} 
+
+@if (!hidePrice && product.Id != null)
+{
+	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+
+	string priceMin = "";
+	string priceMax = "";
+
+	<div class="@horizontalAlign item_@Model.Item.SystemName.ToLower()">
+		<div class="@priceFontSize m-0" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+			<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
+
+			@if (showPricesWithVat == "false" && !neverShowVat)
+			{
+				string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
+
+				<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
+				if (product.Price.Price != product.PriceBeforeDiscount.Price)
+				{
+					<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
+				}
+			}
+			else
+			{
+				string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
+
+				<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
+				if (product.Price.Price != product.PriceBeforeDiscount.Price)
+				{
+					<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
+				}
+			}
+
+			@if (showPricesWithVat == "false" && !neverShowVat)
+			{
+				string price = product.Price.PriceWithoutVatFormatted;
+				if (product?.VariantInfo?.VariantInfo != null)
+				{
+					priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
+					priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
+				}
+				if (priceMin != priceMax)
+				{
+					price = priceMin + " - " + priceMax;
+				}
+				<span class="text-price">@price</span>
+			}
+			else
+			{
+				string price = product.Price.PriceFormatted;
+				if (product?.VariantInfo?.VariantInfo != null)
+				{
+					priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
+					priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
+				}
+				if (priceMin != priceMax)
+				{
+					price = priceMin + " - " + priceMax;
+				}
+				<span class="text-price">@price</span>
+			}
+		</div>
+
+		@if (showPricesWithVat == "false" && !neverShowVat)
+		{
+			string price = product.Price.PriceWithVatFormatted;
+			if (product?.VariantInfo?.VariantInfo != null)
+			{
+				priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
+				priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
+			}
+			if (priceMin != priceMax)
+			{
+				price = priceMin + " - " + priceMax;
+			}
+			<small class="opacity-85 fst-normal">@price @Translate("Incl. VAT")</small>
+		}
+	</div>
+} else if (Pageview.IsVisualEditorMode) {
+	<div class="alert alert-dark m-0" role="alert">
+		<span>@Translate("No products available")</span>
+	</div>
+}
