@@ -12,7 +12,7 @@
 * Customer Center: Fix bad ID name on favorite list
 * Itemtype: Selected groups fix theme and padding
 * Itemtype: Facet group navigation fix padding
-* Itemtype: Added isClickable check to offcanvas menu items
+* Itemtype: Added isClickable check to offcanvas menu items (for 1. level)
 * Product Detail: Added anchor tag and link to field type of link in product specification
 
 ## Changed
