@@ -10,11 +10,11 @@
 	string theme = !string.IsNullOrEmpty(Model.Parameters["theme"].ToString()) ? Model.Parameters["theme"].ToString() : "";
 }
 
-<nav class="navbar navbar-expand d-none d-lg-flex nav-wrapper py-0 mx-n2 @navOrientation @navAlignment">
+<nav class="navbar navbar-expand d-none d-lg-flex nav-wrapper py-0 mx-n2 @navOrientation @navAlignment desktop">
 	@RenderFirstLevelNodes(Model.Nodes, theme, navOrientation)
 </nav>
 
-<nav class="navbar navbar-expand d-flex d-lg-none nav-wrapper py-0 mx-n2 @navOrientation @navAlignment">
+<nav class="navbar navbar-expand d-flex d-lg-none nav-wrapper py-0 mx-n2 @navOrientation @navAlignment mobile">
 	@RenderFirstLevelNodesMobile(Model.Nodes, navOrientation)
 </nav>
 
@@ -41,18 +41,20 @@
 			var hasChildren = node.Nodes.Count() > 0 || pageType == "Swift_SignIn";
 			string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
 
+			string nodeId = !string.IsNullOrEmpty(node.GroupId) ? "Navigation_" + node.GroupId + "_" + Pageview.CurrentParagraph.ID : "Navigation_Page_Desktop_" + node.PageId.ToString() + "_" + Pageview.CurrentParagraph.ID;
+
 			if (pageType != "Swift_Preferences")
 			{
 				<li class="nav-item@(hasChildren ? " dropdown" : "")">
 					@if (node.IsClickable)
-					{
-						<a class="nav-link nav-link-clean text-nowrap nav-link-underline @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" @dropdownAttributes @(node.IsActive ? " aria-current='page'" : "")>
+					{ 
+						<a class="nav-link nav-link-clean text-nowrap nav-link-underline @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" @dropdownAttributes @(node.IsActive ? " aria-current='page'" : "") id="@nodeId">
 							@RenderNavigationItem(node)
 						</a>
 					}
 					else
 					{
-						<span class="nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing" @dropdownAttributes>
+						<span class="nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing" @dropdownAttributes id="@nodeId">
 							@RenderNavigationItem(node)
 						</span>
 					}
@@ -64,8 +66,17 @@
 							<ul class="dropdown-menu @(theme)">
 								@foreach (var subnode in node.Nodes)//Standard pages
 								{
+									nodeId = !string.IsNullOrEmpty(subnode.GroupId) ? "Navigation_" + subnode.GroupId + "_" + Pageview.CurrentParagraph.ID : "Navigation_Page_" + subnode.PageId.ToString() + "_" + Pageview.CurrentParagraph.ID;
+
 									<li>
-										<a href="@subnode.Link" class="dropdown-item py-2 nav-link-underline @linkFontSize @linkFontWeight @linkCasing" @(subnode.IsActive ? " aria-current='page'" : "")>@subnode.Name</a>
+										@if (subnode.IsClickable)
+										{
+											<a href="@subnode.Link" class="dropdown-item py-2 nav-link-underline @linkFontSize @linkFontWeight @linkCasing" @(subnode.IsActive ? " aria-current='page'" : "") id="@nodeId">@subnode.Name</a>
+										}
+										else
+										{ 
+											<span class="dropdown-item py-2 @linkFontSize @linkFontWeight @linkCasing" @(subnode.IsActive ? " aria-current='page'" : "") id="@nodeId">@subnode.Name</span>
+										}
 									</li>
 								}
 								@if (pageType == "Swift_SignIn") //Sign out link
@@ -78,7 +89,7 @@
 										if (Pageview.User.CurrentSecondaryUser != null)
 										{
 											<li>
-												<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item py-2 nav-link-underline @linkFontSize @linkFontWeight @linkCasing">@Translate("Sign out as a customer")</a>
+												<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item py-2 nav-link-underline @linkFontSize @linkFontWeight @linkCasing" id="SignInButton_@Pageview.CurrentParagraph.ID">@Translate("Sign out as a customer")</a>
 											</li>
 										}
 										<li>
@@ -106,7 +117,7 @@
 							<input type="hidden" name="GroupID" value="@groupId" />
 							<input type="hidden" name="ProductID" value="@productId" />
 							<input type="hidden" name="VariantID" value="@variantId" />
-							<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link nav-link-clean text-nowrap border-0 @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+							<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link nav-link-clean text-nowrap border-0 @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal" id="OpenPreferences_@Pageview.CurrentParagraph.ID">
 								@if (languageSelector)
 								{
 									@RenderNavigationItem(node, "language") }
@@ -187,6 +198,7 @@
 	<div class="navbar-nav @(navOrientation == "vertical" ? "flex-column" : navOrientation)">
 		@foreach (var node in nodes)
 		{
+			string nodeId = !string.IsNullOrEmpty(node.GroupId) ? "Navigation_" + node.GroupId + "_" + Pageview.CurrentParagraph.ID : "Navigation_Page_Mobile_" + node.PageId.ToString() + "_" + Pageview.CurrentParagraph.ID;
 			var hasChildren = node.Nodes.Count() > 0;
 			var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
 			string pageType = page.ItemType;
@@ -195,9 +207,9 @@
 			{
 				if (node.IsClickable)
 				{
-					<a class="nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize @(node.IsActive ? " active" : "")" href="@node.Link" title="@node.Name">
-						@RenderNavigationItem(node)
-					</a>
+				<a class="nav-link nav-link-clean text-nowrap @linkFontWeight @linkCasing @linkFontSize @(node.IsActive ? " active" : "")" href="@node.Link" title="@node.Name">
+					@RenderNavigationItem(node)
+				</a>
 				}
 				else
 				{
@@ -386,6 +398,8 @@
 	string productId = Dynamicweb.Context.Current.Request["ProductID"] != null ? Dynamicweb.Context.Current.Request["ProductID"].ToString() : "";
 	string variantId = Dynamicweb.Context.Current.Request["VariantID"] != null ? Dynamicweb.Context.Current.Request["VariantID"].ToString() : "";
 
+	string nodeId = !string.IsNullOrEmpty(node.GroupId) ? "PreferencesLink_" + node.GroupId + "_" + Pageview.CurrentParagraph.ID : "PreferencesLink_" + node.PageId.ToString() + "_" + Pageview.CurrentParagraph.ID;
+
 	<li class="nav-item dropdown">
 		<form class="d-none d-lg-block" action="/Default.aspx?ID=@node.PageId" data-response-target-element="@(preferencesType)Dropdown_@Pageview.CurrentParagraph.ID" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
 			<input type="hidden" name="Type" value="@preferencesType" />
@@ -397,7 +411,7 @@
 			<input type="hidden" name="FontWeight" value="@linkFontWeight" />
 			<input type="hidden" name="Casing" value="@linkCasing" />
 
-			<a onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="nav-link nav-link-clean text-nowrap nav-link-underline @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "") dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(node.IsActive ? " aria-current='page'" : "")>
+			<a id="@nodeId" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="nav-link nav-link-clean text-nowrap nav-link-underline @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "") dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(node.IsActive ? " aria-current='page'" : "")>
 				@RenderNavigationItem(node, preferencesType)
 			</a>
 

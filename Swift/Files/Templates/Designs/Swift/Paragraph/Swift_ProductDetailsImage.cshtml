@@ -25,8 +25,8 @@
 		ratio = ratio != "0" ? ratio : "";
 		string cssClass = ratio != "" && ratio != "fill" ? " ratio" : "";
 		string cssVariable = ratio != "" && ratio != "fill" ? "--bs-aspect-ratio: " + ratio : "";
-		cssClass = ratio != "" && ratio == "fill" && size == "mobile" ? " ratio" : cssClass;
-		cssVariable = ratio != "" && ratio == "fill" && size == "mobile" ? "--bs-aspect-ratio: 66%" : cssVariable;
+		cssClass = ratio == "fill" && size == "mobile" ? " ratio" : cssClass;
+		cssVariable = ratio == "fill" && size == "mobile" ? "--bs-aspect-ratio: 66%" : cssVariable;
 
 		ratioSettings.Ratio = ratio;
 		ratioSettings.CssClass = cssClass;
@@ -39,9 +39,33 @@
 
 @{ 
 	@* Get the product data *@
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Item["DummyProduct"] != null && Pageview.IsVisualEditorMode)
+	{
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		} else {
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	} else if (Pageview.Item["DummyProduct"] == null) {
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 	}
 
 	@* Supported formats *@
@@ -54,6 +78,9 @@
 	var selectedAssetCategories = Model.Item.GetRawValueString("ImageAssets").Split(',').ToList();
 	bool includeImagePatternImages = Model.Item.GetBoolean("ImagePatternImages"); 
 	
+}
+
+@if (product.Id != null) { 
 	@* Needed image data collection to support both DefaultImage, ImagePatterns and Image Assets *@
 	string defaultImage = product.DefaultImage != null ? product.DefaultImage.Value : "";
 	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedAssetCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
@@ -102,15 +129,14 @@
 	bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
 	showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
 	showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
-}
 
-@* Get assets from selected categories or get all assets *@
-@if (totalAssets != 0) {
-	int assetNumber = 0;
-	int thumbnailNumber = 0;
-	int modalAssetNumber = 0;
+	@* Get assets from selected categories or get all assets *@
+	if (totalAssets != 0) {
+		int assetNumber = 0;
+		int thumbnailNumber = 0;
+		int modalAssetNumber = 0;
 
-	<div class="h-100@(theme) position-relative">
+	<div class="h-100@(theme) position-relative item_@Model.Item.SystemName.ToLower()">
 		<div id="SmallScreenImages_@Model.ID" class="carousel" data-bs-ride="carousel">
 			<div class="carousel-inner h-100">
 				@foreach (MediaViewModel asset in assetsList) {
@@ -119,54 +145,56 @@
 						if (assetValue.Contains(format) ) {
 							string activeSlide = assetNumber == 0 ? "active" : "";
 
-							<div class="carousel-item @activeSlide" data-bs-interval="99999">
-								@RenderAsset(asset, assetNumber, "mobile")
-							</div>
-							assetNumber++;
+								<div class="carousel-item @activeSlide" data-bs-interval="99999">
+									@RenderAsset(asset, assetNumber, "mobile")
+								</div>
+								assetNumber++;
+							}
 						}
 					}
-				}
+				</div>
 			</div>
-		</div>
 
 		@if (totalAssets > 1) {
-			<div id="SmallScreenImagesThumbnails_@Model.ID" class="grid gap-2 overflow-x-auto my-3">
+			<div id="SmallScreenImagesThumbnails_@Model.ID" class="grid grid-10 gap-2 overflow-x-auto my-3">
 				@foreach (MediaViewModel asset in assetsList) {
 					var assetValue = asset.Value;
 					foreach (string format in allSupportedFormats) {
 						if (assetValue.Contains(format)) {
 							string imagePath = Dynamicweb.Context.Current.Server.UrlEncode(assetValue);
 							imagePath = assetValue.Contains("youtu.be") || assetValue.Contains("youtube") ? "https://img.youtube.com/vi/" + assetValue.Substring(assetValue.LastIndexOf('/') + 1) + "/default.jpg" : imagePath;
-							string imagePathThumb = !imagePath.Contains("youtube") ? $"/Admin/Public/GetImage.ashx?image={imagePath}&width=160&format=webp" : imagePath;
+							string imagePathThumb = !imagePath.Contains("youtube") ? $"/Admin/Public/GetImage.ashx?image={imagePath}&width=180&format=webp" : imagePath;
 							string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 
-							string videoId = assetValue.Substring(assetValue.LastIndexOf('/') + 1);
-							string vimeoJsClass = assetValue.Contains("vimeo") ? "js-vimeo-video-thumbnail" : "";
+								string videoId = assetValue.Substring(assetValue.LastIndexOf('/') + 1);
+								string vimeoJsClass = assetValue.Contains("vimeo") ? "js-vimeo-video-thumbnail" : "";
 
-							bool isDocument = false;
-							foreach (string documentFormat in supportedDocumentFormats) {
-								if (assetValue.Contains(documentFormat)) {
-									isDocument = true;
+								bool isDocument = false;
+								foreach (string documentFormat in supportedDocumentFormats) {
+									if (assetValue.Contains(documentFormat)) {
+										isDocument = true;
+									}
 								}
-							}
 
-							string assetName = asset.Name;
-							assetName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
-							string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
+								string assetName = asset.Name;
+								assetName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
+								string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
 
 							if (!isDocument) {
-								<div class="ratio ratio-4x3 border outline-none" data-bs-target="#SmallScreenImages_@Model.ID" data-bs-slide-to="@thumbnailNumber" style="cursor: pointer">
-									<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+								RatioSettings ratioSettings = GetRatioSettings("desktop");
+
+								<div class="border outline-none @(ratioSettings.CssClass)" style="@(ratioSettings.CssVariable); cursor: pointer" data-bs-target="#SmallScreenImages_@Model.ID" data-bs-slide-to="@thumbnailNumber">
+									<div class="d-flex align-items-center justify-content-center overflow-hidden position-absolute h-100">
 										@foreach (string videoFormat in supportedVideoFormats) { //Videos
 											if (assetValue.Contains(videoFormat)) {
 												<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
 											}
 										}
 									</div>
-									<img src="@imagePathThumb" alt="@assetName" @assetTitle class="p-0 p-lg-1 @vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
+									<img src="@imagePathThumb" alt="@assetName" @assetTitle class="p-0 p-lg-1 @vimeoJsClass w-100 h-100" style="object-fit: contain" data-video-id="@videoId">
 								</div>
                             } else {
-								<a href="@assetValue" class="ratio ratio-4x3 border outline-none" style="cursor: pointer" download alt="@asset.Value">
+								<a href="@assetValue" class="ratio ratio-4x3 border outline-none" style="cursor: pointer" download title="@asset.Value">
 									@if (asset.Value.Contains(".pdf")) {
 										<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
 											<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
@@ -180,22 +208,22 @@
 								</a>
                             }
 
-							thumbnailNumber++;
+								thumbnailNumber++;
+							}
 						}
 					}
-				}
-			</div>
-		}
+				</div>
+			}
 
-		@if (showBadges) { 
-			<div class="position-absolute top-0 left-0 p-2 p-lg-3">
-				@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
-			</div>
-		}
-	</div>
+			@if (showBadges) { 
+				<div class="position-absolute top-0 left-0 p-2 p-lg-3">
+					@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
+				</div>
+			}
+		</div>
 
 	@* Modal with slides *@
-	<div class="modal fade" id="modal_@Model.ID" tabindex="-1" aria-labelledby="productDetailsGalleryModalTitle_@Model.ID" aria-hidden="true">
+	<div class="modal fade swift_products-details-images-modal" id="modal_@Model.ID" tabindex="-1" aria-labelledby="productDetailsGalleryModalTitle_@Model.ID" aria-hidden="true">
 		<div class="modal-dialog modal-dialog-centered modal-xl">
 			<div class="modal-content">
 				<div class="modal-header visually-hidden">
@@ -212,51 +240,54 @@
 										string imagePath = assetValue;
 										string activeSlide = modalAssetNumber == 0 ? "active" : "";
 
-										var parms = new Dictionary<string, object>();
-										parms.Add("cssClass", "d-block mw-100 mh-100 m-auto");
-										parms.Add("fullwidth", true);
-										parms.Add("columns", Model.GridRowColumnCount);
+											var parms = new Dictionary<string, object>();
+											parms.Add("cssClass", "d-block mw-100 mh-100 m-auto");
+											parms.Add("fullwidth", true);
+											parms.Add("columns", Model.GridRowColumnCount);
 
-										<div class="carousel-item @activeSlide h-100" data-bs-interval="99999">
-											@foreach (string imageFormat in supportedImageFormats) { //Images
-												if (assetValue.Contains(imageFormat)) {
-													@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+											<div class="carousel-item @activeSlide h-100" data-bs-interval="99999">
+												@foreach (string imageFormat in supportedImageFormats) { //Images
+													if (assetValue.Contains(imageFormat)) {
+														@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+													}
 												}
-											}
 
-											@foreach (string videoFormat in supportedVideoFormats) { //Videos
-												if (assetValue.Contains(videoFormat)) {
-													@RenderVideoPlayer(asset, "modal")
+												@foreach (string videoFormat in supportedVideoFormats) { //Videos
+													if (assetValue.Contains(videoFormat)) {
+														@RenderVideoPlayer(asset, "modal")
+													}
 												}
-											}
-										</div>
+											</div>
 
-										modalAssetNumber++;
+											modalAssetNumber++;
+										}
 									}
 								}
-							}
-							<button class="carousel-control-prev" type="button" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide="prev">
-								<span class="carousel-control-prev-icon" aria-hidden="true"></span>
-								<span class="visually-hidden">@Translate("Previous")</span>
-							</button>
-							 <button class="carousel-control-next" type="button" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide="next">
-								<span class="carousel-control-next-icon" aria-hidden="true"></span>
-								<span class="visually-hidden">@Translate("Next")</span>
-							</button>
+								<button class="carousel-control-prev" type="button" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide="prev">
+									<span class="carousel-control-prev-icon" aria-hidden="true"></span>
+									<span class="visually-hidden">@Translate("Previous")</span>
+								</button>
+								 <button class="carousel-control-next" type="button" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide="next">
+									<span class="carousel-control-next-icon" aria-hidden="true"></span>
+									<span class="visually-hidden">@Translate("Next")</span>
+								</button>
+							</div>
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
-	</div>
-} else if (Pageview.IsVisualEditorMode) {
-	RatioSettings ratioSettings = GetRatioSettings("desktop");
+	} else if (Pageview.IsVisualEditorMode) {
+		RatioSettings ratioSettings = GetRatioSettings("desktop");
 
-	<div class="h-100 @theme">
-		<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
-			<img src="~/Files/Images/missing_image.jpg" loading="lazy" decoding="async" class="mh-100 mw-100" style="object-fit: cover;" />
+		<div class="h-100 @theme">
+			<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
+				<img src="~/Files/Images/missing_image.jpg" loading="lazy" decoding="async" class="mh-100 mw-100" style="object-fit: cover;" />
+			</div>
 		</div>
-	</div>
+	}
+} else if (Pageview.IsVisualEditorMode) { 
+	<div class="alert alert-dark m-0">@Translate("No products available")</div>
 }
 
 @helper RenderAsset(MediaViewModel asset, int assetNumber, string size = "desktop") { 

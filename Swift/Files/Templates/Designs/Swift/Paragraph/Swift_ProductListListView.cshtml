@@ -7,11 +7,13 @@
 }
 
 @if (!string.IsNullOrEmpty(theme)) {
-	<div class="h-100@(theme)">
+	<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()">
 		@RenderProductList()
 	</div>
 } else {
-	@RenderProductList()
+	<div class="item_@Model.Item.SystemName.ToLower()">
+		@RenderProductList()
+	</div>
 }
 
 @helper RenderProductList () { 
@@ -136,7 +138,7 @@
 				}
 			</style>
 
-			<article class="grid gap-2 gap-lg-3 mb-3 @(productTheme) @textPadding">
+			<article class="grid gap-2 gap-lg-3 mb-3 @(productTheme) @textPadding product">
 				<a href="@link" class="g-col-12 g-col-lg-9 d-flex text-decoration-none mb-2 mb-lg-0">
 					@if (!Model.Item.GetBoolean("HideImage")) {
 						<div class="d-flex align-items-center me-2 me-lg-3" style="min-width: 80px">
@@ -225,7 +227,7 @@
 
 		}
 
-		<div class="my-3">
+		<div class="my-3" id="LoadMoreButton">
 			<div class="text-center d-flex flex-column gap-3">
 				<div class="opacity-85">@loadedProducts @Translate("out of") @productList.TotalProductsCount @Translate("products")</div>
 				@if (productList.PageCount != 1) {
@@ -268,16 +270,6 @@
 				}
 			</div>
 		</div>
-
-		if (!hideAddToCart) {
-			<div class="modal fade js-product" id="VariantSelectorModal_@Model.ID" tabindex="-1" aria-hidden="true">
-				<div class="modal-dialog modal-dialog-centered modal-md" >
-					<div class="modal-content @modalTheme" id="VariantSelectorModalContent_@Model.ID">
-						@* The content here comes from an external request *@
-					</div>
-				</div>
-			</div>
-		}
 	} else {
 		if (!Pageview.IsVisualEditorMode) {
 			<div class="alert alert-dark m-0">
@@ -426,9 +418,11 @@
 	hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser ? true : hideAddToCart;
 	bool quantitySelector = !string.IsNullOrEmpty(Model.Item.GetString("QuantitySelector")) ? Model.Item.GetBoolean("QuantitySelector") : false;
 
+	bool isDiscontinued = product.Discontinued;
+	bool IsNeverOutOfStock = product.NeverOutOfstock;
 	string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : "";
-	bool isNeverOutOfStock = product.NeverOutOfstock;
-	disableAddToCart = isNeverOutOfStock ? "" : disableAddToCart; 
+	disableAddToCart = isDiscontinued ? "disabled" : disableAddToCart;
+	disableAddToCart = IsNeverOutOfStock ? "" : disableAddToCart;
 
 	if (!hideAddToCart) { 
 		if (product.VariantInfo.VariantInfo == null) { 
@@ -467,13 +461,16 @@
 			string buttonText = quantitySelector ? Translate("Select") : "<span class=\"icon-2\">" + @ReadFile(iconPath+"shopping-cart.svg") + "</span>";
 
 			string variantSelectorServicePageId = !string.IsNullOrEmpty(Model.Item.GetString("VariantSelectorServicePageId")) ? Model.Item.GetLink("VariantSelectorServicePageId").PageId.ToString() : "";
-			variantSelectorServicePageId = variantSelectorServicePageId != "" ? variantSelectorServicePageId : GetPageIdByNavigationTag("RelatedProductsListService").ToString();
+			variantSelectorServicePageId = variantSelectorServicePageId != "" ? variantSelectorServicePageId : GetPageIdByNavigationTag("VariantSelectorService").ToString();
 
-			<form action="/Default.aspx?ID=@variantSelectorServicePageId" data-response-target-element="VariantSelectorModalContent_@Model.ID" data-preloader="inline" class="d-inline-block">
+			<form action="/Default.aspx?ID=@variantSelectorServicePageId" data-response-target-element="DynamicModalContent" data-preloader="inline" class="d-inline-block">
 				<input type="hidden" name="ProductID" value="@product.Id" />
 				<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
-				<input type="hidden" name="ViewType" value="ModalContent" />							
-				<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-primary" title="@Translate("Select")" style="@buttonWidth" data-bs-toggle="modal" data-bs-target="#VariantSelectorModal_@Model.ID">@buttonText</button>
+				<input type="hidden" name="HideInventory" value="@Model.Item.GetBoolean("HideInventory").ToString()" />
+				<input type="hidden" name="HideStockState" value="@Model.Item.GetBoolean("HideStockState").ToString()" />
+				<input type="hidden" name="VariantSelectorServicePage" value="@variantSelectorServicePageId" />
+				<input type="hidden" name="ViewType" value="ModalContent" />
+				<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-primary" style="@buttonWidth" title="@Translate("Select")" data-bs-toggle="modal" data-bs-target="#DynamicModal" id="OpenVariantSelectorModal@(product.Id)_@Pageview.CurrentParagraph.ID">@buttonText</button>
 			</form>
 		}
 	}

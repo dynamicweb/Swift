@@ -1,0 +1,86 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+
+	ProductViewModel product = new ProductViewModel();
+
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	} else if (Pageview.Item["DummyProduct"] != null) {
+
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		} else {
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	} else if (Pageview.Item["DummyProduct"] == null) {
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+	}
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+	hidePrice = Pageview.IsVisualEditorMode ? false : hidePrice;
+
+	if (Pageview.IsVisualEditorMode && product.Prices.Count == 0) {
+		product.Prices.Add(new PriceListViewModel { Price = new PriceViewModel { Price = 95, PriceFormatted = "€95" }, Quantity = 1 });
+		product.Prices.Add(new PriceListViewModel { Price = new PriceViewModel { Price = 85, PriceFormatted = "€85" }, Quantity = 2 });
+	}
+
+	string layout = Model.Item.GetRawValueString("Layout", "list");
+}
+
+@if (!hidePrice && product.Prices.Count > 0 && product.Id != null) {
+	if (layout == "list") {
+		<div class="item_@Model.Item.SystemName.ToLower() list">
+			@foreach (PriceListViewModel quantityPrice in product.Prices)
+			{
+				string quantityLabel = Translate("PCS");
+				string quantityPriceSuffix = quantityPrice.Quantity > 1 ? Translate("pr. PCS") : "";
+
+				<small class="d-block opacity-75"><span>@quantityPrice.Quantity @quantityLabel</span> - <span class="fw-bold">@quantityPrice.Price.PriceFormatted @quantityPriceSuffix</span></small>
+			}
+		</div>
+	} else if (layout == "table") {
+		<div class="item_@Model.Item.SystemName.ToLower() grid">
+			<table class="table table-sm mt-3 g-col-12 g-col-lg-6">
+				<thead>
+					<tr>
+						<td>@Translate("QTY")</td>
+						<td>@Translate("pr. PCS")</td>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (PriceListViewModel quantityPrice in product.Prices)
+					{
+						<tr>
+							<td>@quantityPrice.Quantity</td>
+							<td>@quantityPrice.Price.PriceFormatted</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+	}
+} else if (isVisualEditor) {
+	<div class="alert alert-dark m-0" role="alert">
+		<span>@Translate("No products available")</span>
+	</div>
+}

@@ -2,11 +2,22 @@
 
 @helper RenderAddressDeliveryAnonymous()
 {
+	string apiKey = !string.IsNullOrEmpty(Pageview.AreaSettings.GetString("Google_APIKey")) ? Pageview.AreaSettings.GetString("Google_APIKey") : "";
+
 	string userCheckoutPage = Pageview.CurrentParagraph.Item["CheckoutUserPageLink"] != null ? Pageview.CurrentParagraph.Item["CheckoutUserPageLink"].ToString().Replace("Default.aspx?Id=", "") : "";
 	string signInPage = Pageview.CurrentParagraph.Item["SignInPageLink"] != null ? Pageview.CurrentParagraph.Item["SignInPageLink"].ToString() + "&GoBackToPage=" + userCheckoutPage : "";
 	bool enableAdditionalAddress = Pageview.CurrentParagraph.Item["EnableAdditionalAddress"] != null ? (Boolean)Pageview.CurrentParagraph.Item["EnableAdditionalAddress"] : false;
+	bool enableFindLocation = Pageview.CurrentParagraph.Item["EnableFindLocation"] != null ? (Boolean)Pageview.CurrentParagraph.Item["EnableFindLocation"] : false;
 
-	string currentCountry = GetString("Ecom:Order.Delivery.Country.Code");
+	string currentCountry = Pageview.Area?.EcomCountryCode != null ? Pageview.Area.EcomCountryCode : "dk";
+	foreach (LoopItem country in GetLoop("Countries"))
+	{
+		if (country.GetString("Ecom:Country.IsDeliveryCountryOrDefault") == "true")
+		{
+			currentCountry = country.GetString("Ecom:Country.Code2");
+		}
+	}
+
 	string countrySelectorColumnSize = "g-col-6";
 	string deliveryRegionLabel = "State";
 
@@ -105,10 +116,9 @@
 						</div>
 					</div>
 
-					@if(currentCountry == "US" || currentCountry == "CA" || currentCountry == "GB"){
-						if (GetLoop("DeliveryRegions").Count > 0) {
-							countrySelectorColumnSize = "g-col-3";
-						}
+					@if (GetLoop("DeliveryRegions").Count > 0)
+					{
+						countrySelectorColumnSize = "g-col-3";
 					}
 
 					<div class="@countrySelectorColumnSize">
@@ -118,44 +128,49 @@
 						</div>
 					</div>
 
-					@if(currentCountry == "US" || currentCountry == "CA" || currentCountry == "GB"){
-						if (GetLoop("DeliveryRegions").Count > 0) {
-							if (currentCountry == "CA")
-							{
-								deliveryRegionLabel = Translate("Province");
-							}
-							else if (currentCountry == "GB")
-							{
-								deliveryRegionLabel = Translate("Region");
-							}
-							else if (currentCountry == "US")
-							{
-								deliveryRegionLabel = Translate("State");
-							}
+					@if (GetLoop("DeliveryRegions").Count > 0)
+					{
+						if (currentCountry == "CA")
+						{
+							deliveryRegionLabel = Translate("Province");
+						}
+						else if (currentCountry == "GB")
+						{
+							deliveryRegionLabel = Translate("Region");
+						}
+						else if (currentCountry == "US")
+						{
+							deliveryRegionLabel = Translate("State");
+						}
 
-							<div class="g-col-3">
-								<div class="form-floating">
-									<select class="form-select" name="EcomOrderDeliveryRegion" id="EcomOrderDeliveryRegion" onchange="submitForm()">
-										@foreach (LoopItem region in GetLoop("DeliveryRegions")) {
-											if (region.GetString("Ecom:DeliveryRegion.IsDeliveryRegion") == "true") {
-												<option value="@region.GetString("Ecom:DeliveryRegion.RegionCode")" selected>@region.GetString("Ecom:DeliveryRegion.Name")</option>
-											} else {
-												<option value="@region.GetString("Ecom:DeliveryRegion.RegionCode")">@region.GetString("Ecom:DeliveryRegion.Name")</option>
-                                            }
+						<div class="g-col-3">
+							<div class="form-floating">
+								<select class="form-select" name="EcomOrderDeliveryRegion" id="EcomOrderDeliveryRegion" onchange="submitForm()">
+									@foreach (LoopItem region in GetLoop("DeliveryRegions"))
+									{
+										if (region.GetString("Ecom:DeliveryRegion.IsDeliveryRegion") == "true")
+										{
+											<option value="@region.GetString("Ecom:DeliveryRegion.RegionCode")" selected>@region.GetString("Ecom:DeliveryRegion.Name")</option>
 										}
-									</select>
-									<label for="EcomOrderDeliveryRegion">@deliveryRegionLabel</label>
-								</div>
+										else
+										{
+											<option value="@region.GetString("Ecom:DeliveryRegion.RegionCode")">@region.GetString("Ecom:DeliveryRegion.Name")</option>
+										}
+									}
+								</select>
+								<label for="EcomOrderDeliveryRegion">@deliveryRegionLabel</label>
 							</div>
-                        }
+						</div>
 					}
 
 					<div class="g-col-12 g-col-md-3">
 						<div class="form-floating">
 
 							<select class="form-select" name="EcomOrderDeliveryCountry" id="EcomOrderDeliveryCountry" onchange="submitForm()">
-							@foreach (LoopItem country in GetLoop("Countries")) {
-								if (country.GetString("Ecom:Country.IsDeliveryCountryOrDefault") == "true") {
+								@foreach (LoopItem country in GetLoop("Countries"))
+								{
+									if (country.GetString("Ecom:Country.IsDeliveryCountryOrDefault") == "true")
+									{
 										<option value="@country.GetString("Ecom:Country.Code2")" selected>@country.GetString("Ecom:Country.Name")</option>
 									}
 									else
@@ -233,4 +248,15 @@
 		</div>
 
 	</div>
+
+	if (enableFindLocation && !string.IsNullOrEmpty(apiKey)) { 
+		<script defer src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)&libraries=places"></script>
+
+		<script type="module">
+			var mapSettings = { currentCountry: "@currentCountry" };
+			swift.Places.init(mapSettings);
+		</script>
+	}
 }
+
+

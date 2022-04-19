@@ -1,0 +1,83 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+
+@functions {
+	private string GetFontStack()
+	{
+		return "font-family:initial,Arial,Helvetica Neue,Helvetica,sans-serif;";
+	}
+
+	private string GetTableReset()
+	{
+		return "border:0;margin:0;outline:0;padding:0;";
+	}
+}
+
+@{
+	string blockType = "unsubscribeLink_block";
+
+	var page = Dynamicweb.Services.Pages.GetPage(Pageview.ID);
+	var settings = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page?.Parent).Item;
+	var blockId = Model.ID;
+	var block = Model.Item;
+
+	var emailContentThemeId = settings.GetRawValueString("EmailContentTheme");
+	var emailContentThemeParagraph = emailContentThemeId != null && emailContentThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(emailContentThemeId)) : null;
+	var emailContentTheme = emailContentThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph)?.Item : null;
+
+	var rowId = Pageview.CurrentParagraph.GridRowId;
+	var row = Dynamicweb.Services.Grids.GetGridRowById(rowId);
+	var rowItem = Dynamicweb.Services.Items.GetItem(row.ItemType, row.ItemId);
+	var rowThemeId = Dynamicweb.Core.Converter.ToString(rowItem["ColumnBackground"]);
+	var rowThemeParagraph = rowThemeId != null && rowThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(rowThemeId)) : null;
+	var rowTheme = rowThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph)?.Item : null;
+
+	var blockThemeId = block.GetRawValueString("Theme");
+	var blockThemeParagraph = blockThemeId != null && blockThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(blockThemeId)) : null;
+	var blockTheme = blockThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph)?.Item : rowTheme is object ? rowTheme : emailContentTheme;
+
+	string backgroundColor = blockTheme != null ? "background-color: " + blockTheme.GetString("BackgroundColor") + ";" : string.Empty;
+	string foregroundColor = blockTheme != null ? "color:" + blockTheme.GetString("ForegroundColor", "inherit") + ";" : string.Empty;
+	string borderColor = blockTheme != null ? "border-color: " + blockTheme.GetString("BorderColor", "transparent") + ";" : string.Empty;
+	string borders = block.GetRawValueString("Borders", "none");
+	string borderThicknes = block.GetRawValueString("BorderThicknes", "0") + "px;";
+	string borderClass = string.Empty;
+
+	switch (borders)
+	{
+		case "top":
+			borderClass = "border-top:" + borderThicknes + "border-top-style:solid;";
+			break;
+		case "bottom":
+			borderClass = "border-bottom:" + borderThicknes + "border-bottom-style:solid;";
+			break;
+		case "top-bottom":
+			borderClass = "border-top:" + borderThicknes + "border-bottom:" + borderThicknes + "border-style:solid; border-left:0; border-right: 0;";
+			break;
+		case "all":
+			borderClass = "border:" + borderThicknes + "border-style:solid;";
+			break;
+	}
+
+	string padding = block.GetRawValueString("Padding", "0");
+	string align = block.GetRawValueString("Align", "left");
+	string linkText = block.GetString("LinkText", string.Empty);
+	string leadingText = block.GetString("LeadingText", string.Empty);
+	string lineHeight = "line-height:" + (16 * Dynamicweb.Core.Converter.ToDouble(block.GetRawValueString("LineHeight", "1.5"))).ToString() + "px;";
+	bool reduceFontSize = block.GetBoolean("ReduceFontSize");
+}
+
+<table id="@blockId" class="@blockType" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;mso-line-height-rule:exactly;@GetTableReset()color:inherit;width:100%;@(borderClass)@(borderColor)@(backgroundColor)">
+	<tbody>
+		<tr style="@GetTableReset()">
+			<td style="mso-line-height-rule:exactly;mso-table-lspace:0pt;mso-table-rspace:0pt;@GetTableReset()@GetFontStack()text-align:@align;@(backgroundColor)@(foregroundColor)@(lineHeight)padding:@(padding)px;@(reduceFontSize ? "font-size:12px;" : string.Empty)" width="100%">
+				@leadingText
+				<a style="@(foregroundColor)@GetFontStack()" href="{{EmailMarketing:Email.UnsubscribeLink.Clean}}">
+					<strong style="@(foregroundColor)text-decoration:underline;font-weight:normal;@GetFontStack()">
+						@linkText
+					</strong>
+				</a>
+				<!--[if mso]><br/><![endif]-->
+			</td>
+		</tr>
+	</tbody>
+</table>

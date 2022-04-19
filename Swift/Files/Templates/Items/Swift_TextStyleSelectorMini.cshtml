@@ -1,0 +1,86 @@
+@inherits ViewModelTemplate<ListEditorViewModel<string>>
+@using Dynamicweb.Rendering
+@using Dynamicweb.Content.Items.Rendering
+
+@{ 
+	string editorId = Model.EditorId;
+
+	int pageId = Dynamicweb.Context.Current.Request["PageId"] != null ? Convert.ToInt32(Dynamicweb.Context.Current.Request["PageId"]) : 0;
+	pageId = pageId == 0 ? Convert.ToInt32(Dynamicweb.Context.Current.Request["ID"]) : pageId;
+	var websiteArea = Dynamicweb.Services.Pages?.GetPage(pageId).Area;
+	var websiteAreaId = websiteArea != null ? websiteArea.ID : 0;
+	int brandingPageId = websiteArea != null ? Convert.ToInt32(websiteArea.Item["BrandingPage"]) : 0;
+	int themePageId = websiteArea != null ? Convert.ToInt32(websiteArea.Item["ThemesPage"]) : 0;
+
+	var brandingPage = Dynamicweb.Services.Pages?.GetPage(brandingPageId) ?? null;
+	var themesParagraphLastChanged = Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(themePageId).OrderByDescending(p => p.Audit.LastModifiedAt).FirstOrDefault();
+
+	var cssStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("~/Files/Templates/Designs/Swift/Assets/css/styles.css"));
+	var cssLastModified = brandingPage.Audit.LastModifiedAt > themesParagraphLastChanged.Audit.LastModifiedAt ? brandingPage.Audit.LastModifiedAt : themesParagraphLastChanged.Audit.LastModifiedAt;
+	var cssThemeAndBrandingStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath($"~/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_@(websiteArea).min.css"));
+
+	Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_{websiteArea}.min.css?{cssLastModified.Ticks}; rel=preload; as=style;");
+}
+
+@* Swift styles *@
+<link href="~/Files/Templates/Items/Swift_Styles.css" rel="stylesheet" media="all" type="text/css">
+
+@* Branding and Themes min stylesheet *@
+<link href="~/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_@(websiteAreaId).min.css?@(cssLastModified.Ticks)" rel="stylesheet" media="all" type="text/css" data-last-modified-content="@cssLastModified">
+
+<style>
+	.swift-font-grid {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		margin-bottom: 2rem;
+	}
+
+	.swift-brand-option {
+		padding: 0.5em;
+		cursor: pointer;
+		box-sizing: border-box;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.swift-brand-label {
+		display: block;
+		background-color: #F7F7F7;
+		height: 100%;
+	}
+
+	.swift-brand-label .swift-brand-option {
+		border: 4px solid #F7F7F7;
+	}
+
+	.swift-brand-input:checked ~ .swift-brand-label .swift-brand-option {
+		border: 4px solid #0085CA;
+	}
+
+	.swift-brand {
+		text-align: center;
+	}
+
+</style>
+
+<div class="brand swift-font-grid" style="width: calc(100% - 40px)">
+	@foreach(var option in Model.Options){
+		string brandName = !string.IsNullOrWhiteSpace(option.Name) ? option.Name : "Default";
+		string cssClass = brandName.Replace("Display ", "display-").Replace("Subtitle ", "fs-").Replace("Headline", "h").Replace(" ", "").ToLower();
+
+		<div class="swift-brand">
+			<input class="swift-brand-input" type="radio" id="@(editorId)_@brandName" name="@editorId" value="@option.Value" @(Model.SelectedValue == option.Value.ToString().Replace(" ", "+") ? "checked" : "") style="display: none" />
+			<label class="swift-brand-label" for="@(editorId)_@brandName">
+				<div class="swift-brand-option">
+					<small>@cssClass.ToUpper()</small>
+					<div style="display:flex;align-items:center;justify-content:center;height:100%;flex-direction:column;gap:.5rem;text-align:center;">
+						<div class="@cssClass" style="display:flex;flex-grow:1;align-items:center;letter-spacing:unset !important;">A</div>
+						<span class="@cssClass" style="font-size:10px !important;">Abc</span>
+					</div>
+				</div>
+			</label>
+		</div>
+	}
+</div>

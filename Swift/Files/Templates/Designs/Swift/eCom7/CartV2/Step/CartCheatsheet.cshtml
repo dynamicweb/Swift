@@ -1,0 +1,602 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using System.Collections
+@using System.Linq
+@functions {
+	Dynamicweb.Content.Paragraph shoppingCart;
+
+	private Dynamicweb.Content.Paragraph GetShoppingCartApp()
+	{
+		var cartParagraph = Dynamicweb.Services.Paragraphs.GetParagraphsByItemTypes(new[] { "Swift_CartApp" }).FirstOrDefault(p => p.Page.Active);
+
+		if (cartParagraph == null) return null;
+		var checkoutPageId = Dynamicweb.Core.Converter.ToInt32(Pageview.User != null ? cartParagraph.Item["CheckoutSignedInPageLink"] : cartParagraph.Item["CheckoutAnonymousPageLink"]);
+		return Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(checkoutPageId)?.FirstOrDefault(p => p.ItemType.Equals("Swift_CheckoutApp"));
+	}
+
+	private string GetPaymentTypeAvailability(string paymentMethodId)
+	{
+		if (shoppingCart == null) return "Cannot find active Shopping Cart App";
+		var selectAll = Dynamicweb.Core.Converter.ToBoolean(shoppingCart.ModuleProperties["SelectAllPayments"]);
+		return selectAll ? "True" : Dynamicweb.Core.Converter.ToString(shoppingCart.ModuleProperties["PaymetTypes"].Contains(paymentMethodId));
+	}
+	
+	private string GetShippingTypeAvailability(string shippingMethodId)
+	{
+		if (shoppingCart == null) return "Cannot find active Shopping Cart App";
+		var selectAll = Dynamicweb.Core.Converter.ToBoolean(shoppingCart.ModuleProperties["SelectAllDeliveries"]);
+		return selectAll ? "True" : Dynamicweb.Core.Converter.ToString(shoppingCart.ModuleProperties["DeliveryTypes"].Contains(shippingMethodId));
+	}
+}
+
+<section>
+	@if (Dynamicweb.Ecommerce.Common.Context.Cart != null || Dynamicweb.Context.Current.Request["OrderID"] != null)
+	{
+		shoppingCart = GetShoppingCartApp();
+		<h2 class="mt-5">@Translate("Cart Cheat Sheet")</h2>
+		<h5>@Translate("Hover over text for more details")</h5>
+		
+		<h1 class="mt-5">@Translate("Cart ID"): @GetString("Ecom:Order.ID")</h1>
+		<table class="table table-clean table-hover table-bordered">
+			<thead>
+			<tr>
+				<th rowspan="2">@Translate("Name")</th>
+				<th rowspan="2">@Translate("Qty")</th>
+				<th colspan="3" class="text-center">@Translate("Unit price")</th>
+				<th colspan="3" class="text-center">@Translate("Total price")</th>
+			</tr>
+			<tr>
+				<!--Unit price-->
+				<th>@Translate("Original")</th>
+				<th>@Translate("Discount")</th>
+				<th>@Translate("With Discount / Price")</th>
+				<!--Total price-->
+				<th>@Translate("Original")</th>
+                <th>@Translate("Discount")</th>
+                <th>@Translate("With Discount / Price")</th>
+			</tr>
+			</thead>
+			@foreach (var orderline in GetLoop("OrderLines"))
+			{
+				var rowCssClass = orderline.GetBoolean("Ecom:Order:OrderLine.IsDiscount") ? "bg-secondary text-white" : orderline.GetBoolean("Ecom:Order:OrderLine.IsTax") ? "bg-light text-dark" : "bg-primary text-white";
+				var isDiscount = orderline.GetBoolean("Ecom:Order:OrderLine.IsDiscount");
+				var discountText = isDiscount ? $"{Translate("DISCOUNT")}: " : "";
+				var orderlineTypeName = "";
+				var orderlineType = orderline.GetInteger("Ecom:Order:OrderLine.Type");
+				var orderlineTypeEnum = (Dynamicweb.Ecommerce.Orders.OrderLineType)orderlineType;
+				orderlineTypeName = orderlineTypeEnum.ToString();
+				var isChildOrderline = !string.IsNullOrEmpty(orderline.GetString("Ecom:Order:OrderLine.ParentLineID"));
+				var productNameIndent = isChildOrderline ? "ps-4" : "";
+				
+				var hasDiscount = (!isDiscount && orderline.GetDouble("Ecom:Order:OrderLine.UnitPrice.PriceWithVAT.Value") != orderline.GetDouble("Ecom:Product.Discount.Price.PriceWithVAT.Value"));
+				if (orderlineTypeEnum == Dynamicweb.Ecommerce.Orders.OrderLineType.Tax)
+				{
+					hasDiscount = false;
+				}
+				
+				<tr class="@rowCssClass">
+					<td>
+						<div class="@productNameIndent">
+							@if (isDiscount)
+							{
+								@discountText
+								@orderline.GetString("Ecom:Order:OrderLine.ProductName")
+
+							}
+							else
+							{
+								@orderline.GetString("Ecom:Order:OrderLine.ProductName")<br/>
+								<small>@orderline.GetString("Ecom:Order:OrderLine.ProductNumber") - @orderline.GetString("Ecom:Order:OrderLine.ProductVariantText")</small>
+								foreach (var productDiscount in orderline.GetLoop("ProductDiscounts"))
+								{
+									<br/>
+									<small>
+										<strong>@Translate("DISCOUNT"):</strong>
+										"@productDiscount.GetString("Ecom:Product.Discount.Name")": @productDiscount.GetString("Ecom:Product.Discount.Amount.PriceWithVATFormatted")
+										@{
+											if (productDiscount.GetString("Ecom:Product.Discount.Type") == "PERCENT")
+											{
+												<text>(</text>@productDiscount.GetString("Ecom:Product.Discount.PercentWithVAT")<text>%)</text>
+											}
+										}
+									</small>
+								}
+							}
+							<br/>
+							<small class="text-muted">@Translate("Orderline type"): @orderlineTypeName (@orderlineType)</small>
+							<br/>
+							<small class="text-muted">@Translate("Orderline Id"): @orderline.GetString("Ecom:Order:OrderLine.Id")</small>
+							@if (isChildOrderline)
+							{
+								<br/>
+								<small class="text-muted">@Translate("Parent Orderline Id"): @orderline.GetString("Ecom:Order:OrderLine.ParentLineID")</small>
+							}
+						</div>
+					</td>
+					<td>@orderline.GetString("Ecom:Order:OrderLine.Quantity") </td>
+					<!--Unit price-->
+					<td>@RenderPrices(orderline, "Ecom:Order:OrderLine.UnitPrice", false, true)</td>
+					<td>@RenderPrices(orderline, "Ecom:Product.Discount.TotalAmount", isDiscount, hasDiscount)</td>
+					<td>@RenderPrices(orderline, "Ecom:Product.Discount.Price", isDiscount, hasDiscount)</td>
+					<!--Total price-->
+					<td>@RenderPrices(orderline, "Ecom:Order:OrderLine.Price", isDiscount, true)</td>
+					<td>
+						@{
+							if (isDiscount)
+							{
+								@RenderPrices(orderline, "Ecom:Order:OrderLine.TotalPriceWithProductDiscounts", false, true)
+							}
+							else
+							{
+								@RenderPrices(orderline, "Ecom:Order:OrderLine.TotalDiscount", false, true)
+							}
+						}
+					</td>
+					<td>@RenderPrices(orderline, "Ecom:Order:OrderLine.TotalPriceWithProductDiscounts", isDiscount, true)</td>
+				</tr>
+			}
+			<tr>
+				<td colspan="5">@Translate("Total of original price / Total product discounts / Total with all product discounts*")<br/><small>@Translate("*Price after product discounts, before order discounts, fees and taxes")</small></td>
+				<td class="bg-success text-white">@RenderPrices("Ecom:Order.TotalPriceWithoutDiscountsFeesAndTaxes")</td>
+				<td class="bg-danger text-white">@RenderPrices("Ecom:Order.TotalProductDiscount")</td>
+				<td class="bg-success text-white">
+					<strong>@Dynamicweb.Ecommerce.Services.Currencies.Format(Dynamicweb.Ecommerce.Common.Context.Currency, (GetDouble("Ecom:Order.TotalPriceWithoutDiscountsFeesAndTaxes.Price.Value") + GetDouble("Ecom:Order.TotalProductDiscount.Price.Value")), true)</strong><br/>
+					<small>@Translate("NO AVAILABLE TAG")</small><br/>
+					<small>@Translate("CALCULATED PRICE")</small>
+				</td>
+			</tr>
+
+			<tr>
+				<td colspan="6">
+					@Translate("Order discount total")<br/><small>@Translate("Sum of all order discounts (inclusive and exclusive)")</small>
+				</td>
+				<td colspan="2" class="bg-warning text-dark" colspan="2">@RenderPrices("Ecom:Order.TotalOrderDiscount")</td>
+			</tr>
+			<tr>
+				<td colspan="5">@Translate("Sub totals")<br/><small>@Translate("Sum of all original prices, discounts and discounted price. Before fees and taxes")</small></td>
+				<td class="bg-dark text-white">@RenderPrices("Ecom:Order.TotalPriceWithoutDiscountsFeesAndTaxes")</td>
+				<td class="bg-dark text-white">@RenderPrices("Ecom:Order.TotalDiscount")</td>
+				<td class="bg-dark text-white">@RenderPrices("Ecom:Order.TotalPriceWithoutFeesAndTaxes")</td>
+			</tr>
+			<tr>
+				<td colspan="7">
+					@Translate("Payment")<br/>
+					<small>@GetString("Ecom:Order.PaymentMethod")</small>
+				</td>
+				<td>@RenderPrices("Ecom:Order.PaymentFee")</td>
+			</tr>
+			<tr>
+				<td colspan="7">
+					@Translate("Shipping")<br/>
+					<small>@GetString("Ecom:Order.ShippingMethod")</small>
+				</td>
+				<td>@RenderPrices("Ecom:Order.ShippingFee")</td>
+			</tr>
+			<tr>
+				<td colspan="7">
+					@Translate("Taxes")<br/>
+				</td>
+				<td>@RenderPrices("Ecom:Order.Taxes.Total")</td>
+			</tr>
+
+			<tr>
+				<td colspan="7"><strong>@Translate("Total") (Ecom:Order.Price)</strong><br>@Translate("This is the order.Price and what counts!")</td>
+				<td class="bg-info text-dark">@RenderPrices("Ecom:Order.Price")</td>
+			</tr>
+		</table>
+		
+		<table class="table table-bordered">
+			<tr>
+        		<td width="12.5%" class="bg-primary text-white"></td>
+        		<td width="12.5%" class="bg-secondary text-white"></td>
+        		<td width="12.5%" class="bg-light text-dark"></td>
+        		<td width="12.5%" class="bg-danger text-white"></td>
+        		<td width="12.5%" class="bg-warning text-dark"></td>
+        		<td width="12.5%" class="bg-success text-white"></td>
+        		<td width="12.5%" class="bg-dark text-white"></td>
+        		<td width="12.5%" class="bg-info text-dark"></td>
+        	</tr>
+			<tr>
+				<td>@Translate("Product orderline")</td>
+				<td>@Translate("Discount orderline")</td>
+				<td>@Translate("Tax orderline")</td>
+				<td>@Translate("Product discount price")</td>
+				<td>@Translate("Order discount price")</td>
+				<td>@Translate("Product price - with or without discount")</td>
+				<td>@Translate("Subtotals of product prices, discounts and product prices with discount - before any fees")</td>
+				<td>@Translate("Total order price with discounts, vat, taxes, fees and all.")</td>
+			</tr>
+		</table>
+		
+		<div class="grid">
+			<div class="g-col-12 g-col-lg-6">
+				<h2 class="mt-5">@Translate("Billing Address")</h2>
+				@RenderAddress("Ecom:Order.Customer")
+			</div>
+			<div class="g-col-12 g-col-lg-6">
+				<h2 class="mt-5">@Translate("Shipping/Delivery Address")</h2>
+				@RenderAddress("Ecom:Order.Delivery")
+			</div>
+		</div>
+		
+		<h2 class="mt-5">@Translate("Payment methods")</h2>
+		<table class="table table-clean table-bordered table-striped">
+			<thead>
+				<tr>
+					<th>@Translate("Icon")</th>
+					<th>@Translate("Name")</th>
+					<th>@Translate("Price")</th>
+					<th>@Translate("Terms")</th>
+					<th>@Translate("Is available in current cart")</th>
+				</tr>
+			</thead>
+			<tbody>
+				@foreach (var payment in GetLoop("Paymethods"))
+				{
+					<tr>
+						<td width="100">
+							@if (!string.IsNullOrEmpty(payment.GetString("Ecom:Cart.Paymethod.Icon.Clean")) && !payment.GetString("Ecom:Cart.Paymethod.Icon.Clean").Equals("/Files"))
+							{
+								<img width="100" src="@payment.GetString("Ecom:Cart.Paymethod.Icon.Clean")"/>
+							}
+						</td>
+						<td>
+							<h6>@payment.GetString("Ecom:Cart.Paymethod.Name") - @payment.GetString("Ecom:Cart.Paymethod.ID")</h6>
+							<small><strong>@Translate("Description"):</strong> @payment.GetString("Ecom:Cart.Paymethod.Description")</small><br/>
+							<small><strong>@Translate("Code"):</strong> @payment.GetString("Ecom:Cart.Paymethod.Code")</small>
+						</td>
+						<td>
+							@RenderPrices(payment, "Ecom:Cart.Paymethod.Price", false, true)
+						</td>
+						<td>
+							<small><strong>@Translate("Code"):</strong> @payment.GetString("Ecom:Cart.Paymethod.TermsCode")</small><br/>
+							<small><strong>@Translate("Description"):</strong> @payment.GetString("Ecom:Cart.Paymethod.TermsDescription")</small>
+						</td>
+						<td>@GetPaymentTypeAvailability(payment.GetString("Ecom:Cart.Paymethod.ID"))</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+		
+		<h2 class="mt-5">@Translate("Shipping methods")</h2>
+		<table class="table table-clean table-bordered table-striped">
+			<thead>
+			<tr>
+				<th>@Translate("Icon")</th>
+				<th>@Translate("Name")</th>
+				<th>@Translate("Price")</th>
+				<th>@Translate("PriceOverMaxWeight")</th>
+				<th>@Translate("Agent")</th>
+				<th>@Translate("Errors")</th>
+				<th>@Translate("Is available in current cart")</th>
+			</tr>
+			</thead>
+			<tbody>
+			@foreach (var shipping in GetLoop("Shippingmethods"))
+			{
+				<tr>
+					<td width="100">
+						@if (!string.IsNullOrEmpty(shipping.GetString("Ecom:Cart.Shippingmethod.Icon.Clean")) && !shipping.GetString("Ecom:Cart.Shippingmethod.Icon.Clean").Equals("/Files"))
+						{
+							<img width="100" src="@shipping.GetString("Ecom:Cart.Shippingmethod.Icon.Clean")"/>
+						}
+					</td>
+					<td>
+						<h6>@shipping.GetString("Ecom:Cart.Shippingmethod.Name") - @shipping.GetString("Ecom:Cart.Shippingmethod.ID")</h6>
+						<small><strong>@Translate("Description"):</strong> @shipping.GetString("Ecom:Cart.Shippingmethod.Description")</small><br/>
+						<small><strong>@Translate("Code"):</strong> @shipping.GetString("Ecom:Cart.Shippingmethod.Code")</small>
+					</td>
+					<td>
+						<small><strong>@Translate("EligibleForFreeShipping"):</strong> @shipping.GetString("Ecom:Cart.Shippingmethod.EligibleForFreeShipping")</small><br/>
+						@RenderPrices(shipping, "Ecom:Cart.ShippingMethod.Price", false, true)
+					</td>
+					<td>
+						@RenderPrices(shipping, "Ecom:Cart.Shippingmethod.PriceOverMaxWeight", false, true)
+					</td>
+					<td>
+						<small><strong>@Translate("Name"):</strong> @shipping.GetString("Ecom:Cart.Shippingmethod.AgentName")</small><br/>
+						<small><strong>@Translate("Code"):</strong> @shipping.GetString("Ecom:Cart.Shippingmethod.AgentCode")</small><br/>
+						<small><strong>@Translate("Service Code"):</strong> @shipping.GetString("Ecom:Cart.Shippingmethod.AgentServiceCode")</small><br/>
+						<small><strong>@Translate("Service Description"):</strong> @shipping.GetString("Ecom:Cart.Shippingmethod.AgentServiceDescription")</small>
+					</td>
+					<td>
+						<small>@shipping.GetString("Ecom:Cart.Shippingmethod.Error")</small>
+						<small>@shipping.GetString("Ecom:Cart.Shippingmethod.Warning")</small>
+					</td>
+					<td>@GetShippingTypeAvailability(shipping.GetString("Ecom:Cart.Shippingmethod.ID"))</td>
+				</tr>
+			}
+			</tbody>
+		</table>
+
+		<div class="grid">
+			<div class="g-col-12 g-col-lg-4">
+				<h2 class="mt-5">@Translate("Payment Transaction Info")</h2>
+				<table class="table table-clean table-striped table-hover">
+					@RenderTransactionLine("TransactionAmount")
+					@RenderTransactionLine("TransactionCardNumber")
+					@RenderTransactionLine("TransactionCardType")
+					@RenderTransactionLine("TransactionNumber")
+					@RenderTransactionLine("TransactionPayGatewayCode")
+					@RenderTransactionLine("TransactionStatus")
+					@RenderTransactionLine("TransactionType")
+					@RenderTransactionLine("TransactionValue")
+				</table>
+			</div>
+			<div class="g-col-12 g-col-lg-8">
+        		<h2 class="mt-5">@Translate("Track & Trace")</h2>
+	            <table class="table table-bordered table-clean">
+	                <thead>
+	                <tr>
+                		<th rowspan="2">@Translate("TrackTraceName")</th>
+                		<th rowspan="2">@Translate("TrackTraceURL")</th>
+                		<th colspan="3" class="text-center">@Translate("TrackTraceParameters")</th>
+	                </tr>
+	                <tr>
+                		<th>@Translate("Name")</th>
+                		<th>@Translate("Value")</th>
+                		<th>@Translate("Description")</th>
+	                </tr>
+	                </thead>
+	                <tbody>
+	                @foreach (var parameter in GetLoop("TrackTraceParameters"))
+	                {
+                		<tr>
+                			@if (parameter.Index == 1)
+                			{
+                				<td rowspan="@GetLoop("TrackTraceParameters").Count">
+                					@GetString("Ecom:Order.TrackTraceName")
+                					@if (!string.IsNullOrEmpty(GetString("Ecom:Order.TrackTraceNumber")))
+                					{
+                						<div><strong>@Translate("TrackTraceNumber"):</strong> @GetString("Ecom:Order.TrackTraceNumber")</div>
+                					}
+                				</td>
+                				<td rowspan="@GetLoop("TrackTraceParameters").Count">@GetString("Ecom:Order.TrackTraceURL")</td>
+                			}
+                			<td>@parameter.GetString("Ecom:Order.TrackTraceParameter.Name")</td>
+                			<td>@parameter.GetString("Ecom:Order.TrackTraceParameter.Value")</td>
+                			<td>@parameter.GetString("Ecom:Order.TrackTraceParameter.Description")</td>
+                		</tr>
+	                }
+	                </tbody>
+	            </table>		
+	        </div>
+		</div>
+		
+		<div class="grid">
+			<div class="g-col-12">
+        		<h2 class="mt-5">@Translate("Standard fields")</h2>
+	        </div>
+			<div class="g-col-12 g-col-lg-4">
+        		<table class="table table-striped table-clean table-hover">
+                    <tr>
+                        <th>@Translate("SystemName")</th>
+                        <th>@Translate("Value")</th>
+                    </tr>
+                    @RenderStandardField("Ecom:Order.ID")
+                    @RenderStandardField("Ecom:Order.IntegrationID")
+                    @RenderStandardField("Ecom:Order.Customer.AccessUserID")
+                    @RenderStandardField("Ecom:Order.Customer.AccessUserUserName")
+                    @RenderStandardField("Ecom:Order.Customer.SecondaryUserID")
+                    @RenderStandardField("Ecom:Order.Customer.SecondaryUserName")
+                	@RenderStandardField("Ecom:Order.Reference")
+                    @RenderStandardField("Ecom:Order.ShopID")
+                    @RenderStandardField("Ecom:Order.StateID")
+                    @RenderStandardField("Ecom:Order:Orderstate.Name")
+                    @RenderStandardField("Ecom:Order.DisplayName")
+                    @RenderStandardField("Ecom:Order.SavedCardName")
+                </table>		
+	        </div>
+	        <div class="g-col-12 g-col-lg-4">
+        		<table class="table table-striped table-clean table-hover">
+                    <tr>
+                        <th>@Translate("SystemName")</th>
+                        <th>@Translate("Value")</th>
+                    </tr>
+                    @RenderStandardField("Ecom:Order.Date")
+                    @RenderStandardField("Ecom:Order.Modified")
+                    @RenderStandardField("Ecom:Order.Completed")
+                    @RenderStandardField("Ecom:Order.ShippingDate")
+                    @RenderStandardField("Ecom:Order.Delivery.isPickupPoint")
+                    @RenderStandardField("Ecom:Order.Comment")
+                    @RenderStandardField("Ecom:Order.Customer.Comment")
+                    @RenderStandardField("Ecom:Order.IsBasedOnRecurringOrder")
+                    @RenderStandardField("Ecom:Order.IsRecurringOrder")
+                    @RenderStandardField("Ecom:Order.PointsToUse")
+                    @RenderStandardField("Ecom:Order.RewardTotalPoints")
+                    @RenderStandardField("Ecom:Order.TotalPoints")
+                </table>
+	        </div>
+	        <div class="g-col-12 g-col-lg-4">
+        		<table class="table table-striped table-clean table-hover">
+                    <tr>
+                        <th>@Translate("SystemName")</th>
+                        <th>@Translate("Value")</th>
+                    </tr>
+                    @RenderStandardField("Ecom:Order.Volume")
+                    @RenderStandardField("Ecom:Order.Weight")
+                    @RenderStandardField("Ecom:Order.Customer.Accepted")
+                    @RenderStandardField("Ecom:Order.Customer.EAN")
+                    @RenderStandardField("Ecom:Order.Customer.RefID")
+                    @RenderStandardField("Ecom:Order.Customer.VatRegNumber")
+                    @RenderStandardField("Ecom:Order.ExternalFee")
+                    @RenderStandardField("Ecom:Order.Requisition")
+                    @RenderStandardField("Ecom:Order.Customer.VoucherCode")
+                    @RenderStandardField("Ecom:Order.GifTCardCode")
+                </table>
+	        </div>
+		</div>
+
+		<h2 class="mt-5">@Translate("Custom fields")</h2>
+		<table class="table table-striped table-clean table-hover">
+			<tr>
+				<th>@Translate("Name")</th>
+				<th>@Translate("SystemName")</th>
+				<th>@Translate("Type")</th>
+				<th>@Translate("Value")</th>
+			</tr>
+			@{
+				var order = Dynamicweb.Ecommerce.Services.Orders.GetById(GetString("Ecom:Order.ID"));
+				foreach (var field in order.OrderFieldValues)
+				{
+					<tr>
+						<td>@field.OrderField.Name</td>
+						<td>@field.OrderField.SystemName</td>
+						<td>@field.OrderField.TypeName</td>
+						<td>@(field.Value?.ToString() ?? "")</td>
+					</tr>
+				}
+			}
+		</table>
+	}
+	else
+	{
+		<div class="alert alert-dark m-0" role="alert">
+        	@Translate("Please add at least one product to the cart")
+        </div>
+	}
+</section>
+
+@helper RenderPrices(LoopItem orderline, string name, bool isDiscount, bool hasDiscount)
+{
+	if (!isDiscount && hasDiscount)
+	{
+		var isPriceZero = orderline.GetDouble(name + ".Price.Value") == 0.00;
+		var PriceWithVATFormatted = name + ".PriceWithVATFormatted";
+		var VATPercentFormatted = name + ".VATPercentFormatted";
+		var VATFormatted = name + ".VATFormatted";
+		var PriceWithoutVATFormatted = name + ".PriceWithoutVATFormatted";
+
+		<div title="Tag: @name.*" class="@(isPriceZero ? "opacity-50" : "")">
+			<strong title="@PriceWithVATFormatted">@orderline.GetString(PriceWithVATFormatted)</strong>
+			<br />
+			<small>@Translate("VAT"): <span title="@VATPercentFormatted">@orderline.GetString(VATPercentFormatted)</span> <span title="@VATFormatted">@orderline.GetString(VATFormatted)</span></small>
+			<br />
+			<small title="@PriceWithoutVATFormatted">@orderline.GetString(PriceWithoutVATFormatted)</small>
+		</div>
+	}
+}
+
+@helper RenderPrices(string name)
+{
+	var isPriceZero = GetDouble(name + ".Price.Value") == 0.00;
+	var PriceWithVATFormatted = name + ".PriceWithVATFormatted";
+	var VATPercentFormatted = name + ".VATPercentFormatted";
+	var VATFormatted = name + ".VATFormatted";
+	var PriceWithoutVATFormatted = name + ".PriceWithoutVATFormatted";
+	var justPrice = name;
+
+	<div title="Tag: @name.*" class="@(isPriceZero ? "opacity-50" : "")">
+		<strong title="@PriceWithVATFormatted">@GetString(PriceWithVATFormatted)</strong>
+		<br />
+		<small title="@justPrice">@Translate("DISPLAY PRICE"): @GetString(justPrice)</small>
+		<br />
+		<small>@Translate("VAT"): <span title="@VATPercentFormatted">@GetString(VATPercentFormatted)</span> <span title="@VATFormatted">@GetString(VATFormatted)</span></small>
+		<br />
+		<small title="@PriceWithoutVATFormatted">@GetString(PriceWithoutVATFormatted)</small>
+	</div>
+}
+
+@helper RenderAddress(string prefix)
+{
+	<table class="table table-clean table-striped table-hover">
+		<tr>
+			<th>@Translate("Name")</th>
+			<td>@GetString($"{prefix}.Name")</td>
+		</tr>
+		<tr>
+			<th>@Translate("FirstName")</th>
+			<td>@GetString($"{prefix}.FirstName")</td>
+		</tr>
+		<tr>
+			<th>@Translate("MiddleName")</th>
+			<td>@GetString($"{prefix}.MiddleName")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Surname")</th>
+			<td>@GetString($"{prefix}.Surname")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Initials")</th>
+			<td>@GetString($"{prefix}.Initials")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Title")</th>
+			<td>@GetString($"{prefix}.Title")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Prefix")</th>
+			<td>@GetString($"{prefix}.Prefix")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Address")</th>
+			<td>@GetString($"{prefix}.Address")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Address2")</th>
+			<td>@GetString($"{prefix}.Address2")</td>
+		</tr>
+		<tr>
+			<th>@Translate("HouseNumber")</th>
+			<td>@GetString($"{prefix}.HouseNumber")</td>
+		</tr>
+		<tr>
+			<th>@Translate("City")</th>
+			<td>@GetString($"{prefix}.City")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Region")</th>
+			<td>@GetString($"{prefix}.Region")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Zip")</th>
+			<td>@GetString($"{prefix}.Zip")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Country")</th>
+			<td>@GetString($"{prefix}.Country")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Country.Code")</th>
+			<td>@GetString($"{prefix}.Country.Code")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Company")</th>
+			<td>@GetString($"{prefix}.Company")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Email")</th>
+			<td>@GetString($"{prefix}.Email")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Phone")</th>
+			<td>@GetString($"{prefix}.Phone")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Cell")</th>
+			<td>@GetString($"{prefix}.Cell")</td>
+		</tr>
+		<tr>
+			<th>@Translate("Fax")</th>
+			<td>@GetString($"{prefix}.Fax")</td>
+		</tr>
+	</table>
+}
+
+@helper RenderStandardField(string systemName)
+{
+	<tr>
+		<td>@systemName</td>
+		<td>@GetString(systemName)</td>
+	</tr>
+}
+
+@helper RenderTransactionLine(string tag)
+{
+	var prefix = "Ecom:Order.";
+	var value = GetString(prefix + tag);
+	
+	<tr>
+		<th>@tag</th>
+		<td>@value</td>
+	</tr>
+}

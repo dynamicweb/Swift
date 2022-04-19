@@ -1,0 +1,231 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@functions {
+	private string GetFontStack()
+	{
+		return "font-family:initial,Arial,Helvetica Neue,Helvetica,sans-serif;";
+	}
+
+	private string GetTableReset()
+	{
+		return "border:0;margin:0;outline:0;padding:0;";
+	}
+
+	public Dynamicweb.Frontend.ColorViewModel GetMutedColor(string hex, int percent, double threshold = 0.5)
+	{
+		/// <summary>
+		/// Return a color in either lighter or darker contrast based on the original color luminance.
+		/// </summary>
+		/// <param name="percent">The percent (1-100) to darken or light the color with - higher percentage will give higher contrast</param>
+		/// <param name="threshold">The luminance threshold (0-1). Default is 0.5. 0 is black, 1 is white. Luminance threshold is used to decide wether the returned contrast color should be darker or lighter than the base color</param>
+		/// <returns>A new color viewmodel with the contrasted color in either darker or lighter luminance compared to base color</returns>
+		/// 
+		if (threshold > 1)
+			threshold = 1;
+		if (threshold < 0)
+			threshold = 0;
+
+		var color = Dynamicweb.Imaging.Colors.Color.FromHex(hex);
+		var luminance = (0.2126 * color.BaseColor.R) + (0.7152 * color.BaseColor.G) + (0.0722 * color.BaseColor.B);
+		/// == luminance = 0 is black, luminance = 1 is white == //
+		luminance = color.Brightness / 255;
+		if (luminance < threshold)
+		{
+			return new Dynamicweb.Frontend.ColorViewModel() { Hex = color.Lighten(percent).ToHex() };
+		}
+		else
+		{
+			return new Dynamicweb.Frontend.ColorViewModel() { Hex = color.Darken(percent).ToHex() };
+		}
+	}
+}
+
+@{
+	string blockType = "productcatalog_block";
+
+	var page = Dynamicweb.Services.Pages.GetPage(Pageview.ID);
+	var settings = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page?.Parent).Item;
+	var blockId = Model.ID;
+	var block = Model.Item;
+
+	var emailContentThemeId = settings.GetRawValueString("EmailContentTheme");
+	var emailContentThemeParagraph = emailContentThemeId != null && emailContentThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(emailContentThemeId)) : null;
+	var emailContentTheme = emailContentThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph)?.Item : null;
+
+	var rowId = Pageview.CurrentParagraph.GridRowId;
+	var row = Dynamicweb.Services.Grids.GetGridRowById(rowId);
+	var rowItem = Dynamicweb.Services.Items.GetItem(row.ItemType, row.ItemId);
+	var rowThemeId = Dynamicweb.Core.Converter.ToString(rowItem["ColumnBackground"]);
+	var rowThemeParagraph = rowThemeId != null && rowThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(rowThemeId)) : null;
+	var rowTheme = rowThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph)?.Item : null;
+
+	var blockThemeId = block.GetRawValueString("Theme");
+	var blockThemeParagraph = blockThemeId != null && blockThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(blockThemeId)) : null;
+	var blockTheme = blockThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph)?.Item : rowTheme is object ? rowTheme : emailContentTheme;
+
+	string backgroundColor = blockTheme != null ? "background-color: " + blockTheme.GetString("BackgroundColor") + ";" : string.Empty;
+	string foregroundColor = blockTheme != null ? "color:" + blockTheme.GetString("ForegroundColor", "inherit") + ";" : string.Empty;
+	
+	string title = block.GetString("Title", string.Empty);
+	int padding = Dynamicweb.Core.Converter.ToInt32(block.GetRawValueString("Padding", "0"));
+	int cellSpacing = 8;
+	string align = block.GetRawValueString("Align", "left");
+	string text = block.GetString("Text", string.Empty);
+	var layoutColumns = Dynamicweb.Core.Converter.ToInt32(block.GetRawValueString("Layout", "2"));
+
+	ProductListViewModel selectedProducts = block?.GetValue("Products") as ProductListViewModel;
+	IList<ProductViewModel> products = selectedProducts?.Products;
+}
+
+<table id="@blockId" class="@blockType" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;@GetTableReset()color:inherit;width:100%;@(backgroundColor)">
+	<tbody>
+		<tr style="@GetTableReset()">
+			<td style="@GetTableReset()padding:@(padding)px">
+				<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;@GetTableReset()color:inherit;width:100%;">
+					<tbody>
+						@if (products is object && products.Any())
+						{
+							@:<tr style="@GetTableReset()">
+
+							int index = 1;
+							int totalProducts = products.Count();
+							foreach (var product in products)
+							{
+								<td valign="top" style="@GetTableReset()">
+									@RenderProduct(product, blockTheme, align)
+								</td>
+
+								if (index % layoutColumns == 0 && !(index == totalProducts))
+								{
+								@:</tr>
+								@:<tr style="@GetTableReset()">
+									@:<td style="@GetTableReset()" colspan="100%" height="@(cellSpacing * 4)">&nbsp;</td>
+								@:</tr>
+								@:<tr style="@GetTableReset()">
+								}
+								else
+								{
+									if(!(index == totalProducts))
+									{ 
+										@:<td width="@(cellSpacing)" style="@GetTableReset()">&nbsp;</td>
+									}
+								}
+
+								index++;
+							}
+							@:</tr>
+						}
+						else
+						{
+							if (Pageview.IsVisualEditorMode)
+							{
+								<tr style="@GetTableReset()">
+									<td style="@(foregroundColor)">@Translate("No products selected")</td>
+								</tr>
+							}
+						}
+					</tbody>
+
+				</table>
+				<!--[if mso]><br/><![endif]-->
+			</td>
+		</tr>
+		
+	</tbody>
+</table>
+
+@helper RenderImage(ProductViewModel product, Dynamicweb.Frontend.ItemViewModel theme)
+{
+	int layout = Dynamicweb.Core.Converter.ToInt32(Model.Item.GetRawValueString("Layout", "2"));
+	int padding = Convert.ToInt32(Model.Item.GetRawValueString("Padding", "0"));
+	var imageRatio = Model.Item.GetRawValueString("ImageAspectRatio", "4-3").ToLower();
+		
+	var parms = new Dictionary<string, object>();
+	parms.Add("alt", product.Name);
+	parms.Add("columns", layout);
+	parms.Add("gridColumns", Model.GridRowColumnCount);
+	parms.Add("nested", Model.GridRowColumnCount > 1);
+	parms.Add("padding", (padding * 2) + (8 * (layout - 1)));
+	parms.Add("imageRatio", imageRatio);
+
+	if(product.DefaultImage is object)
+    {
+		@RenderPartial("Swift_Email/Components/Image.cshtml", new Dynamicweb.Frontend.FileViewModel() {Name = product.Name, Path = product.DefaultImage.Value }, parms);
+    }
+}
+
+@helper RenderProduct(ProductViewModel product, Dynamicweb.Frontend.ItemViewModel theme, string align)
+{
+	var backgroundColor = theme?.GetColor("BackgroundColor");
+	var foregroundColor = theme?.GetColor("ForegroundColor");
+	var borderColor = theme?.GetColor("BorderColor");
+
+	string detailPageId = Model.Item.GetLink("ProductDetailsPage") != null ? Model.Item.GetLink("ProductDetailsPage").PageId.ToString() : "";
+	string productPageByNavigationTag = GetPageIdByNavigationTag("ProductDetailPage") != 0 ? GetPageIdByNavigationTag("ProductDetailPage").ToString() : "";
+	detailPageId = detailPageId == "" ? productPageByNavigationTag : detailPageId;
+	var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
+	var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
+
+	string link = string.IsNullOrEmpty(selectedDetailPage) ? $"/Default.aspx?ID={detailPageId}&groupid={defaultGroupId}" : selectedDetailPage;
+	link += "&productid=" + product.Id;
+	link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
+	var uri = Dynamicweb.Context.Current.Request.Url;
+	var hostname = uri.Scheme + Uri.SchemeDelimiter + uri.Host;
+
+	bool hideProductPrice = Model.Item?.GetBoolean("HideProductPrice") ?? false;
+	bool hideProductNumber = Model.Item?.GetBoolean("HideProductNumber") ?? false;
+
+	<table style="border-collapse:collapse;table-layout:fixed;@GetTableReset()" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+		<tbody>
+			<tr style="@GetTableReset()">
+				<td style="@GetTableReset()">
+
+					<div align="center" style="font-size:2px;">
+						<a style="text-decoration:none;@GetTableReset()" href="@link" target="_blank">
+							@RenderImage(product, theme)
+						</a>
+					</div>
+						
+					<table style="border-collapse:collapse;table-layout:fixed;@GetTableReset()" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+						<tbody>
+							<tr style="@GetTableReset()">
+								<td style="@GetTableReset()padding-top:8px;text-align:@align;line-height:18px;font-size:13px;text-decoration:none;color:@foregroundColor;">
+									<a style="text-decoration:none;color:@foregroundColor;@GetTableReset()" href="@link" target="_blank">
+										@product.Name
+									</a>
+								</td>
+							</tr>
+
+							@if (!hideProductNumber)
+							{
+								<tr>
+									<td style="@GetTableReset()padding-top:8px;line-height:18px;font-size:11px;color:@(GetMutedColor(foregroundColor.Hex, 20));">
+										@product.Number
+									</td>
+								</tr>
+							}
+
+							@if (!hideProductPrice)
+							{
+								<tr>
+									<td style="@GetTableReset()padding-top:8px;line-height:13px;font-size:13px;break-inside:avoid;word-break:keep-all;white-space:nowrap;color:@(foregroundColor);">
+										@product.Price.PriceFormatted
+
+										@if (product.Discount.Price > 0)
+										{
+											<span style="line-height:13px;font-size:13px;text-decoration:line-through;break-inside:avoid;word-break:keep-all;white-space:nowrap;color:@(GetMutedColor(foregroundColor.Hex, 20));">@product.PriceBeforeDiscount.PriceFormatted</span>
+										}
+									</td>
+								</tr>
+							}
+							<tr><td height="24" style="padding-top:24px;"></td></tr>
+						</tbody>
+					</table>
+
+				</td>
+			</tr>
+			
+		</tbody>
+	</table>
+}
