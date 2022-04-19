@@ -1,0 +1,124 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+
+@{
+	ProductViewModel product = new ProductViewModel();
+
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	} else if (Pageview.Item["DummyProduct"] != null) {
+
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		} else {
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	} else if (Pageview.Item["DummyProduct"] == null) {
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+	}
+
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
+	horizontalAlign = horizontalAlign == "center" ? "justify-content-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "end" ? "justify-content-end" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "full" ? "" : horizontalAlign;
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+
+	bool hideAddToCart = (anonymousUsersLimitations.Contains("cart") && anonymousUser) ? true : false;
+	hideAddToCart = Pageview.IsVisualEditorMode ? false : hideAddToCart;
+}
+
+
+@if (!hideAddToCart && product.Id != null) {
+	string iconPath = "/Files/icons/";
+	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
+	}
+
+	string flexFill = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "flex-fill" : "";
+	string fullWidth = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "w-100" : "";
+	string addToCartIcon = Model.Item.GetRawValueString("Icon", iconPath + "shopping-cart.svg");
+	string addToCartLabel = !addToCartIcon.Contains("_none") ? "<span class=\"icon-2\">" + ReadFile(addToCartIcon) + "</span>" : "";
+	addToCartLabel += !addToCartIcon.Contains("_none") && !Model.Item.GetBoolean("HideButtonText") ? " " : "";
+	addToCartLabel += !Model.Item.GetBoolean("HideButtonText") ? Translate("Add to cart") : "";
+
+	string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
+	string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
+	string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
+	string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : "";
+
+	<div class="d-flex @horizontalAlign @fullWidth item_@Model.Item.SystemName.ToLower()">
+		<form method="post" action="@formurl" >
+			<input type="hidden" name="OrderContext" value="ORDERCONTEXT2" />
+			<input type="hidden" name="redirect" value="false" />
+			<input type="hidden" name="ProductId" value="@product.Id" />
+			<input type="hidden" name="minicartid" value="ORDERCONTEXT2" />
+
+			@if (!string.IsNullOrEmpty(product.VariantId))
+			{
+				<input type="hidden" name="VariantId" value="@product.VariantId" />
+			}
+
+			<input name="Quantity" value="1" type="hidden">
+							
+			@{ 
+				string cartCommand = "add";
+				string buttonLabel = "+ " + Translate("Add to download cart");
+				string buttonStyle = "btn-primary";
+				bool inCart = false;
+
+				if (product.IsProductInCart("ORDERCONTEXT2")) {
+					cartCommand = "delorderline";
+					buttonLabel = "- " + Translate("Remove from download cart");
+					buttonStyle = "btn-secondary";
+					inCart = true;
+				}
+			} 
+			<input type="hidden" name="cartcmd" value="@cartCommand" />
+			<button type="button" class="btn @buttonStyle w-100 js-add-to-cart-button" onclick="swift.Cart.Update(event); this.addEventListener('updated.swift.cart', updateDownloadCartButton(this))" data-in-cart="@inCart" id="AddToDownloadCartButton@(product.Id)@(product.VariantId)">@buttonLabel</button>
+		</form>
+
+		<script>
+			function updateDownloadCartButton(clickedButton) {
+				var removeFocusCssClassTimer = setTimeout(function () {
+					var inCart = clickedButton.getAttribute('data-in-cart');
+
+					if (inCart == 'True') {
+						clickedButton.parentNode.querySelector('input[name="cartcmd"]').value = 'add';
+						clickedButton.innerHTML = '+ @Translate("Add to download cart")';
+						clickedButton.classList.add('btn-primary');
+						clickedButton.classList.remove('btn-secondary');
+						clickedButton.setAttribute('data-in-cart', 'False');
+					} else {
+						clickedButton.parentNode.querySelector('input[name="cartcmd"]').value = 'delorderline';
+						clickedButton.innerHTML = '- @Translate("Remove from download cart")';
+						clickedButton.classList.remove('btn-primary');
+						clickedButton.classList.add('btn-secondary');
+						clickedButton.setAttribute('data-in-cart', 'True');
+					}
+				}, 220);
+			}
+		</script>
+	</div>
+} else if (Pageview.IsVisualEditorMode) { 
+	<div class="alert alert-dark m-0">@Translate("No products available")</div>
+}
