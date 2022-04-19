@@ -33,6 +33,14 @@
 		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 	}
 
+	string contextCart = Model.Item.GetRawValueString("ContextCart", "");
+
+	string formurl = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
+	if (!formurl.Contains("LayoutTemplate"))
+	{
+		formurl += formurl.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
+	}
+
 	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
 	horizontalAlign = horizontalAlign == "center" ? "justify-content-center" : horizontalAlign;
 	horizontalAlign = horizontalAlign == "end" ? "justify-content-end" : horizontalAlign;
@@ -54,71 +62,83 @@
 		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
 	}
 
-	string flexFill = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "flex-fill" : "";
+	string cartCommand = "add";
+	string buttonStyle = "btn-primary";
+	bool inCart = false;
+
 	string fullWidth = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "w-100" : "";
-	string addToCartIcon = Model.Item.GetRawValueString("Icon", iconPath + "shopping-cart.svg");
-	string addToCartLabel = !addToCartIcon.Contains("_none") ? "<span class=\"icon-2\">" + ReadFile(addToCartIcon) + "</span>" : "";
-	addToCartLabel += !addToCartIcon.Contains("_none") && !Model.Item.GetBoolean("HideButtonText") ? " " : "";
-	addToCartLabel += !Model.Item.GetBoolean("HideButtonText") ? Translate("Add to cart") : "";
+	string addToCartIcon = Model.Item.GetRawValueString("Icon", iconPath + "download.svg");
+	string addToCartLabel = "";
 
-	string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
-	string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
-	string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
-	string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : "";
+	if (!string.IsNullOrEmpty(contextCart)) { 
+		if (product.IsProductInCart("ORDERCONTEXT2"))
+		{
+			addToCartLabel += "- ";
+		} else {
+			addToCartLabel += "+ ";
+		}
 
-	<div class="d-flex @horizontalAlign @fullWidth item_@Model.Item.SystemName.ToLower()">
-		<form method="post" action="@formurl" >
-			<input type="hidden" name="OrderContext" value="ORDERCONTEXT2" />
-			<input type="hidden" name="redirect" value="false" />
-			<input type="hidden" name="ProductId" value="@product.Id" />
-			<input type="hidden" name="minicartid" value="ORDERCONTEXT2" />
+		addToCartLabel += !addToCartIcon.Contains("_none") ? "<span class=\"icon-2\">" + ReadFile(addToCartIcon) + "</span>" : "";
+		addToCartLabel += !addToCartIcon.Contains("_none") && !Model.Item.GetBoolean("HideButtonText") ? " " : "";
 
-			@if (!string.IsNullOrEmpty(product.VariantId))
-			{
-				<input type="hidden" name="VariantId" value="@product.VariantId" />
-			}
+		if (product.IsProductInCart(contextCart))
+		{
+			addToCartLabel += !Model.Item.GetBoolean("HideButtonText") ? Translate("Remove from download cart") : "";
+			cartCommand = "delorderline";
+			buttonStyle = "btn-secondary";
+			inCart = true;
+		} else {
+			addToCartLabel += !Model.Item.GetBoolean("HideButtonText") ? Translate("Add to download cart") : "";
+		}
 
-			<input name="Quantity" value="1" type="hidden">
-							
-			@{ 
-				string cartCommand = "add";
-				string buttonLabel = "+ " + Translate("Add to download cart");
-				string buttonStyle = "btn-primary";
-				bool inCart = false;
+		string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
+		string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
+		string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
+		string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : "";
 
-				if (product.IsProductInCart("ORDERCONTEXT2")) {
-					cartCommand = "delorderline";
-					buttonLabel = "- " + Translate("Remove from download cart");
-					buttonStyle = "btn-secondary";
-					inCart = true;
+		<div class="d-flex @horizontalAlign @fullWidth item_@Model.Item.SystemName.ToLower()">
+			<form method="post" action="@formurl" class="w-100" style="z-index: 1" >
+				<input type="hidden" name="OrderContext" value="@contextCart" />
+				<input type="hidden" name="minicartid" value="@contextCart" />
+				<input type="hidden" name="redirect" value="false" />
+				<input type="hidden" name="ProductId" value="@product.Id" />
+
+				@if (!string.IsNullOrEmpty(product.VariantId))
+				{
+					<input type="hidden" name="VariantId" value="@product.VariantId" />
 				}
-			} 
-			<input type="hidden" name="cartcmd" value="@cartCommand" />
-			<button type="button" class="btn @buttonStyle w-100 js-add-to-cart-button" onclick="swift.Cart.Update(event); this.addEventListener('updated.swift.cart', updateDownloadCartButton(this))" data-in-cart="@inCart" id="AddToDownloadCartButton@(product.Id)@(product.VariantId)">@buttonLabel</button>
-		</form>
 
-		<script>
-			function updateDownloadCartButton(clickedButton) {
-				var removeFocusCssClassTimer = setTimeout(function () {
-					var inCart = clickedButton.getAttribute('data-in-cart');
+				<input name="Quantity" value="1" type="hidden">
+							
+				<input type="hidden" name="cartcmd" value="@cartCommand" />
+				<button type="button" class="btn @buttonStyle js-add-to-cart-button @fullWidth" onclick="swift.Cart.Update(event); this.addEventListener('updated.swift.cart', updateDownloadCartButton(this))" data-in-cart="@inCart" id="AddToDownloadCartButton@(product.Id)@(product.VariantId)">@addToCartLabel</button>
+			</form>
 
-					if (inCart == 'True') {
-						clickedButton.parentNode.querySelector('input[name="cartcmd"]').value = 'add';
-						clickedButton.innerHTML = '+ @Translate("Add to download cart")';
-						clickedButton.classList.add('btn-primary');
-						clickedButton.classList.remove('btn-secondary');
-						clickedButton.setAttribute('data-in-cart', 'False');
-					} else {
-						clickedButton.parentNode.querySelector('input[name="cartcmd"]').value = 'delorderline';
-						clickedButton.innerHTML = '- @Translate("Remove from download cart")';
-						clickedButton.classList.remove('btn-primary');
-						clickedButton.classList.add('btn-secondary');
-						clickedButton.setAttribute('data-in-cart', 'True');
-					}
-				}, 220);
-			}
-		</script>
-	</div>
+			<script>
+				function updateDownloadCartButton(clickedButton) {
+					var removeFocusCssClassTimer = setTimeout(function () {
+						var inCart = clickedButton.getAttribute('data-in-cart');
+
+						if (inCart == 'True') {
+							clickedButton.parentNode.querySelector('input[name="cartcmd"]').value = 'add';
+							clickedButton.innerHTML = '+ @Translate("Add to download cart")';
+							clickedButton.classList.add('btn-primary');
+							clickedButton.classList.remove('btn-secondary');
+							clickedButton.setAttribute('data-in-cart', 'False');
+						} else {
+							clickedButton.parentNode.querySelector('input[name="cartcmd"]').value = 'delorderline';
+							clickedButton.innerHTML = '- @Translate("Remove from download cart")';
+							clickedButton.classList.remove('btn-primary');
+							clickedButton.classList.add('btn-secondary');
+							clickedButton.setAttribute('data-in-cart', 'True');
+						}
+					}, 220);
+				};
+			</script>
+		</div>
+	} else if (Pageview.IsVisualEditorMode) { 
+		<div class="alert alert-dark m-0">@Translate("Please create and select a context cart")</div>
+	}
 } else if (Pageview.IsVisualEditorMode) { 
 	<div class="alert alert-dark m-0">@Translate("No products available")</div>
 }
