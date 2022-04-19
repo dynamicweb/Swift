@@ -1,0 +1,140 @@
+@inherits ViewModelTemplate<ListEditorViewModel<string>>
+@using Dynamicweb.Rendering
+@using Dynamicweb.Content.Items.Rendering
+
+@{ 
+	string editorId = Model.EditorId;
+
+	int pageId = Dynamicweb.Context.Current.Request["PageId"] != null ? Convert.ToInt32(Dynamicweb.Context.Current.Request["PageId"]) : 0;
+	pageId = pageId == 0 ? Convert.ToInt32(Dynamicweb.Context.Current.Request["ID"]) : pageId;
+	var websiteArea = (pageId > 0) ? Dynamicweb.Services.Pages?.GetPage(pageId)?.Area : Dynamicweb.Services.Areas?.GetArea(Convert.ToInt32(Dynamicweb.Context.Current.Request["AreaID"]));
+	var websiteAreaId = websiteArea != null ? websiteArea.ID : 0;
+	int brandingPageId = websiteArea != null ? Convert.ToInt32(websiteArea.Item["BrandingPage"]) : 0;
+	int themePageId = websiteArea != null ? Convert.ToInt32(websiteArea.Item["ThemesPage"]) : 0;
+
+	var brandingPage = Dynamicweb.Services.Pages?.GetPage(brandingPageId) ?? null;
+	var themesParagraphLastChanged = Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(themePageId).OrderByDescending(p => p.Audit.LastModifiedAt).FirstOrDefault();
+
+	var cssLastModified = brandingPage.Audit.LastModifiedAt > themesParagraphLastChanged.Audit.LastModifiedAt ? brandingPage.Audit.LastModifiedAt : themesParagraphLastChanged.Audit.LastModifiedAt;
+}
+
+@* Swift styles *@
+<link href="~/Files/Templates/Items/Swift_Styles.css" rel="stylesheet" media="all" type="text/css">
+
+@* Branding and Themes min stylesheet *@
+<link href="~/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_@(websiteAreaId).min.css?@(cssLastModified.Ticks)" rel="stylesheet" media="all" type="text/css" data-last-modified-content="@cssLastModified">
+
+<style>
+	.swift-checkered {
+		background-image: linear-gradient(45deg, #a7a9ac 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #a7a9ac 75%), linear-gradient(45deg, transparent 75%, #a7a9ac 75%), linear-gradient(45deg, #a7a9ac 25%, #bcbec0 25%);
+		background-size: 20px 20px;
+		background-position: 0 0, 0 0, -10px -10px, 10px 10px;
+	}
+
+	.swift-theme-option {
+		padding: 0.5em;
+		cursor: pointer;
+	}
+
+	.swift-theme-option .swift-btn {
+		padding: 0.25rem 0.5rem;
+		font-size: 0.875rem;
+	}
+
+	.swift-option-label {
+		display: block;
+	}
+
+	.swift-option-label .swift-theme-option {
+		border: 4px solid #F7F7F7;
+	}
+
+	.swift-option-input:checked ~ .swift-option-label .swift-theme-option {
+		border: 4px solid #0085CA;
+	}
+
+	.swift-no-theme {
+		display: flex;
+		height: 100%;
+	}
+
+	.swift-no-theme .swift-theme-option {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.swift-theme-item {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		min-width: 80px;
+		overflow: hidden;
+	}
+
+	.swift-theme-item::after {
+		content: attr(data-name);
+		position: absolute;
+		transform: translateY(-100%);
+		background: rgb(48 48 48 / 60%);
+		top: 0;
+		inset-inline: 0;
+		display: grid;
+		align-items: center;
+		justify-content: center;
+		padding: .5rem;
+		font-size: 80%;
+		color: white;
+		transition: transform .2s;
+		user-select: none;
+		pointer-events: none;
+		text-transform: uppercase;
+	}
+
+	.swift-theme-item:hover::after {
+		transform: translateX(0%);
+	}
+
+	.swift-theme-items {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem;
+		width: calc(100% - 100px);
+	}
+</style>
+
+<div class="brand swift-theme-items">
+	@foreach(var item in Model.Items){
+		string themeName = !string.IsNullOrWhiteSpace(item.GetString("Name")) ? item.GetString("Name") : "Default";
+		string themeClassName = !string.IsNullOrWhiteSpace(item.GetString("CSSClassName")) ? item.GetString("CSSClassName").Replace(" ", "").Trim().ToLower() : "";
+		string selectedBorder = Model.SelectedValue == themeClassName ? "selected-option" : "";
+		var itemValue = Model.Options.SingleOrDefault(o => new string[]{item.ParagraphID.ToString(), item.GetString("CSSClassName")}.Contains(o.Value.ToString()))?.Value ?? null;
+
+		<div class="swift-theme-item" data-name="@themeName" >
+				@if (themeClassName != "") {
+					<input class="swift-option-input" type="radio" id="@(editorId)_@themeClassName" name="@editorId" value="@itemValue" checked="@(Model.SelectedValue == itemValue?.ToString())" style="display: none" />
+					<label class="swift-option-label swift-checkered @selectedBorder" for="@(editorId)_@themeClassName">
+						<div class="swift-theme-option theme @themeClassName" style="padding: 0.7rem;">
+							<div style="align-items: center; justify-content: center; display: flex; padding-bottom: 0.5rem;">
+								<span>
+									<svg xmlns="http://www.w3.org/2000/svg" style="" width="1.5rem" height="1.5rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+								</span>
+							</div>
+							<div style="display:grid; gap: 0.5rem; justify-content: center;">
+								<div class="swift-btn btn-primary" style="font-size: 65%; display: flex; align-items: center; justify-content: center;">Primary</div>
+								<div class="swift-btn btn-secondary" style="font-size: 65%; display: flex; align-items: center; justify-content: center;">Secondary</div>
+							</div>
+						</div>
+					</label>
+				} else {
+					<input class="swift-option-input" type="radio" id="@(editorId)_@themeClassName" name="@editorId" value="@itemValue" @(Model.SelectedValue == itemValue.ToString() || Model.SelectedValue == string.Empty ? "checked" : "") style="display: none" />
+					<label class="swift-option-label swift-no-theme @selectedBorder" for="@(editorId)_@themeClassName">
+						<div class="swift-theme-option">
+							<svg xmlns="http://www.w3.org/2000/svg" width="1.5rem" height="1.5rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+						</div>
+					</label>
+				}
+		</div>
+	}
+</div>

@@ -1,0 +1,194 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+
+@{
+	var pageItem = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page).Item;
+	var parms = new Dictionary<string, object>();
+	parms.Add("cssClass", "h-100 w-100");
+	parms.Add("columns", Model.GridRowColumnCount);
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : string.Empty;
+	string layout = Model.Item.GetRawValueString("Layout", "CardCenterBottom");
+	bool hideCoverImage = Model.Item?.GetBoolean("HideCoverImage") ?? false;
+	bool hideTitle = Model.Item?.GetBoolean("HideTitle") ?? false;
+	bool hideSummary = Model.Item?.GetBoolean("HideSummary") ?? false;
+	bool hidePublishedDate = Model.Item?.GetBoolean("HidePublishedDate") ?? false;
+	bool hideAuthor = Model.Item?.GetBoolean("HideAuthor") ?? false;
+	var pageTitle = !string.IsNullOrEmpty(pageItem.GetString("Title")) && !hideTitle ? pageItem.GetString("Title") : string.Empty;
+	var pageSummary = !string.IsNullOrEmpty(pageItem.GetString("Summary")) && !hideSummary ? pageItem.GetString("Summary") : string.Empty;
+	var pageCoverImage = pageItem.GetFile("CoverImage") is object && !hideCoverImage ? pageItem.GetFile("CoverImage") : null;
+	var pageAuthor = pageItem?.GetUsers("Author").FirstOrDefault() ?? null;
+	var pagePublishedDate = !string.IsNullOrEmpty(pageItem.GetString("PublishedDate")) && !hidePublishedDate ? pageItem.GetDateTime("PublishedDate").ToShortDateString() : string.Empty;
+	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "h3");
+	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	string authorImagePath = !string.IsNullOrEmpty(pageAuthor.Image) ? $"/Admin/Public/GetImage.ashx?image={pageAuthor.Image}&width=48&height=48&Crop=0&Quality=100&format=webp" : string.Empty;
+}
+
+@if (layout == "InfoAboveImageAlignedCenter")
+{ 
+	if (pageCoverImage != null || !string.IsNullOrEmpty(pageTitle) || !string.IsNullOrEmpty(pageSummary))
+	{
+		<div class="position-relative@(theme)" style="aspect-ratio: 32/9">
+			@if (pageCoverImage != null)
+			{ 
+				<div style="aspect-ratio: 32/9">
+					@RenderPartial("Components/Image.cshtml", pageCoverImage ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+				</div>        
+			}
+			@if (!string.IsNullOrEmpty(pageTitle) || !string.IsNullOrEmpty(pageSummary))
+			{
+				<div class="container-xl d-flex flex-column gap-3 align-items-center justify-content-center text-center position-absolute top-0 bottom-0 end-0 start-0">
+					@if (!string.IsNullOrEmpty(pageTitle))
+					{ 
+						<h1 class="@titleFontSize m-0">@pageTitle</h1>
+					}
+					@if (!string.IsNullOrEmpty(pageSummary))
+					{ 
+						<h5 class="@subtitleFontSize m-0">@pageSummary</h5>
+					}
+				</div>
+			}
+		</div>
+	}
+	if (pageAuthor != null && !hideAuthor || !string.IsNullOrEmpty(pagePublishedDate))
+	{
+		<div class="d-flex align-items-center justify-content-center gap-3 py-3">
+			@if (pageAuthor != null && !hideAuthor)
+			{ 
+				<div class="d-flex align-items-center gap-2">
+					@if (!string.IsNullOrEmpty(authorImagePath))
+					{
+						<img class="img-fluid rounded-circle" src="@authorImagePath" loading="lazy" width="32" height="32" />
+					}
+					else
+					{
+						<div class="rounded-circle icon-1 p-2" style="background-color: var(--swift-foreground-color);color:var(--swift-background-color)">
+							@ReadFile(iconPath + "user.svg")
+						</div>
+					}
+					@if (!string.IsNullOrEmpty(pageAuthor.Name))
+					{
+						<div class="fs-7 opacity-85">@pageAuthor.Name</div>
+					}
+				</div>				
+			}
+			@if (!string.IsNullOrEmpty(pagePublishedDate))
+			{ 
+				<div class="fs-7 opacity-85">@pagePublishedDate</div>
+			}
+		</div>
+	}
+}
+else if (layout == "InfoCardAboveImageAlignedBottom")
+{ 
+	if (pageCoverImage != null)
+	{
+		<div class="mb-n5" style="aspect-ratio: 32/9">
+			@RenderPartial("Components/Image.cshtml", pageCoverImage ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+		</div>        
+	}
+	if (!string.IsNullOrEmpty(pageTitle) || !string.IsNullOrEmpty(pageSummary) || pageAuthor != null && !hideAuthor || !string.IsNullOrEmpty(pagePublishedDate))
+	{
+		string infoCardBackground = string.IsNullOrEmpty(theme) ? "background-color:var(--swift-background-color); " : string.Empty;
+		
+		<div class="position-relative d-flex flex-column align-items-center mx-3">
+			<div class="d-flex flex-column gap-3 shadow text-center w-100 p-3 p-md-4@(theme)" style="@(infoCardBackground)max-width:40rem;">
+				@if (!string.IsNullOrEmpty(pageTitle))
+				{ 
+					<h1 class="@titleFontSize m-0">@pageTitle</h1>
+				}
+				@if (!string.IsNullOrEmpty(pageSummary))
+				{ 
+					<h5 class="@subtitleFontSize m-0">@pageSummary</h5>
+				}
+				@if (pageAuthor != null && !hideAuthor || !string.IsNullOrEmpty(pagePublishedDate))
+				{
+					<div class="d-flex align-items-center justify-content-center gap-3">
+						@if (pageAuthor != null && !hideAuthor)
+						{ 
+							<div class="d-flex align-items-center gap-2">
+								@if (!string.IsNullOrEmpty(pageAuthor.Image))
+								{
+									<img class="img-fluid rounded-circle" src="@authorImagePath" loading="lazy" width="32" height="32" />
+								}
+								else
+								{
+									<div class="rounded-circle icon-1 p-2" style="background-color: var(--swift-foreground-color);color:var(--swift-background-color)">
+										@ReadFile(iconPath + "user.svg")
+									</div>
+								}
+								@if (!string.IsNullOrEmpty(pageAuthor.Name))
+								{
+									<div class="fs-7 opacity-85">@pageAuthor.Name</div>
+								}
+							</div>				
+						}
+						@if (!string.IsNullOrEmpty(pagePublishedDate))
+						{ 
+							<div class="fs-7 opacity-85">@pagePublishedDate</div>
+						}
+					</div>
+				}
+			</div>
+		</div>
+	}
+}
+else
+{ 
+	if (pageCoverImage != null && !hideCoverImage || !string.IsNullOrEmpty(pageTitle) || !string.IsNullOrEmpty(pageSummary) || pageAuthor != null && !hideAuthor || !string.IsNullOrEmpty(pagePublishedDate))
+	{
+		<div class="grid grid-1 gap-0@(theme)">
+			@if (pageCoverImage != null)
+			{
+				<div style="aspect-ratio: 32/9">
+					@RenderPartial("Components/Image.cshtml", pageCoverImage ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+				</div>        
+			}
+			@if (!string.IsNullOrEmpty(pageTitle) || !string.IsNullOrEmpty(pageSummary) || pageAuthor != null && !hideAuthor || !string.IsNullOrEmpty(pagePublishedDate))
+			{
+				string order = layout == "InfoTopAlignedLeftImageBottom" || layout == "InfoTopAlignedCenterImageBottom" ? " order-first" : string.Empty;
+				string textAlignment = layout == "InfoTopAlignedCenterImageBottom" ? " text-center" : string.Empty;
+
+				<div class="grid grid-1 py-3@(order)@(textAlignment)">
+					@if (!string.IsNullOrEmpty(pageTitle))
+					{ 
+						<h1 class="@titleFontSize m-0">@pageTitle</h1>
+					}
+					@if (!string.IsNullOrEmpty(pageSummary))
+					{ 
+						<h5 class="@subtitleFontSize m-0">@pageSummary</h5>
+					}
+					@if (pageAuthor != null && !hideAuthor || !string.IsNullOrEmpty(pagePublishedDate))
+					{
+						string wrapperAlignment = layout == "InfoTopAlignedCenterImageBottom" ? "justify-content-center" : string.Empty;
+
+						<div class="d-flex align-items-center gap-3 @wrapperAlignment">
+							@if (pageAuthor != null && !hideAuthor)
+							{ 
+								<div class="d-flex align-items-center gap-2">
+									@if (!string.IsNullOrEmpty(pageAuthor.Image))
+									{
+										<img class="img-fluid rounded-circle" src="@authorImagePath" loading="lazy" width="32" height="32" />
+									}
+									else
+									{
+										<div class="rounded-circle icon-1 p-2" style="background-color: var(--swift-foreground-color);color:var(--swift-background-color)">
+											@ReadFile(iconPath + "user.svg")
+										</div>
+									}
+									@if (!string.IsNullOrEmpty(pageAuthor.Name))
+									{
+										<div class="fs-7 opacity-85">@pageAuthor.Name</div>
+									}
+								</div>				
+							}
+							@if (!string.IsNullOrEmpty(pagePublishedDate))
+							{ 
+								<div class="fs-7 opacity-85">@pagePublishedDate</div>
+							}
+						</div>
+					}
+				</div>
+			}
+		</div>
+	}
+}

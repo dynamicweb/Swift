@@ -1,0 +1,237 @@
+@inherits ViewModelTemplate<OrderListViewModel>
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.Frontend
+
+@{ 
+	string contentPadding = Pageview.CurrentParagraph.Item["ContentPadding"] != null ? Pageview.CurrentParagraph.Item["ContentPadding"].ToString() : "";
+	contentPadding = contentPadding == "none" ? "px-0" : contentPadding;
+	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
+	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
+	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " h-100 theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
+	string selectedState = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FilterOrderStateId")) ? Dynamicweb.Context.Current.Request.QueryString.Get("FilterOrderStateId") : "";
+}
+
+<div class="@(contentPadding)@(theme)">
+	<header class="p-3 py-md-2 border-bottom">
+		<div class="grid grid-1 grid-md-2 align-items-center gap-3">
+			<h1 class="h6 m-0">@Pageview.CurrentParagraph.Item["Title"]</h1>
+
+			<form id="searchForm" method="get">
+				<input type="hidden" name="ID" value="@Pageview.ID">
+
+				<div class="grid grid-1 grid-sm-2">
+					<div class="input-group">
+						<label for="FilterOrderId" class="visually-hidden">@Translate("Search orders")</label>
+						<input type="search"
+							   class="form-control form-control-sm px-3 py-2 rounded-pill"
+							   id="FilterOrderId"
+							   name="FilterOrderId"
+							   placeholder="@Translate("Search")">
+					</div>
+
+					<div class="input-group">
+						<select class="form-select fs-7 px-3 py-2 rounded-pill" id="FilterOrderStateId" name="FilterOrderStateId" onchange="this.closest('form').submit()">
+							<option value="">@Translate("Select state")</option>
+							@foreach (var state in Dynamicweb.Ecommerce.Common.Application.OrderStates)
+							{
+								string selected = state.Id == selectedState ? "selected" : "";
+								<option value="@state.Id" @selected>@state.Name</option>
+							}
+						</select>
+					</div>
+				</div>
+			</form>
+		</div>
+	</header>
+
+
+	@if (Model.Orders.Count() != 0)
+	{
+
+		<table class="table d-none d-lg-table table-linked table-striped table-hover align-top mb-0">
+			<thead>
+				<tr>
+					<th>@Translate("Placed")</th>
+					<th>@Translate("Quote number")</th>
+					<th class="text-end">@Translate("Total")</th>
+					<th width="130">@Translate("OrderState")</th>
+					<th width="160">&nbsp;</th>
+				</tr>
+			</thead>
+
+			<tbody class="border-top-0">
+				@foreach (var order in Model.Orders)
+				{
+					string orderLink = $"/Default.aspx?ID={Pageview.Page.ID}&amp;OrderId={order.Id}";
+					string orderDate = "";
+					string orderStateType = order.StateId == "OS9" ? "PriceGiven" : "New";
+					string badgeColor = orderStateType == "New" ? "bg-dark text-white opacity-75" : "bg-success text-white";
+
+					if (order.CreatedAt != null) {
+						orderDate = order.CreatedAt.ToString("HH:mm") != "00:00" ? order.CreatedAt.ToString() : order.CreatedAt.ToString().Replace("00:00", "");
+					}
+
+					<tr>
+						<td>
+							<a href="@orderLink" class="d-block text-decoration-none">
+								<span>@orderDate</span>
+							</a>
+						</td>
+						<td>
+							<a href="@orderLink" class="d-block text-decoration-none" tabindex="-1">
+								@if (!string.IsNullOrEmpty(order.IntegrationOrderId)) { 
+									<text>@order.IntegrationOrderId (@order.Id)</text>
+								} else {
+									@order.Id
+								}
+							</a>
+						</td>
+						<td>
+							<a href="@orderLink" class="d-block text-decoration-none text-end" tabindex="-1">
+								<span class="text-price">@order.Price.PriceFormatted</span>
+							</a>
+						</td>
+						<td>
+							<a href="@orderLink" class="d-block text-decoration-none text-end" tabindex="-1">
+								<span class="badge @badgeColor w-100">@order.StateName</span>
+							</a>
+						</td>
+						<td style="vertical-align: middle">
+							@if (orderStateType == "PriceGiven")
+							{
+								string cartPageId = Pageview.CurrentParagraph.Item["CartPage"] != null ? Pageview.CurrentParagraph.Item["CartPage"].ToString() : "";
+
+								<div class="d-block text-end">
+									<form method="post">
+										<input type="hidden" name="QuoteID" id="QuoteID" value="@order.Id" />
+										<input type="hidden" name="CustomerCenterCmd" value="AcceptQuote" />
+										<input type="hidden" name="redirect" value="/@cartPageId" />
+										<button type="submit" class="btn btn-link">@Translate("Accept quote")</button>
+									</form>
+								</div>
+							}
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+
+		<table class="table d-table d-lg-none table-borderless table-linked table-clean align-top mb-0">
+			@foreach (var order in Model.Orders)
+			{
+				string orderLink = $"/Default.aspx?ID={Pageview.Page.ID}&amp;OrderId={order.Id}";
+				string orderDate = "";
+				string orderStateType = order.StateId == "OS9" ? "PriceGiven" : "New";
+				string badgeColor = orderStateType == "New" ? "bg-dark text-white opacity-75" : "bg-success text-white";
+
+				if (order.CreatedAt != null)
+				{
+					orderDate = order.CreatedAt.ToString("HH:mm") != "00:00" ? order.CreatedAt.ToString() : order.CreatedAt.ToString().Replace("00:00", "");
+				}
+
+				<tbody>
+					<tr>
+						<th>
+							<a href="@orderLink" class="d-block text-start text-decoration-none">
+								<span class="fs-8">@Translate("Placed")</span>
+							</a>
+						</th>
+						<td>
+							<a href="@orderLink" class="d-block text-end text-decoration-none" tabindex="-1">
+								<span>@orderDate</span>
+							</a>
+						</td>
+					</tr>
+					<tr>
+						<th>
+							<a href="@orderLink" class="d-block text-start text-decoration-none" tabindex="-1">
+								<span class="fs-8">@Translate("Quote number")</span>
+							</a>
+						</th>
+						<td>
+							<a href="@orderLink" class="d-block text-end text-decoration-none" tabindex="-1">
+								@if (!string.IsNullOrEmpty(order.IntegrationOrderId)) { 
+									<text>@order.IntegrationOrderId (@order.Id)</text>
+								} else {
+									@order.Id
+								}
+							</a>
+						</td>
+					</tr>
+					<tr>
+						<th>
+							<a href="@orderLink" class="d-block text-start text-decoration-none" tabindex="-1">
+								<span class="fs-8">@Translate("Total")</span>
+							</a>
+						</th>
+						<td>
+							<a href="@orderLink" class="d-block text-end text-decoration-none" tabindex="-1">
+								<span class="text-price">@order.Price.PriceFormatted</span>
+							</a>
+						</td>
+					</tr>
+					<tr>
+						<th>
+							<a href="@orderLink" class="d-block text-start text-decoration-none" tabindex="-1">
+								<span class="fs-8">@Translate("OrderState")</span>
+							</a>
+						</th>
+						<td>
+							<a href="@orderLink" class="d-block text-end text-decoration-none" tabindex="-1">
+								<span class="badge @badgeColor">@order.StateName</span>
+							</a>
+						</td>
+					</tr>
+					<tr>
+						<td colspan="2" class="p-3">
+							@if (orderStateType == "PriceGiven")
+							{
+								<form method="post" class="text-center">
+									<input type="hidden" name="QuoteID" id="QuoteID" value="@order.Id" />
+									<input type="hidden" name="CustomerCenterCmd" value="AcceptQuote" />
+									<button type="submit" class="btn w-100 m-0" tabindex="-1">
+										<div class="d-grid">
+											<span class="btn btn-secondary">@Translate("Accept quote")</span>
+										</div>
+									</button>
+								</form>
+							}
+							<a href="@orderLink" class="d-block text-decoration-none btn btn-link" tabindex="-1">@Translate("View quote details")</a>
+						</td>
+					</tr>
+				</tbody>
+			}
+		</table>
+
+		if (Model.PageCount > 1)
+		{
+			<div class="p-3 mt-3">
+				<ul class="pagination m-0">
+					@for (int i = 1; i <= Model.PageCount; i++)
+					{
+						var css = (i == Model.CurrentPage) ? "page-item active" : "page-item";
+
+						<li class="@css">
+							@string.Format("<a class=\"page-link\" href=\"javascript:goToPage({0});\">{0}</a>", i)
+						</li>
+					}
+				</ul>
+			</div>
+		}
+	}
+	else
+	{
+		<div class="alert alert-info text-center mt-3" role="alert">
+			@Translate("No orders found")
+		</div>
+	}
+
+	<script>
+		function goToPage(page) {
+			let url = new URL(document.location.href);
+			url.searchParams.set('PageNum', page);
+			document.location.href = url;
+		}
+	</script>
+</div>

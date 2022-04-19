@@ -1,0 +1,75 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	ProductViewModel product = new ProductViewModel();
+
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	} else if (Pageview.Item["DummyProduct"] != null) {
+
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		} else {
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	} else if (Pageview.Item["DummyProduct"] == null) {
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+	}
+
+	bool IsNeverOutOfStock = product.NeverOutOfstock;
+
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
+	horizontalAlign = horizontalAlign == "center" ? "text-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "end" ? "text-end" : horizontalAlign;
+	bool hasExpectedDelivery = product.ExpectedDelivery != null && product.ExpectedDelivery > DateTime.Now;
+	string expectedDeliveryDate = product.ExpectedDelivery?.ToShortDateString() ?? "";
+}
+
+@if (!IsNeverOutOfStock && product.Id != null) {
+	<div class="js-stock-state @horizontalAlign item_@Model.Item.SystemName.ToLower()">
+
+		@if (product.StockLevel > 0)
+		{
+			if (!Model.Item.GetBoolean("HideInventory"))
+			{
+				<p class="small text-success m-0">@product.StockLevel @Translate("In stock")</p>
+			}
+			else
+			{
+				<p class="small text-success m-0">@Translate("In stock")</p>
+			}
+		}
+
+		else
+		{
+			<p class="small text-danger m-0">@Translate("Out of Stock")</p>
+		}
+
+		@if (hasExpectedDelivery)
+		{
+			<p>
+				<span>@Translate("Expected in stock:")</span>
+				<span>@expectedDeliveryDate</span>
+			</p>
+		}
+
+	</div>
+} else if (Pageview.IsVisualEditorMode) {
+	<div class="alert alert-info">@Translate("No products available")</div>
+}
