@@ -1,0 +1,103 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+
+@functions {
+	private string GetTableReset()
+	{
+		return "border:0;margin:0;outline:0;padding:0;";
+	}
+}
+
+@{
+	var blockType = "icons_block";
+
+	var page = Dynamicweb.Services.Pages.GetPage(Pageview.ID);
+	var settings = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page?.Parent).Item;
+	var blockId = Model.ID;
+	var block = Model.Item;
+
+	var emailContentThemeId = settings.GetRawValueString("EmailContentTheme");
+	var emailContentThemeParagraph = emailContentThemeId != null && emailContentThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(emailContentThemeId)) : null;
+	var emailContentTheme = emailContentThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph)?.Item : null;
+
+	var rowId = Pageview.CurrentParagraph.GridRowId;
+	var row = Dynamicweb.Services.Grids.GetGridRowById(rowId);
+	var rowItem = Dynamicweb.Services.Items.GetItem(row.ItemType, row.ItemId);
+	var rowThemeId = Dynamicweb.Core.Converter.ToString(rowItem["ColumnBackground"]);
+	var rowThemeParagraph = rowThemeId != null && rowThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(rowThemeId)) : null;
+	var rowTheme = rowThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph)?.Item : null;
+
+	var blockThemeId = block.GetRawValueString("Theme");
+	var blockThemeParagraph = blockThemeId != null && blockThemeId != string.Empty ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(blockThemeId)) : null;
+	var blockTheme = blockThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph)?.Item : rowTheme is object ? rowTheme : emailContentTheme;
+
+	string backgroundColor = blockTheme != null ? "background-color: " + blockTheme.GetString("BackgroundColor") + ";" : string.Empty;
+	string foregroundColor = blockTheme != null ? "color:" + blockTheme.GetString("ForegroundColor", "inherit") + ";" : string.Empty;
+	string borderColor = blockTheme != null ? "border-color: " + blockTheme.GetString("BorderColor", "transparent") + ";" : string.Empty;
+	string borders = block.GetRawValueString("Borders", "none");
+	string borderThicknes = block.GetRawValueString("BorderThicknes", "0") + "px;";
+	string borderClass = string.Empty;
+
+	switch (borders)
+	{
+		case "top":
+			borderClass = "border-top:" + borderThicknes + "border-top-style:solid;";
+			break;
+		case "bottom":
+			borderClass = "border-bottom:" + borderThicknes + "border-bottom-style:solid;";
+			break;
+		case "top-bottom":
+			borderClass = "border-top:" + borderThicknes + "border-bottom:" + borderThicknes + "border-style:solid; border-left:0; border-right: 0;";
+			break;
+		case "all":
+			borderClass = "border:" + borderThicknes + "border-style:solid;";
+			break;
+	}
+
+	string padding = block.GetRawValueString("Padding", "0");
+	string align = block.GetRawValueString("Align", "center");
+	var icons = block.GetItems("IconItems");
+	var size = block.GetRawValueString("IconSize", "32");
+}
+
+<table id="@blockId" class="@blockType" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;mso-line-height-rule:exactly;color:inherit;width:100%;@(backgroundColor)@(borderClass)@(borderColor)">
+	<tbody>
+		<tr style="@GetTableReset()">
+			<td style="mso-table-lspace:0pt;mso-table-rspace:0pt;font-weight:400;@align;vertical-align:top;@(backgroundColor)@(foregroundColor)padding:@(padding)px" width="100%">
+				<table class="icon-table" cellpadding="0" cellspacing="0" role="presentation" align="@align" style="mso-table-lspace:0pt;mso-table-rspace:0pt;mso-line-height-rule:exactly;@GetTableReset()margin-left:auto;margin-right:auto;">
+					<tbody>
+						<tr style="@GetTableReset()">
+							@if (icons != null)
+							{
+								var last = icons.Last();
+								foreach (var item in icons)
+								{
+									var link = item.GetLink("Link")?.Url ?? null;
+									var icon = item.GetFile("Icon")?.Path ?? null;
+									var title = item.GetString("Title", "");
+									var iconSpacing = block.GetRawValueString("IconSpacing", "16");
+									string spacing = !item.Equals(last) ? $"padding-right:{iconSpacing}px;" : string.Empty;
+
+									<td style="@GetTableReset()text-align:center;@(spacing)">
+
+										@if (link != null)
+										{
+											<a href="@link" title="@title" style="display:block;">
+												<img src="@icon" alt="@title" height="@size" width="@size" align="middle" style="display:block;height:auto;@GetTableReset()" />
+											</a>
+										}
+										else
+										{
+											<img src="@icon" alt="@title" height="@size" width="@size" align="middle" style="display:block;height:auto;@GetTableReset()" />
+										}
+										<!--[if mso]><br/><![endif]-->
+									</td>
+								}
+							}
+						</tr>
+					</tbody>
+				</table>
+				<!--[if mso]><br/><![endif]-->
+			</td>
+		</tr>
+	</tbody>
+</table>

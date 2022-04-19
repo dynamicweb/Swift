@@ -4,9 +4,32 @@
 @{ 
 	ProductViewModel product = new ProductViewModel();
 
-	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
 	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails")) {
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	} else if (Pageview.Item["DummyProduct"] != null) {
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		}
+		else
+		{
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	} else if (Pageview.Item["DummyProduct"] == null) {
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 	}
 
 	bool hideTitle = Model.Item.GetBoolean("HideTitle");
@@ -22,14 +45,10 @@
 	string maxWidth = Model.Item.GetRawValueString("TextReadability", "max-width-on");
 	maxWidth = maxWidth == "max-width-on" ? "mw-75ch d-inline-block" : maxWidth;
 	maxWidth = maxWidth == "max-width-off" ? "" : maxWidth;
-
-	string layout = Model.Item.GetRawValueString("Layout", "");
-	layout = layout == "alignLeft" ? "" : layout;
-	layout = layout == "alignLeftMiddle" ? "d-flex align-items-center text-start" : layout;
 }
 
 @if (!string.IsNullOrEmpty(product.LongDescription)) {
-	<div class="@(theme) @(layout) h-100 item_@Model.Item.SystemName.ToLower()">
+	<div class="@(theme) h-100 item_@Model.Item.SystemName.ToLower()">
 		<div class="@(contentPadding)">
 			@if (!hideTitle)
 			{
@@ -42,6 +61,8 @@
 			</div>
 		</div>
 	</div>
+} else if (Pageview.IsVisualEditorMode) { 
+	<div class="alert alert-dark m-0">@Translate("Long description will be shown here, if any")</div>
 }
 
 

@@ -1,0 +1,183 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb
+@using System.IO
+
+@{
+	int frontPageId = Dynamicweb.Services.Pages.GetFirstPageForArea(Pageview.AreaID).ID;
+	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
+}
+
+<style>
+	.sticky-receipt {
+		position: sticky;
+	}
+
+	@@media print {
+		.sticky-receipt {
+			position: relative;
+		}
+	}
+</style>
+
+<div class="grid p-3 h-100@(theme)">
+	<div class="g-col-12 g-col-sm-10 g-start-sm-2 g-col-md-8 g-start-md-3 g-col-xl-6 g-start-xl-4 mx-sm-auto position-relative">
+		<form name="ordersubmit" id="ordersubmit" method="post" autocomplete="off">
+
+			<header>
+				@RenderPageHeader()
+			</header>
+
+			<section class="my-3 my-md-4">
+				<div class="list-group">
+
+					@if (!string.IsNullOrEmpty(GetString("Ecom:Order.ID")))
+					{
+						<div class="list-group-item py-2">
+							<div class="grid">
+								<dt class="g-col-4 lh-base fw-normal text-nowrap opacity-85">@Translate("Quote number")</dt>
+								<dd class="g-col-12 g-col-md-8 mb-0">
+									@if (!string.IsNullOrEmpty(GetString("Ecom:Order.IntegrationID")))
+									{
+										<span>@GetString("Ecom:Order.IntegrationID") (@GetString("Ecom:Order.ID"))</span>
+									}
+									else
+									{
+										<span>@GetString("Ecom:Order.ID")</span>
+									}
+								</dd>
+							</div>
+						</div>
+					}
+
+					@if (!string.IsNullOrEmpty(GetString("Ecom:Order.Completed")))
+					{
+						<div class="list-group-item py-2">
+							<div class="grid">
+								<dt class="g-col-4 lh-base fw-normal text-nowrap opacity-85">@Translate("Quote date")</dt>
+								<dd class="g-col-12 g-col-md-8 mb-0">@GetString("Ecom:Order.Completed")</dd>
+							</div>
+						</div>
+					}
+
+					<div class="list-group-item py-2">
+						<div class="grid">
+							<dt class="g-col-4 lh-base fw-normal text-nowrap opacity-85">@Translate("Your information")</dt>
+							<dd class="g-col-12 g-col-md-8 mb-0">
+								@if (!string.IsNullOrEmpty(GetString("Ecom:Order.Customer.Name")))
+								{
+									<span>@GetString("Ecom:Order.Customer.Name"),</span>
+								}
+								@if (!string.IsNullOrEmpty(GetString("Ecom:Order.Customer.Address")))
+								{
+									<span>@GetString("Ecom:Order.Customer.Address"),</span>
+								}
+								@if (!string.IsNullOrEmpty(GetString("Ecom:Order.Customer.Address2")))
+								{
+									<span>@GetString("Ecom:Order.Customer.Address2"),</span>
+								}
+								@if (!string.IsNullOrEmpty(GetString("Ecom:Order.Customer.Zip")))
+								{
+									<span>@GetString("Ecom:Order.Customer.Zip")</span>
+								}
+								@if (!string.IsNullOrEmpty(GetString("Ecom:Order.Customer.City")))
+								{
+									<span>@GetString("Ecom:Order.Customer.City"),</span>
+								}
+								@if (!string.IsNullOrEmpty(GetString("Ecom:Order.Customer.Region")))
+								{
+									string regionName = GetString("Ecom:Order.Customer.Region");
+									foreach (LoopItem region in GetLoop("CustomerRegions"))
+									{
+										if (region.GetString("Ecom:CustomerRegion.IsCustomerRegion") == "true")
+										{
+											regionName = region.GetString("Ecom:CustomerRegion.Name");
+										}
+									}
+
+									<span>@regionName,</span>
+								}
+								@if (!string.IsNullOrEmpty(GetString("Ecom:Order.Customer.Country")))
+								{
+									<span>@GetString("Ecom:Order.Customer.Country")</span>
+								}
+								@if (!string.IsNullOrEmpty(@GetString("Ecom:Order.Customer.Email")))
+								{
+									<span>@GetString("Ecom:Order.Customer.Email"), </span>
+								}
+								@if (!string.IsNullOrEmpty(@GetString("Ecom:Order.Customer.Phone")))
+								{
+									<span>@GetString("Ecom:Order.Customer.Phone")</span>
+								}
+							</dd>
+						</div>
+					</div>
+
+					<div class="list-group-item py-2">
+						<div class="lh-base fw-normal text-nowrap opacity-85">@Translate("Your quote request")</div>
+						<div>@GetString("Ecom:Order.Customer.Comment")</div>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<div class="list-group">
+					<div class="list-group-item p-3">
+						<div class="grid grid-1 py-3 pt-md-0">
+							@foreach (LoopItem orderline in GetLoop("OrderLines"))
+							{
+								@RenderOrderSummaryOrderLineItem(orderline)
+							}
+						</div>
+						<div class="sticky-receipt bottom-0 theme">
+							@RenderOrderSummary(false)
+
+							<section class="py-3 d-print-none">
+								<div class="d-flex justify-content-end align-items-center">
+									<a href="/Default.aspx?id=@frontPageId" class="btn btn-primary w-100">@Translate("Return to frontpage")</a>
+								</div>
+							</section>
+						</div>
+					</div>
+				</div>
+			</section>
+
+		</form>
+	</div>
+</div>
+
+@helper RenderPageHeader()
+{
+	<div class="mt-3 mt-md-4">
+		@RenderLogo()
+	</div>
+	<div class="border-bottom mt-4 pb-3">
+		<div class="d-flex justify-content-between mb-2">
+			<div class="flex-fill">
+				<h1 class="fs-1 fs-md-3 m-0">@Translate("Thank you for your quote")</h1>
+			</div>
+			<div>
+				@RenderPrintButton()
+			</div>
+		</div>
+
+		<p class="d-block">@Translate("We are processing your quote now, here are the details")</p>
+
+		<p class="d-block mb-0">@Translate("We sent an email to") <b>@GetString("Ecom:Order.Customer.Email")</b> @Translate("with your quote request.") 
+		@Translate("If the email have not arrived within two minutes, please check your spam folder to see if the email was routed there. We will send you an email again, once we have processed your request.")</p>
+	</div>
+}
+
+@helper RenderPrintButton()
+{
+	<div class="d-flex d-print-none justify-content-end align-items-center d-none d-lg-block">
+		<button type="button" class="btn btn-secondary text-uppercase" onclick='window.print()'>@Translate("Print")</button>
+	</div>
+}
+
+@Include("Helpers/Logo.cshtml")
+@Include("Helpers/StepsNavigation.cshtml")
+@Include("Helpers/StepsBreadcrumbs.cshtml")
+@Include("Helpers/OrderSummaryOrderLineItem.cshtml")
+@Include("Helpers/OrderSummary.cshtml")
+@Include("Helpers/VoucherForm.cshtml")

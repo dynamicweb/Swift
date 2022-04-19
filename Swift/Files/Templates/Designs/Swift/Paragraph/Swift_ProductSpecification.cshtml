@@ -2,14 +2,40 @@
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @{ 
+	bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
+
 	ProductViewModel product = new ProductViewModel();
+	
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
 
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	} else if (Pageview.Item["DummyProduct"] != null) {
+
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		} else {
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	} else if (Pageview.Item["DummyProduct"] == null) {
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 	}
+}
 
-
+@if (product?.Id != null) {
 	IEnumerable<string> selectedDisplayGroupIds = Model.Item.GetRawValueString("DisplayGroups").Split(',').ToList();
 	List<CategoryFieldViewModel> displayGroups = new List<CategoryFieldViewModel>();
 
@@ -17,11 +43,14 @@
 	{
 		foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
 		{
-			if (selection == group.Id) {
+			if (selection == group.Id)
+			{
 				displayGroups.Add(group);
 			}
 		}
 	}
+
+	bool showProductFields = Model.Item.GetBoolean("ProductFields");
 
 	bool hideTitle = Model.Item.GetBoolean("HideTitle");
 
@@ -34,63 +63,75 @@
 	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
 
 	string layout = Model.Item.GetRawValueString("Layout", "list");
+	string size = Model.Item.GetRawValueString("Size", "full");
 
-	string alignment = Model.Item.GetRawValueString("Alignment", "");
-	alignment = alignment == "alignLeft" ? "" : alignment;
-	alignment = alignment == "alignLeftMiddle" ? "d-flex align-items-center text-start" : alignment;
-}
+	if (Pageview.IsVisualEditorMode && displayGroups.Count() == 0)
+	{
+		product.ProductFields.Clear();
+		product.ProductFields.Add(Translate("Width"), new FieldValueViewModel { Name = Translate("Width"), Value = "99cm" });
+		product.ProductFields.Add(Translate("Height"), new FieldValueViewModel { Name = Translate("Height"), Value = "195cm" });
+		showProductFields = true;
+	}
 
-
-<div class="@(alignment) @(theme) h-100 item_@Model.Item.SystemName.ToLower()">
-	<div class="@contentPadding">
-		@if ((product.ProductFields != null && Model.Item.GetBoolean("ProductFields")) || (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields")) || (displayGroups.Count != 0)) {
-			if (!hideTitle)
-			{
-				<div class="text-start pb-2 pb-lg-4">
-					<h2 class="@titleFontSize">@Model.Item.GetString("Title")</h2>
-				</div>
-			}
-		}
-
-		@if (displayGroups.Count != 0) {
-			foreach (var group in displayGroups) {
-				bool hideHeader = Model.Item.GetBoolean("HideGroupHeaders");
-
-				if (!hideHeader) { 
-					<h4 class="h4 mb-4">@group.Name</h4>
+	<div class="@(theme) h-100 item_@Model.Item.SystemName.ToLower()">
+		<div class="@contentPadding">
+			@if ((product.ProductFields != null && Model.Item.GetBoolean("ProductFields")) || (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields")) || (displayGroups.Count != 0)) {
+				if (!hideTitle)
+				{
+					<div class="text-start pb-2 pb-lg-4">
+						<h2 class="@titleFontSize">@Model.Item.GetString("Title")</h2>
+					</div>
 				}
-
-				@RenderFieldsFromList(group.Fields, layout);
 			}
-		}
 
-		@if (product.ProductFields != null && Model.Item.GetBoolean("ProductFields")) {
-			if (product.ProductFields.Count > 0) {
-				@RenderFieldsFromList(product.ProductFields, layout);
-			}
-		}
-
-		@if (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields")) {
-			if (product.ProductCategories.Count > 0) {
-				foreach (var group in product.ProductCategories) {
-					CategoryFieldViewModel category = group.Value;
+			@if (displayGroups.Count != 0) {
+				foreach (var group in displayGroups) {
 					bool hideHeader = Model.Item.GetBoolean("HideGroupHeaders");
+
+					if (!hideHeader) { 
+						<h4 class="h4 mb-4">@group.Name</h4>
+					}
+
+					@RenderFieldsFromList(group.Fields, layout);
+				}
+			}
+
+			@if (product.ProductFields != null && showProductFields) {
+				if (product.ProductFields.Count > 0) {
+					@RenderFieldsFromList(product.ProductFields, layout);
+				}
+			}
+
+			@if (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields")) {
+				if (product.ProductCategories.Count > 0) {
+					foreach (var group in product.ProductCategories) {
+						CategoryFieldViewModel category = group.Value;
+						bool hideHeader = Model.Item.GetBoolean("HideGroupHeaders");
 
 					if (!hideHeader) { 
 						<h4 class="h4 mb-4">@group.Value.Name</h4>
 					}
 
-					@RenderFieldsFromList(category.Fields, layout);
+						@RenderFieldsFromList(category.Fields, layout);
+					}
 				}
 			}
-		}
+		</div>
 	</div>
-</div>
+} else if (Pageview.IsVisualEditorMode) { 
+	<div class="alert alert-warning m-0">@Translate("No products available")</div>
+}
+
 
 @helper RenderFieldsFromList(Dictionary<string, FieldValueViewModel> fields, string layout) { 
-	<div class="mb-5">
+	string size = Model.Item.GetRawValueString("Size", "full");
+	string extraMargin = size == "full" ? "mb-3" : "";
+
+	<div class="@extraMargin">
 		@if (layout == "columns") {
-			<div class="grid">
+			string gaps = size == "full" ? "gap-0" : "gap-2";
+
+			<div class="grid @gaps">
 				@foreach (var field in fields) {
 					@RenderField(field.Value, layout)
 				}
@@ -104,23 +145,66 @@
 			</dl>
 		}
 		@if (layout == "table") {
-			<table class="table table-striped">
+			string tableSize = size == "full" ? "" : "table-sm";
+
+			<table class="table table-striped @tableSize">
 				@foreach (var field in fields) {
 					@RenderField(field.Value, layout)
 				}
 			</table>
 		}
 		@if (layout == "bullets") {
-			<ul>
+			string listSize = size == "full" ? "" : "m-0 p-0 lh-1 fs-7 opacity-75";
+			string listStyle = size == "full" ? "" : "style=\"list-style-position: inside\"";
+
+			<ul class="@listSize" @listStyle>
 				@foreach (var field in fields) {
 					@RenderField(field.Value, layout)
 				}
 			</ul>
 		}
+		@if (layout == "commas") { 
+			List<string> featuresList = new List<string>();
+			foreach (var field in fields)
+			{
+				if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+					List<string> options = new List<string>();
+					foreach (FieldOptionValueViewModel option in field.Value.Value as System.Collections.Generic.List<FieldOptionValueViewModel>) {
+						if (!string.IsNullOrWhiteSpace(option.Value)) {
+							if (option.Value.ToString().Contains("#") && (Translate(field.Value.Name) == Translate("Color") || Translate(field.Value.Name) == Translate("Colour"))) {
+								string colorSpan = "<span class=\"colorbox-sm\" style=\"background-color: " + option.Value + "\"></span>";
+								options.Add(colorSpan);
+							} else if (!string.IsNullOrEmpty(option.Value)) {
+								options.Add(option.Name);
+							}
+                        }
+					}
+					string optionsString = (string.Join(", ", options.Select(x => x.ToString()).ToArray()));
+					if ((Translate(field.Value.Name) == Translate("Color") || Translate(field.Value.Name) == Translate("Colour"))) {
+						optionsString = (string.Join(" ", options.Select(x => x.ToString()).ToArray()));
+					}
+					featuresList.Add(field.Value.Name + ": " + optionsString);
+				} else {
+					if (!string.IsNullOrWhiteSpace(field.Value.Value.ToString())) {
+						if (field.Value.Value.ToString().Contains("#") && (Translate(field.Value.Name) == Translate("Color") || Translate(field.Value.Name) == Translate("Colour"))) {
+							string colorSpan = "<span class=\"colorbox-sm\" style=\"background-color: " + field.Value.Value + "\"></span>";
+							featuresList.Add(field.Value.Name + ": " + colorSpan);
+						} else {
+							featuresList.Add(field.Value.Name + ": " + field.Value.Value.ToString());
+                        }
+					}
+                }
+			}
+
+			string featuresString = (string.Join(", ", featuresList.Select(x => x.ToString()).ToArray()));
+
+			<div class="opacity-75 fs-7">@featuresString</div>
+		 }
 	</div>
 }
 
 @helper RenderField(FieldValueViewModel field, string layout) { 
+	string size = Model.Item.GetRawValueString("Size", "full");
 	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
 	bool noValues = false;
 
@@ -139,8 +223,10 @@
 			</div>
 		}
 		if (layout == "list") {
-			<dt class="g-col-4 py-2 fw-bold">@field.Name</dt>
-			<dd class="g-col-8 py-2 mb-0">
+			string extraPadding = size == "full" ? "py-2" : "";
+
+			<dt class="g-col-4 @extraPadding fw-bold">@field.Name</dt>
+			<dd class="g-col-8 @extraPadding mb-0">
 				@RenderFieldValue(field)
 			</dd>
 		}
@@ -161,6 +247,8 @@
 
 @helper RenderFieldValue(FieldValueViewModel field) { 
 	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
+
+	bool isLink = field?.Type == "Link";
 
 	fieldValue = fieldValue == "False" ? Translate("No") : fieldValue;
 	fieldValue = fieldValue == "True" ? Translate("Yes") : fieldValue;
@@ -187,9 +275,9 @@
 			
 			if (valueCount != totalValues && valueCount < (totalValues - 1)) {
 				if (isColor) {
-<text> </text>
+				<text> </text>
 				} else {
-<text>, </text>
+				<text>, </text>
 				}
 			}
 			valueCount++;
@@ -202,7 +290,16 @@
 		}
 
 		if (!isColor) {
-			@fieldValue
+			if(isLink)
+            {
+				string linktTitle = !fieldValue.Contains("aspx") ? fieldValue : Translate("Go to link"); 
+				<a href="@field.Value" title="@field.Name">@linktTitle</a>
+            }
+			else
+            {
+				@fieldValue
+            }
+
 		} else {
 			<span class="colorbox-sm" style="background-color: @fieldValue" title="@fieldValue"></span>
 		}

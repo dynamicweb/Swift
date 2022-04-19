@@ -13,24 +13,27 @@
 	}
 }
 
-@if (Model.VariantInfo.VariantInfo != null) {
+@if (Model.VariantInfo?.VariantInfo != null) {
 	if (viewType == "ModalContent") {
 		string minQty = Model.PurchaseMinimumQuantity != 1 ? "min=\"" + Model.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
 		string stepQty = Model.PurchaseQuantityStep > 1 ? Model.PurchaseQuantityStep.ToString() : "1";
 		string valueQty = Model.PurchaseMinimumQuantity > Model.PurchaseQuantityStep ? Model.PurchaseMinimumQuantity.ToString() : stepQty;
 		string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : "";
 
-		bool isDiscontinued = Model.Discontinued;
 		bool IsNeverOutOfStock = Model.NeverOutOfstock;
+		bool isDiscontinued = Model.Discontinued;
+
 		string disableAddToCart = (Model.StockLevel <= 0) ? "disabled" : "";
 		disableAddToCart = isDiscontinued ? "disabled" : disableAddToCart;
 		disableAddToCart = IsNeverOutOfStock ? "" : disableAddToCart;
+		disableAddToCart = string.IsNullOrEmpty(Model.VariantId) ? "disabled" : disableAddToCart;
+
 
 		<div class="modal-header">
 			<h5 class="modal-title">@Model.Name</h5>
 			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 		</div>
-		<div class="modal-body" >
+		<div class="modal-body">
 			@RenderSelector()
 		</div>
 		<div class="modal-footer">
@@ -44,7 +47,7 @@
 					<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
 						<label for="Quantity_@(Model.Id)_@Model.VariantId" class="visually-hidden">@Translate("Quantity")</label>
 						<input id="Quantity_@(Model.Id)_@Model.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number">
-						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(Model.Id)" @disableAddToCart>@Translate("Add to cart")</button>
+						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(Model.Id)_@Pageview.CurrentParagraph.ID" @disableAddToCart>@Translate("Add to cart")</button>
 						@if (stepQty != "1") {
 							<div class="invalid-feedback d-none">
 								@Translate("Please select a quantity that is dividable by") @stepQty
@@ -53,7 +56,7 @@
 					</div>
 				} else {
 					<input id="Quantity_@(Model.Id)_@Model.VariantId" name="Quantity" value="@valueQty" type="hidden">
-					<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" title="@Translate("Add to cart")" id="AddToCartButton@(Model.Id)" @disableAddToCart>@Translate("Add to cart")</button>
+					<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(Model.Id)_@Pageview.CurrentParagraph.ID" @disableAddToCart>@Translate("Add to cart")</button>
 				}
 			</form>
 		</div>
@@ -63,21 +66,30 @@
 	
 	<script type="module">
 		swift.VariantSelector.init();
-
-		document.addEventListener('selectioncomplete.swift.variantselector', function (event) {
-			event.preventDefault();
-			document.querySelector("#VariantIdField_@Model.Id").value = document.querySelector("#SelectedVariantId_@Model.Id").value;
-		});
 	</script>
 }
 
 @helper RenderSelector() { 
 	int groupNumber = 1;
-	string variantId = Model.VariantId;
+	string[] variantId = Model.VariantId.Split('.');
+	bool quantitySelector = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("QuantitySelector")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form.Get("QuantitySelector")) : false;
 
-	<form class="mb-3 js-variant-selector" data-combinations="@string.Join(",", Model.VariantCombinations())">
+	bool IsNeverOutOfStock = Model.NeverOutOfstock;
+	bool hideInventory = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("HideInventory")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form.Get("HideInventory")) : false;
+	bool hideStockState = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("HideStockState")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form.Get("HideStockState")) : false;
+	bool hasExpectedDelivery = Model.ExpectedDelivery != null && Model.ExpectedDelivery > DateTime.Now;
+	string expectedDeliveryDate = Model.ExpectedDelivery?.ToShortDateString() ?? "";
+
+	string variantSelectorServicePageId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("VariantSelectorServicePage")) ? Dynamicweb.Context.Current.Request.Form.Get("VariantSelectorServicePage") : "";
+
+	<form action="/Default.aspx?ID=@variantSelectorServicePageId" class="mb-3 js-variant-selector" data-combinations="@string.Join(",", Model.VariantCombinations())" data-response-target-element="DynamicModalContent">
 		<input type="hidden" name="productId" value="@Model.Id" />
-		<input type="hidden" name="variantid" id="SelectedVariantId_@Model.Id" />
+		<input type="hidden" name="variantid" value="@variantId" />
+		<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
+		<input type="hidden" name="HideInventory" value="@hideInventory.ToString()" />
+		<input type="hidden" name="HideStockState" value="@hideStockState.ToString()" />
+		<input type="hidden" name="VariantSelectorServicePage" value="@variantSelectorServicePageId" />
+		<input type="hidden" name="ViewType" value="ModalContent" />
 
 		@foreach (var variantGroup in Model.VariantGroups())
 		{
@@ -87,21 +99,21 @@
 			<div class="mb-3 js-variant-group" data-group-id="@groupNumber">
 				@foreach (var option in group.Options)
 				{
-					string active = variantId.Contains(option.Id) ? "active" : "";
+					string active = variantId.Contains(option.Id)? "active" : "";
 
 					if (!string.IsNullOrEmpty(option.Color))
 					{
-						<button type="button" class="btn colorbox rounded-circle me-1 mb-2 d-inline-block variant-option border js-variant-option @active" style="background-color: @option.Color" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id"></button>
+						<button type="button" class="btn colorbox rounded-circle me-1 mb-2 d-inline-block variant-option js-variant-option @active" style="background-color: @option.Color" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(Model.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID"></button>
 					}
 					else if (!string.IsNullOrEmpty(option.Color) && !string.IsNullOrEmpty(option.Image.Value))
 					{
-						<button type="button" class="btn p-0 d-inline-block mb-2 variant-option border js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id">
+						<button type="button" class="btn p-0 d-inline-block mb-2 variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(Model.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
 							<img src="/Admin/Public/GetImage.ashx?image=@(option.Image.Value)&width=42&Format=WebP&Quality=70" />
 						</button>
 					}
 					else
 					{
-						<button type="button" class="btn btn-secondary d-inline-block mb-2 variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id">
+						<button type="button" class="btn btn-secondary d-inline-block mb-2 variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(Model.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
 							@option.Name
 						</button>
 					}
@@ -111,4 +123,31 @@
 			groupNumber++;
 		}
 	</form>
+
+	if (!IsNeverOutOfStock && !hideStockState)
+	{
+		<div class="js-stock-state">
+			@if (Model.StockLevel > 0)
+			{
+				if (!hideInventory)
+				{
+					<p class="small text-success m-0">@Model.StockLevel @Translate("In stock")</p>
+				}
+				else
+				{
+					<p class="small text-success m-0">@Translate("In stock")</p>
+				}
+			} else {
+				<p class="small text-danger m-0">@Translate("Out of Stock")</p>
+			}
+
+			@if (hasExpectedDelivery)
+			{
+				<p>
+					<span>@Translate("Expected in stock:")</span>
+					<span>@expectedDeliveryDate</span>
+				</p>
+			}
+		</div>
+	}
 }

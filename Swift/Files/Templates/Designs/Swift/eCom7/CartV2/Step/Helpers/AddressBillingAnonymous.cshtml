@@ -1,9 +1,21 @@
 @helper RenderAddressBillingAnonymous() {
+	string apiKey = Pageview.AreaSettings.GetString("Google_APIKey", "");
+
 	string deliveryAddressString = GetString("Ecom:Order.Delivery.Company") + GetString("Ecom:Order.Delivery.Address") + GetString("Ecom:Order.Delivery.Zip") + GetString("Ecom:Order.Delivery.City") + GetString("Ecom:Order.Delivery.Phone");
 	string billingAddressString = GetString("Ecom:Order.Customer.Company") + GetString("Ecom:Order.Customer.Address") + GetString("Ecom:Order.Customer.Zip") + GetString("Ecom:Order.Customer.City") + GetString("Ecom:Order.Customer.Phone");
-	string disabled = (deliveryAddressString != billingAddressString) && billingAddressString != "" ? "" : "disabled";
+    string disabled = (deliveryAddressString != billingAddressString) && billingAddressString != "" || Pageview.CurrentParagraph.Item.SystemName == "Swift_QuoteCheckoutApp" ? "" : "disabled";
+	bool enableFindLocation = Pageview.CurrentParagraph.Item["EnableFindLocation"] != null ? (Boolean)Pageview.CurrentParagraph.Item["EnableFindLocation"] : false;
 
-	string currentCountry = GetString("Ecom:Order.Customer.Country.Code");
+	string currentCountry = Pageview.Area?.EcomCountryCode != null ? Pageview.Area.EcomCountryCode : "dk";
+	foreach (LoopItem country in GetLoop("Countries"))
+	{
+		if (country.GetString("Ecom:Country.IsDeliveryCountryOrDefault") == "true")
+		{
+			currentCountry = country.GetString("Ecom:Country.Code2");
+		}
+	}
+
+
 	string countrySelectorColumnSize = "g-col-6";
 	string customerRegionLabel = "State";
 
@@ -116,5 +128,12 @@
 
 	</div>
 
+	if (enableFindLocation && !string.IsNullOrEmpty(apiKey)) { 
+		<script defer src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)&libraries=places"></script>
 
+		<script type="module">
+			var mapSettings = { currentCountry: "@currentCountry" };
+			swift.Places.init(mapSettings);
+		</script>
+	}
 }
