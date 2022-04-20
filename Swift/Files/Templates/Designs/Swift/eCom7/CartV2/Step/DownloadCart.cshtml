@@ -94,6 +94,8 @@
 			<aside class="g-col-12 g-col-lg-4 position-relative">
 				<div class="p-3 p-lg-5 pb-lg-4@(theme)">
 					<form id="ProductExportForm" action="/dwapi/ecommerce/products/export" class="sticky-receipt">
+						<input type="hidden" name="ShopId" value="@Pageview.Area.EcomShopId" />
+
 						<div class="mb-2">
 							<h3 class="h5">@Translate("Product information")</h3>
 							<div>@Translate("Select a language and format for your product file")</div>
@@ -101,12 +103,12 @@
 
 						<div class="form-floating mb-3">
 							<select class="form-select bg-white" id="DownloadCartLanguageSelector" name="LanguageId" aria-label="@Translate("Language")">
-								<option value="" selected>@Translate("None")</option>
+								<option value="">@Translate("None")</option>
 								@foreach (var language in ecomLanguages)
 								{
 									string selected = languageCount == 0 ? "selected" : "";
 
-									<option value="@language.Code2" @selected>@language.GetDisplayName()</option>
+									<option value="@language.LanguageId" @selected>@language.GetDisplayName()</option>
 
 									languageCount++;
 								}
@@ -166,7 +168,7 @@
 							<label for="DownloadCartRecipientEmail">@Translate("Send download link to")</label>
 						</div>
 
-						<input type="hidden" id="DownloadCartRecipientTokens" name="RecipientTokens" value="" />
+						<div id="DownloadCartRecipientTokens"></div>
 
 						@foreach (var productid in productIds)
 						{
@@ -192,19 +194,28 @@
 						headers: {
 							'Content-Type': 'application/json'
 						},
-						body: JSON.stringify(emails.split())
+						body: JSON.stringify(emails.replace(" ", "").split(","))
 					};
 
 					let response = await fetch("/dwapi/users/createrecipients", fetchOptions);
 
 					if (response.ok) {
-						let inputText = await response.text().then(function (text) {
+						let inputText = await response.json().then(function (text) {
 							return text;
 						});
 
-						//Loop create hidden input fields
+						let emailsArray = inputText;
+						const recipiens = document.querySelector("#DownloadCartRecipientTokens");
+						recipiens.innerHTML = "";
 
-						document.querySelector("#DownloadCartRecipientTokens").value = "";
+						emailsArray.forEach(function (email) {
+							var inputElement = document.createElement('input');
+							inputElement.name = "RecipientTokens";
+							inputElement.type = "hidden";
+							inputElement.value = email;
+							recipiens.appendChild(inputElement);
+						});
+
 						StartDownload();
 					} else {
 						
@@ -228,7 +239,7 @@
 						let response = await fetch(newUrl);
 
 						if (response.ok) {
-							window.location = '@confirmationPage' + '&redirect=false&&cartcmd=emptycart&OrderContext=' + '@GetString("Ecom:OrderContext.ID")';
+							window.location = '@confirmationPage' + '&redirect=false&cartcmd=emptycart&OrderContext=' + '@GetString("Ecom:OrderContext.ID")';
 
 							return false;
 						} else {
