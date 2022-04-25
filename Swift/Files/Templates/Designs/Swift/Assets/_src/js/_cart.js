@@ -112,7 +112,7 @@ const Cart = function () {
 					console.log("Mini cart page is missing");
 				}
 			} else {
-				miniCarts = [document.querySelectorAll(".js-cart-qty")];
+				miniCarts = document.querySelectorAll(".js-cart-qty");
 			}
 
 			return miniCarts;
