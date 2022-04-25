@@ -1,0 +1,170 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+
+@{
+	ProductViewModel product = new ProductViewModel();
+
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Item["DummyProduct"] != null)
+	{
+
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		}
+		else
+		{
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	}
+	else if (Pageview.Item["DummyProduct"] == null)
+	{
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+	}
+
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
+	horizontalAlign = horizontalAlign == "center" ? "justify-content-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "end" ? "justify-content-end" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "full" ? "" : horizontalAlign;
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+
+	bool hideAddToCart = (anonymousUsersLimitations.Contains("cart") && anonymousUser) ? true : false;
+	hideAddToCart = Pageview.IsVisualEditorMode ? false : hideAddToCart;
+	bool quantitySelector = !string.IsNullOrEmpty(Model.Item.GetString("ShowQuantitySelector")) ? Model.Item.GetBoolean("ShowQuantitySelector") : false;
+}
+
+
+@if (!hideAddToCart && product.Id != null)
+{
+	string contextCart = Model.Item.GetRawValueString("ContextCart", "");
+
+	string iconPath = "/Files/icons/";
+	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
+	}
+
+	string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : "";
+	bool isNeverOutOfStock = product.NeverOutOfstock;
+	disableAddToCart = isNeverOutOfStock ? "" : disableAddToCart;
+
+	string fullWidth = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "w-100" : "";
+	string addToCartIcon = Model.Item.GetRawValueString("Icon", iconPath + "shopping-cart.svg");
+	string addToCartLabel = !addToCartIcon.Contains("_none") ? "<span class=\"icon-2\">" + ReadFile(addToCartIcon) + "</span>" : "";
+	addToCartLabel += !addToCartIcon.Contains("_none") && !Model.Item.GetBoolean("HideButtonText") ? " " : "";
+	addToCartLabel += !Model.Item.GetBoolean("HideButtonText") ? Translate("Request quote") : "";
+
+	string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
+	string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
+	string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
+	string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : "";
+
+	<div class="d-flex @horizontalAlign @fullWidth item_@Model.Item.SystemName.ToLower()">
+		<button type="button" class="btn btn-secondary @fullWidth" data-bs-toggle="modal" data-bs-target="#RequestQuoteModal_@Model.ID">@addToCartLabel</button>
+	</div>
+
+	<div class="modal fade" id="RequestQuoteModal_@Model.ID" tabindex="-1" aria-labelledby="RequestQuoteModallabel_@Model.ID" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="RequestQuoteModallabel_@Model.ID">@Translate("Request quote")</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body grid gap-4">
+					<div class="g-col-4">
+						<img src="/Admin/Public/GetImage.ashx?image=@(product.DefaultImage.Value)&width=260&format=webp" loading="lazy" class="mw-100 mh-100" />
+					</div>
+					<div class="g-col-8">
+						<h2 class="h3">@product.Name</h2>
+						<div>
+							@Translate("Enter the details below and add your request to the quote cart")
+						</div>
+					</div>
+					@if (product.VariantInfo.VariantInfo != null)
+					{
+						string servicePageId = Model.Item.GetLink("ServicePage") != null ? Model.Item.GetLink("ServicePage").PageId.ToString() : "";
+						servicePageId = servicePageId == "" && GetPageIdByNavigationTag("RelatedProductsListService") != 0 ? GetPageIdByNavigationTag("RelatedProductsListService").ToString() : servicePageId;
+
+						<div class="g-col-12" id="RequestQuoteModalProductListContainer_@Pageview.CurrentParagraph.ID">
+							@* Initial form for first load (We pass all the settings to the actual template) *@
+							<form action="/Default.aspx?ID=@servicePageId" id="RequestQuoteModalProductListForm_@Pageview.CurrentParagraph.ID" data-response-target-element="RequestQuoteModalProductListContainer_@Pageview.CurrentParagraph.ID" class="overflow-auto">
+								<input type="hidden" name="SortOrder" value="DESC" />
+								<input type="hidden" name="ID" value="@servicePageId" />
+								<input type="hidden" name="SourceType" value="variants" />
+								<input type="hidden" name="ParagraphID" value="@Pageview.CurrentParagraph.ID" />
+								<input type="hidden" name="PageSize" value="100" id="RelatedProductsListPageSize_@Pageview.CurrentParagraph.ID" />
+								<input type="hidden" name="PageSizeSetting" value="100" />
+								<input type="hidden" name="HideStock" value="true" />
+								<input type="hidden" name="QuantitySelector" value="true" />
+								<input type="hidden" name="HideFilters" value="true" />
+
+								<input type="hidden" name="MainProductID" value="@product.Id" />
+								<input type="hidden" name="isVariant" value="true" />
+
+								<input type="hidden" name="SaleBadgeType" value="@Model.Item.GetRawValue("SaleBadgeType")" />
+								<input type="hidden" name="SaleBadgeCssClassName" value="@Model.Item.GetRawValue("SaleBadgeDesign")" />
+								<input type="hidden" name="NewBadgeCssClassName" value="@Model.Item.GetRawValue("NewBadgeDesign")" />
+								<input type="hidden" name="NewPublicationDays" value="@Model.Item.GetInt32("NewPublicationDays")" />
+							</form>
+
+							<script type="module">
+								swift.PageUpdater.Update(document.querySelector("#RequestQuoteModalProductListForm_@Pageview.CurrentParagraph.ID"));
+							</script>
+						</div>
+					}
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Translate("Back to overview")</button>
+					@if (product.VariantInfo.VariantInfo == null)
+					{
+						<form method="post" action="@url">
+							@if (!string.IsNullOrEmpty(contextCart)) {
+								<input type="hidden" name="OrderContext" value="@contextCart" />
+								<input type="hidden" name="minicartid" value="@contextCart" />
+							}
+							<input type="hidden" name="redirect" value="false" />
+							<input type="hidden" name="ProductId" value="@product.Id" />
+							<input type="hidden" name="cartcmd" value="add" />
+							<div class="input-group input-primary-button-group js-input-group d-flex flex-row flex-nowrap">
+								@if (!Model.Item.GetBoolean("QuantitySelector"))
+								{
+									<label for="QuoteQuantity_@(product.Id)" class="visually-hidden">@Translate("Quantity")</label>
+									<input id="QuoteQuantity_@product.Id" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 96px; min-width:64px;" type="number">
+								}
+								else
+								{
+									<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" type="hidden">
+								}
+								<button type="button" data-bs-dismiss="modal" onclick="swift.Cart.Update(event)" class="btn btn-primary js-add-to-cart-button @disableAddToCart" @disableAddToCart title="@Translate("Add to quote cart")" id="AddToQuoteCartButton@(product.Id)">@Translate("Add to quote cart")</button>
+							</div>
+						</form>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0">@Translate("No products available")</div>
+}
