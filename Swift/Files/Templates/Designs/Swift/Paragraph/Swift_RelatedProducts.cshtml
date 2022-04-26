@@ -5,10 +5,40 @@
 	bool productViewModelFound = false;
 	ProductViewModel product = new ProductViewModel();
 
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		productViewModelFound = true;
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Item["DummyProduct"] != null)
+	{
+		productViewModelFound = true;
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		}
+		else
+		{
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	}
+	else if (Pageview.Item["DummyProduct"] == null)
+	{
+		productViewModelFound = true;
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 	}
 
 	string title = Model?.Item?.GetString("Title") != null ? Model.Item.GetString("Title") : Translate("Products");
@@ -144,16 +174,13 @@
 	productListPageId = productListPageId == "" ? productListPageByNavigationTag : productListPageId;
 	string link = "/Default.aspx?ID=" + productListPageId + linkParameters;
 
-	//Fallback for Visual Editor
-	if (sourceType == "variants" || sourceType == "frequently" || sourceType == "selected" || sourceType == "related-products") {
-		if (string.IsNullOrEmpty(productIds)) {
-			var firstProductId = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroups(Dynamicweb.Ecommerce.Common.Context.LanguageID)?.FirstOrDefault()?.Products?.FirstOrDefault()?.Id != null ? Dynamicweb.Ecommerce.Services.ProductGroups.GetGroups(Dynamicweb.Ecommerce.Common.Context.LanguageID).FirstOrDefault().Products.FirstOrDefault().Id : "";
-			groupIds = firstProductId;
-		}
-	} else {
-		if (string.IsNullOrEmpty(groupIds)) {
-			var firstGroupId = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroups(Dynamicweb.Ecommerce.Common.Context.LanguageID)?.FirstOrDefault()?.Id != null ? Dynamicweb.Ecommerce.Services.ProductGroups.GetGroups(Dynamicweb.Ecommerce.Common.Context.LanguageID).FirstOrDefault().Id : "";
-			groupIds = firstGroupId;
+	bool productsFound = true;
+	if (string.IsNullOrEmpty(groupIds) && string.IsNullOrEmpty(productIds)) {
+		if (Pageview.IsVisualEditorMode) {
+			productIds = product.Id;
+			sourceType = "selected";
+		} else {
+			productsFound = false;
 		}
 	}
 }
@@ -182,7 +209,7 @@
 	}
 
 	@*--- FREQUENTLY BOUGHT ---*@
-	@if (sourceType == "frequently") {
+	@if (sourceType == "frequently" && !string.IsNullOrEmpty(productIds)) {
 		<input type="hidden" name="BoughtWithProductIds" value="[@productIds]" /> 
 	}
 
@@ -263,19 +290,21 @@
 </form>
 
 @*Container element for the request*@
-@if (sourceType != "related-products") {
-	<div class="w-100 h-100">
-		<div id="RelatedProducts_@Model.ID" class="h-100" style="min-height: 345px"></div>
-	</div>
-} else if (product?.RelatedGroups != null) {
-	@* Create multiple slider containers, if type is Product relation *@
-	<div class="grid w-100 h-100" style="grid-row-gap: 4rem">
-		@foreach (var group in product.RelatedGroups)
-		{
-			<div id="RelatedProducts_@(Model.ID)_@group.Id" class="g-col-12 h-100" style="min-height: 345px"></div>
-		}
-	</div>
-}
+@if (productsFound) { 
+	if (sourceType != "related-products") {
+		<div class="w-100 h-100">
+			<div id="RelatedProducts_@Model.ID" class="h-100" style="min-height: 345px"></div>
+		</div>
+	} else if (product?.RelatedGroups != null) {
+		@* Create multiple slider containers, if type is Product relation *@
+		<div class="grid w-100 h-100" style="grid-row-gap: 4rem">
+			@foreach (var group in product.RelatedGroups)
+			{
+				<div id="RelatedProducts_@(Model.ID)_@group.Id" class="g-col-12 h-100" style="min-height: 345px"></div>
+			}
+		</div>
+	}
+} 
 
 <script type="module" src="~/Files/Templates/Designs/Swift/Assets/js/tiny-slider.js"></script>
 
