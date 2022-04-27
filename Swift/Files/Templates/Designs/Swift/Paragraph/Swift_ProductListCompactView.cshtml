@@ -9,6 +9,8 @@
 	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
 	string liveInfoClass = "";
 	string productInfoFeed = "";
+	string showPricesWithVat = "";
+	bool neverShowVat = false;
 	
 	ProductListViewModel productList = new ProductListViewModel();
 }
@@ -18,15 +20,20 @@
 		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
 	}
 	
+	showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+	
+	isLazyLoadingForProductInfoEnabled = true; // NOTE - FOR Local Debug purposes only
 	if (isLazyLoadingForProductInfoEnabled)
 	{
 		var productIds = string.Join("&ProductIds=", productList.Products.Select(p => p.Id));
+		string priceFilledProperties = $"Price,PriceFormatted{(showPricesWithVat == "false" && !neverShowVat ? ",PriceWithVat,PriceWithVatFormatted" : "")}";
 		productInfoFeed = $@"/dwapi/ecommerce/products/search?ProductIds={productIds}&PageSize={productList.PageSize}
 								&UserId={Converter.ToString(Pageview.User?.ID)}
 								&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
 								&ProductSettings.FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel,VariantInfo,NeverOutOfstock
-								&ProductSettings.PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
-								&ProductSettings.PriceSettings.FilledProperties=Price,PriceFormatted
+								&PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
+								&PriceSettings.FilledProperties={priceFilledProperties}
 								&getproductinfo=true";
 		liveInfoClass = "js-live-info";
 	}

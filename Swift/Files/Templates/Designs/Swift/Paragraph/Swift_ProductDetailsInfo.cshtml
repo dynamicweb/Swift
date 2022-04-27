@@ -126,12 +126,13 @@
 	{
 		bool hasVariantId = !string.IsNullOrEmpty(product.VariantId);
 		string variantIdParam = hasVariantId ? $"/{product.VariantId}" : "";
+		string priceFilledProperties = $"Price,PriceFormatted{(showPricesWithVat == "false" && !neverShowVat ? ",PriceWithVat,PriceWithVatFormatted" : "")}";
 		productInfoFeed = $@"/dwapi/ecommerce/products/{product.Id}{variantIdParam}
 							?UserId={Converter.ToString(Pageview.User?.ID)}
 							&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
 							&FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel,VariantInfo,NeverOutOfstock,Prices
 							&PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
-							&PriceSettings.FilledProperties=Price,PriceFormatted
+							&PriceSettings.FilledProperties={priceFilledProperties}
 							&getproductinfo=true";
 		liveInfoClass = "js-live-info";
 	}
@@ -288,192 +289,192 @@
 			</form>
 		}
 
-		<div class="d-flex flex-row flex-nowrap gap-2">
-			@if (!hideAddToCart)
-			{
-				<form method="post" action="@url" class="flex-fill">
-					<input type="hidden" name="redirect" value="false" />
-					<input type="hidden" name="ProductId" value="@product.Id" />
-					<input type="hidden" name="cartcmd" value="add" />
+	<div class="d-flex flex-row flex-nowrap gap-2">
+		@if (!hideAddToCart)
+		{
+			<form method="post" action="@url" class="flex-fill">
+				<input type="hidden" name="redirect" value="false" />
+				<input type="hidden" name="ProductId" value="@product.Id" />
+				<input type="hidden" name="cartcmd" value="add" />
 
-					@if (!string.IsNullOrEmpty(product.VariantId))
-					{
-						<input type="hidden" name="VariantId" value="@product.VariantId" />
-					}
-					@if (!Model.Item.GetBoolean("QuantitySelector"))
-					{
-						<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" type="hidden">
-						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary w-100 js-add-to-cart-button @disableAddToCart" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)_@Pageview.CurrentParagraph.ID">@Translate("Add to cart")</button>
-					} else { 
-						<div class="input-group input-primary-button-group js-input-group d-flex flex-row flex-nowrap">
-							<label for="Quantity_@(product.Id)" class="visually-hidden">@Translate("Quantity")</label>
-							<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 96px; min-width:64px;" type="number">
-							<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)_@Pageview.CurrentParagraph.ID">@Translate("Add to cart")</button>
-						</div>
-
-						if (stepQty != "1")
-						{
-							<div class="invalid-feedback d-none">
-								@Translate("Please select a quantity that is dividable by") @stepQty
-							</div>
-						}
-					}
-				</form>
-				if (!anonymousUser && !hideFavoritesSelector)
+				@if (!string.IsNullOrEmpty(product.VariantId))
 				{
-					@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+					<input type="hidden" name="VariantId" value="@product.VariantId" />
 				}
-			}
-			else if (!anonymousUser && !hideFavoritesSelector && !isDiscontinued)
+				@if (!Model.Item.GetBoolean("QuantitySelector"))
+				{
+					<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" type="hidden">
+					<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary w-100 js-add-to-cart-button @disableAddToCart" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)_@Pageview.CurrentParagraph.ID">@Translate("Add to cart")</button>
+				} else { 
+					<div class="input-group input-primary-button-group js-input-group d-flex flex-row flex-nowrap">
+						<label for="Quantity_@(product.Id)" class="visually-hidden">@Translate("Quantity")</label>
+						<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 96px; min-width:64px;" type="number">
+						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)_@Pageview.CurrentParagraph.ID">@Translate("Add to cart")</button>
+					</div>
+
+					if (stepQty != "1")
+					{
+						<div class="invalid-feedback d-none">
+							@Translate("Please select a quantity that is dividable by") @stepQty
+						</div>
+					}
+				}
+			</form>
+			if (!anonymousUser && !hideFavoritesSelector)
 			{
-				<div class="flex-fill" id="AddToFavorites_@Model.ID">
-					@Translate("Add to favorites") @RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
-				</div>
+				@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
 			}
+		}
+		else if (!anonymousUser && !hideFavoritesSelector && !isDiscontinued)
+		{
+			<div class="flex-fill" id="AddToFavorites_@Model.ID">
+				@Translate("Add to favorites") @RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+			</div>
+		}
 
-			@if (isDiscontinued && product.ReplacementProduct != null) {
-				List<ProductInfoViewModel> replacementProductList = new List<ProductInfoViewModel>();
-				replacementProductList.Add(product.ReplacementProduct);
-				var replacementProduct = replacementProductList.GetProducts().FirstOrDefault();
+		@if (isDiscontinued && product.ReplacementProduct != null) {
+			List<ProductInfoViewModel> replacementProductList = new List<ProductInfoViewModel>();
+			replacementProductList.Add(product.ReplacementProduct);
+			var replacementProduct = replacementProductList.GetProducts().FirstOrDefault();
 
-				if ((product.DiscontinuedAction == 0 || product.DiscontinuedAction == 1) && product?.ReplacementProduct.ProductId != null) {
-					var parms = new Dictionary<string, object>();
-					parms.Add("cssClass", "d-block mw-100 mh-100 m-auto");
-					parms.Add("fullwidth", true);
-					parms.Add("columns", Model.GridRowColumnCount);
+			if ((product.DiscontinuedAction == 0 || product.DiscontinuedAction == 1) && product?.ReplacementProduct.ProductId != null) {
+				var parms = new Dictionary<string, object>();
+				parms.Add("cssClass", "d-block mw-100 mh-100 m-auto");
+				parms.Add("fullwidth", true);
+				parms.Add("columns", Model.GridRowColumnCount);
 
-					string imagePath = replacementProduct?.DefaultImage?.Value != null ? replacementProduct.DefaultImage.Value : "";
+				string imagePath = replacementProduct?.DefaultImage?.Value != null ? replacementProduct.DefaultImage.Value : "";
 
-					var defaultGroupId = replacementProduct.PrimaryOrDefaultGroup.Id;
-					var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
+				var defaultGroupId = replacementProduct.PrimaryOrDefaultGroup.Id;
+				var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
 
-					string link = string.IsNullOrEmpty(selectedDetailPage) ? $"/Default.aspx?ID={Pageview.Page.ID}&groupid={defaultGroupId}" : selectedDetailPage;
-					link += "&productid=" + replacementProduct.Id;
-					link += !string.IsNullOrEmpty(replacementProduct.VariantId) ? "&variantid=" + replacementProduct.VariantId : "";
+				string link = string.IsNullOrEmpty(selectedDetailPage) ? $"/Default.aspx?ID={Pageview.Page.ID}&groupid={defaultGroupId}" : selectedDetailPage;
+				link += "&productid=" + replacementProduct.Id;
+				link += !string.IsNullOrEmpty(replacementProduct.VariantId) ? "&variantid=" + replacementProduct.VariantId : "";
 
-					<div class="w-100">
-						<div class="fw-bold w-100">@Translate("Sorry, this product is no longer available").</div>
-						<div>@Translate("We recommend this replacement product instead"):</div>
+				<div class="w-100">
+					<div class="fw-bold w-100">@Translate("Sorry, this product is no longer available").</div>
+					<div>@Translate("We recommend this replacement product instead"):</div>
 
-						<a href="@link">
-							@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
-						</a>
+					<a href="@link">
+						@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+					</a>
 
-						<div>@replacementProduct.Name</div>
+					<div>@replacementProduct.Name</div>
 
-						@if (!hidePrice)
-						{
-							<div class="mb-3">
-								<div class="h4" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
-									@if (showPricesWithVat == "false" && !neverShowVat)
+					@if (!hidePrice)
+					{
+						<div class="mb-3">
+							<div class="h4" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+								@if (showPricesWithVat == "false" && !neverShowVat)
+								{
+									if (isLazyLoadingForProductInfoEnabled)
 									{
-										if (isLazyLoadingForProductInfoEnabled)
-										{
-											<span itemprop="price" content="" class="d-none"></span>
-                                            <span class="text-decoration-line-through opacity-75 me-3 text-price d-none" data-show-if="product.Price.Price != product.PriceBeforeDiscount.Price"></span>
-										}
-										else
-										{
-											string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
-
-											<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
-											if (product.Price.Price != product.PriceBeforeDiscount.Price)
-											{
-												<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
-											}
-										}
+										<span itemprop="price" content="" class="d-none"></span>
+										<span class="text-decoration-line-through opacity-75 me-3 text-price d-none" data-show-if="product.Price.Price != product.PriceBeforeDiscount.Price"></span>
 									}
 									else
 									{
-										if (isLazyLoadingForProductInfoEnabled)
-										{
-											<span itemprop="price" content="" class="d-none"></span>
-											<span class="text-decoration-line-through opacity-75 me-3 text-price d-none" data-show-if="product.Price.Price != product.PriceBeforeDiscount.Price"></span>
-										}
-										else
-										{
-											string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
+										string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
 
-											<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
-											if (product.Price.Price != product.PriceBeforeDiscount.Price)
-											{
-												<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
-											}
+										<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
+										if (product.Price.Price != product.PriceBeforeDiscount.Price)
+										{
+											<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
 										}
 									}
-
-									@if (showPricesWithVat == "false" && !neverShowVat)
+								}
+								else
+								{
+									if (isLazyLoadingForProductInfoEnabled)
 									{
-										if (isLazyLoadingForProductInfoEnabled)
-										{
-											<span class="text-price"><div class="spinner-border" role="status"></div></span>
-										}
-										else
-										{
-											string price = product.Price.PriceWithoutVatFormatted;
-											if (product?.VariantInfo?.VariantInfo != null)
-											{
-												priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
-												priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
-											}
-											if (priceMin != priceMax)
-											{
-												price = priceMin + " - " + priceMax;
-											}
-											<span class="text-price">@price</span>
-										}
+										<span itemprop="price" content="" class="d-none"></span>
+										<span class="text-decoration-line-through opacity-75 me-3 text-price d-none" data-show-if="product.Price.Price != product.PriceBeforeDiscount.Price"></span>
 									}
 									else
 									{
-										if (isLazyLoadingForProductInfoEnabled)
+										string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
+
+										<span itemprop="price"content="@product.Price.Price" class="d-none"></span>
+										if (product.Price.Price != product.PriceBeforeDiscount.Price)
 										{
-											<span class="text-price"><div class="spinner-border" role="status"></div></span>
-										}
-										else
-										{
-											string price = product.Price.PriceFormatted;
-											if (product?.VariantInfo?.VariantInfo != null)
-											{
-												priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
-												priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
-											}
-											if (priceMin != priceMax)
-											{
-												price = priceMin + " - " + priceMax;
-											}
-											<span class="text-price">@price</span>
+											<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
 										}
 									}
-								</div>
+								}
 
 								@if (showPricesWithVat == "false" && !neverShowVat)
 								{
 									if (isLazyLoadingForProductInfoEnabled)
 									{
-										<small class="opacity-85 fst-normal text-price-with-vat d-none" data-suffix="@Translate("Incl. VAT")"></small>
+										<span class="text-price"><div class="spinner-border" role="status"></div></span>
 									}
 									else
 									{
-										string price = product.Price.PriceWithVatFormatted;
+										string price = product.Price.PriceWithoutVatFormatted;
 										if (product?.VariantInfo?.VariantInfo != null)
 										{
-											priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
-											priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
+											priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
+											priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
 										}
 										if (priceMin != priceMax)
 										{
 											price = priceMin + " - " + priceMax;
 										}
-										<small class="opacity-85 fst-normal">@price @Translate("Incl. VAT")</small>
+										<span class="text-price">@price</span>
+									}
+								}
+								else
+								{
+									if (isLazyLoadingForProductInfoEnabled)
+									{
+										<span class="text-price"><div class="spinner-border" role="status"></div></span>
+									}
+									else
+									{
+										string price = product.Price.PriceFormatted;
+										if (product?.VariantInfo?.VariantInfo != null)
+										{
+											priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
+											priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
+										}
+										if (priceMin != priceMax)
+										{
+											price = priceMin + " - " + priceMax;
+										}
+										<span class="text-price">@price</span>
 									}
 								}
 							</div>
-						}
 
-						<a href="@link" class="btn btn-primary w-100">@Translate("Go to the replacement")</a>
-					</div>
-				}
+							@if (showPricesWithVat == "false" && !neverShowVat)
+							{
+								if (isLazyLoadingForProductInfoEnabled)
+								{
+									<small class="opacity-85 fst-normal text-price-with-vat d-none" data-suffix="@Translate("Incl. VAT")"></small>
+								}
+								else
+								{
+									string price = product.Price.PriceWithVatFormatted;
+									if (product?.VariantInfo?.VariantInfo != null)
+									{
+										priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
+										priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
+									}
+									if (priceMin != priceMax)
+									{
+										price = priceMin + " - " + priceMax;
+									}
+									<small class="opacity-85 fst-normal">@price @Translate("Incl. VAT")</small>
+								}
+							}
+						</div>
+					}
+
+					<a href="@link" class="btn btn-primary w-100">@Translate("Go to the replacement")</a>
+				</div>
 			}
+		}
 		</div>
 	</div>
 	@if (!Model.Item.GetBoolean("HideStockState"))
@@ -483,24 +484,25 @@
 			if (isLazyLoadingForProductInfoEnabled)
             {
             	string hideStockState = string.IsNullOrEmpty(product.VariantId) && product.VariantInfo.VariantInfo != null ? "d-none" : "";
-            	
-            	<div class="mt-3 js-stock-state spinner-border @hideStockState">
-            		@if (!Model.Item.GetBoolean("HideInventory"))
-            		{
-			            <p class="small text-success m-0 d-none" data-show-if="product.StockLevel > 0"><span class="text-stock"></span>  @Translate("Products available in stock")</p>
-            		}
-            		else
-            		{
-            			<p class="small text-success m-0 d-none" data-show-if="product.StockLevel > 0">@Translate("Available in stock")</p>
-            		}
-            		<p class="small text-danger m-0 d-none" data-show-if="product.StockLevel <= 0">@Translate("Out of Stock")</p>
-            		
-            		@* NOTE: Need to review data formats with actual dates *@
-            		<p class="d-none" data-show-if="product.ExpectedDelivery != null && new Date(product.ExpectedDelivery) > new Date()">
-                        <span>@Translate("Expected back in stock:")</span>
-                        <span class="text-expected-delivery"></span>
-                    </p>
-            	</div>
+	            <div class="js-product @liveInfoClass" data-product-id="@product.Id">
+            		<div class="mt-3 js-stock-state spinner-border @hideStockState">
+            			@if (!Model.Item.GetBoolean("HideInventory"))
+            			{
+				            <p class="small text-success m-0 d-none" data-show-if="product.StockLevel > 0"><span class="text-stock"></span>  @Translate("Products available in stock")</p>
+            			}
+            			else
+            			{
+            				<p class="small text-success m-0 d-none" data-show-if="product.StockLevel > 0">@Translate("Available in stock")</p>
+            			}
+            			<p class="small text-danger m-0 d-none" data-show-if="product.StockLevel <= 0">@Translate("Out of Stock")</p>
+            			
+            			@* NOTE: Need to review data formats with actual dates *@
+            			<p class="d-none" data-show-if="product.ExpectedDelivery != null && new Date(product.ExpectedDelivery) > new Date()">
+	                        <span>@Translate("Expected back in stock:")</span>
+	                        <span class="text-expected-delivery"></span>
+	                    </p>
+            		</div>
+	            </div>
             }
 			else
 			{

@@ -83,17 +83,18 @@ LiveProductInfo.prototype.UpdateValues = function (data, liveInfoContainers) {
 			self.UpdateDataAttribute(container.querySelectorAll(self.selectors.priceFormatted), self.config.priceFormattedAttr, product.Price.PriceFormatted);
 			self.UpdateDataAttribute(container.querySelectorAll(self.selectors.priceProp), self.config.contentAttr, product.Price.Price);
 		
-			if (product.Price.PriceWithVatFormatted != null) {
+			if (product.Price.PriceWithVat != null) {
 				let priceWithVat = product.Price.PriceWithVatFormatted;
 
 				if(product.VariantInfo != null)
 				{
-					if(product.VariantInfo.PriceMin != null && product.VariantInfo.PriceMax != null && product.VariantInfo.PriceMin.Price != product.VariantInfo.PriceMax.Price)
+					if(product.VariantInfo.PriceMin != null && product.VariantInfo.PriceMax != null && product.VariantInfo.PriceMin.PriceWithVat != product.VariantInfo.PriceMax.PriceWithVat)
 					{
 						priceWithVat = product.VariantInfo.PriceMin.PriceWithVatFormatted + " - " + product.VariantInfo.PriceMax.PriceWithVatFormatted;
 					}
 				}
 				
+				priceWithVat = getDataSuffix(container, self.selectors.priceWithVat, priceWithVat); 
 				self.UpdateValue(container.querySelectorAll(self.selectors.priceWithVat), priceWithVat, true);
 			}
 			
@@ -147,6 +148,16 @@ LiveProductInfo.prototype.UpdateValues = function (data, liveInfoContainers) {
 			variantSelector.removeAttribute("disabled");
 		}
 	});
+	
+	function getDataSuffix(container, selector, value) {
+		const subContainer = container.querySelector(selector);
+		if (!subContainer) return value;
+		
+		const suffix = subContainer.getAttribute("data-suffix");
+		if (suffix === "") return value;
+		
+		return value + " " + suffix;
+	}
 }
 
 LiveProductInfo.prototype.GetProductData = function (container, data) {

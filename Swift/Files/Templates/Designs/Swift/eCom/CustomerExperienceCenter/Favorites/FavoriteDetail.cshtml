@@ -9,19 +9,25 @@
 	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
 	string liveInfoClass = "";
 	string productInfoFeed = "";
+	string showPricesWithVat = "";
+	bool neverShowVat = false;
 }
 
 @{
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
 	string theme = !string.IsNullOrEmpty(themeRaw) ? " h-100 theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
 	
+	showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+	
 	var productIds = string.Join("&ProductIds=", Model.ProductList.Products.Select(p => p.Id));
+	string priceFilledProperties = $"Price,PriceFormatted{(showPricesWithVat == "false" && !neverShowVat ? ",PriceWithVat,PriceWithVatFormatted" : "")}";
 	productInfoFeed = $@"/dwapi/ecommerce/products/search?ProductIds={productIds}&PageSize={Model.ProductList.PageSize}
 								&UserId={Dynamicweb.Core.Converter.ToString(Pageview.User?.ID)}
 								&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
 								&ProductSettings.FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel,VariantInfo,NeverOutOfstock
 								&ProductSettings.PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
-								&ProductSettings.PriceSettings.FilledProperties=Price,PriceFormatted
+								&PriceSettings.FilledProperties={priceFilledProperties}
 								&getproductinfo=true";
 	liveInfoClass = "js-live-info";
 }
@@ -92,8 +98,6 @@
 				link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
 
 				string priceId = "ProductPrice_" + product.Id + product.VariantId;
-				string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
-				bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 
 				string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
 				string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
