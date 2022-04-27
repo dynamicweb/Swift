@@ -1,0 +1,55 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.FileViewModel>
+
+@functions
+{ 
+	private static double GetImageHeight(string imageRatio, double imageWidth)
+	{
+		string[] ratioValues = imageRatio.Split('-');
+		double ratio = ratioValues.Length == 2 ? Dynamicweb.Core.Converter.ToDouble(ratioValues[1]) / Dynamicweb.Core.Converter.ToDouble(ratioValues[0]) : 1;
+		return imageWidth * ratio;
+	}
+
+	private string GetTableReset()
+	{
+		return "border-collapse:separate;border-spacing:0;border:0;margin:0;outline:0;padding:0;";
+	}
+}
+
+@if (!string.IsNullOrEmpty(Model.Path))
+{
+	string imagePath = Model?.Path ?? "";
+	imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
+	int columnCount = GetViewParameterInt32("columns");
+	int columnWidth = 640;
+	bool nested = GetViewParameterBoolean("nested");
+	if(nested)
+	{
+		int gridColumnCount = GetViewParameterInt32("gridColumns");
+		columnWidth = columnWidth / gridColumnCount;
+	}
+	int padding = GetViewParameterInt32("padding");
+	string ratio = GetViewParameterString("imageRatio");
+	string imageHeight = string.Empty;
+
+	var imageWidth = (columnWidth - padding) / columnCount;
+
+	string image = $"/Admin/Public/GetImage.ashx?width={imageWidth}";
+	string crop = "7";
+
+	if (ratio != "original")
+	{
+		if (!string.IsNullOrEmpty(ratio))
+		{
+			imageHeight = $"height={GetImageHeight(ratio, imageWidth)}";
+			image += $"&height={GetImageHeight(ratio, imageWidth)}";
+			image += $"&fillcanvas=true";
+		}
+	}
+
+	image += $"&crop={crop}&image={imagePath}&quality=100&format=webp";
+
+	var cssClass = GetViewParameter("cssClass");
+	string alt = GetViewParameterString("alt");
+
+	<img src="@image" class="@cssClass" align="center" style="display:block;@GetTableReset()height:auto;width:100%;max-width:@(imageWidth)px;" alt="@alt" width="@(imageWidth)" />
+}

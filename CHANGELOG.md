@@ -1,5 +1,50 @@
 # Changelog
 
+## [v1.9.0] - 08-04-2022
+
+## Bugfixes 
+* General: Change 'Remember me' label to 'Keep me signed in' on the sign in screen
+* General: Variant color not shown on product detail
+* General: Remove discount orderlines in Express buy page
+* General: Add missing build files flatpickr.min.css, swiffy-slider.min.css and tiny-slider.css
+* Checkout: Voucher tag fix label color
+* Checkout: Broken checkout flow
+* Customer Center: Fix bad ID name on favorite list
+* Itemtype: Selected groups fix theme and padding
+* Itemtype: Facet group navigation fix padding
+* Itemtype: Added isClickable check to offcanvas menu items (for 1. level)
+* Product Detail: Added anchor tag and link to field type of link in product specification
+
+## Changed
+* Itemtype: Update all icon design on the itemtypes to have a more aligned and beautiful design
+* Itemtype: Redesign font selector (micro templates)
+* Itemtype: Redesign theme selector (micro templates)
+
+## Added   
+* Email: New email concept to create beautiful newsletters and system emails through Visual editor
+* General: Google Autocomplete on Checkout and My addresses for better user experience
+* Generel: Add cart cheatsheet to expose cart information regarding prices with without VAT and taxes. Can be used for testing
+* General: Quotes, possible to request a quote and get an offering. Supported in cart and Customer center
+* Product catalog: Product component, customize your product list and details page through product components through Visual editor
+
+## [v1.8.0] - 30-03-2022
+
+## Bugfixes 
+* Checkout: Improve implementation and fallback, back to cart link
+* Checkout: Do not check on countrycodes before rendering regions
+* Customer Center: Null check for the item identifier regarding redirect
+* General: Clean up the url for products from search
+* General: Include custom header in MasterNoLayout 
+* Itemtype: Improve the Product detail image thumbnails
+* Itemtype: Fix broken facets modal and scroll after modal close
+
+## Changed
+* Itemtypes: Optimize micro templates for theming and fonts
+
+## Added   
+* General: Frontend user start page setup. Decide which page should be presented after sign in
+* Itemtypes: Possible to set start and stoplevels on navigation at facets
+
 ## [v1.7.0] - 16-03-2022
 
 ## Bugfixes 

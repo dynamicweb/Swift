@@ -1,0 +1,328 @@
+@inherits ViewModelTemplate<OrderViewModel>
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.Frontend
+@using Dynamicweb.Ecommerce.Orders
+
+@{ 
+	string contentPadding = Pageview.CurrentParagraph.Item["ContentPadding"] != null ? Pageview.CurrentParagraph.Item["ContentPadding"].ToString() : "";
+	contentPadding = contentPadding == "none" ? "px-0" : contentPadding;
+	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
+	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
+	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " h-100 theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
+	string ordersPageLink = Pageview.CurrentParagraph.Item["OrdersPage"] != null ? Pageview.CurrentParagraph.Item["OrdersPage"].ToString() : "";
+
+	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+
+	string orderStateType = Model.StateId == "OS9" ? "PriceGiven" : "New";
+	string badgeColor = orderStateType == "New" ? "bg-dark text-white opacity-75" : "bg-success text-white";
+}
+
+<div class="@(contentPadding)@(theme)">
+	<header class="p-3 border-bottom">
+		<div class="d-flex flex-row align-items-center gap-3">
+			<h1 class="h6 m-0 flex-fill opacity-75">@Translate("Your quote request")</h1>
+			<button onclick="javascript:print()" class="btn btn-link p-0">@Translate("Print")</button>
+		</div>
+	</header>
+
+	<table class="table d-print-table">
+		@if (!string.IsNullOrEmpty(Model.Id))
+		{
+			<tr>
+				<td class="">@Translate("Quote number")</td>
+				<td class="text-end">
+					@if (!string.IsNullOrEmpty(Model.IntegrationOrderId)) { 
+						<text>@Model.IntegrationOrderId (@Model.Id)</text>
+					} else {
+						@Model.Id
+					}
+				</td>
+			</tr>
+		}
+
+		@if (!string.IsNullOrEmpty(Model.CompletedDate.ToString()))
+		{
+			<tr>
+				<td>@Translate("Quote date")</td>
+				<td class="text-end">@Model.CreatedAt</td>
+			</tr>
+		}
+
+		@if (!string.IsNullOrEmpty(Model.StateName))
+		{
+			<tr>
+				<td>@Translate("Order state")</td>
+				<td class="text-end">
+					<div class="badge @badgeColor">@Model.StateName</div>
+				</td>
+			</tr>
+		}
+
+		<tr>
+			<td>@Translate("Your information")</dt>
+			<td class="text-end">
+				@if (!string.IsNullOrEmpty(Model.CustomerName))
+				{
+					<div>@Model.CustomerName</div>
+				}
+				@if (!string.IsNullOrEmpty(Model.CustomerAddress))
+				{
+					<div>@Model.CustomerAddress</div>
+				}
+				@if (!string.IsNullOrEmpty(Model.CustomerAddress2))
+				{
+					<div>@Model.CustomerAddress2</div>
+				}
+
+				<div>
+					@if (!string.IsNullOrEmpty(Model.CustomerZip))
+					{
+						<span>@Model.CustomerZip</span>
+					}
+					@if (!string.IsNullOrEmpty(Model.CustomerCity))
+					{
+						<span>@Model.CustomerCity</span>
+					}
+				</div>
+
+				<div>
+					@if (!string.IsNullOrEmpty(Model.CustomerRegion))
+					{
+						<span>@Model.CustomerRegion</span>
+					}
+					@if (!string.IsNullOrEmpty(Model.CustomerCountry))
+					{
+						<span>@Model.CustomerCountry</span>
+					}
+				</div>
+
+				@if (!string.IsNullOrEmpty(Model.CustomerEmail))
+				{
+					<div>@Model.CustomerEmail</div>
+				}
+				@if (!string.IsNullOrEmpty(Model.CustomerPhone))
+				{
+					<div>@Model.CustomerPhone</div>
+				}
+			</td>
+		</tr>
+	</table>
+
+	<section class="p-3 mt-3 d-flex flex-column gap-3">
+		@foreach (OrderLineViewModel orderline in Model.OrderLines)
+		{
+			string productName = orderline.ProductName + " " + orderline.ProductVariantId;
+			string productImage = "/Admin/Public/GetImage.ashx?image=" + orderline.ProductImage + "&width=210&height=210&Format=WebP&Quality=100";
+			string productPriceTotalWithDiscounts = orderline.Price.PriceFormatted;
+			string productPriceTotalDiscounts = orderline.TotalDiscount.PriceFormatted;
+
+			var orderlineQuantity = orderline.Quantity;
+			var productId = orderline.ProductId;
+			var variantId = orderline.ProductVariantId;
+			string detailsPageLink = GetPageIdByNavigationTag("ProductDetailPage").ToString();
+
+			var defaultGroupId = orderline.PrimaryOrDefaultGroup.Id;
+			var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
+
+			string link = string.IsNullOrEmpty(selectedDetailPage) ? $"/Default.aspx?ID={detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
+			link += "&productid=" + productId;
+			link += !string.IsNullOrEmpty(variantId) ? "&variantid=" + variantId : "";
+
+			OrderLineType orderlineType = orderline.OrderLineType;
+
+			if (orderlineType == OrderLineType.Product || orderlineType == OrderLineType.GiftCard)
+			{
+				<article class="grid">
+					<div class="g-col-3">
+						<a href="@link" class="ratio ratio-1x1 d-block bg-light">
+							<img src="@productImage" style="object-fit: contain;" alt="@productName" height="210" width="210">
+						</a>
+					</div>
+
+					<div class="g-col-9">
+						<div class="grid grid-9 h-100">
+
+							<div class="g-col-9 g-col-md-5">
+								<h2 class="h6 mb-3 fw-bold">
+									<a href="@link" class="text-dark text-decoration-none">@productName</a>
+								</h2>
+
+								<ul class="list-unstyled opacity-75 mb-0">
+									@if (!string.IsNullOrEmpty(orderline.ProductVariantName))
+									{
+										<li>
+											<span>@orderline.ProductVariantName</span>
+										</li>
+									}
+									<li>
+										<span>@Translate("Price"):</span>
+										@if (orderline.UnitPrice.Price != orderline.UnitPriceBeforeDiscount.Price && orderline.UnitPriceBeforeDiscount.Price != 0.0)
+										{
+											<span class="text-decoration-line-through opacity-75">
+												<span>@orderline.UnitPriceBeforeDiscount.PriceFormatted</span>
+											</span>
+										}
+										<span>@orderline.UnitPrice.PriceFormatted</span>
+
+									</li>
+									<li>
+										<span>@Translate("Quantity"):</span>
+										<span>@orderlineQuantity</span>
+									</li>
+								</ul>
+							</div>
+
+							<div class="g-col-9 g-col-md-4 text-end">
+								<h6 class="h6 fw-bold m-0">
+									<span class="text-price">@productPriceTotalWithDiscounts</span>
+								</h6>
+								@if (!string.IsNullOrEmpty(productPriceTotalDiscounts))
+								{
+									<small class="fs-7">
+										@productPriceTotalDiscounts
+									</small>
+								}
+							</div>
+						</div>
+					</div>
+
+				</article>
+			}
+		}
+
+		@{
+			string orderSubtotal = Model.PriceBeforeFees.PriceFormatted;
+			string shippingFee = Model.ShippingFee.PriceFormatted;
+			string orderTotalDiscount = Model.TotalDiscount.PriceFormatted;
+
+			// Discounts
+			bool orderHasDiscounts = false;
+			if (!string.IsNullOrEmpty(orderTotalDiscount))
+			{
+				orderHasDiscounts = true;
+			}
+
+			<div class="cart-total grid mt-3">
+				<div class="g-col-12">
+					<dl class="m-0">
+
+						<div class="d-flex my-1 pt-4 border-dark border-top">
+						<dt class="flex-fill fw-bold">@Translate("Subtotal")</dt>
+						<dd class="flex-fill mb-0 text-end">
+							<span class="text-price fw-bold">@orderSubtotal</span>
+							@if (!neverShowVat && showPricesWithVat == "false")
+							{
+								<span class="fs-7 fw-normal d-block">@Translate("Excl. VAT")</span>
+							}
+							@if (!neverShowVat && showPricesWithVat == "true")
+							{
+								<span class="fs-7 fw-normal d-block">@Translate("Incl. VAT")</span>
+							}
+						</dd>
+				</div>
+
+				@if (Model.PaymentFee.Price != 0.0)
+				{
+					<div class="d-flex my-1">
+						<dt class="flex-fill fw-normal">@Translate("Payment")</dt>
+						<dd class="flex-fill mb-0 text-end">
+							<span>@Model.PaymentFee.PriceFormatted</span>
+						</dd>
+					</div>
+				}
+
+				@if (!string.IsNullOrEmpty(shippingFee) && Model.ShippingFee.Price != 0.0) 
+				{
+					<div class="d-flex my-1">
+						<dt class="flex-fill fw-normal">@Translate("Delivery")</dt>
+						<dd class="flex-fill mb-0 text-end">
+							<span>@shippingFee</span>
+						</dd>
+					</div>
+				}
+
+				@* Discounts (only order discounts) *@
+				@foreach (OrderLineViewModel orderline in Model.OrderLines)
+				{
+					OrderLineType orderlineType = orderline.OrderLineType;
+
+					if (orderlineType == OrderLineType.Discount)
+					{
+						<div class="d-flex my-1">
+							<dt class="flex-fill fw-normal">@orderline.ProductName</dt>
+							<dd class="flex-fill mb-0 text-end">
+								@orderline.Price.PriceFormatted
+							</dd>
+						</div>
+					}
+				}
+
+				<div class="my-4 border-dark border-top"></div>
+
+				<div class="d-flex my-1 h5 fw-bold">
+					<dt class="flex-fill">@Translate("Total")</dt>
+					<dd class="flex-fill mb-0 text-end">
+						<span>@Model.Price.PriceFormatted</span>
+						@if (!neverShowVat && showPricesWithVat == "false")
+						{
+							<span class="fs-7 fw-normal d-block">@Translate("Excl. VAT")</span>
+						}
+						@if (!neverShowVat && showPricesWithVat == "true")
+						{
+							<span class="fs-7 fw-normal d-block">@Translate("Incl. VAT")</span>
+						}
+					</dd>
+				</div>
+
+				@if (!neverShowVat && Model.Price.Vat != 0.0)
+				{
+					<div class="d-flex my-1">
+						<dt class="flex-fill fw-normal">@Translate("VAT")</dt>
+						<dd class="flex-fill mb-0 text-end">
+							@if (!string.IsNullOrEmpty(Model.Price.VatFormatted))
+							{
+								<span>@Model.Price.VatFormatted</span>
+							}
+						</dd>
+					</div>
+
+					if (showPricesWithVat == "false")
+					{
+						<div class="d-flex my-1">
+							<dt class="flex-fill fw-normal">@Translate("Total incl. VAT")</dt>
+							<dd class="flex-fill mb-0 text-end">
+								@if (!string.IsNullOrEmpty(Model.Price.PriceWithVatFormatted))
+								{
+									<span>@Model.Price.PriceWithVatFormatted</span>
+								}
+							</dd>
+						</div>
+					}
+				}
+
+				@if (orderHasDiscounts && Model.TotalDiscount.Price != 0.0)
+				{
+					<div class="d-flex my-1">
+						<dt class="flex-fill fw-normal">@Translate("Discount")</dt>
+						<dd class="flex-fill mb-0 text-end">
+							<span>@orderTotalDiscount</span>
+						</dd>
+					</div>
+				}
+				</dl>
+
+			</div>
+
+			@if (orderStateType == "PriceGiven") {
+				<form method="post" class="g-col-12 text-end mt-3">
+					<input type="hidden" name="QuoteID" id="QuoteID" value="@Model.Id" />
+					<input type="hidden" name="CustomerCenterCmd" value="AcceptQuote" />
+					<button type="submit" class="btn btn-secondary w-100">@Translate("Accept quote")</button>
+				</form>
+			}
+		</div>
+	}
+	</section>
+</div>

@@ -187,135 +187,152 @@
 @helper RenderCartSummary()
 {
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	bool anonymousUser = Pageview.User == null;
 	string totalPriceWithoutDiscountsFeesAndTaxes = Model.Cart.TotalPriceWithoutDiscounts.PriceWithoutVat.Formatted;
 	string totalPriceWithoutOrderDiscountsAndFees = Model.Cart.TotalPriceWithoutFees.Price.Formatted;
 	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
 	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 	string checkoutUrl = Dynamicweb.Context.Current.Request["checkoutUrl"];
+	string quoteCheckoutPageId = Dynamicweb.Context.Current.Request["quoteCheckoutPageLink"];
+	string cartType = Dynamicweb.Context.Current.Request["CartType"];
 
-<div class="d-flex flex-column gap-2 gap-lg-3 position-sticky bottom-0 theme" id="cartSummaryFooter" style="box-shadow: 0 -10px 10px -12px var(--bs-gray-300);">
+	<div class="d-flex flex-column gap-2 gap-lg-3 position-sticky bottom-0 theme" id="cartSummaryFooter" style="box-shadow: 0 -10px 10px -12px var(--bs-gray-300);">
 
-	<div class="fs-8 border-top pt-2 pt-lg-3">
-		@* Subtotal *@
-		<div class="d-flex justify-content-between fw-bold">
-			<span>@Translate("Subtotal")</span>
-			<span class="text-end">
-				@if (!neverShowVat && showPricesWithVat == "false")
-				{
-				<span class="d-block">
-					<span class="text-price">@totalPriceWithoutOrderDiscountsAndFees</span>
-					</span>
-					<span class="fs-8 fw-normal d-block">@Translate("Excl. VAT")</span>
+		<div class="fs-8 border-top pt-2 pt-lg-3">
+			@* Subtotal *@
+			<div class="d-flex justify-content-between fw-bold">
+				<span>@Translate("Subtotal")</span>
+				<span class="text-end">
+					@if (!neverShowVat && showPricesWithVat == "false")
+					{
+						<span class="d-block">
+							<span class="text-price">@totalPriceWithoutOrderDiscountsAndFees</span>
+						</span>
+						<span class="fs-8 fw-normal d-block">@Translate("Excl. VAT")</span>
 					}
-				else
+					else
+					{
+						<span class="d-block">
+							<span class="text-price">@totalPriceWithoutOrderDiscountsAndFees</span>
+						</span>
+						if (!neverShowVat)
+						{
+							<span class="fs-8 fw-normal d-block">@Translate("Incl. VAT")</span>
+						}
+					}
+				</span>
+			</div>
+
+			@* Discounts (only order discounts) *@
+			@if (cartType != "ExpressBuy") { 
+				foreach (CartOrderlineViewModel orderline in Model.Cart.CartOrderlines)
 				{
-				<span class="d-block">
-					<span class="text-price">@totalPriceWithoutOrderDiscountsAndFees</span>
-				</span> 
-				if (!neverShowVat)
-				{
-					<span class="fs-8 fw-normal d-block">@Translate("Incl. VAT")</span>
+					bool isDiscount = orderline.IsDiscount;
+
+					if (isDiscount)
+					{
+						<div class="d-flex justify-content-between"><span>@orderline.ProductName</span><span class="text-price">@orderline.TotalPrice.Price.Formatted</span></div>
+					}
 				}
 			}
-			</span>
-		</div>
 
-		@* Discounts (only order discounts) *@
-		@foreach (CartOrderlineViewModel orderline in Model.Cart.CartOrderlines)
-		{
-			bool isDiscount = orderline.IsDiscount;
-
-			if (isDiscount)
+			@* Shipping *@
+			@if (!string.IsNullOrEmpty(Model.Cart.ShippingMethod))
 			{
-			<div class="d-flex justify-content-between"><span>@orderline.ProductName</span><span class="text-price">@orderline.TotalPrice.Price.Formatted</span></div>
-			}
-		}
-
-		@* Shipping *@
-		@if (!string.IsNullOrEmpty(Model.Cart.ShippingMethod))
-		{
-			if (Model.Cart.ShippingFee.Price.Value != 0.0)
-			{
-				<div class="d-flex justify-content-between">
-					<span>@Translate("Delivery")</span>
-					<span>@Model.Cart.ShippingFee.Price.Formatted</span>
-				</div> 
-			}
-		}
-		else
-		{
-			<div class="d-flex justify-content-between">
-				<span>@Translate("Delivery")</span>
-				<span>@Translate("Calculated in next step")</span>
-			</div>
-		}
-
-		@* Payment *@
-		@if (!string.IsNullOrEmpty(Model.Cart.PaymentMethod))
-		{
-			if (Model.Cart.PaymentFee.Price.Value != 0)
-			{
-				<div class="d-flex justify-content-between">
-					<span>@Translate("Payment")</span>
-					<span class="text-price">@Model.Cart.PaymentFee.Price.Formatted</span>
-				</div>
-			}
-		}
-		else
-		{
-			<div class="d-flex justify-content-between">
-				<span>@Translate("Payment")</span>
-				<span>@Translate("Calculated in next step")</span>
-			</div>
-		}
-	</div>
-	<div class="fs-8 border-top pt-2 pt-lg-3">
-		<div class="d-flex justify-content-between fs-6 fw-bold">
-			<span>@Translate("Total")</span>
-			@if (!neverShowVat && showPricesWithVat == "false")
-			{
-			<span class="text-price text-end">
-				<span class="fs-5 d-block">@Model.Cart.TotalPrice.Price.Formatted</span>
-				<span class="fs-8 fw-normal d-block">@Translate("Excl. VAT")</span>
-			</span> 
-			}
-			else if (!neverShowVat && showPricesWithVat == "true")
-			{
-			<span class="text-price text-end">
-				<span class="fs-5 d-block">@Model.Cart.TotalPrice.Price.Formatted</span>
-				<span class="fs-8 fw-normal d-block">@Translate("Incl. VAT")</span>
-			</span>
+				if (Model.Cart.ShippingFee.Price.Value != 0.0)
+				{
+					<div class="d-flex justify-content-between">
+						<span>@Translate("Delivery")</span>
+						<span>@Model.Cart.ShippingFee.Price.Formatted</span>
+					</div>
+				}
 			}
 			else
 			{
-			<span class="text-price fs-5">@Model.Cart.TotalPrice.Price.Formatted</span>
+				<div class="d-flex justify-content-between">
+					<span>@Translate("Delivery")</span>
+					<span>@Translate("Calculated in next step")</span>
+				</div>
+			}
+
+			@* Payment *@
+			@if (!string.IsNullOrEmpty(Model.Cart.PaymentMethod))
+			{
+				if (Model.Cart.PaymentFee.Price.Value != 0)
+				{
+					<div class="d-flex justify-content-between">
+						<span>@Translate("Payment")</span>
+						<span class="text-price">@Model.Cart.PaymentFee.Price.Formatted</span>
+					</div>
+				}
+			}
+			else
+			{
+				<div class="d-flex justify-content-between">
+					<span>@Translate("Payment")</span>
+					<span>@Translate("Calculated in next step")</span>
+				</div>
 			}
 		</div>
-
-		@if (!neverShowVat)
-		{
-			<div class="d-flex justify-content-between"><span>@Translate("VAT")</span><span class="text-price">@Model.Cart.TotalPrice.Vat.Formatted</span></div> 
-			if (showPricesWithVat == "false")
-			{
-			<div class="d-flex justify-content-between"><span>@Translate("Total incl. VAT")</span><span class="text-price">@Model.Cart.TotalPrice.PriceWithVat.Formatted</span></div>
-			}
-		}
-
-		@if (Model.Cart.TotalDiscount.Price.Value != 0)
-		{
-		<div class="d-flex justify-content-between"><span>@Translate("Discount")</span><span class="text-price">@Model.Cart.TotalDiscount.Price.Formatted</span></div>
-		}
-	</div>
-	
-	<div class="mb-3 d-flex flex-column justify-content-end gap-3">
-		<a href="@checkoutUrl" class="btn btn-primary order-first order-md-last">
-			<div class="d-flex align-items-center justify-content-center position-relative">
-				<span>@Translate("Checkout")</span>
-				<span class="icon-2 ms-1 position-absolute position-md-static end-0">
-					@ReadFile(iconPath + "chevron-right.svg")
+		<div class="fs-8 border-top pt-2 pt-lg-3">
+			<div class="d-flex justify-content-between fs-6 fw-bold">
+				<span>@Translate("Total")</span>
+				@if (!neverShowVat && showPricesWithVat == "false")
+				{
+				<span class="text-price text-end">
+					<span class="fs-5 d-block">@Model.Cart.TotalPrice.Price.Formatted</span>
+					<span class="fs-8 fw-normal d-block">@Translate("Excl. VAT")</span>
+				</span> 
+				}
+				else if (!neverShowVat && showPricesWithVat == "true")
+				{
+				<span class="text-price text-end">
+					<span class="fs-5 d-block">@Model.Cart.TotalPrice.Price.Formatted</span>
+					<span class="fs-8 fw-normal d-block">@Translate("Incl. VAT")</span>
 				</span>
+				}
+				else
+				{
+				<span class="text-price fs-5">@Model.Cart.TotalPrice.Price.Formatted</span>
+				}
 			</div>
-		</a>
+
+			@if (!neverShowVat)
+			{
+				<div class="d-flex justify-content-between"><span>@Translate("VAT")</span><span class="text-price">@Model.Cart.TotalPrice.Vat.Formatted</span></div> 
+				if (showPricesWithVat == "false")
+				{
+				<div class="d-flex justify-content-between"><span>@Translate("Total incl. VAT")</span><span class="text-price">@Model.Cart.TotalPrice.PriceWithVat.Formatted</span></div>
+				}
+			}
+
+			@if (Model.Cart.TotalDiscount.Price.Value != 0)
+			{
+			<div class="d-flex justify-content-between"><span>@Translate("Discount")</span><span class="text-price">@Model.Cart.TotalDiscount.Price.Formatted</span></div>
+			}
+		</div>
+	
+		<div class="mb-3 d-flex flex-column justify-content-end gap-3">
+			<a href="@checkoutUrl" class="btn btn-primary order-first order-md-last">
+				<div class="d-flex align-items-center justify-content-center position-relative">
+					<span>@Translate("Checkout")</span>
+					<span class="icon-2 ms-1 position-absolute position-md-static end-0">
+						@ReadFile(iconPath + "chevron-right.svg")
+					</span>
+				</div>
+			</a>
+
+			@if (!string.IsNullOrEmpty(quoteCheckoutPageId) && !anonymousUser)
+			{
+				<a href="Default.aspx?ID=@quoteCheckoutPageId" class="btn btn-secondary">
+					<div class="d-flex align-items-center justify-content-center position-relative">
+						<span>@Translate("Request quote")</span>
+						<span class="icon-2 ms-1 position-absolute position-lg-static end-0">
+							@ReadFile(iconPath + "chevron-right.svg")
+						</span>
+					</div>
+				</a>
+			}
+		</div>
 	</div>
-</div>
 }

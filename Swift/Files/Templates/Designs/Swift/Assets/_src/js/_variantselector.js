@@ -12,6 +12,7 @@ const VariantSelector = function () {
 		OptionClick: function (e) {
 			var clickedButton = e.currentTarget;
 			var variantSelectorElement = clickedButton.closest(".js-variant-selector");
+			clickedButton.blur();
 
 			//Fire the 'optionclick' event
 			let event = new CustomEvent("optionclick.swift.variantselector", {

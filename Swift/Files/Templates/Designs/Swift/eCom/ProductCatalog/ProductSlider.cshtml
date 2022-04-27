@@ -9,9 +9,9 @@
 
 @{
 	string linkText = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("LinkText")) ? Dynamicweb.Context.Current.Request.Form.Get("LinkText") : "";
-	string layout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("Layout")) ? Dynamicweb.Context.Current.Request.Form.Get("Layout") : "";
+	string layoutSetting = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("Layout")) ? Dynamicweb.Context.Current.Request.Form.Get("Layout") : "";
 	bool hideTitle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("HideTitle")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form.Get("HideTitle")) : false;
-	layout = hideTitle ? "text-top" : layout;
+	layoutSetting = hideTitle && layoutSetting != "grid" ? "text-top" : layoutSetting;
 
 	string headingTitle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("HeadingTitle")) ? Dynamicweb.Context.Current.Request.Form.Get("HeadingTitle") : "";
 	string headingSubtitle = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("Subtitle")) ? Dynamicweb.Context.Current.Request.Form.Get("Subtitle") : "";
@@ -42,7 +42,7 @@
 }
 
 @*--- SLIDER: TEXT TOP ---*@
-@if (layout == "" || layout == "text-top")
+@if (layoutSetting == "" || layoutSetting == "text-top")
 {
 	<div class="h-100 @ContentPadding@(generalTheme)">
 		@if (headingTitle != "" && !hideTitle)
@@ -61,7 +61,7 @@
 }
 
 @*--- SLIDER: TEXT LEFT ---*@
-@if (layout == "text-left")
+@if (layoutSetting == "text-left")
 {
 	string sliderColSize = "g-col";
 
@@ -88,7 +88,7 @@
 }
 
 @*--- SLIDER: TEXT RIGHT ---*@
-@if (layout == "text-right")
+@if (layoutSetting == "text-right")
 {
 	string sliderColSize = "g-col";
 
@@ -115,7 +115,7 @@
 }
 
 @*--- GRID ---*@
-@if (layout == "" || layout == "grid")
+@if (layoutSetting == "" || layoutSetting == "grid")
 {
 	int parentColumnSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ParentColumnSize")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.Form.Get("ParentColumnSize")) : 12;
 	string columnSize = "g-col-lg-2";
@@ -145,10 +145,25 @@
 
 @helper RenderSlider() {
 	<div class="js-slider d-flex">
-		@foreach (ProductViewModel product in Model.Products)
-		{
+		@if (Model.Products.Count > 0) { 
+			foreach (ProductViewModel product in Model.Products)
+			{
+				<article class="position-relative">
+					@RenderProduct(product)
+				</article>
+			}
+		} else if (Pageview.IsVisualEditorMode) { 
 			<article class="position-relative">
-				@RenderProduct(product)
+				@RenderDummyProduct()
+			</article>
+			<article class="position-relative">
+				@RenderDummyProduct()
+			</article>
+			<article class="position-relative">
+				@RenderDummyProduct()
+			</article>
+			<article class="position-relative">
+				@RenderDummyProduct()
 			</article>
 		}
 	</div>
@@ -156,13 +171,67 @@
 
 @helper RenderGrid(string columnSize) {
 	<div class="grid gap-4">
-		@foreach (ProductViewModel product in Model.Products)
-		{
+		@if (Model.Products.Count > 0) { 
+			foreach (ProductViewModel product in Model.Products)
+			{
+				<div class="g-col-6 @columnSize position-relative">
+					@RenderProduct(product)
+				</div>
+			}
+		} else if (Pageview.IsVisualEditorMode) { 
 			<div class="g-col-6 @columnSize position-relative">
-				@RenderProduct(product)
+				@RenderDummyProduct()
+			</div>
+			<div class="g-col-6 @columnSize position-relative">
+				@RenderDummyProduct()
+			</div>
+			<div class="g-col-6 @columnSize position-relative">
+				@RenderDummyProduct()
+			</div>
+			<div class="g-col-6 @columnSize position-relative">
+				@RenderDummyProduct()
 			</div>
 		}
 	</div>
+}
+
+@helper RenderDummyProduct() {
+	ProductViewModel product = new ProductViewModel();
+
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Item["DummyProduct"] != null)
+	{
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		}
+		else
+		{
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	}
+	else if (Pageview.Item["DummyProduct"] == null)
+	{
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+	}
+
+	@RenderProduct(product)
 }
 
 @helper RenderProduct(ProductViewModel product) { 
