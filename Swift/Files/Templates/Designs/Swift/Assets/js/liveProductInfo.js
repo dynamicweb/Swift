@@ -17,6 +17,7 @@
 		addToCart: ".js-add-to-cart-button",
 		variantSelector: ".js-variant-selector-button",
 		price: ".text-price",
+		priceWithVat: ".text-price-with-vat",
 		priceFormatted: "[" + this.config.priceFormattedAttr + "]",
 		priceProp: "[itemprop='price']",
 		priceBeforeDiscount: ".text-decoration-line-through",
@@ -82,6 +83,20 @@ LiveProductInfo.prototype.UpdateValues = function (data, liveInfoContainers) {
 			self.UpdateDataAttribute(container.querySelectorAll(self.selectors.priceFormatted), self.config.priceFormattedAttr, product.Price.PriceFormatted);
 			self.UpdateDataAttribute(container.querySelectorAll(self.selectors.priceProp), self.config.contentAttr, product.Price.Price);
 		
+			if (product.Price.PriceWithVatFormatted != null) {
+				let priceWithVat = product.Price.PriceWithVatFormatted;
+
+				if(product.VariantInfo != null)
+				{
+					if(product.VariantInfo.PriceMin != null && product.VariantInfo.PriceMax != null && product.VariantInfo.PriceMin.Price != product.VariantInfo.PriceMax.Price)
+					{
+						priceWithVat = product.VariantInfo.PriceMin.PriceWithVatFormatted + " - " + product.VariantInfo.PriceMax.PriceWithVatFormatted;
+					}
+				}
+				
+				self.UpdateValue(container.querySelectorAll(self.selectors.priceWithVat), priceWithVat, true);
+			}
+			
 			if (product.PriceBeforeDiscount != null) {
 				self.UpdateValue(container.querySelectorAll(self.selectors.priceBeforeDiscount), product.PriceBeforeDiscount.PriceFormatted);
 				self.ShowConditionalElement(container.querySelectorAll(self.selectors.priceBeforeDiscount));
@@ -141,9 +156,13 @@ LiveProductInfo.prototype.GetProductData = function (container, data) {
 	})[0] : data;
 }
 
-LiveProductInfo.prototype.UpdateValue = function (containers, value) {
+LiveProductInfo.prototype.UpdateValue = function (containers, value, showElement) {
 	containers.forEach(function (c) {
 		c.innerHTML = value;
+		
+		if (showElement) {
+			c.classList.remove("d-none");
+		}
 	})
 }
 
