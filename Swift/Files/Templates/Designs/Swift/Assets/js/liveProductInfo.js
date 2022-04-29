@@ -76,8 +76,16 @@
 		UpdateProductInfo: function(selector) {
 			const self = this;
 			const feedUrlElements = selector ? selector.querySelectorAll(self.selectors.productInfoFeed) : document.querySelectorAll(self.selectors.productInfoFeed);
+			let uniqueFeeds = [];
+
 			feedUrlElements.forEach(function (el) {
 				const liveInfoContainers = el.querySelectorAll(self.selectors.liveInfo);
+				if (liveInfoContainers.length === 0) return;
+
+				const feedUrl = el.getAttribute(self.config.productInfoFeedAttr);
+				if (uniqueFeeds.includes(feedUrl)) return;
+				uniqueFeeds.push(feedUrl);
+				
 				if (liveInfoContainers.length) {
 					let feedUrl = el.getAttribute(self.config.productInfoFeedAttr);
 					fetch(feedUrl, {
