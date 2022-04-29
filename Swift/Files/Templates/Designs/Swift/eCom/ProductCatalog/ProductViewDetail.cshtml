@@ -1,6 +1,7 @@
 @inherits ViewModelTemplate<ProductViewModel>
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Core
 
 @{
 	Dynamicweb.Frontend.PageView.Current().Meta.AddTag("og:image", Model.DefaultImage.Value);
@@ -21,6 +22,24 @@
     {
         Dynamicweb.Context.Current.Items.Add("ProductDetails", Model);
     }
+	
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
+	if (isLazyLoadingForProductInfoEnabled)
+	{
+		string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+		bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+		bool hasVariantId = !string.IsNullOrEmpty(Model.VariantId);
+		string variantIdParam = hasVariantId ? $"/{Model.VariantId}" : "";
+		string priceFilledProperties = $"Price,PriceFormatted{(showPricesWithVat == "false" && !neverShowVat ? ",PriceWithVat,PriceWithVatFormatted" : "")}";
+		string productInfoFeed = $@"/dwapi/ecommerce/products/{Model.Id}{variantIdParam}
+							?UserId={Converter.ToString(Pageview.User?.ID)}
+							&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
+							&FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel,VariantInfo,NeverOutOfstock,Prices
+							&PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
+							&PriceSettings.FilledProperties={priceFilledProperties}
+							&getproductinfo=true";
+		Dynamicweb.Context.Current.Items["ProductInfoFeed"] = productInfoFeed;
+	}
 }
 
 <script type="module" src="~/Files/Templates/Designs/Swift/Assets/js/tiny-slider.js"></script>

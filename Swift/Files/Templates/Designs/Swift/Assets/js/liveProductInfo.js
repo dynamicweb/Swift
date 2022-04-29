@@ -76,31 +76,28 @@
 		UpdateProductInfo: function(selector) {
 			const self = this;
 			const feedUrlElements = selector ? selector.querySelectorAll(self.selectors.productInfoFeed) : document.querySelectorAll(self.selectors.productInfoFeed);
+			const liveInfoContainers = document.querySelectorAll(self.selectors.liveInfo);
+			
+			if (!(feedUrlElements && liveInfoContainers.length)) return;
+
 			let uniqueFeeds = [];
-
 			feedUrlElements.forEach(function (el) {
-				const liveInfoContainers = el.querySelectorAll(self.selectors.liveInfo);
-				if (liveInfoContainers.length === 0) return;
-
 				const feedUrl = el.getAttribute(self.config.productInfoFeedAttr);
 				if (uniqueFeeds.includes(feedUrl)) return;
 				uniqueFeeds.push(feedUrl);
 				
-				if (liveInfoContainers.length) {
-					let feedUrl = el.getAttribute(self.config.productInfoFeedAttr);
-					fetch(feedUrl, {
-						method: "GET"
+				fetch(feedUrl, {
+					method: "GET"
+				})
+					.then(function (response) {
+						return response.json()
 					})
-						.then(function (response) {
-							return response.json()
-						})
-						.then(function (data) {
-							return self.UpdateValues(data, liveInfoContainers)
-						})
-						.catch(function (error) {
-							console.error(error)
-						})
-				}
+					.then(function (data) {
+						return self.UpdateValues(data, liveInfoContainers)
+					})
+					.catch(function (error) {
+						console.error(error)
+					})
 			})
 		},
 
@@ -109,7 +106,8 @@
 			liveInfoContainers.forEach(function (container) {
 				self.product = self.GetProductData(container, data)
 				const product = self.product;
-
+				if (!product) return;
+				
 				container.querySelectorAll(self.selectors.loader).forEach(function (el){
 					el.classList.remove(self.config.loaderClass);
 				});
