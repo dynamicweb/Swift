@@ -1,6 +1,24 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 
+@functions {
 
+	public static string GetTextAreaHeight(int rows)
+	{
+		// Bootstrap with floating labels requires style instead of row attribute https://getbootstrap.com/docs/5.0/forms/floating-labels/#textareas
+		int swiftLineHeight = 20; // Magic number from https://stackoverflow.com/questions/17475652/html-one-row-of-textarea-is-of-how-much-height
+		int formControlPadding = 16; // Magic number from top padding on form controls
+		int formControlBorder = 1; // Magic number from top border on form controls
+		int formControlFixToAvoidScroll = 4; // Magic number from top border on form controls
+		int formControlSpacing = formControlPadding * 2 + formControlBorder * 2 + formControlFixToAvoidScroll;
+		
+		if (rows < 1)
+		{
+			rows = 1;
+		}
+		return $"height:{(rows * swiftLineHeight) + formControlSpacing }px;";  
+	}
+
+}
 @{
     @GetString("Form.FormStart") 
     <div class="item-inner">
@@ -18,8 +36,13 @@
             string description = Translate(field.GetString("Field.Description"));
             string control = field.GetString("Field.Control");
             string name = field.GetString("Field.Name");
+	        string cssClass = field.GetString("Field.CssClass");
+	        string pattern = field.GetString("Field.InputPattern");
+	        
+	        // Fix for browsers that cannot handle an empty pattern attribute if the field is required
+	        pattern = !string.IsNullOrEmpty(pattern) ? "pattern='" + pattern + "'" : "";
 
-            <div class="mb-3">
+	        <div class="mb-3">
                 @switch (fieldType)
                 {
                     case "TextInput":
@@ -27,29 +50,25 @@
                     case "Password":
                     case "Tel":
                     case "Number":
-                        <div class="form-floating">
-                            <input id="@systemName" class="form-control" type="@inputType" name="@systemName" placeholder="@placeholder" value="@value" required="@required" />
-                            <label for="@systemName" class="form-label">@label</label> 
+                    <div class="form-floating @cssClass">
+                        <input id="@systemName" class="form-control" type="@inputType" name="@systemName" placeholder="@placeholder" value="@value" required="@required" @pattern />
+                        <label for="@systemName" class="form-label">@label@(required ? $" ({Translate("required")})" : "")</label>
                         </div>
                         break;
 
-                    case "Week":
-                    case "Time":
                     case "Color":
-                        // BUG: comes out as "TextInput"
+	                    <div class="@cssClass">
+		                    <label for="@systemName" class="form-label">@label</label>
+		                    <input type="color" class="form-control form-control-color" value="@value" id="@systemName" name="@systemName" title="@label">
+	                    </div>
                         break;
 
-                    case "Month":
-                    case "Search":
-                    case "Url":
-                    case "Range":
-                        // Missing Component
-                        break;
-
-                    case "Textarea":
-                        <div class="form-floating">
-                            <textarea id="@systemName" class="form-control" name="@systemName" placeholder="@placeholder" required="@required">@value</textarea>
-                            <label for="@systemName" class="form-label">@label</label> 
+	                case "Textarea":
+	                    string textAreaHeight = GetTextAreaHeight(field.GetInteger("Field.TextareaHeight"));
+                    
+						<div class="form-floating @cssClass">
+	                        <textarea id="@systemName" class="form-control" name="@systemName" placeholder="@placeholder" required="@required" style="@textAreaHeight">@value</textarea>
+	                        <label for="@systemName" class="form-label">@label@(required ? $" ({Translate("required")})" : "")</label>
                         </div>
                         break;
 
@@ -58,14 +77,25 @@
 						break;
 
 					case "File":
-							<input class="form-control visually-hidden" type="@inputType" id="@systemName" name="@systemName" placeholder="@placeholder" required="@required">
-							<label for="@systemName" class="btn btn-primary">@name</label>
+						<div class="@cssClass">
+							<label for="@systemName" class="form-label">@name@(required ? $" ({Translate("required")})" : "")</label>
+							<input class="form-control" type="@inputType" id="@systemName" name="@systemName" required="@required">
+						</div>
                         break;
-
+	                    
+	                case "Range":
+		                <div class="@cssClass">
+			                <label for="@systemName" class="form-label">@label</label>
+                            <input type="range" class="form-range" name="@systemName" id="@systemName">
+		                </div>
+		                break;
+		                
+	                case "Week":
+	                case "Time":
+	                case "Month":
+	                case "Search":
+	                case "Url":
                     case "Date":
-                        //Missing component
-                        break;
-
                     case "Datetime":
                     case "Datetime-Local":
                         //Missing component
@@ -73,18 +103,16 @@
 
                     case "CheckBox":
                         string isChecked = value.ToLower() == "true" ? "checked" : ""; 
-
-                        <div class="form-check">
+                        <div class="form-check @cssClass">
                             <input class="form-check-input" type="@inputType" id="@systemName" name="@systemName" required="@required" @isChecked>
-                            <label class="form-check-label" for="@systemName">@label</label>
+                            <label class="form-check-label" for="@systemName">@label@(required ? $" ({Translate("required")})" : "")</label>
                         </div>
                         break;
 
                     case "Radio":
                     case "CheckBoxList":
                         string type = fieldType.ToLower() == "radio" ? "radio" : "checkbox";
-
-                        <label for="@systemName" class="form-label">@label</label> 
+                        <label class="form-label d-block">@label@(required ? $" ({Translate("required")})" : "")</label>
                         foreach (LoopItem option in field.GetLoop("Options"))
                         {
                             string optionChecked = option.GetBoolean("Option.DefaultSelected") ? "checked" : "";
@@ -92,7 +120,7 @@
                             string optionValue = option.GetString("Option.Value");
                             string optionText = Translate(option.GetString("Option.Text"));
 
-                            <div class="form-check">
+                            <div class="form-check @cssClass">
                                 <input class="form-check-input" type="@type" id="@id" name="@systemName" value="@optionValue" required="@required" @optionChecked>
                                 <label class="form-check-label" for="@id">@optionText</label>
                             </div>
@@ -100,8 +128,8 @@
                         break;
 
                     case "Select":
-                        <div class="form-floating">
-                            <select class="form-select" name="@systemName">
+                        <div class="form-floating @cssClass">
+                            <select class="form-select" id="@systemName" name="@systemName" required="@required">
                                 @foreach (var option in field.GetLoop("Options"))
                                 {
                                     string optionSelected = option.GetBoolean("Option.DefaultSelected") == true ? "selected" : "";
@@ -112,35 +140,35 @@
                                     <option @optionSelected value="@optionValue" id="@id" >@optionText</option>
                                 }
                             </select>
-                            <label for="@systemName" class="form-label">@label</label>
+                            <label for="@systemName" class="form-label">@label@(required ? $" ({Translate("required")})" : "")</label>
                         </div>
                         break;
 
                     case "Submit":
-                        <button class="btn btn-primary" type="submit" onclick="Buttons.LockButton(event)" id="@systemName">@label</button>
+                        <button class="btn btn-primary @cssClass" type="submit" onclick="Buttons.LockButton(event)" id="@systemName">@label</button>
                         break;
 
                     case "Reset":
-                        <button class="btn btn-secondary" type="reset" onclick="Buttons.LockButton(event)" id="@systemName">@label</button>
+                        <button class="btn btn-secondary @cssClass" type="reset" onclick="Buttons.LockButton(event)" id="@systemName">@label</button>
                         break;
                     case "Text":
-                        <div class="form-text">@control</div>
+                        <div class="form-text @cssClass">@control</div>
                         break;
 
                     case "Image":
                         string imagePath = field.GetString("Field.Image");
                         if (!string.IsNullOrEmpty(imagePath))
                         {
-                            <img class="img-fluid" src="@imagePath" />
+                            <img class="img-fluid @cssClass" src="@imagePath" alt="@name" />
                         }
                         break;
 
                     case "PageShift":
-                         <label for="@systemName">@label</label><span class="formPageShift"></span>
+                         <label>@label</label><span class="formPageShift @cssClass"></span>
                         break;
                 }
                 @if (!string.IsNullOrEmpty(description)) {
-                    <div class="form-text">@description</div>
+                    <div class="form-text @cssClass">@description</div>
                 }
             </div>
         }
@@ -148,5 +176,3 @@
 
     @GetString("Form.FormEnd")
 }
-
-

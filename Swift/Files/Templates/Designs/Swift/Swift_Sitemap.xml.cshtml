@@ -72,11 +72,16 @@
 	{
 		if (page.Allowclick && page.ShowInSitemap && !page.Noindex)
 		{
+			var productPageid = node.PageId;
+            if (!string.IsNullOrEmpty(page.NavigationSettings.ProductPage)) { 
+				productPageid = Dynamicweb.Environment.Helpers.LinkHelper.GetInternalPageId(page.NavigationSettings.ProductPage);
+			}
 			<url>
 				<loc pageid="@node.PageId" groups="@navsettings">@hostname@node.Link</loc>
 				<lastmod>@page.Audit.LastModifiedAt.ToString("s")</lastmod>
 			</url>
-			@RenderEcommerceGroupNodes(GetGroupsBySettings(page.NavigationSettings), node, hostname)
+
+			@RenderEcommerceGroupNodes(GetGroupsBySettings(page.NavigationSettings), node, hostname, productPageid)
 		}
 	}
 	else
@@ -95,7 +100,7 @@
 	}
 }
 
-@helper RenderEcommerceGroupNodes(IEnumerable<Dynamicweb.Ecommerce.Products.Group> groups, NavigationTreeNodeViewModel node, string hostname)
+@helper RenderEcommerceGroupNodes(IEnumerable<Dynamicweb.Ecommerce.Products.Group> groups, NavigationTreeNodeViewModel node, string hostname, int detailProductPageId)
 {
 	foreach (Group group in groups)
 	{
@@ -111,21 +116,21 @@
 				<loc pageid="@node.PageId" groupid="@group.Id" group="@Dynamicweb.Core.Encoders.HtmlEncoder.HtmlEncode(group.Name)">@hostname@url</loc>
 			</url>
 		}
-		@RenderEcommerceProductNodes(Dynamicweb.Ecommerce.Services.Products.GetProductsByGroupId(group.Id, true, group.LanguageId, false), node, hostname, group)
-		@RenderEcommerceGroupNodes(group.Subgroups, node, hostname)
+		@RenderEcommerceProductNodes(Dynamicweb.Ecommerce.Services.Products.GetProductsByGroupId(group.Id, true, group.LanguageId, false), node, hostname, group, detailProductPageId)
+		@RenderEcommerceGroupNodes(group.Subgroups, node, hostname, detailProductPageId)
 
 	}
 }
 
-@helper RenderEcommerceProductNodes(IEnumerable<Dynamicweb.Ecommerce.Products.Product> products, NavigationTreeNodeViewModel node, string hostname, Group group)
+@helper RenderEcommerceProductNodes(IEnumerable<Dynamicweb.Ecommerce.Products.Product> products, NavigationTreeNodeViewModel node, string hostname, Group group, int detailProductPageId)
 {
 	//Locate the right pageid. This group is shown on a page that might link to another page to show product detail. So on this page, find the paragraph, lookup the setting, change pageid to the detail page.
 	//The product might be in 2 groups - ensure this is the primary or default group of the product - if not, do not render
 	foreach (Product product in products)
 	{
-		string url = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl("Default.aspx?ID=" + node.PageId + "&GroupID=" + group.IdUrlEncoded + "&ProductID=" + product.Id);
+		string url = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl("Default.aspx?ID=" + detailProductPageId + "&GroupID=" + group.IdUrlEncoded + "&ProductID=" + product.Id);
 		<url>
-			<loc pageid="@node.PageId" groupid="@group.Id" group="@Dynamicweb.Core.Encoders.HtmlEncoder.HtmlEncode(group.Name)" productid="@product.Id" product="@Dynamicweb.Core.Encoders.HtmlEncoder.HtmlEncode(product.Name)" variantid="@product.VariantId">@hostname@url</loc>
+			<loc pageid="@node.PageId" detailpageid="@detailProductPageId" groupid="@group.Id" group="@Dynamicweb.Core.Encoders.HtmlEncoder.HtmlEncode(group.Name)" productid="@product.Id" product="@Dynamicweb.Core.Encoders.HtmlEncoder.HtmlEncode(product.Name)" variantid="@product.VariantId">@hostname@url</loc>
 		</url>
 	}
 }

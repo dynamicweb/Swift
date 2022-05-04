@@ -15,7 +15,6 @@
 	{
 		responsiveHeaderClassDesktop = " d-none d-xl-block";
 		responsiveHeaderClassMobile = " d-block d-xl-none";
-
 	}
 
 	var brandingPageId = Model.Area.Item.GetLink("BrandingPage") != null ? Model.Area.Item.GetLink("BrandingPage").PageId : 0;
@@ -31,7 +30,18 @@
 	// Schema.org details for PDP
 	string productId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ProductID") : "";
 	bool isProductDetailsPage = !string.IsNullOrEmpty(productId);
-	string productDetailPageSchemaOrg = isProductDetailsPage ? "itemscope=\"\" itemtype=\"https://schema.org/Product\"" : "";
+	bool isArticlePage = Model.ItemType == "Swift_Article";
+	string schemaOrgType = string.Empty;
+
+	if(isProductDetailsPage)
+	{
+		schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Product\"";
+	}
+
+	if(isArticlePage)
+	{
+		schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Article\"";
+	}
 
 	if (!cssThemeAndBrandingStyleFileInfo.Exists || cssThemeAndBrandingStyleFileInfo.LastWriteTime < brandingPage.Audit.LastModifiedAt)
 	{
@@ -43,7 +53,6 @@
 			brandingPageview.Output();
 		}
 	}
-
 
 	if (!cssThemeAndBrandingStyleFileInfo.Exists || cssThemeAndBrandingStyleFileInfo.LastWriteTime < themesParagraphLastChanged.Audit.LastModifiedAt)
 	{
@@ -200,7 +209,7 @@
 		</header>
 	}
 
-	<main id="content" @productDetailPageSchemaOrg>
+	<main id="content" @(schemaOrgType)>
 		@ContentPlaceholder()
 	</main>
 
@@ -227,6 +236,14 @@
 	@* Render any offcanvas menu here *@
 	@RenderSnippet("offcanvas")
 
+	@{
+		bool isErpConnectionDown = !Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsWebServiceConnectionAvailable();
+		if (isErpConnectionDown && Model.Area.Item.GetBoolean("ShowErpDownMessage"))
+		{
+			@RenderNoErpConnectionMessage()
+		}
+	}
+	
 	@* Language selector modal *@
 	@if (languages.Count > 1 || ecomCountries.Count > 1 || ecomCurrencies.Count() > 1)
 	{
@@ -378,4 +395,21 @@
 			Pageview.Meta.AddTag("twitter:title", twitterCardTitle);
 		}
 	}
+}
+
+@helper RenderNoErpConnectionMessage()
+{
+	string erpDownMessageTheme = !string.IsNullOrWhiteSpace(Model.Area.Item.GetRawValueString("ErpDownMessageTheme")) ? " theme " + Model.Area.Item.GetRawValueString("ErpDownMessageTheme").Replace(" ", "").Trim().ToLower() : "theme light";
+
+	<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1040">
+		<div class="toast fade show border-0 @erpDownMessageTheme" role="alert" aria-live="assertive" aria-atomic="true">
+			<div class="toast-header">
+				<strong class="me-auto">@Translate("Connection down")</strong>
+				<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+			</div>
+			<div class="toast-body">
+				@Translate("We are experiencing some connectivity issues. Not all features may be available to you.")
+			</div>
+		</div>
+	</div>
 }
