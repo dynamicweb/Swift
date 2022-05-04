@@ -1,25 +1,47 @@
 @inherits ViewModelTemplate<ProductListViewModel>
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Core
 
-@{ 
-    bool isFeed = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("feed")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("feed")) : false;
+@{
+	bool isFeed = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("feed")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("feed")) : false;
 
-    //Put the ProductListViewModel up in context items
-    if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
-    {
-        Dynamicweb.Context.Current.Items["ProductList"] = Model;
-    } 
-    else 
-    {
-        Dynamicweb.Context.Current.Items.Add("ProductList", Model);
-    }
+	//Put the ProductListViewModel up in context items
+	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
+	{
+		Dynamicweb.Context.Current.Items["ProductList"] = Model;
+	}
+	else
+	{
+		Dynamicweb.Context.Current.Items.Add("ProductList", Model);
+	}
 }
 
-@if (isFeed) {
-    @Model.ToJson()
-} else {
-    <script type="module">
-       swift.ProductList.init();
-    </script>
+@if (isFeed)
+{
+	@Model.ToJson()
+}
+else
+{
+
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
+	if (isLazyLoadingForProductInfoEnabled)
+	{
+		string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+		bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+		string productIds = string.Join("&ProductIds=", Model.Products.Select(p => p.Id));
+		string priceFilledProperties = $"Price,PriceFormatted{(showPricesWithVat == "false" && !neverShowVat ? ",PriceWithVat,PriceWithVatFormatted" : "")}";
+		string productInfoFeed = $@"/dwapi/ecommerce/products/search?ProductIds={productIds}&PageSize={Model.PageSize}
+					&UserId={Converter.ToString(Pageview.User?.ID)}
+					&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
+					&ProductSettings.FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel,VariantInfo,NeverOutOfstock
+					&ProductSettings.PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
+					&PriceSettings.FilledProperties={priceFilledProperties}
+					&getproductinfo=true";
+		Dynamicweb.Context.Current.Items["ProductInfoFeed"] = productInfoFeed;
+
+		<script type="module">
+			swift.LiveProductInfo.init();
+		</script>
+	}
 }
