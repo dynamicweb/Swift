@@ -33,13 +33,24 @@
 		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 	}
 
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+}
+
+
+@if (!anonymousUser && product.Id != null) {
+	if (product.VariantInfo.VariantInfo == null) {
+		@RenderFavorites(product)
+	}
+} else if (Pageview.IsVisualEditorMode) { 
+	@RenderFavorites(product)
+}
+
+@helper RenderFavorites(ProductViewModel product) { 
 	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", string.Empty);
 	horizontalAlign = horizontalAlign == "center" ? "justify-content-center" : horizontalAlign;
 	horizontalAlign = horizontalAlign == "end" ? "justify-content-end" : horizontalAlign;
 	horizontalAlign = horizontalAlign == "full" ? string.Empty : horizontalAlign;
-
-	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
-	bool anonymousUser = Pageview.User == null;
 
 	string buttonSize = Model.Item.GetRawValueString("ButtonSize", "regular");
 	buttonSize = buttonSize == "small" ? " btn-sm" : buttonSize;
@@ -58,23 +69,20 @@
 			buttonStyleClass = " btn-secondary";
 			break;
 	}
-}
 
+	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
+	}
 
-@if (!anonymousUser && product.Id != null) {
-	if (product.VariantInfo.VariantInfo == null) {
-		string iconPath = "/Files/icons/";
-		string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
-		if (!url.Contains("LayoutTemplate"))
-		{
-			url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
-		}
+	string fullWidth = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "w-100" : "";
 
-		string fullWidth = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "w-100" : "";
+	var favoriteParameters = new Dictionary<string, object>();
+	int defaultFavoriteListId = 0;
 
-		var favoriteParameters = new Dictionary<string, object>();
-		int defaultFavoriteListId = 0;
-
+	if (Pageview?.User?.ID != null)
+    {
 		IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
 		if (favoreiteLists.Count() == 1)
 		{
@@ -83,20 +91,18 @@
 				defaultFavoriteListId = list.ListId;
 			}
 		}
+    }
 
-		favoriteParameters.Add("ListId", defaultFavoriteListId);
-		favoriteParameters.Add("ButtonSize", buttonSize);
-		favoriteParameters.Add("ButtonStyle", buttonStyleClass);
-		favoriteParameters.Add("ButtonWidth", fullWidth);
+	favoriteParameters.Add("ListId", defaultFavoriteListId);
+	favoriteParameters.Add("ButtonSize", buttonSize);
+	favoriteParameters.Add("ButtonStyle", buttonStyleClass);
+	favoriteParameters.Add("ButtonWidth", fullWidth);
 
-		if (!Model.Item.GetBoolean("HideButtonText")) {
-			favoriteParameters.Add("ShowButtonText", true);
-		}
-
-		<div class="d-flex @horizontalAlign @fullWidth item_@Model.Item.SystemName.ToLower()">
-			@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
-		</div>
+	if (!Model.Item.GetBoolean("HideButtonText")) {
+		favoriteParameters.Add("ShowButtonText", true);
 	}
-} else if (Pageview.IsVisualEditorMode) { 
-	<div class="alert alert-dark m-0">@Translate("No products available")</div>
+
+	<div class="d-flex @horizontalAlign @fullWidth item_@Model.Item.SystemName.ToLower()">
+		@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+	</div>
 }
