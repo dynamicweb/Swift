@@ -1,0 +1,108 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+
+@{
+	ProductViewModel product = new ProductViewModel();
+
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	} else if (Pageview.Item["DummyProduct"] != null) {
+
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		} else {
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	} else if (Pageview.Item["DummyProduct"] == null) {
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+	}
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", string.Empty);
+	bool anonymousUser = Pageview.User == null;
+}
+
+
+@if (!anonymousUser && product.Id != null) {
+	if (product.VariantInfo.VariantInfo == null) {
+		@RenderFavorites(product)
+	}
+} else if (Pageview.IsVisualEditorMode) { 
+	@RenderFavorites(product)
+}
+
+@helper RenderFavorites(ProductViewModel product) { 
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", string.Empty);
+	horizontalAlign = horizontalAlign == "center" ? "justify-content-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "end" ? "justify-content-end" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "full" ? string.Empty : horizontalAlign;
+
+	string buttonSize = Model.Item.GetRawValueString("ButtonSize", "regular");
+	buttonSize = buttonSize == "small" ? " btn-sm" : buttonSize;
+	buttonSize = buttonSize == "regular" ? string.Empty : buttonSize;
+	buttonSize = buttonSize == "large" ? " btn-lg" : buttonSize;
+
+	string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "secondary");
+	string buttonStyleClass = string.Empty;
+
+	switch (buttonStyle)
+	{
+		case "primary":
+			buttonStyleClass = " btn-primary";
+			break;
+		case "secondary":
+			buttonStyleClass = " btn-secondary";
+			break;
+	}
+
+	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
+	}
+
+	string fullWidth = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "w-100" : "";
+
+	var favoriteParameters = new Dictionary<string, object>();
+	int defaultFavoriteListId = 0;
+
+	if (Pageview?.User?.ID != null)
+    {
+		IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
+		if (favoreiteLists.Count() == 1)
+		{
+			foreach (FavoriteList list in favoreiteLists)
+			{
+				defaultFavoriteListId = list.ListId;
+			}
+		}
+    }
+
+	favoriteParameters.Add("ListId", defaultFavoriteListId);
+	favoriteParameters.Add("ButtonSize", buttonSize);
+	favoriteParameters.Add("ButtonStyle", buttonStyleClass);
+	favoriteParameters.Add("ButtonWidth", fullWidth);
+
+	if (!Model.Item.GetBoolean("HideButtonText")) {
+		favoriteParameters.Add("ShowButtonText", true);
+	}
+
+	<div class="d-flex @horizontalAlign @fullWidth item_@Model.Item.SystemName.ToLower()">
+		@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+	</div>
+}
