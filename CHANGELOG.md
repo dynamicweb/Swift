@@ -1,5 +1,13 @@
 # Changelog
 
+## [v1.10.0] - 05-05-2022
+
+## Bugfixes 
+
+## Changed
+
+## Added
+
 ## [v1.9.0] - 08-04-2022
 
 ## Bugfixes 
