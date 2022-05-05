@@ -2,11 +2,82 @@
 
 ## [v1.10.0] - 05-05-2022
 
-## Bugfixes 
+Dynamicweb proudly presents **Swift 1.10.0 (Q1-2022)** This introduce additional B2B functionalities to Swift, such as Quotes Other than that there has been a big focus on ways to decrease the implmentation time. The main headlines for this release are:
 
-## Changed
+## B2B solution
 
-## Added
+In this release there is a focus on capabilities supporting especially requirements from B2B customers that are moving their sales to digital channels.
+
+### Quotes & assisted selling
+
+* A sales rep can easily find products through the webshop and gather an offering to a customer that is interested in collection of products using **quotes**. The customer can request quotes and can see a list of open quotes in the customer center and convert quotes to orders.
+
+### Products
+* Show a replacement product if a **product is discontinued** / temporarily or permanently unavailable. This will help the customer to easily find an alternative product to purchase and a potential sale is not lost.
+
+* Show **selected product** group on your products list, this gives an overview over the product subgroups that can be visited and highlights different product groups and makes catalog navigation more explorative for larger catalogs.
+
+### Checkout 
+* During checkout **Google places Autocomplete** can be used, which suggests street addresses when typing , this helps the user to type in the proper address format and also gives a faster checkout flow and ensuring data quality.
+
+## Decrease implementation time 
+
+Based on feedback from partners and developers ,significant improvements have been made in 3 areas that almost always requires some kind of customization. The information in product lists, on the product detail pages and the content in emails being send, mostly needs some kind of modification to match customer requirements.
+Usually this causes several code changes that drives cost and complexity.
+By utilizing the visual content builder in new ways, a lot of these customizations can be avoided and minimized resulting in faster and cheaper implementations.
+
+
+### Build emails with Visual Editor
+* Swift presents a new email concept where you can build beautiful newsletter emails through visual editor and re-use content and product data in emails.
+* The plan with the new Email concept is also to design **System emails** using the visual content builder. This allows the email editor to visually design the system emails such order email, create account emails etc. Before changes to emails has to be done by developers directly in the templates – with the new concept, content can be edited in the visual content builder. **Building system emails** will come later on
+
+### Building blocks for product list and details 
+* **Product component** it gives the flexibility to create own product list and product detail page, through Visual editor, which can decrease the implementation time since you can build own product list
+* **Custom components** can be added easily and adopted in the visual content builder
+
+### Digital Assets Portal
+* Make your product assets and **product information visible and available for download.** This is to help business optimize their work process for distributing their product assets and product information
+* User can browse and collect products needed in other systems and **download data in various formats** together with digital assets like photos, images, documents, and other files.
+* Product data can be exported in different**formats like CSV, XML and JSON.** Images can be delivered in different formats and resolutions depending on what they need to be used for.
+* (Digital Assets Portal functionality requires a Dynamicweb license)
+
+
+## Improve content marketing
+
+* **Block quotes content element**  use for direct quotations e.g. quotes that benefits a company or the products that the company are selling 
+* **Employee content element** - display the employee list on your website. Their name, title and contact information and promote who are behind the company. 
+CTA on poster, text & image
+* Possible to add **2 CTA buttons** Set A primary button and secondary button. Guide your customers through the website using CTA.
+* Use **CTA button on the header navigation**, use it to guide users to a specific page e.g. a demo site, campaign page. 
+Micro templates
+* The **Micro templates** for font selector and theme selector has been improved, giving a nicely design and a better overview over your selection
+
+## Improvements & maintenance
+	
+### General 
+* Deployment tool set up, possible to deploy a swift website to an existing site
+* Possible to edit Favicon in website settings
+* Frontend user start page - Possible to decide if specific customers should start on a specific page after login 
+
+### Content
+* Feature column element - possible to select size options for the icons
+* Article header - Reuse the information in Page settings such as Image, title description
+* Image column element - possible to set page link
+* Possible to add Image on row
+* Locator ids has been added to the template, so it is possible to set up auto-test for your solution
+
+### Products
+* Support live products info
+* ERP down settings
+* Open order detail in integration customer center
+* Decide Start stop level on navigation facets 
+* Mega menu - Possible to choose an aspect ratio on product group images in the mega menu navigation. To visually highlight your product groups
+
+### Checkout
+* Order comment field in checkout - Possible to submit a comment during checkout, allows the customer communicate regarding a specific order
+* Support  Delivery date calendar in checkout in Firefox and Edge
+* Hide shipping price $0.00 in order details/receipt
+* In checkout decide if a customer can create new addresses or edit an address field for logged in users
 
 ## [v1.9.0] - 08-04-2022
 
