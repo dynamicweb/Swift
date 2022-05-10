@@ -48,19 +48,6 @@ const Scroll = function () {
 						}
 					}
 				});
-
-				//Hideable elements
-				var hideableElements = document.querySelectorAll(".js-hide-on-scroll");
-
-				if (document.body.scrollTop > 0 || document.documentElement.scrollTop > 0) {
-					hideableElements.forEach(function (element) {
-						element.classList.add("d-none");
-					});
-				} else {
-					hideableElements.forEach(function (element) {
-						element.classList.remove("d-none");
-					});
-				}
 			},
 			{
 				passive: true
@@ -75,7 +62,34 @@ const Scroll = function () {
 			});
 
 			document.documentElement.style.setProperty('--header-height', headerHeight + 'px');
+		},
+
+		hideHeadersOnScroll() {
+
+			const intersectElement = document.querySelector('[data-intersect]');
+
+			const options = {
+				root: null,
+				threshold: 1,
+				rootMargin: '20%'
+			};
+
+			if (intersectElement != null) {
+				const callback = (entries) => {
+				
+					if (!entries[0].isIntersecting) {
+						document.body.setAttribute("data-intersected", true);
+					} else {
+						document.body.setAttribute("data-intersected", false);
+					}
+				};
+
+				let observer = new IntersectionObserver(callback, options);
+
+				observer.observe(intersectElement);
+			}
 		}
+
 	}
 }();
 
