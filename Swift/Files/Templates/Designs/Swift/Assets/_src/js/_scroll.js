@@ -2,56 +2,56 @@ const Scroll = function () {
 
 	return {
 
-		init() {
-			document.addEventListener('scroll', function (e) {
-				var themeChangers = document.querySelectorAll("[data-alternative-theme]");
+		handleAlternativeTheme() {
 
-				themeChangers.forEach(function (element) {
-					var currentTheme = element.getAttribute("class");
-					var mainTheme = element.getAttribute("data-main-theme");
-					var alternativeTheme = element.getAttribute("data-alternative-theme");
+			var themeChangers = document.querySelectorAll("[data-alternative-theme]");
 
-					var headerElement = element.closest("header");
-					var headerHeight = headerElement ? headerElement.clientHeight : 0;
+			if (typeof (themeChangers) != 'undefined' && themeChangers != null) {
+				document.addEventListener('scroll', function (e) {
+					themeChangers.forEach(function (element) {
+						var currentTheme = element.getAttribute("class");
+						var mainTheme = element.getAttribute("data-main-theme");
+						var alternativeTheme = element.getAttribute("data-alternative-theme");
 
-					if (document.body.scrollTop > headerHeight || document.documentElement.scrollTop > headerHeight) {
-						if (currentTheme !== mainTheme) {
-							var alternativeThemeClasses = alternativeTheme.split(" ");
-							for (var i = 0; i < alternativeThemeClasses.length; i++) {
-								if (alternativeThemeClasses[i] != "") {
-									element.classList.remove(alternativeThemeClasses[i]);
+						var headerElement = element.closest("header");
+						var headerHeight = headerElement ? headerElement.clientHeight : 0;
+
+						if (document.body.scrollTop > headerHeight || document.documentElement.scrollTop > headerHeight) {
+							if (currentTheme !== mainTheme) {
+								var alternativeThemeClasses = alternativeTheme.split(" ");
+								for (var i = 0; i < alternativeThemeClasses.length; i++) {
+									if (alternativeThemeClasses[i] != "") {
+										element.classList.remove(alternativeThemeClasses[i]);
+									}
+								}
+
+								var mainThemeClasses = mainTheme.split(" ");
+								for (var i = 0; i < mainThemeClasses.length; i++) {
+									if (mainThemeClasses[i] != "") {
+										element.classList.add(mainThemeClasses[i]);
+									}
 								}
 							}
+						} else {
+							if (currentTheme !== alternativeTheme) {
+								var mainThemeClasses = mainTheme.split(" ");
+								for (var i = 0; i < mainThemeClasses.length; i++) {
+									if (mainThemeClasses[i] != "") {
+										element.classList.remove(mainThemeClasses[i]);
+									}
+								}
 
-							var mainThemeClasses = mainTheme.split(" ");
-							for (var i = 0; i < mainThemeClasses.length; i++) {
-								if (mainThemeClasses[i] != "") {
-									element.classList.add(mainThemeClasses[i]);
+								var alternativeThemeClasses = alternativeTheme.split(" ");
+								for (var i = 0; i < alternativeThemeClasses.length; i++) {
+									if (alternativeThemeClasses[i] != "") {
+										element.classList.add(alternativeThemeClasses[i]);
+									}
 								}
 							}
 						}
-					} else {
-						if (currentTheme !== alternativeTheme) {
-							var mainThemeClasses = mainTheme.split(" ");
-							for (var i = 0; i < mainThemeClasses.length; i++) {
-								if (mainThemeClasses[i] != "") {
-									element.classList.remove(mainThemeClasses[i]);
-								}
-							}
-
-							var alternativeThemeClasses = alternativeTheme.split(" ");
-							for (var i = 0; i < alternativeThemeClasses.length; i++) {
-								if (alternativeThemeClasses[i] != "") {
-									element.classList.add(alternativeThemeClasses[i]);
-								}
-							}
-						}
-					}
-				});
-			},
-			{
-				passive: true
-			});
+					});
+				}, { passive: true } );
+			}
 		},
 
 		setContentPosition() {
@@ -68,13 +68,13 @@ const Scroll = function () {
 
 			const intersectElement = document.querySelector('[data-intersect]');
 
-			const options = {
-				root: null,
-				threshold: 1,
-				rootMargin: '20%'
-			};
+			if (typeof (intersectElement) != 'undefined' && intersectElement != null) {
 
-			if (intersectElement != null) {
+				const options = {
+					root: null,
+					threshold: 1,
+					rootMargin: '20%'
+				};
 				const callback = (entries) => {
 				
 					if (!entries[0].isIntersecting) {
@@ -87,9 +87,8 @@ const Scroll = function () {
 				let observer = new IntersectionObserver(callback, options);
 
 				observer.observe(intersectElement);
-			}
+			};
 		}
-
 	}
 }();
 

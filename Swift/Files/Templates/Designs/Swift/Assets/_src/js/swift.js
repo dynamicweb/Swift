@@ -42,8 +42,3 @@ window.swift = swift;
 window.onpopstate = function (event) {
 	swift.Typeahead.navigateToPage(document.location.href);
 };
-
-//Hide headers on scroll
-window.addEventListener('load', () => {
-	swift.Scroll.hideHeadersOnScroll();
-})
