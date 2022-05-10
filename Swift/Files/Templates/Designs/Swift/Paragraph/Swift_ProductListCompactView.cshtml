@@ -1,33 +1,61 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+@using Dynamicweb.Core
+@using System.Linq
 
+@functions
+{
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
+	string liveInfoClass = "";
+	string productInfoFeed = "";
+	string showPricesWithVat = "";
+	bool neverShowVat = false;
+	
+	ProductListViewModel productList = new ProductListViewModel();
+}
 @{
+	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
+	{
+		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
+	}
+
+	showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+
+	isLazyLoadingForProductInfoEnabled = true; // NOTE - FOR Local Debug purposes only
+
+	if (isLazyLoadingForProductInfoEnabled)
+	{
+		if (Dynamicweb.Context.Current.Items.Contains("ProductInfoFeed"))
+		{
+			productInfoFeed = Dynamicweb.Context.Current.Items["ProductInfoFeed"]?.ToString();
+			if (!string.IsNullOrEmpty(productInfoFeed))
+			{
+				productInfoFeed = $"data-product-info-feed=\"{productInfoFeed}\"";
+			}
+		}
+		liveInfoClass = "js-live-info";
+	}
+
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 }
 
 @if (!string.IsNullOrEmpty(theme))
 {
-	<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()">
+	<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
 		@RenderProductList()
 	</div>
 }
 else
 {
-	<div class="item_@Model.Item.SystemName.ToLower()">
+	<div class="item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
 		@RenderProductList()
 	</div>
 }
 
 @helper RenderProductList()
 {
-	ProductListViewModel productList = new ProductListViewModel();
-
-	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
-	{
-		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
-	}
-
 	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
 	bool anonymousUser = Pageview.User == null;
 	bool hideProductNumber = !string.IsNullOrEmpty(Model.Item.GetString("HideProductNumber")) ? Model.Item.GetBoolean("HideProductNumber") : false;
@@ -135,7 +163,7 @@ else
 				}
 			}
 
-			<article class="grid gap-2 gap-lg-3 mb-3 @(productTheme) product">
+			<article class="grid gap-2 gap-lg-3 mb-3 @(productTheme) product @liveInfoClass" data-product-id="@product.Id">
 				<a href="@link" class="g-col-12 g-col-lg-8 d-flex text-decoration-none mb-2 mb-lg-0">
 
 					@if (!Model.Item.GetBoolean("HideImage"))
@@ -388,28 +416,50 @@ else
 
 	if (!isNeverOutOfStock)
 	{
-		if (product.StockLevel > 0)
+		if (isLazyLoadingForProductInfoEnabled)
 		{
-			if (!Model.Item.GetBoolean("HideInventory"))
-			{
-				<p class="fs-7 text-success m-0">@stockLevel @Translate("In stock")</p>
-			}
-			else
-			{
-				<p class="fs-7 text-success m-0">@Translate("In stock")</p>
-			}
+			<div class="js-stock-state">
+				@if (!Model.Item.GetBoolean("HideInventory"))
+				{
+					<p class="fs-7 text-success m-0 d-none" data-show-if="LiveProductInfo.product.StockLevel > 0"><span class="js-text-stock"></span> @Translate("In stock")</p>
+				}
+				else
+				{
+					<p class="fs-7 text-success m-0 d-none" data-show-if="LiveProductInfo.product.StockLevel > 0">@Translate("In stock")</p>
+				}
+				<p class="fs-7 text-danger m-0 d-none" data-show-if="LiveProductInfo.product.StockLevel <= 0">@Translate("Out of Stock")</p>
+						
+				<p class="d-none" data-show-if="LiveProductInfo.product.ExpectedDelivery != null && new Date(LiveProductInfo.product.ExpectedDelivery) > new Date()">
+					<span>@Translate("Expected:")</span>
+					<span class="js-text-expected-delivery"></span>
+				</p>
+			</div>
 		}
 		else
 		{
-			<p class="fs-7 text-danger m-0">@Translate("Out of Stock")</p>
-		}
+			if (product.StockLevel > 0)
+			{
+				if (!Model.Item.GetBoolean("HideInventory"))
+				{
+					<p class="fs-7 text-success m-0">@stockLevel @Translate("In stock")</p>
+				}
+				else
+				{
+					<p class="fs-7 text-success m-0">@Translate("In stock")</p>
+				}
+			}
+			else
+			{
+				<p class="fs-7 text-danger m-0">@Translate("Out of Stock")</p>
+			}
 
-		if (hasExpectedDelivery)
-		{
-			<p>
-				<span>@Translate("Expected:")</span>
-				<span>@expectedDeliveryDate</span>
-			</p>
+			if (hasExpectedDelivery)
+			{
+				<p>
+					<span>@Translate("Expected:")</span>
+					<span>@expectedDeliveryDate</span>
+				</p>
+			}
 		}
 	}
 }
@@ -435,6 +485,7 @@ else
 	string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : "";
 	disableAddToCart = isDiscontinued ? "disabled" : disableAddToCart;
 	disableAddToCart = IsNeverOutOfStock ? "" : disableAddToCart;
+	disableAddToCart = isLazyLoadingForProductInfoEnabled ? "disabled" : disableAddToCart;
 
 	if (!hideAddToCart)
 	{
@@ -483,7 +534,9 @@ else
 
 			string variantSelectorServicePageId = !string.IsNullOrEmpty(Model.Item.GetString("VariantSelectorServicePageId")) ? Model.Item.GetLink("VariantSelectorServicePageId").PageId.ToString() : "";
 			variantSelectorServicePageId = variantSelectorServicePageId != "" ? variantSelectorServicePageId : GetPageIdByNavigationTag("VariantSelectorService").ToString();
-
+			
+			string disableVariantSelector = isLazyLoadingForProductInfoEnabled ? "disabled" : "";
+			
 			<form action="/Default.aspx?ID=@variantSelectorServicePageId" data-response-target-element="DynamicModalContent" data-preloader="inline" class="d-inline-block">
 				<input type="hidden" name="ProductID" value="@product.Id" />
 				<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
@@ -491,7 +544,7 @@ else
 				<input type="hidden" name="HideStockState" value="@Model.Item.GetBoolean("HideStockState").ToString()" />
 				<input type="hidden" name="VariantSelectorServicePage" value="@variantSelectorServicePageId" />
 				<input type="hidden" name="ViewType" value="ModalContent" />
-				<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-primary" style="@buttonWidth" title="@Translate("Select")" data-bs-toggle="modal" data-bs-target="#DynamicModal" id="OpenVariantSelectorModal@(product.Id)_@Pageview.CurrentParagraph.ID">@buttonText</button>
+				<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-primary" style="@buttonWidth" @disableVariantSelector title="@Translate("Select")" data-bs-toggle="modal" data-bs-target="#DynamicModal" id="OpenVariantSelectorModal@(product.Id)_@Pageview.CurrentParagraph.ID">@buttonText</button>
 			</form>
 		}
 	}
@@ -510,68 +563,105 @@ else
 
 			@if (showPricesWithVat == "false" && !neverShowVat)
 			{
-				string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
-
-				<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
-				if (product.Price.Price != product.PriceBeforeDiscount.Price)
+				if (isLazyLoadingForProductInfoEnabled)
 				{
-					<span class="text-decoration-line-through opacity-75 me-2 text-price">@beforePrice</span>
+					<span itemprop="price" content="" class="d-none"></span>
+					<span class="text-decoration-line-through js-text-decoration-line-through opacity-75 me-2 text-price js-text-price d-none" data-show-if="LiveProductInfo.product.Price.Price != LiveProductInfo.product.PriceBeforeDiscount.Price"></span>
+				}
+				else
+				{
+					string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
+
+					<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
+					if (product.Price.Price != product.PriceBeforeDiscount.Price)
+					{
+						<span class="text-decoration-line-through opacity-75 me-2 text-price">@beforePrice</span>
+					}
 				}
 			}
 			else
 			{
-				string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
-
-				<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
-				if (product.Price.Price != product.PriceBeforeDiscount.Price)
+				if (isLazyLoadingForProductInfoEnabled)
 				{
-					<span class="text-decoration-line-through opacity-75 me-2 text-price">@beforePrice</span>
+					<span itemprop="price" content="" class="d-none"></span>
+					<span class="text-decoration-line-through js-text-decoration-line-through opacity-75 me-2 text-price js-text-price d-none" data-show-if="LiveProductInfo.product.Price.Price != LiveProductInfo.product.PriceBeforeDiscount.Price"></span>
+				}
+				else
+				{
+					string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
+
+					<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
+					if (product.Price.Price != product.PriceBeforeDiscount.Price)
+					{
+						<span class="text-decoration-line-through opacity-75 me-2 text-price">@beforePrice</span>
+					}
 				}
 			}
 
 			@if (showPricesWithVat == "false" && !neverShowVat)
 			{
-				string price = product.Price.PriceWithoutVatFormatted;
-				if (product?.VariantInfo?.VariantInfo != null)
+				if (isLazyLoadingForProductInfoEnabled)
 				{
-					priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
-					priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
+					<span class="text-price js-text-price"><div class="spinner-border" role="status"></div></span>
 				}
-				if (priceMin != priceMax)
+				else
 				{
-					price = priceMin + " - " + priceMax;
+					string price = product.Price.PriceWithoutVatFormatted;
+					if (product?.VariantInfo?.VariantInfo != null)
+					{
+						priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
+						priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
+					}
+					if (priceMin != priceMax)
+					{
+						price = priceMin + " - " + priceMax;
+					}
+					<span class="text-price">@price</span>
 				}
-				<span class="text-price">@price</span>
 			}
 			else
 			{
-				string price = product.Price.PriceFormatted;
-				if (product?.VariantInfo?.VariantInfo != null)
+				if (isLazyLoadingForProductInfoEnabled)
 				{
-					priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
-					priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
+					<span class="text-price js-text-price"><div class="spinner-border" role="status"></div></span>
 				}
-				if (priceMin != priceMax)
+				else
 				{
-					price = priceMin + " - " + priceMax;
+					string price = product.Price.PriceFormatted;
+					if (product?.VariantInfo?.VariantInfo != null)
+					{
+						priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
+						priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
+					}
+					if (priceMin != priceMax)
+					{
+						price = priceMin + " - " + priceMax;
+					}
+					<span class="text-price">@price</span>
 				}
-				<span class="text-price">@price</span>
 			}
 		</div>
 
 		@if (showPricesWithVat == "false" && !neverShowVat)
 		{
-			string price = product.Price.PriceWithVatFormatted;
-			if (product?.VariantInfo?.VariantInfo != null)
+			if (isLazyLoadingForProductInfoEnabled)
 			{
-				priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
-				priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
+				<div class="fs-7 opacity-85 text-price js-text-price-with-vat d-none" data-suffix="@Translate("Incl. VAT")"></div>
 			}
-			if (priceMin != priceMax)
+			else
 			{
-				price = priceMin + " - " + priceMax;
+				string price = product.Price.PriceWithVatFormatted;
+				if (product?.VariantInfo?.VariantInfo != null)
+				{
+					priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
+					priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
+				}
+				if (priceMin != priceMax)
+				{
+					price = priceMin + " - " + priceMax;
+				}
+				<div class="fs-7 opacity-85 text-price">@price @Translate("Incl. VAT")</div>
 			}
-			<div class="fs-7 opacity-85 text-price">@price @Translate("Incl. VAT")</div>
 		}
 	</div>
 }

@@ -1,33 +1,61 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+@using System.Linq
+@using Dynamicweb.Core
 
+@functions
+{
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
+	string liveInfoClass = "";
+	string productInfoFeed = "";
+	
+	string showPricesWithVat = "";
+	bool neverShowVat = false;
+	
+	ProductListViewModel productList = new ProductListViewModel();
+}
 @{ 
+	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
+	{
+		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
+	}
+	
+	showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+
+	if (isLazyLoadingForProductInfoEnabled)
+	{
+		if (Dynamicweb.Context.Current.Items.Contains("ProductInfoFeed"))
+		{
+			productInfoFeed = Dynamicweb.Context.Current.Items["ProductInfoFeed"]?.ToString();
+			if (!string.IsNullOrEmpty(productInfoFeed))
+			{
+				productInfoFeed = $"data-product-info-feed=\"{productInfoFeed}\"";
+			}
+		}
+		liveInfoClass = "js-live-info";
+	}
+	
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 	string themePadding = theme != string.Empty ? "p-3" : string.Empty;
 }
 
 @if (!string.IsNullOrEmpty(theme))
 {
-	<div class="h-100@(theme) @themePadding item_@Model.Item.SystemName.ToLower()">
+	<div class="h-100@(theme) @themePadding item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
 		@RenderProductList()
 	</div>
 }
 else
 {
-<div class="pt-3 item_@Model.Item.SystemName.ToLower()">
-	@RenderProductList()
-</div>
+	<div class="pt-3 item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
+		@RenderProductList()
+	</div>
 }
 
-@helper RenderProductList () { 
-	ProductListViewModel productList = new ProductListViewModel();
-
-	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
-	{
-		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
-	}
-
+@helper RenderProductList ()
+{ 
 	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
 	bool anonymousUser = Pageview.User == null;
 	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && !Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsWebServiceConnectionAvailable();
@@ -74,6 +102,9 @@ else
 
 		int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
 
+		//REMOVE BEFORE RELEASE
+		Dynamicweb.Ecommerce.Common.Context.CartContext = Dynamicweb.Ecommerce.Orders.OrderContext.GetOrderContextById("ORDERCONTEXT2");
+
 		<div class="grid grid-2 grid-lg-3">
 			@foreach (ProductViewModel product in productList.Products)
 			{
@@ -103,9 +134,6 @@ else
 				string imageId = "ProductImage_" + product.Id + product.VariantId;
 				string priceId = "ProductPrice_" + product.Id + product.VariantId;
 
-				string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
-				bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
-				
 				@* Alternative image *@
 				var supportedImageFormats = new string[] { ".jpg", ".webp", ".png", ".gif" };
 				string defaultImage = product.DefaultImage != null ? product.DefaultImage.Value : "";
@@ -143,7 +171,7 @@ else
 					}
 				}
 
-				<article class="position-relative@(productTheme) product-list-item product" itemscope itemtype="https://schema.org/Product">
+				<article class="position-relative@(productTheme) product-list-item product @liveInfoClass" data-product-id="@product.Id" itemscope itemtype="https://schema.org/Product">
 					@if (!anonymousUser && !hideFavoritesSelector && product.VariantInfo.VariantInfo == null) {
 						<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
 							@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
@@ -156,214 +184,271 @@ else
 						</div>
 					}
 
-					<a href="@link" class="d-flex flex-column d-block h-100 text-decoration-none">
-
-						<div class="overflow-hidden@(imageTheme)" @imageOutlineStyle>
-							<div class="ratio" style="@(ratioVariable)">
-								<div class="d-flex justify-content-center align-items-center">
-									@if (string.IsNullOrEmpty(alternativeImage)) { 
-										<img 
-											id="@imageId"
-											srcset="
-												@imagePathXs 480w,
-												@imagePathS  640w"
-											sizes="(min-width: 992px) 33vw, 50vw"
-											src="@imagePathFallBack"
-											loading="lazy"
-											decoding="async"
-											class="mw-100 mh-100 @imageThemePadding"
-											alt="@product.Name">
-									} else { 
-										<img 
-											id="@imageId"
-											src="@imagePathFallBack"
-											loading="lazy"
-											decoding="async"
-											class="mw-100 mh-100 @imageThemePadding"
-											alt="@product.Name"
-											onmouseover="this.src='@alternativeImage'" 
-											onmouseout="this.src='@imagePathFallBack'">
-									}
-								</div>
-							</div>
-
-
-							<div class="position-relative">
-								@if (product.VariantInfo.VariantInfo != null && staticVariantsLayout == "images") {
-									int variantGroupCount = 0; 
-									int showMaxVariantGroups = 2;
-									int showMaxVariants = 3;
-									var productVariantTheme = productTheme != "" ? productTheme : "bg-white";
-
-									<div 
-										class="static-variants w-100 d-none d-lg-block position-absolute left-0 bottom-0 @productTheme" 
-										id="StaticVariants_@product.Id" 
-										style="pointer-events: none;">
-
-										@foreach (var variantGroup in product.VariantGroups())
-										{
-											int variantsCount = 0;
-
-											<div class="d-flex gap-2 mb-2">
-												@foreach (var variant in variantGroup.Options)
-												{
-													if (variantGroupCount < showMaxVariantGroups)
-													{
-														var optionsCount = variantGroup.Options.Count();
-
-														if (variantsCount < showMaxVariants)
-														{
-															string optionWidth = !string.IsNullOrEmpty(variant.Color) ? "w-25" : "";
-
-															<article class="static-variants-option @optionWidth @(productVariantTheme)" title="@product.Name @variant.Name" style="pointer-events: initial;">
-																@if (!string.IsNullOrEmpty(variant.Color))
-																{
-																	string defaultProductImage = Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value);
-																	string variantImage = Dynamicweb.Context.Current.Server.UrlEncode(variant.Image.Value);
-																	string defaultPrice = !hidePrice ? product.Price.PriceFormatted : "0";
-																	string variantPrice = !hidePrice ? product.Price.PriceFormatted : "0";
-
-																	<figure class="figure w-100 d-block m-0" onmouseover="switchVariantProduct('@product.Id', '@defaultPrice', '@variantImage')" onmouseout="switchVariantProduct('@product.Id', '@variantPrice', '@defaultProductImage')">
-																		<div class="d-flex align-items-center justify-content-center">
-																			<img src="/admin/public/GetImage.ashx?image=@variantImage&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" height="75" width="75" class="p-1 text-small" loading="lazy" decoding="async" alt="@product.Name, @variant.Name">
-																		</div>
-																	</figure>
-																}
-																else
-																{
-																	<div class="d-flex align-items-center justify-content-center">
-																		@variant.Name
-																	</div>
-																}
-																<div class="visually-hidden">
-																	<h4>@Translate("Variant Name")</h4>
-																	<p>@product.Name, @variant.Name</p>
-																	@if (!hidePrice) { 
-																		<h4>@Translate("Variant Price")</h4>
-																		<p><span class="text-price">@product.Price.PriceFormatted</span></p>
-																	}
-																</div>
-															</article>
-														}
-
-														variantsCount++;
-
-														if (variantsCount == showMaxVariants && optionsCount != showMaxVariants)
-														{
-															int left = optionsCount - showMaxVariants;
-															<div class="variant-option ms-1 d-flex justify-content-center align-items-center">
-																<span>+@left</span>
-															</div>
-														}													
-													}
-												}
-
-											</div>
-
-											variantGroupCount++;
+					<div class="d-flex flex-column d-block h-100">
+						<a href="@link" class="text-decoration-none">
+							<div class="overflow-hidden@(imageTheme)" @imageOutlineStyle>
+								<div class="ratio" style="@(ratioVariable)">
+									<div class="d-flex justify-content-center align-items-center">
+										@if (string.IsNullOrEmpty(alternativeImage)) { 
+											<img 
+												id="@imageId"
+												srcset="
+													@imagePathXs 480w,
+													@imagePathS  640w"
+												sizes="(min-width: 992px) 33vw, 50vw"
+												src="@imagePathFallBack"
+												loading="lazy"
+												decoding="async"
+												class="mw-100 mh-100 @imageThemePadding"
+												alt="@product.Name">
+										} else { 
+											<img 
+												id="@imageId"
+												src="@imagePathFallBack"
+												loading="lazy"
+												decoding="async"
+												class="mw-100 mh-100 @imageThemePadding"
+												alt="@product.Name"
+												onmouseover="this.src='@alternativeImage'" 
+												onmouseout="this.src='@imagePathFallBack'">
 										}
 									</div>
-								}
-							</div>
-						</div>
-						<div class="@productThemePadding">
-							<div class="flex-grow-1">
-								<h3 class="h6 mb-0 text-break">@product.Name @if (!string.IsNullOrEmpty(product.VariantName)) { <text>(@product.VariantName)</text> }</h3>
-								@if (!Model.Item.GetBoolean("HideProductNumber")) { 
-									<p class="fs-7 opacity-85 mb-2">@product.Number</p>
-								}
-								@if (mainFeatures.Count > 0)
-								{
-									<ul class="p-0 lh-sm opacity-75" style="list-style-position: inside">
-										@foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
-										{
-											foreach (var field in mainFeatureGroup.Fields)
+								</div>
+
+
+								<div class="position-relative">
+									@if (product.VariantInfo.VariantInfo != null && staticVariantsLayout == "images") {
+										int variantGroupCount = 0; 
+										int showMaxVariantGroups = 2;
+										int showMaxVariants = 3;
+										var productVariantTheme = productTheme != "" ? productTheme : "bg-white";
+
+										<div 
+											class="static-variants w-100 d-none d-lg-block position-absolute left-0 bottom-0 @productTheme" 
+											id="StaticVariants_@product.Id" 
+											style="pointer-events: none;">
+
+											@foreach (var variantGroup in product.VariantGroups())
 											{
-												@RenderField(field.Value)
+												int variantsCount = 0;
+
+												<div class="d-flex gap-2 mb-2">
+													@foreach (var variant in variantGroup.Options)
+													{
+														if (variantGroupCount < showMaxVariantGroups)
+														{
+															var optionsCount = variantGroup.Options.Count();
+
+															if (variantsCount < showMaxVariants)
+															{
+																string optionWidth = !string.IsNullOrEmpty(variant.Color) ? "w-25" : "";
+
+																<article class="static-variants-option @optionWidth @(productVariantTheme)" title="@product.Name @variant.Name" style="pointer-events: initial;">
+																	@if (!string.IsNullOrEmpty(variant.Color))
+																	{
+																		string defaultProductImage = Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value);
+																		string variantImage = Dynamicweb.Context.Current.Server.UrlEncode(variant.Image.Value);
+																		string defaultPrice = !hidePrice ? product.Price.PriceFormatted : "0";
+																		string variantPrice = !hidePrice ? product.Price.PriceFormatted : "0";
+																	
+																		if (isLazyLoadingForProductInfoEnabled)
+																		{
+																			<figure class="figure w-100 d-block m-0" data-price-formatted="" onmouseover="switchVariantProduct('@product.Id', this.getAttribute('data-price-formatted'), '@variantImage')" onmouseout="switchVariantProduct('@product.Id', this.getAttribute('data-price-formatted'), '@defaultProductImage')">
+																				<div class="d-flex align-items-center justify-content-center">
+																					<img src="/admin/public/GetImage.ashx?image=@variantImage&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" height="75" width="75" class="p-1 text-small" loading="lazy" decoding="async" alt="@product.Name, @variant.Name">
+																				</div>
+																			</figure>
+																		}
+																		else
+																		{
+																			<figure class="figure w-100 d-block m-0" onmouseover="switchVariantProduct('@product.Id', '@defaultPrice', '@variantImage')" onmouseout="switchVariantProduct('@product.Id', '@variantPrice', '@defaultProductImage')">
+																				<div class="d-flex align-items-center justify-content-center">
+																					<img src="/admin/public/GetImage.ashx?image=@variantImage&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" height="75" width="75" class="p-1 text-small" loading="lazy" decoding="async" alt="@product.Name, @variant.Name">
+																				</div>
+																			</figure>
+																		}
+																	}
+																	else
+																	{
+																		<div class="d-flex align-items-center justify-content-center">
+																			@variant.Name
+																		</div>
+																	}
+																	<div class="visually-hidden">
+																		<h4>@Translate("Variant Name")</h4>
+																		<p>@product.Name, @variant.Name</p>
+																		@if (!hidePrice) { 
+																			<h4>@Translate("Variant Price")</h4>
+																		if (isLazyLoadingForProductInfoEnabled)
+																		{
+																			<p><span class="text-price js-text-price"></span></p>
+																		}
+																		else
+																		{
+																			<p><span class="text-price">@product.Price.PriceFormatted</span></p>
+																		}
+																	}
+																	</div>
+																</article>
+															}
+
+															variantsCount++;
+
+															if (variantsCount == showMaxVariants && optionsCount != showMaxVariants)
+															{
+																int left = optionsCount - showMaxVariants;
+																<div class="variant-option ms-1 d-flex justify-content-center align-items-center">
+																	<span>+@left</span>
+																</div>
+															}													
+														}
+													}
+
+												</div>
+
+												variantGroupCount++;
 											}
-										}
-									</ul>
-								}
+										</div>
+									}
+								</div>
 							</div>
+							<div class="@productThemePadding">
+								<div class="flex-grow-1">
+									<h3 class="h6 mb-0 text-break">@product.Name @if (!string.IsNullOrEmpty(product.VariantName)) { <text>(@product.VariantName)</text> }</h3>
+									@if (!Model.Item.GetBoolean("HideProductNumber")) { 
+										<p class="fs-7 opacity-85 mb-2">@product.Number</p>
+									}
+									@if (mainFeatures.Count > 0)
+									{
+										<ul class="p-0 lh-sm opacity-75" style="list-style-position: inside">
+											@foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
+											{
+												foreach (var field in mainFeatureGroup.Fields)
+												{
+													@RenderField(field.Value)
+												}
+											}
+										</ul>
+									}
+								</div>
 								
-							@if (!hidePrice) { 
-								string priceMin = "";
-								string priceMax = "";
+								@if (!hidePrice) { 
+									string priceMin = "";
+									string priceMax = "";
 
-								<div>
 									<div>
-										<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
+										<div>
+											<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
 				
-										@if (showPricesWithVat == "false" && !neverShowVat) {
-											string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
+											@if (showPricesWithVat == "false" && !neverShowVat) {
+											if (isLazyLoadingForProductInfoEnabled)
+											{
+												<span itemprop="price" content="" class="d-none"></span>
+												<span class="text-decoration-line-through js-text-decoration-line-through opacity-75 me-3 text-price js-text-price d-none" data-show-if="LiveProductInfo.product.Price.Price != LiveProductInfo.product.PriceBeforeDiscount.Price"></span>
+											}
+											else
+											{
+												string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
+												<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
+												if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+													<span class="text-decoration-line-through opacity-75 me-3 text-price">@beforePrice</span>
+												}
+											}
 
-											<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
-											if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-												<span class="text-decoration-line-through opacity-75 me-3 text-price">@beforePrice</span>
+											} else {
+
+											if (isLazyLoadingForProductInfoEnabled)
+											{
+												<span itemprop="price" content="" class="d-none"></span>
+												<span class="text-decoration-line-through js-text-decoration-line-through opacity-75 me-3 text-price js-text-price d-none" data-show-if="LiveProductInfo.product.Price.Price != LiveProductInfo.product.PriceBeforeDiscount.Price"></span>
+											}
+											else
+											{
+												string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
+
+												<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
+												if (product.Price.Price != product.PriceBeforeDiscount.Price) {
+													<span class="text-decoration-line-through opacity-75 me-3 text-price">@beforePrice</span>
+												}
+											}
+											}
+			
+											@if (showPricesWithVat == "false" && !neverShowVat) {
+											if (isLazyLoadingForProductInfoEnabled)
+											{
+												<span class="text-price js-text-price"><div class="spinner-border" role="status"></div></span>
+											}
+											else
+											{
+												string price = product.Price.PriceWithoutVatFormatted;
+												if (product?.VariantInfo?.VariantInfo != null) {
+													priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
+													priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
+												}
+												if (priceMin != priceMax) {
+													price = priceMin + " - " + priceMax;
+												} 
+												<span class="text-price">@price</span>
 											}
 										} else {
-											string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
-
-											<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
-											if (product.Price.Price != product.PriceBeforeDiscount.Price) {
-												<span class="text-decoration-line-through opacity-75 me-3 text-price">@beforePrice</span>
+											if (isLazyLoadingForProductInfoEnabled)
+											{
+												<span class="text-price js-text-price"><div class="spinner-border" role="status"></div></span>
+											}
+											else
+											{
+												string price = product.Price.PriceFormatted;
+												if (product?.VariantInfo?.VariantInfo != null) {
+													priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
+													priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
+												}
+												if (priceMin != priceMax) {
+													price = priceMin + " - " + priceMax;
+												}
+												<span class="text-price">@price</span>
 											}
 										}
-			
+										</div>
 										@if (showPricesWithVat == "false" && !neverShowVat) {
-											string price = product.Price.PriceWithoutVatFormatted;
+										if (isLazyLoadingForProductInfoEnabled)
+										{
+											<div class="fs-7 opacity-85 text-price js-text-price-with-vat d-none" data-suffix="@Translate("Incl. VAT")"></div>
+										}
+										else
+										{
+											string price = product.Price.PriceWithVatFormatted;
 											if (product?.VariantInfo?.VariantInfo != null) {
-												priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
-												priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
-											}
-											if (priceMin != priceMax) {
-												price = priceMin + " - " + priceMax;
-											} 
-											<span class="text-price">@price</span>
-										} else {
-											string price = product.Price.PriceFormatted;
-											if (product?.VariantInfo?.VariantInfo != null) {
-												priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
-												priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
+												priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
+												priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
 											}
 											if (priceMin != priceMax) {
 												price = priceMin + " - " + priceMax;
 											}
-											<span class="text-price">@price</span>
+											<div class="fs-7 opacity-85 text-price">@price @Translate("Incl. VAT")</div>
+										}
+									}
+									</div>
+								}
+
+								@if (product.VariantInfo.VariantInfo != null && staticVariantsLayout == "swatches") {
+									var optionCount = product.VariantInfo.VariantInfo.Count();
+									var showMaxVariants = 5;
+
+									<div class="d-flex flex-row gap-1 align-items-center">
+										@foreach (VariantInfoViewModel variant in product.VariantInfo.VariantInfo.Take(showMaxVariants))
+										{
+											<span class="colorbox colorbox-sm rounded-circle border me-1" style="background-color: @variant.OptionColor"></span>
+										}
+										@if (optionCount > showMaxVariants)
+										{
+											int left = optionCount - showMaxVariants;
+											<span class="ms-2">+@left</span>
 										}
 									</div>
-									@if (showPricesWithVat == "false" && !neverShowVat) {
-										string price = product.Price.PriceWithVatFormatted;
-										if (product?.VariantInfo?.VariantInfo != null) {
-											priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
-											priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
-										}
-										if (priceMin != priceMax) {
-											price = priceMin + " - " + priceMax;
-										}
-										<div class="fs-7 opacity-85 text-price">@price @Translate("Incl. VAT")</div>
-									}
-								</div>
-							}
-
-							@if (product.VariantInfo.VariantInfo != null && staticVariantsLayout == "swatches") {
-								var optionCount = product.VariantInfo.VariantInfo.Count();
-								var showMaxVariants = 5;
-
-								<div class="d-flex flex-row gap-1 align-items-center">
-									@foreach (VariantInfoViewModel variant in product.VariantInfo.VariantInfo.Take(showMaxVariants))
-									{
-										<span class="colorbox colorbox-sm rounded-circle border me-1" style="background-color: @variant.OptionColor"></span>
-									}
-									@if (optionCount > showMaxVariants)
-									{
-										int left = optionCount - showMaxVariants;
-										<span class="ms-2">+@left</span>
-									}
-								</div>
-							}
-						</div>
-					</a>
+								}
+							</div>
+						</a>
+					</div>
 				</article>
 			}
 		</div>

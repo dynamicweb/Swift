@@ -1,0 +1,261 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb
+
+@{
+	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
+
+	string shopPageId = Pageview.CurrentParagraph.Item["ShopPageLink"] != null ? Pageview.CurrentParagraph.Item["ShopPageLink"].ToString() : "";
+
+	var ecomLanguages = Dynamicweb.Ecommerce.Services.Languages.GetLanguages();
+	var assetGroups = Dynamicweb.Ecommerce.Services.DetailsGroups.GetGroups();
+
+	List<string> productIds = new List<string>();
+
+	string confirmationPage = Pageview.CurrentParagraph.Item["ConfirmationPageLink"] != null ? Pageview.CurrentParagraph.Item["ConfirmationPageLink"].ToString() : "";
+
+	int languageCount = 0;
+}
+
+@if (GetLoop("OrderLines").Count > 0) { 
+	<div class="grid gap-0 theme">
+		<header class="g-col-12 mb-4">
+			<div class="pb-3 pb-lg-0 pt-3 pt-lg-5">
+				<h1 class="h3 mb-2">@Translate("Downloads")</h1>
+				<p>@Translate("You can get relevant product data and assets such as product images and documents")</p>
+				<p class="mb-0"><span>@Translate("Products ready to download"):</span> <span>@GetString("Ecom:Order.OrderLines.TotalProductQuantity")</span></p>
+			</div>
+		</header>
+
+		<section class="g-col-12 g-col-lg-8 pe-lg-5 pb-md-5">
+			<header class="g-col-12 py-2 d-none d-lg-block">
+				<div class="grid gap-2 lh-1">
+					<div class="g-col-1"></div>
+					<div class="g-col-3">@Translate("Number")</div>
+					<div class="g-col-6">@Translate("Product")</div>
+					<div class="g-col-2 text-end">
+						<a href="@GetString("Ecom:Cart.EmptyCartLink")" title="@Translate("Remove all")">@Translate("Remove all")</a>
+					</div>
+				</div>
+			</header>
+
+			<header class="py-2 border-bottom d-block d-lg-none">
+				<a href="@GetString("Ecom:Cart.EmptyCartLink")" title="@Translate("Remove all")">@Translate("Remove all")</a>
+			</header>
+
+			@foreach (LoopItem orderline in GetLoop("OrderLines"))
+			{
+				string name = orderline.GetString("Ecom:Order:OrderLine.ProductName");
+				string number = orderline.GetString("Ecom:Order:OrderLine.ProductNumber");
+				string image = "/Admin/Public/GetImage.ashx?width=" + 180 + "&height=" + 180 + "&image=" + orderline.GetString("Ecom:Product.PrimaryImage") + "&FillCanvas=true&&Format=WebP&Quality=100";
+
+				string removeFromBasketLink = orderline.GetString("Ecom:Order:OrderLine.DeleteLink");
+
+				string detailsPageLink = GetPageIdByNavigationTag("ProductDetailPage").ToString();
+
+				var defaultGroupId = !string.IsNullOrEmpty(orderline.GetString("Ecom:Order:OrderLine.PrimaryOrDefaultGroupId")) ? orderline.GetString("Ecom:Order:OrderLine.PrimaryOrDefaultGroupId") : "0";
+				var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
+
+				string link = string.IsNullOrEmpty(selectedDetailPage) ? $"/Default.aspx?ID={detailsPageLink}?groupid={defaultGroupId}" : selectedDetailPage;
+				link += "&ProductID=" + orderline.GetString("Ecom:Order:OrderLine.ProductID");
+				link += !string.IsNullOrEmpty(orderline.GetString("Ecom:Order:OrderLine.VariantID")) ? "&Variantid=" + orderline.GetString("Ecom:Order:OrderLine.VariantID") : "";
+
+				if (orderline.GetBoolean("Ecom:Order:OrderLine.IsProduct")) { 				
+					<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center mb-1">
+						<div class="g-col-12 border-top"></div>
+
+						<div class="g-col-1">
+							<a href="@link" tabindex="-1">
+								<img class="img-fluid" src="@image" height="60" width="60" alt="@name">
+							</a>
+						</div>
+
+						<div class="g-col-7 g-col-lg-9 grid grid-9 gap-0 gap-lg-3 lh-1">
+							<div class="g-col-4 g-col-lg-3 order-1">
+								<span class="fs-8 fs-lg-6"><a href="@link"  tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@number</a></span>
+							</div>
+
+							<div class="g-col-5 g-col-lg-6 order-2 lh-1">
+								<span class="fs-8 fs-lg-6"><a href="@link"  tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@name</a></span>
+							</div>
+						</div>
+
+						<div class="g-col-2 g-col-lg-2 text-end">
+							<a href="@removeFromBasketLink" alt="@Translate("Remove")">@Translate("Remove")</a>
+						</div>
+					</article>
+
+					productIds.Add(orderline.GetString("Ecom:Order:OrderLine.ProductID"));
+				}
+			}
+		</section>
+
+		@if (!string.IsNullOrEmpty(confirmationPage)) { 
+			<aside class="g-col-12 g-col-lg-4 position-relative">
+				<div class="p-3 p-lg-5 pb-lg-4@(theme)">
+					<form id="ProductExportForm" action="/dwapi/ecommerce/products/export" class="sticky-receipt">
+						<input type="hidden" name="ShopId" value="@Pageview.Area.EcomShopId" />
+
+						<div class="mb-2">
+							<h3 class="h5">@Translate("Product information")</h3>
+							<div>@Translate("Select a language and format for your product file")</div>
+						</div>
+
+						<div class="form-floating mb-3">
+							<select class="form-select bg-white" id="DownloadCartLanguageSelector" name="LanguageId" aria-label="@Translate("Language")">
+								<option value="">@Translate("None")</option>
+								@foreach (var language in ecomLanguages)
+								{
+									string selected = languageCount == 0 ? "selected" : "";
+
+									<option value="@language.LanguageId" @selected>@language.GetDisplayName()</option>
+
+									languageCount++;
+								}
+							</select>
+							<label for="DownloadCartLanguageSelector">@Translate("Language")</label>
+						</div>
+
+						<div class="form-floating mb-4">
+							<select class="form-select bg-white" id="DownloadCartFormatSelector" name="ExportFormat" aria-label="@Translate("Export format")">
+								<option value="">@Translate("None")</option>
+								<option value="json" selected>JSON</option>
+								<option value="csv">CSV</option>
+								<option value="xml">XML</option>
+							</select>
+							<label for="DownloadCartFormatSelector">@Translate("Export format")</label>
+						</div>
+
+						<div class="mb-2">
+							<h3 class="h5">@Translate("Image settings")</h3>
+							<div>@Translate("Select a resolution for your images")</div>
+						</div>
+
+						<div class="form-floating mb-4">
+							<input type="hidden" name="Dpi" id="DownloadCartDpi" value="72" />
+							<input type="hidden" name="ImageFormat" id="DownloadCartImageFormat" value="webp" />
+
+							<select class="form-select bg-white" id="DownloadCartImageImageSettingsSelector" aria-label="@Translate("Resolution")"
+									onchange="document.querySelector('#DownloadCartDpi').value = this.options[this.selectedIndex].getAttribute('data-dpi'); document.querySelector('#DownloadCartImageFormat').value = this.options[this.selectedIndex].getAttribute('data-image-format');">
+								<option data-dpi="72" data-image-format="webp" selected>@Translate("Web images") (dpi: 72)</option>
+								<option data-dpi="300" data-image-format="png">@Translate("Print images") (dpi: 300)</option>
+								<option data-dpi="600">@Translate("HQ images") (dpi: 600)</option>
+							</select>
+							<label for="DownloadCartImageFormatSelector">@Translate("Resolution")</label>
+						</div>
+
+						<div class="mb-2">
+							<h3 class="h5">@Translate("Product assets")</h3>
+							<div>@Translate("Optionally select additional product assets to download")</div>
+						</div>
+
+						<div class="form-floating mb-3">
+							<select class="form-select bg-white" name="AssetCategories" id="DownloadCartImageAssetsSelector" aria-label="@Translate("Selected image assets")">
+								<option value="all" selected>@Translate("All")</option>
+								@foreach (var group in assetGroups)
+								{
+									<option value="@group.SystemName">@group.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID)</option>
+								}
+								</select>
+							<label for="DownloadCartImageAssetsSelector">@Translate("Selected image assets")</label>
+						</div>
+
+						<div class="form-floating mb-5">
+							<input type="email" class="form-control bg-white" id="DownloadCartRecipientEmail" placeholder="@Translate("Send download link to")" required>
+							<div class="invalid-feedback">
+								@Translate("Please enter an email address")
+							</div>
+							<label for="DownloadCartRecipientEmail">@Translate("Send download link to")</label>
+						</div>
+
+						<div id="DownloadCartRecipientTokens"></div>
+
+						@foreach (var productid in productIds)
+						{
+							<input type="hidden" name="ProductIds" value="@productid" />
+						}
+
+						<button type="button" onclick="SetEmailAddresses(this)" class="btn btn-primary w-100 mt-3" title="@Translate("Send download link")">@Translate("Send download link")</button>
+
+						@if (!string.IsNullOrEmpty(shopPageId))
+						{
+							<a href="/Default.aspx?ID=@shopPageId" class="btn btn-secondary w-100 mt-3" title="@Translate("Add more products")">@Translate("Add more products")</a>
+						}
+					</form>
+				</div>
+			</aside>
+
+			<script>
+				async function SetEmailAddresses(clickedButton) {
+					var emails = document.querySelector("#DownloadCartRecipientEmail").value;
+
+					var fetchOptions = {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify(emails.replace(" ", "").split(","))
+					};
+
+					clickedButton.disabled = true;
+					clickedButton.innerHTML = '<div style="animation: preloader-spin 2s infinite linear;" class="preloader-spin"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512"><title>circle-notch</title><g fill="#ffffff"><path d="M288 24.103v8.169a11.995 11.995 0 0 0 9.698 11.768C396.638 63.425 472 150.461 472 256c0 118.663-96.055 216-216 216-118.663 0-216-96.055-216-216 0-104.534 74.546-192.509 174.297-211.978A11.993 11.993 0 0 0 224 32.253v-8.147c0-7.523-6.845-13.193-14.237-11.798C94.472 34.048 7.364 135.575 8.004 257.332c.72 137.052 111.477 246.956 248.531 246.667C393.255 503.711 504 392.789 504 256c0-121.187-86.924-222.067-201.824-243.704C294.807 10.908 288 16.604 288 24.103z"></path></g></svg></div>';
+
+					let response = await fetch("/dwapi/users/createrecipients", fetchOptions);
+
+					if (response.ok) {
+						let inputText = await response.json().then(function (text) {
+							return text;
+						});
+
+						let emailsArray = inputText;
+						const recipiens = document.querySelector("#DownloadCartRecipientTokens");
+						recipiens.innerHTML = "";
+
+						emailsArray.forEach(function (email) {
+							var inputElement = document.createElement('input');
+							inputElement.name = "RecipientTokens";
+							inputElement.type = "hidden";
+							inputElement.value = email;
+							recipiens.appendChild(inputElement);
+						});
+
+						StartDownload(clickedButton);
+					} else {
+						clickedButton.disabled = false;
+						clickedButton.innerHTML = "@Translate("Send download link")";
+					}
+				}
+
+				async function StartDownload(clickedButton) {
+					var form = document.querySelector('#ProductExportForm');
+					let formData = new FormData(form);
+					const newParams = new URLSearchParams(formData); //Get parameters from the form
+					var url = new URL(form.action);	//Get the url from the form
+					var newUrl = url.origin + url.pathname + "?" + newParams.toString(); //Create url with the new parameters
+
+					var emailField = form.querySelector("#DownloadCartRecipientEmail");
+
+
+					if (emailField.value == "") {
+						emailField.classList.add("is-invalid");
+
+						clickedButton.disabled = false;
+						clickedButton.innerHTML = "@Translate("Send download link")";
+					} else {
+						emailField.classList.remove("is-invalid");
+
+						let response = await fetch(newUrl);
+
+						if (response.ok) {
+							window.location = '@confirmationPage' + '&redirect=false&cartcmd=emptycart&OrderContext=' + '@GetString("Ecom:OrderContext.ID")';
+
+							return false;
+						} else {
+							return false;
+						}
+					}
+				}
+			</script>
+		}
+	</div>
+} 

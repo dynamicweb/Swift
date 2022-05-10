@@ -11,6 +11,7 @@ import { VariantSelector } from './_variantselector';
 import { Video } from './_video';
 import { Typeahead } from './_typeahead';
 import { AssetLoader } from './_assetLoader';
+import { LiveProductInfo } from './_live-product-info';
 
 //Bootstrap
 window.bootstrap = bootstrap;
@@ -29,7 +30,8 @@ const swift = function () {
 		VariantSelector: VariantSelector,
 		Typeahead: Typeahead,
 		Video: Video,
-		AssetLoader: AssetLoader
+		AssetLoader: AssetLoader,
+		LiveProductInfo: LiveProductInfo
 	}
 }();
 export { swift };
