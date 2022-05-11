@@ -12,248 +12,249 @@
 	var defaultLat = Model.Item?.GetGeolocation("DefaultMapCenter")?.Latitude != null ? Model.Item.GetGeolocation("DefaultMapCenter").Latitude.ToString().Replace(",", ".") : "0.000000";
 	var defaultLng = Model.Item?.GetGeolocation("DefaultMapCenter")?.Longitude != null ? Model.Item.GetGeolocation("DefaultMapCenter").Longitude.ToString().Replace(",", ".") : "0.000000";
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+
+	string headingLevel = Model.Item.GetString("HeadingLevel", "h2");
+	string headingLevelStart = $"<{headingLevel} class=\"h1 m-0\">";
+	string headingLevelStop = $"</{headingLevel}>";
 }
 
 @if (defaultLat != "0.000000" && defaultLng != "0.000000") { 
-    if (apiKey != "") {
-        <div class="grid position-relative@(theme) item_@Model.Item.SystemName.ToLower()">
-            @if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
-                <div class="g-col-12 g-col-lg-8 order-1" id="MapHeader">
-				    <h1 class="mb-0">@Model.Item.GetString("Title")</h1>
-                </div>
-		    } else {
-                <div class="g-col-12 g-col-lg-8 order-1" id="MapHeader"></div>
-            }
+		if (apiKey != "") {
+				<div class="grid position-relative@(theme) item_@Model.Item.SystemName.ToLower()">
+					@if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
+						<div class="g-col-12 g-col-lg-8 order-1" id="MapHeader">
+							@headingLevelStart
+								@Model.Item.GetString("Title")
+							@headingLevelStop
+						</div>
+					} else {
+						<div class="g-col-12 g-col-lg-8 order-1" id="MapHeader"></div>
+					}
+					<div class="g-col-12 g-col-lg-4 order-2 order-lg-2 position-relative js-map-search-column">
+						<form class="d-flex align-items-center w-100" id="MapSearch">
+							<span class="position-absolute top-0 icon-2 px-3 d-flex align-items-center h-100 search-icon">
+								@ReadFile(iconPath + "search.svg")
+							</span>
 
-            <div class="g-col-12 g-col-lg-4 order-2 order-lg-2 position-relative js-map-search-column">
-                <form class="d-flex align-items-center w-100" id="MapSearch">
-                    <span class="position-absolute top-0 icon-2 px-3 d-flex align-items-center h-100 search-icon">
-					    @ReadFile(iconPath + "search.svg")
-				    </span>
+							<input type="text" class="form-control rounded-pill py-2 ps-5 pe-3" placeholder="@Translate("Enter city state or zip")" />
+							<button type="submit" class="d-none" id="MapSearchButton">@Translate("Search")</button>
+						</form>
+					</div>
 
-				    <input type="text" class="form-control rounded-pill py-2 ps-5 pe-3"
-					       placeholder="@Translate("Enter city state or zip")" />
-                    <button type="submit" class="d-none" id="MapSearchButton">@Translate("Search")</button>
-                </form>
-            </div>
+					<div class="g-col-12 g-col-lg-8 order-1 order-lg-4 js-map-column">
+						<div class="map" id="Map"></div>
+					</div>
 
-            <div class="g-col-12 g-col-lg-8 order-1 order-lg-4 js-map-column">
-		        <div class="map" id="Map"></div>
-	        </div>
+					@if (locationList.Count() > 1) {
+						<div class="g-col-12 g-col-lg-4 order-2 order-lg-3 js-locations-list-column">
+							<div class="locations-list">
+								<ul class="list-group" id="LocationsList"></ul>
+							</div>
+						</div>
+					} else if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
+						<div class="g-col-12 order-5 order-lg-3">
+							@headingLevelStart
+								@Model.Item.GetString("Title")
+							@headingLevelStop
+						</div>
+					}
+				</div>
+			} else {
+				<div class="alert alert-info" role="alert">
+					@Translate("Google maps API key is missing")
+				</div>
+			}
 
-	        @if (locationList.Count() > 1) {
-		        <div class="g-col-12 g-col-lg-4 order-2 order-lg-3 js-locations-list-column">
-                    <div class="locations-list">
-                        <ul class="list-group" id="LocationsList"></ul>
-		            </div>
-                </div>
-	        } else if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
-		        <div class="g-col-12 order-5 order-lg-3">
-			        <h1>@Model.Item.GetString("Title")</h1>
-		        </div>
-	        }
+			<script type="module">
+				@if (!useDefaultGoogleMapsStyling) {
+					<text>
+						var mapIcon = {
+								url: "@(iconPath)marker.svg"
+						}
 
-	    
-        </div>
-    } else {
-        <div class="alert alert-info" role="alert">
-            @Translate("Google maps API key is missing")
-        </div>
-    }
+						var mapStyle = [
+							{
+								"featureType": "administrative.land_parcel",
+								"elementType": "labels",
+								"stylers": [
+									{
+										"visibility": "off"
+									}
+								]
+							},
+							{
+								"featureType": "landscape.man_made",
+								"elementType": "geometry.fill",
+								"stylers": [
+									{
+										"color": "#b0afb6"
+									}
+								]
+							},
+							{
+								"featureType": "landscape.natural",
+								"elementType": "geometry.fill",
+								"stylers": [
+									{
+										"color": "#d7d7da"
+									}
+								]
+							},
+							{
+								"featureType": "landscape.natural.terrain",
+								"elementType": "geometry.fill",
+								"stylers": [
+									{
+										"color": "#7ba78b"
+									}
+								]
+							},
+							{
+								"featureType": "poi",
+								"elementType": "labels.text",
+								"stylers": [
+									{
+										"visibility": "off"
+									}
+								]
+								},
+							{
+								"featureType": "poi",
+								"elementType": "geometry",
+								"stylers": [
+									{
+										"color": "#659577"
+									}
+								]
+							},
+							{
+								"featureType": "poi.business",
+								"stylers": [
+									{
+										"visibility": "off"
+									}
+								]
+							},
+							{
+								"featureType": "poi.park",
+								"elementType": "geometry.fill",
+								"stylers": [
+									{
+										"color": "#659577"
+									}
+								]
+							},
+							{
+								"featureType": "road",
+								"elementType": "labels.icon",
+								"stylers": [
+									{
+										"visibility": "off"
+									}
+								]
+							},
+							{
+								"featureType": "road.highway",
+								"elementType": "geometry.fill",
+								"stylers": [
+									{
+										"color": "#f5f5f5"
+									}
+								]
+							},
+							{
+								"featureType": "road.highway",
+								"elementType": "geometry.stroke",
+								"stylers": [
+									{
+										"color": "#f0f0f0"
+									}
+								]
+							},
+							{
+								"featureType": "road.local",
+								"elementType": "labels",
+								"stylers": [
+									{
+										"visibility": "off"
+									}
+								]
+							},
+							{
+								"featureType": "transit",
+								"stylers": [
+									{
+										"visibility": "off"
+									}
+								]
+							},
+							{
+								"featureType": "water",
+								"elementType": "geometry.fill",
+								"stylers": [
+									{
+										"color": "#8ea5c2"
+									}
+								]
+							}
+						];
+						</text>
+				} else {
+						<text>
+								var mapIcon = {};
 
-    <script type="module">
-        @if (!useDefaultGoogleMapsStyling) {
-            <text>
-                var mapIcon = {
-                    url: "@(iconPath)marker.svg"
-                }
+								var mapStyle = [{
+									featureType: 'poi',
+									elementType: 'labels.icon',
+									stylers: [
+										{
+											visibility: 'off'
+										}
+									]
+								}];
+						</text>
+			}
 
-                var mapStyle = [
-                  {
-                    "featureType": "administrative.land_parcel",
-                    "elementType": "labels",
-                    "stylers": [
-                      {
-                        "visibility": "off"
-                      }
-                    ]
-                  },
-                  {
-                    "featureType": "landscape.man_made",
-                    "elementType": "geometry.fill",
-                    "stylers": [
-                      {
-                        "color": "#b0afb6"
-                      }
-                    ]
-                  },
-                  {
-                    "featureType": "landscape.natural",
-                    "elementType": "geometry.fill",
-                    "stylers": [
-                      {
-                        "color": "#d7d7da"
-                      }
-                    ]
-                  },
-                  {
-                    "featureType": "landscape.natural.terrain",
-                    "elementType": "geometry.fill",
-                    "stylers": [
-                      {
-                        "color": "#7ba78b"
-                      }
-                    ]
-                  },
-                  {
-                    "featureType": "poi",
-                    "elementType": "labels.text",
-                    "stylers": [
-                      {
-                        "visibility": "off"
-                      }
-                    ]
-                    },
-                  {
-                    "featureType": "poi",
-                    "elementType": "geometry",
-                    "stylers": [
-                      {
-                        "color": "#659577"
-                      }
-                    ]
-                  },
-                  {
-                    "featureType": "poi.business",
-                    "stylers": [
-                      {
-                        "visibility": "off"
-                      }
-                    ]
-                  },
-                  {
-                    "featureType": "poi.park",
-                    "elementType": "geometry.fill",
-                    "stylers": [
-                      {
-                        "color": "#659577"
-                      }
-                    ]
-                  },
-                  {
-                    "featureType": "road",
-                    "elementType": "labels.icon",
-                    "stylers": [
-                      {
-                        "visibility": "off"
-                      }
-                    ]
-                  },
-                  {
-                    "featureType": "road.highway",
-                    "elementType": "geometry.fill",
-                    "stylers": [
-                      {
-                        "color": "#f5f5f5"
-                      }
-                    ]
-                  },
-                  {
-                    "featureType": "road.highway",
-                    "elementType": "geometry.stroke",
-                    "stylers": [
-                      {
-                        "color": "#f0f0f0"
-                      }
-                    ]
-                  },
-                  {
-                    "featureType": "road.local",
-                    "elementType": "labels",
-                    "stylers": [
-                      {
-                        "visibility": "off"
-                      }
-                    ]
-                  },
-                  {
-                    "featureType": "transit",
-                    "stylers": [
-                      {
-                        "visibility": "off"
-                      }
-                    ]
-                  },
-                  {
-                    "featureType": "water",
-                    "elementType": "geometry.fill",
-                    "stylers": [
-                      {
-                        "color": "#8ea5c2"
-                      }
-                    ]
-                  }
-                ];
-            </text>
-	    } else {
-            <text>
-                var mapIcon = {};
+				var locations = [
+						@foreach (var location in locationList) {
+								<text>{
+										name: "@(location.Name)",
+										company: "@(location.Company)",
+										address: "@(location.Address)",
+										city: "@(location.City)",
+										zip: "@(location.Zip)",
+										state: "@(location.State)",
+										country: "@(location.Country)",
+										phone: "@(location.Phone)",
+										email: "@(location.Email)",
+										location: {
+												lat: @(location.Location.Lat.ToString().Replace(",", ".")),
+												lng: @(location.Location.Lng.ToString().Replace(",", "."))
+										}
+								},</text>
+						}
+				];
 
-                var mapStyle = [{
-                  featureType: 'poi',
-                  elementType: 'labels.icon',
-                  stylers: [
-                    {
-                      visibility: 'off'
-                    }
-                  ]
-                }];
-            </text>
-	    }
+				var mapSettings = {
+						locations: locations,
+						mapStyle: mapStyle,
+						mapIcon: mapIcon,
+						initialZoomLevel: @initialZoomLevel,
+						defaultLat: @defaultLat,
+						defaultLng: @defaultLng,
+						regionCode: "@(regionCode)",
+						directionsLabel: "@Translate("Directions")",
+						noLocationsFoundLabel: "@Translate("No options available in the selected area")"
+				};
 
-        var locations = [
-            @foreach (var location in locationList) {
-                <text>{
-                    name: "@(location.Name)",
-                    company: "@(location.Company)",
-                    address: "@(location.Address)",
-                    city: "@(location.City)",
-                    zip: "@(location.Zip)",
-                    state: "@(location.State)",
-                    country: "@(location.Country)",
-                    phone: "@(location.Phone)",
-                    email: "@(location.Email)",
-                    location: {
-                        lat: @(location.Location.Lat.ToString().Replace(",", ".")),
-                        lng: @(location.Location.Lng.ToString().Replace(",", "."))
-                    }
-                },</text>
-            }
-        ];
+				window.addEventListener('DOMContentLoaded', function (event) {
+						swift.LocationsMap.init(mapSettings);
+				});
+		</script>
 
-        var mapSettings = {
-            locations: locations,
-            mapStyle: mapStyle,
-            mapIcon: mapIcon,
-            initialZoomLevel: @initialZoomLevel,
-            defaultLat: @defaultLat,
-            defaultLng: @defaultLng,
-            regionCode: "@(regionCode)",
-            directionsLabel: "@Translate("Directions")",
-            noLocationsFoundLabel: "@Translate("No options available in the selected area")"
-        };
-
-        window.addEventListener('DOMContentLoaded', function (event) {
-            swift.LocationsMap.init(mapSettings);
-        });
-    </script>
-
-    <script defer src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)"></script>
+		<script defer src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)"></script>
 } else {
-    <div class="alert alert-info" role="alert">
-        @Translate("The map is not proberly configured")
-    </div>
+	<div class="alert alert-info" role="alert">
+		@Translate("The map is not proberly configured")
+	</div>
 }
-
-
-
