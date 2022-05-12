@@ -2,6 +2,64 @@
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Frontend
 
+@functions {
+
+	private Dynamicweb.Frontend.LinkViewModel GetLink(ItemViewModel item)
+	{
+		string linkType = item.GetRawValueString("LinkType", "page");
+		Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
+
+		if (linkType == "page" && item.GetLink("ButtonLink") != null)
+		{
+			link = item.GetLink("ButtonLink");
+		}
+
+		if (linkType == "product-group")
+		{
+			IList<ProductGroupViewModel> selectedGroups = item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
+			IList<string> groupIds = new List<string> { };
+
+			if (selectedGroups != null)
+			{
+				foreach (var fromGroup in selectedGroups)
+				{
+					groupIds.Add(fromGroup.Id);
+				}
+			}
+
+			link = new Dynamicweb.Frontend.LinkViewModel()
+			{
+				Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
+				IsExternal = false
+			};
+		}
+
+		if (linkType == "product")
+		{
+			ProductListViewModel products = item.GetValue<ProductListViewModel>("ProductLink");
+			IList<string> productIds = new List<string> { };
+
+			if (products != null)
+			{
+				foreach (var product in products.Products)
+				{
+					productIds.Add(product.Id);
+				}
+			}
+
+			string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
+			string pageTag = productIds.Count == 1 ? "ProductDetailPage" : "Shop";
+			link = new Dynamicweb.Frontend.LinkViewModel()
+			{
+				Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds).Trim(),
+				IsExternal = false
+			};
+		}
+
+		return link;
+	}
+}
+
 @{
 	bool movePageBehind = false;
 	bool isFirstPoster = false;
@@ -117,43 +175,44 @@
 	maxWidth = maxWidth == "max-width-on" ? "style=\"grid-template-columns: minmax(auto,75ch);\"" : maxWidth;
 	maxWidth = maxWidth == "max-width-off" ? string.Empty : maxWidth;
 
-	<li class="@(active)">
-		<div class="h-100 @(theme)">
-			@switch (layout)
-			{
-				case "align-top-left-text-left":
-					alignment = "text-start justify-content-start align-items-start";
-					break;
-				case "align-top-center-text-center":
-					alignment = "text-center justify-content-center align-items-start";
-					break;
-				case "align-top-right-text-right":
-					alignment = "text-end justify-content-end align-items-start";
-					break;
-				case "align-middle-left-text-left":
-					alignment = "text-start justify-content-start align-items-center";
-					break;
-				case "align-middle-center-text-center":
-					alignment = "text-center justify-content-center align-items-center";
-					break;
-				case "align-middle-right-text-right":
-					alignment = "text-end justify-content-end align-items-center";
-					break;
-				case "align-bottom-left-text-left":
-					alignment = "text-start justify-content-start align-items-end";
-					break;
-				case "align-bottom-center-text-center":
-					alignment = "text-center justify-content-center align-items-end";
-					break;
-				case "align-bottom-right-text-right":
-					alignment = "text-end justify-content-end align-items-end";
-					break;
-			}
+	switch (layout)
+	{
+		case "align-top-left-text-left":
+			alignment = "text-start justify-content-start align-items-start";
+			break;
+		case "align-top-center-text-center":
+			alignment = "text-center justify-content-center align-items-start";
+			break;
+		case "align-top-right-text-right":
+			alignment = "text-end justify-content-end align-items-start";
+			break;
+		case "align-middle-left-text-left":
+			alignment = "text-start justify-content-start align-items-center";
+			break;
+		case "align-middle-center-text-center":
+			alignment = "text-center justify-content-center align-items-center";
+			break;
+		case "align-middle-right-text-right":
+			alignment = "text-end justify-content-end align-items-center";
+			break;
+		case "align-bottom-left-text-left":
+			alignment = "text-start justify-content-start align-items-end";
+			break;
+		case "align-bottom-center-text-center":
+			alignment = "text-center justify-content-center align-items-end";
+			break;
+		case "align-bottom-right-text-right":
+			alignment = "text-end justify-content-end align-items-end";
+			break;
+	}
 
-			@switch (itemLayout)
-			{
-				case "poster":
+	<li>
 
+		@switch (itemLayout)
+		{
+			case "poster":
+
+				<div class="h-100 @(theme)">
 					<div class="position-absolute top-0 bottom-0 end-0 start-0">
 						@RenderImage(item)
 					</div>
@@ -168,11 +227,13 @@
 							</div>
 						</div>
 					</div>
+				</div>
 
-					break;
+				break;
 
-				case "story-image-left":
+			case "story-image-left":
 
+				<div class="h-100 @(theme)">
 					<div class="grid gap-0 h-100">
 						<div class="g-col-12 g-col-lg-6 g-col-xl-7">
 							<div class="overflow-hidden h-100 w-100">
@@ -188,11 +249,13 @@
 							</div>
 						</div>
 					</div>
+				</div>
 
-					break;
+				break;
 
-				case "story-image-right":
-
+			case "story-image-right":
+				
+				<div class="h-100 @(theme)">
 					<div class="grid gap-0 h-100">
 						<div class="g-col-12 g-col-lg-6 g-col-xl-5 grid grid-1 @(containerWidth) @contentPadding @(alignment)" @(maxWidth)>
 							<div class="grid grid-1 gap-3">
@@ -206,10 +269,33 @@
 							@RenderImage(item)
 						</div>
 					</div>
+				</div>
 
-					break;
-			}
-		</div>
+				break;
+
+			case "logo":
+
+				if (!string.IsNullOrEmpty(item.GetString("Image")))
+				{
+					var altText = !string.IsNullOrEmpty(item.GetString("ImageAlt")) ? item.GetString("ImageAlt") : item.GetString("Title", string.Empty);
+					var image = item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel();
+					var link = GetLink(item);
+
+					if(link is object && !string.IsNullOrEmpty(link.Url))
+					{
+						string target = link.IsExternal ? "target=\"_blank\"" : string.Empty;
+						<a href="@link.Url" class="d-flex h-100 text-center" @(target)>
+							<img src="@image.Path" class="mw-100 mh-100 m-auto" alt="@altText" loading="lazy" style="object-fit: contain;" />
+						</a>
+					}
+					else
+					{
+						<img src="@image.Path" class="mw-100 mh-100 m-auto" alt="@altText" loading="lazy" style="object-fit: contain;" />
+					}
+				}
+
+				break;
+		}
 	</li>
 }
 
@@ -255,59 +341,7 @@
 
 @helper RenderButton(ItemViewModel item, string buttonSize)
 {
-	string linkType = item.GetRawValueString("LinkType", "page");
-	Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
-
-	string StretchedLink = item.GetRawValueString("StretchedLink", "");
-	StretchedLink = StretchedLink == "item-not-clickable" ? "" : StretchedLink;
-	StretchedLink = StretchedLink == "item-clickable" ? " stretched-link" : StretchedLink;
-
-	if (linkType == "page" && item.GetLink("ButtonLink") != null)
-	{
-		link = item.GetLink("ButtonLink");
-	}
-
-	if (linkType == "product-group")
-	{
-		IList<ProductGroupViewModel> selectedGroups = item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
-		IList<string> groupIds = new List<string> { };
-
-		if (selectedGroups != null)
-		{
-			foreach (var fromGroup in selectedGroups)
-			{
-				groupIds.Add(fromGroup.Id);
-			}
-		}
-
-		link = new Dynamicweb.Frontend.LinkViewModel()
-		{
-			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
-			IsExternal = false
-		};
-	}
-
-	if (linkType == "product")
-	{
-		ProductListViewModel products = item.GetValue<ProductListViewModel>("ProductLink");
-		IList<string> productIds = new List<string> { };
-
-		if (products != null)
-		{
-			foreach (var product in products.Products)
-			{
-				productIds.Add(product.Id);
-			}
-		}
-
-		string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
-		string pageTag = productIds.Count == 1 ? "ProductDetailPage" : "Shop";
-		link = new Dynamicweb.Frontend.LinkViewModel()
-		{
-			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds).Trim(),
-			IsExternal = false
-		};
-	}
+	var link = GetLink(item);
 
 	if (link != null && !string.IsNullOrEmpty(item.GetString("ButtonLabel")))
 	{
@@ -318,14 +352,14 @@
 		buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
 
 		<div class="m-0">
-			<a href="@link.Url" class="btn @buttonStyle@(buttonSize)@(StretchedLink)">@item.GetString("ButtonLabel")</a>
+			<a href="@link.Url" class="btn @buttonStyle@(buttonSize)">@item.GetString("ButtonLabel")</a>
 		</div>
 	}
 	else if (link != null && !string.IsNullOrEmpty(link.Url))
 	{
 		string target = link.IsExternal ? "target=\"_blank\"" : "";
 
-		<a href="@link.Url" @target class="@StretchedLink">
+		<a href="@link.Url" @target>
 			<span class="visually-hidden">@Model.Item.GetString("Title")</span>
 		</a>
 	}
