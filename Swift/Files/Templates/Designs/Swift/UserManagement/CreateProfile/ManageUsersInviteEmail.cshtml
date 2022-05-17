@@ -1,0 +1,62 @@
+@inherits RazorTemplateBase<RazorTemplateModel<Template>>
+@using Dynamicweb.Rendering;
+
+@{
+	//Create recovery token (48 hours)
+	string resultUserName = "",
+	firstName = GetString("UserManagement:User.FirstName"),
+	lastName = GetString("UserManagement:User.LastName"),
+	name = GetString("UserManagement:User.Name");
+	string email = GetString("UserManagement:User.Email");
+	string website = Dynamicweb.Context.Current.Request.Url.Scheme + "://" + GetGlobalValue("Global:Request.Host");
+
+
+	if (!string.IsNullOrEmpty(firstName) && !string.IsNullOrEmpty(lastName))
+	{
+		resultUserName = " " + firstName + " " + lastName;
+	}
+	else if (!string.IsNullOrEmpty(firstName))
+	{
+		resultUserName = " " + firstName;
+	}
+	else if (!string.IsNullOrEmpty(name))
+	{
+		resultUserName = " " + name;
+	}
+	else
+	{
+		resultUserName = "";
+	}
+
+	int newUserId = GetInteger("UserManagement:User.ID");
+	Dynamicweb.Security.UserManagement.User newUser = Dynamicweb.Security.UserManagement.User.GetUserByID(newUserId);
+
+	DateTime time = DateTime.UtcNow.AddHours(48);
+	string passwordToken = Guid.NewGuid().ToString();
+	newUser.PasswordRecoveryTokenExpirationTime = time;
+	newUser.PasswordRecoveryToken = passwordToken;
+	newUser.Save();
+
+	string approvalUrl = "";
+
+	if (!string.IsNullOrEmpty(GetString("UserManagement.ApprovalUrl"))) { 
+		Uri approvalUri = new Uri(GetString("UserManagement.ApprovalUrl"));
+		var queryDictionary = System.Web.HttpUtility.ParseQueryString(approvalUri.Query);
+		string approvalKeyFromUrl = approvalUri != null ? queryDictionary["approvalKey"] : "";
+		string approvalQuerystring = $"/Default.aspx?id={GetPageIdByNavigationTag("CreatePasswordPage")}&approvalKey={approvalKeyFromUrl}";
+		string hostname = Dynamicweb.Context.Current.Request.Url.Host;
+		approvalUrl = hostname + approvalQuerystring;
+
+		approvalUrl += "&UserID=" + GetString("UserManagement:User.ID");
+		approvalUrl += "&RecoveryToken=" + passwordToken;
+		approvalUrl += "&SetTokenCorrectly=true";
+	}
+}
+
+<h1>@Translate("Hi and welcome") @resultUserName</h1>
+<h4>@Translate("You are one click away from activating your user account")</h4>
+<p>@Translate("Please click the button below to set your password for the user") @email @Translate("at") @website</p>
+<p>@Translate("You have 48 hours to set the password")</p>
+<a href="@approvalUrl">@Translate("Click here and confirm your email")</a>
+<p>@Translate("You will receive an email when your account is ready to use.")</p>
+
