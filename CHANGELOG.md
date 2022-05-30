@@ -1,5 +1,32 @@
 # Changelog
 
+## [v1.11.0] - 30-05-2022
+
+## Bugfixes
+* Checkout: Sort Summary to match cart flow and cart summary
+* Checkout: Remove zero discount values
+* General: Loadmore button implement as link, improve 
+* General: Fix spinner on compact list view, when live product info is disabled in Live integration
+* General: Refactoring hide headers on scroll - intersection observer
+* General: Component repeater, set searchQuery variable
+* General: Use theme light for modal
+* General: Replace <p> tags with <div> tags, removed some margins and use flex for space
+* General: Remove default dark theme from price itemtype
+* General: Related product always get a product does not use the settings
+* General. Set same level buttons for both option in Cookie
+* Itemtype: Do not render row markup if columns are empty
+* Itemtype: Button icon size now follow button label size
+* Product list: Hide facets if no product found
+
+## Changed
+* General: Thumbnails images for Page/Row/Column presets are resixed and compressed
+
+## Added
+* General: Support tax info is tax is set
+* Itemtype: Alt texts to varius item types
+* Itemtype: Heading levels on content, be able to define H1, H2, H3 etc.
+* Customer Center: Create and manage users
+
 ## [v1.10.0] - 05-05-2022
 
 Dynamicweb proudly presents **Swift 1.10.0 (Q1-2022)** This introduce additional B2B functionalities to Swift, such as Quotes Other than that there has been a big focus on ways to decrease the implmentation time. The main headlines for this release are:
