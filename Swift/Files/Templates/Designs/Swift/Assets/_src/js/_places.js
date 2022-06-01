@@ -58,18 +58,24 @@ const Places = function () {
 
 			if (place.address_components != undefined) {
 				var address = "";
+				var streetnumber = "";
 				var zip = "";
 				var region = "";
 				var country = "";
 				var locality = "";
 				var sublocality = "";
 
-				for (const component of place.address_components) {
+				for (const component of place.address_components) { 
 					const componentType = component.types[0];
 
 					switch (componentType) {
+						case "street_number": {
+							streetnumber =  component.short_name;
+							break;
+						}
+
 						case "route": {
-							address = component.long_name;
+							address = component.short_name;
 							break;
 						}
 
@@ -106,7 +112,7 @@ const Places = function () {
 
 				const addressField = document.querySelector("#" + fieldPrefix + "Address");
 				if (addressField != null) {
-					addressField.value = address;
+					addressField.value = address + " " + streetnumber;
 				}
 
 				const zipField = document.querySelector("#" + fieldPrefix + "Zip");
