@@ -32,7 +32,7 @@ const LiveProductInfo = function () {
 			productPricePrice: ".js-text-price-price",
 			stock: ".js-text-stock",
 			expectedDelivery: ".js-text-expected-delivery",
-			stockMessages: ".js-stock-state small, .js-stock-state p",
+			stockMessages: ".js-stock-state div, .js-stock-state small, .js-stock-state p",
 			relatedProducts: "[id^='RelatedProducts']",
 			content: "#content",
 		},
