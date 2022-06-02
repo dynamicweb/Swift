@@ -112,7 +112,7 @@ const LiveProductInfo = function () {
 					el.classList.remove(self.config.loaderClass);
 				});
 
-				if (self.product.Price != null) {
+				if (self.product.Price != null && container.querySelectorAll(self.selectors.price)) {
 					let price = product.Price.PriceFormatted;
 
 					if(product.VariantInfo != null)
@@ -148,7 +148,7 @@ const LiveProductInfo = function () {
 					}
 				}
 
-				if (product.Prices != null && product.Prices.length > 0) {
+				if (product.Prices != null && product.Prices.length > 0 && priceContainer.querySelectorAll(self.selectors.productPriceQuantity) && priceContainer.querySelectorAll(self.selectors.productPricePrice)) {
 					let productPricesContainers = container.querySelectorAll(self.selectors.productPricesContainer);
 
 					productPricesContainers.forEach(function (productPricesTopContainer){
@@ -169,13 +169,13 @@ const LiveProductInfo = function () {
 					self.ShowConditionalElement(productPricesContainers);
 				}
 
-				if (product.StockLevel != null) {
+				if (product.StockLevel != null && container.querySelectorAll(self.selectors.stock)) {
 					let stockLevel = product.StockLevel > 100 ? "100+" : product.StockLevel;
 					self.UpdateValue(container.querySelectorAll(self.selectors.stock), stockLevel);
 					self.ShowConditionalElement(container.querySelectorAll(self.selectors.stockMessages));
 				}
 
-				if (product.ExpectedDelivery != null) {
+				if (product.ExpectedDelivery != null && container.querySelectorAll(self.selectors.expectedDelivery)) {
 					self.UpdateValue(container.querySelectorAll(self.selectors.expectedDelivery), product.ExpectedDelivery);
 					self.ShowConditionalElement(container.querySelectorAll(self.selectors.expectedDelivery));
 				}
