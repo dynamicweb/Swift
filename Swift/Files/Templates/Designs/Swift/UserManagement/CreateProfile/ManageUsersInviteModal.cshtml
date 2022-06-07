@@ -1,0 +1,164 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb.Data
+@using System.Diagnostics
+@using System.Threading.Tasks
+
+@{
+	string pageTitle = Pageview.Page.GetDisplayName();
+	string pageId = GetGlobalValue("Global:Page.ID");
+	int signInPageId = Dynamicweb.Services.Pages.GetPageByNavigationTag(Pageview.Area.ID, "SignInPage").ID;
+	string singInPageUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(signInPageId);
+	string invalidName = !string.IsNullOrEmpty(GetString("UserManagement:User.Name.Input.Error")) ? "is-invalid" : "";
+	string invalidEmail = !string.IsNullOrEmpty(GetString("UserManagement:User.Email.Input.Error")) ? "is-invalid" : "";
+	string invalidPassword = !string.IsNullOrEmpty(GetString("UserManagement:User.NewPassword.Input.Error")) ? "is-invalid" : "";
+	string invalidConfirmPassword = !string.IsNullOrEmpty(GetString("UserManagement:User.NewPasswordConfirm.Input.Error")) ? "is-invalid" : "";
+
+	string contentPadding = Pageview.CurrentParagraph.Item["ContentPadding"] != null ? Pageview.CurrentParagraph.Item["ContentPadding"].ToString() : "";
+	contentPadding = contentPadding == "none" ? "px-0" : contentPadding;
+	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
+	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
+	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", "").Trim().ToLower() : " theme light";
+
+	string tempPassword = Guid.NewGuid().ToString();
+
+	string repository = "Secondary users";
+	string indexName = "Users.index";
+	string buildName = "Users";
+
+	Dynamicweb.Indexing.IndexHelper.BuildIndexInstances(repository, indexName, buildName);
+
+	var indexService = Dynamicweb.Extensibility.ServiceLocator.Current.GetInstance<Dynamicweb.Indexing.IIndexService>();
+	var index = indexService.LoadIndex(repository, indexName);
+	Stopwatch stopwatch = new Stopwatch();
+	stopwatch.Start();
+
+	Task.WaitAll(Task.Delay(250));
+
+	while (indexService.GetActiveBuildTasks(index).Any() && stopwatch.ElapsedMilliseconds < 5000)
+	{
+		Task.WaitAll(Task.Delay(1000));
+	}
+	stopwatch.Stop();
+}
+
+@{
+	string secretJavascript = GetString("UserManagement:User.FormSubmit").Replace("return s(this);", "");
+
+	foreach (var error in GetLoop("FormValidationErrors"))
+	{
+		<div class="alert alert-danger mb-3" role="alert">
+			@error.GetString("UserManagement:User.FormValidationError.Message")
+		</div>
+	}
+
+	if (!String.IsNullOrEmpty(GetString("error")))
+	{
+		<div class="alert alert-danger mb-5" role="alert">
+			@GetString("error")
+		</div>
+	}
+
+	string action = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("Action")) ? Dynamicweb.Context.Current.Request.Form.Get("Action") : "";
+	string confirmation = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Confirmation")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Confirmation") : "";
+
+	if (action == "DeleteUser")
+	{
+		int userId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("UserId")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.Form.Get("UserId")) : 0;
+		Dynamicweb.Security.UserManagement.User newUser = Dynamicweb.Security.UserManagement.User.GetUserByID(userId);
+		newUser.Delete();
+
+		Dynamicweb.Indexing.IndexHelper.BuildIndexInstances(repository, indexName, buildName);
+		stopwatch.Start();
+		Task.WaitAll(Task.Delay(250));
+
+		while (indexService.GetActiveBuildTasks(index).Any() && stopwatch.ElapsedMilliseconds < 5000)
+		{
+			Task.WaitAll(Task.Delay(1000));
+		}
+		stopwatch.Stop();
+
+		Dynamicweb.Context.Current.Response.Redirect("/Default.aspx?ID=" + Pageview.Page.ID + "&LayoutTemplate=Swift_PageCleanNoLayout.cshtml&Confirmation=UserDeleted");
+	}
+
+	<div class="modal fade" id="inviteUserModal" tabindex="-1" aria-labelledby="inviteUserModalLabel" aria-hidden="true">
+		<div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content theme light">
+				<form id="InviteUserForm">
+					@GetString("UserManagement:User.FormHidden")
+
+					<div class="modal-header">
+						<h5 class="modal-title" id="inviteUserModalLabel">@Translate("Invite user")</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<p>@Translate("An email will be sent to the user. The user must accept the request to complete the sign-up")</p>
+
+						<input type="hidden" name="UserManagementForm" value="1">
+						<input type="hidden" name="UserManagement_Form_CustomerNumber" value="@Pageview.User.CustomerNumber" />
+						<input type="hidden" name="UserManagement_Form_NewPassword" value="@tempPassword" />
+						<input type="hidden" name="UserManagement_Form_NewPasswordConfirm" value="@tempPassword" />
+
+						<div class="form-floating mb-3">
+							<input type="text" class="form-control @invalidName" placeholder="@Translate("Name")" name="UserManagement_Form_Name" id="UserManagement_Form_Name" value="@GetString("UserManagement:User.Name")" required />
+							<div class="invalid-feedback">@GetString("UserManagement:User.Name.Input.Error")</div>
+							<label for="UserManagement_Form_Name" class="form-label">@Translate("Name")</label>
+						</div>
+
+						<div class="form-floating mb-4">
+							<input type="email" class="form-control @invalidEmail" placeholder="@Translate("Email")" name="UserManagement_Form_Email" id="UserManagement_Form_Email" value="@GetString("UserManagement:User.Email")" required />
+							<div class="invalid-feedback">@GetString("UserManagement:User.Email.Input.Error")</div>
+							<label for="UserManagement_Form_Email" class="form-label">@Translate("Email")</label>
+						</div>
+
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Translate("Close")</button>
+						<button type="button" onclick="InviteUser(event)" class="btn btn-primary" id="InviteUserButton" data-bs-dismiss="modal">@Translate("Invite user")</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+		<div id="UserInviteNotificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+			<div class="toast-header">
+				<strong class="me-auto" id="UserInviteNotificationToastLabel"></strong>
+				<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		@secretJavascript
+
+		async function InviteUser(e) {
+			const form = document.querySelector("#InviteUserForm");
+
+			var overlayElement = document.createElement('div');
+			overlayElement.className = "preloader-overlay";
+			overlayElement.setAttribute('id', "overlay");
+			var overlayElementIcon = document.createElement('div');
+			overlayElementIcon.className = "preloader-overlay-icon";
+			overlayElementIcon.style.top = window.pageYOffset + "px";
+			overlayElement.appendChild(overlayElementIcon);
+
+			if (e.currentTarget) {
+				e.currentTarget.parentNode.insertBefore(overlayElement, e.currentTarget);
+			}
+
+			//Required to prevent spam (Calls the secret js method)
+			s(form);
+
+			swift.PageUpdater.Update(form);
+		}
+	</script>
+
+	if (Pageview.IsVisualEditorMode)
+	{
+		<div class="alert alert-info text-center mt-3" role="alert">
+			@Translate("Invite user modal")
+		</div>
+	} 
+}

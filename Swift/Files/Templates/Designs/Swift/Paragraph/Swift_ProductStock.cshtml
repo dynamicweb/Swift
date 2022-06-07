@@ -39,37 +39,87 @@
 	horizontalAlign = horizontalAlign == "end" ? "text-end" : horizontalAlign;
 	bool hasExpectedDelivery = product.ExpectedDelivery != null && product.ExpectedDelivery > DateTime.Now;
 	string expectedDeliveryDate = product.ExpectedDelivery?.ToShortDateString() ?? "";
+	
+	bool isErpConnectionDown = !Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsWebServiceConnectionAvailable();
+	bool hideStock = Model.Item.GetBoolean("HideStockState") || (Pageview.AreaSettings.GetBoolean("ErpDownHideStock") && isErpConnectionDown);
+	
+	string liveInfoClass = "";
+	string productInfoFeed = "";
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
+	if (isLazyLoadingForProductInfoEnabled)
+	{
+		if (Dynamicweb.Context.Current.Items.Contains("ProductInfoFeed"))
+		{
+			productInfoFeed = Dynamicweb.Context.Current.Items["ProductInfoFeed"]?.ToString();
+			if (!string.IsNullOrEmpty(productInfoFeed))
+			{
+				productInfoFeed = $"data-product-info-feed=\"{productInfoFeed}\"";
+			}
+		}
+		liveInfoClass = "js-live-info";
+	}
 }
 
-@if (!IsNeverOutOfStock && product.Id != null) {
-	<div class="js-stock-state @horizontalAlign item_@Model.Item.SystemName.ToLower()">
-
-		@if (product.StockLevel > 0)
+@if (!hideStock)
+{
+	if (!IsNeverOutOfStock && product.Id != null) {
+		if (isLazyLoadingForProductInfoEnabled)
 		{
-			if (!Model.Item.GetBoolean("HideInventory"))
-			{
-				<p class="small text-success m-0">@product.StockLevel @Translate("In stock")</p>
-			}
-			else
-			{
-				<p class="small text-success m-0">@Translate("In stock")</p>
-			}
-		}
+			string hideStockState = string.IsNullOrEmpty(product.VariantId) && product.VariantInfo.VariantInfo != null ? "d-none" : "";
+			<div class="js-stock-state @horizontalAlign item_@Model.Item.SystemName.ToLower() @liveInfoClass" data-product-id="@product.Id" @productInfoFeed>
+				<div class="mt-3 js-stock-state spinner-border @hideStockState">
+					@if (!Model.Item.GetBoolean("HideInventory"))
+					{
+						<div class="small text-success d-none" data-show-if="LiveProductInfo.product.StockLevel > 0">
+							<span class="js-text-stock"></span>
+							@Translate("In stock")
+						</div>
+					}
+					else
+					{
+						<div class="small text-success d-none" data-show-if="LiveProductInfo.product.StockLevel > 0">@Translate("In stock")</div>
+					}
+					<div class="small text-danger d-none" data-show-if="LiveProductInfo.product.StockLevel <= 0">@Translate("Out of Stock")</div>
 
+					<div class="d-none" data-show-if="LiveProductInfo.product.ExpectedDelivery != null && new Date(LiveProductInfo.product.ExpectedDelivery) > new Date()">
+						<span>@Translate("Expected back in stock"): </span>
+						<span class="js-text-expected-delivery"></span>
+					</div>
+				</div>
+			</div>
+		}
 		else
 		{
-			<p class="small text-danger m-0">@Translate("Out of Stock")</p>
-		}
+			<div class="js-stock-state @horizontalAlign item_@Model.Item.SystemName.ToLower()">
 
-		@if (hasExpectedDelivery)
-		{
-			<p>
-				<span>@Translate("Expected in stock:")</span>
-				<span>@expectedDeliveryDate</span>
-			</p>
-		}
+				@if (product.StockLevel > 0)
+				{
+					if (!Model.Item.GetBoolean("HideInventory"))
+					{
+						<div class="small text-success">@product.StockLevel @Translate("In stock")</div>
+					}
+					else
+					{
+						<div class="small text-success">@Translate("In stock")</div>
+					}
+				}
 
-	</div>
-} else if (Pageview.IsVisualEditorMode) {
-	<div class="alert alert-info">@Translate("No products available")</div>
+				else
+				{
+					<div class="small text-danger">@Translate("Out of Stock")</div>
+				}
+
+				@if (hasExpectedDelivery)
+				{
+					<div>
+						<span>@Translate("Expected in stock"): </span>
+						<span>@expectedDeliveryDate</span>
+					</div>
+				}
+
+			</div>
+		}
+	} else if (Pageview.IsVisualEditorMode) {
+		<div class="alert alert-info">@Translate("No products available")</div>
+	}
 }

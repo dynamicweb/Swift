@@ -8,8 +8,9 @@
 
 	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
 	bool anonymousUser = Pageview.User == null;
-	bool hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser;
-	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+	bool isErpConnectionDown = !Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsWebServiceConnectionAvailable();
+	bool hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHideAddToCart") && isErpConnectionDown;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && isErpConnectionDown;
 
 	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
 	if (!url.Contains("LayoutTemplate"))
@@ -101,6 +102,7 @@
 	bool hideStock = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideStock"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideStock"].ToString()) : false;
 	bool quantitySelector = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["QuantitySelector"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["QuantitySelector"].ToString()) : false;
 	string addToCartColWidth = quantitySelector ? "160" : "60";
+	bool hideFilters = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideFilters"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideFilters"].ToString()) : false;
 
 	string saleBadgeType = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("SaleBadgeType")) ? Dynamicweb.Context.Current.Request.Form.Get("SaleBadgeType") : "";
 	string saleBadgeCssClassName = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("SaleBadgeCssClassName")) ? Dynamicweb.Context.Current.Request.Form.Get("SaleBadgeCssClassName") : "";
@@ -126,80 +128,107 @@
 	//Create group id collection and products id collection strings
 	string groupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["GroupId"]) ? Dynamicweb.Context.Current.Request.Form["GroupId"].ToString() : "";
 	string productIds = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["MainProductID"]) ? Dynamicweb.Context.Current.Request.Form["MainProductID"].ToString() : "";
+	string contextCart = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["OrderContext"]) ? Dynamicweb.Context.Current.Request.Form["OrderContext"].ToString() : "";
+
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
+
 }
 
 @if (productList.Count > 0 && requestType != "UpdateFacets") {
 
 	//The form that defines what should be rendered
-	<form action="/Default.aspx?ID=@servicePageId" id="RelatedProductsListForm_@paragraphID" data-response-target-element="RelatedProductsListFacets_@paragraphID">
-		<input type="hidden" name="SortOrder" value="DESC" />
-		<input type="hidden" name="ID" value="@servicePageId" />
-		<input type="hidden" name="SourceType" value="@sourceType" />
-		<input type="hidden" name="ParagraphID" value="@paragraphID" />
-		<input type="hidden" name="RequestType" value="UpdateFacets" id="RelatedProductsListRequestType_@paragraphID" />
-		<input type="hidden" name="PageSize" value="@pageSizeSetting" id="RelatedProductsListPageSize_@paragraphID" />
-		<input type="hidden" name="PageSizeSetting" value="@pageSizeSetting" />
-		<input type="hidden" name="Title" value="@title" />
-		<input type="hidden" name="HideTitle" value="@hideTitle.ToString()" />
-		<input type="hidden" name="SelectedDisplayGroups" value="@selectedDisplayGroups" />
-		<input type="hidden" name="HideImage" value="@hideImage.ToString()" />
-		<input type="hidden" name="HideProductNumber" value="@hideProductNumber.ToString()" />
-		<input type="hidden" name="HideProductName" value="@hideProductName.ToString()" />
-		<input type="hidden" name="HideStock" value="@hideStock.ToString()" />
-		<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
-		<input type="hidden" name="Theme" value="@theme" />
-		<input type="hidden" name="TitleFontSize" value="@titleFontSize" />
-		<input type="hidden" name="ContentPadding" value="@contentPadding" />
-		
-		@*--- VARIANTS ---*@
-		@if (sourceType == "variants") {
-			<input type="hidden" name="MainProductID" value="@productIds" />
-		}
+<form action="/Default.aspx?ID=@servicePageId" id="RelatedProductsListForm_@paragraphID" data-response-target-element="RelatedProductsListFacets_@paragraphID">
+	<input type="hidden" name="SortOrder" value="DESC" />
+	<input type="hidden" name="ID" value="@servicePageId" />
+	<input type="hidden" name="SourceType" value="@sourceType" />
+	<input type="hidden" name="ParagraphID" value="@paragraphID" />
+	<input type="hidden" name="RequestType" value="UpdateFacets" id="RelatedProductsListRequestType_@paragraphID" />
+	<input type="hidden" name="PageSize" value="@pageSizeSetting" id="RelatedProductsListPageSize_@paragraphID" />
+	<input type="hidden" name="PageSizeSetting" value="@pageSizeSetting" />
+	<input type="hidden" name="Title" value="@title" />
+	<input type="hidden" name="HideTitle" value="@hideTitle.ToString()" />
+	<input type="hidden" name="SelectedDisplayGroups" value="@selectedDisplayGroups" />
+	<input type="hidden" name="HideImage" value="@hideImage.ToString()" />
+	<input type="hidden" name="HideProductNumber" value="@hideProductNumber.ToString()" />
+	<input type="hidden" name="HideProductName" value="@hideProductName.ToString()" />
+	<input type="hidden" name="HideStock" value="@hideStock.ToString()" />
+	<input type="hidden" name="HideFilters" value="@hideFilters.ToString()" />
+	<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
+	<input type="hidden" name="Theme" value="@theme" />
+	<input type="hidden" name="TitleFontSize" value="@titleFontSize" />
+	<input type="hidden" name="ContentPadding" value="@contentPadding" />
 
-		@*--- MOST SOLD ---*@
-		@if (sourceType == "most-sold") {
-			<input type="hidden" name="SortBy" value="OrderCount" /> 
-			<input type="hidden" name="GroupId" value="@groupId" />
-		}
+	@if (!string.IsNullOrEmpty(contextCart))
+	{
+		<input type="hidden" name="OrderContext" value="@contextCart" />
+		<input type="hidden" name="minicartid" value="@contextCart" />
+	}
 
-		@*--- TRENDING ---*@
-		@if (sourceType == "trending") {
-			<input type="hidden" name="SortBy" value="OrderCountGrowth" /> 
-			<input type="hidden" name="GroupId" value="@groupId" />
-		}
+	@if (isLazyLoadingForProductInfoEnabled)
+	{
+		<input type="hidden" name="getproductinfo" value="true" />
+	}
+	
+	@*--- VARIANTS ---*@
+	@if (sourceType == "variants")
+	{
+		<input type="hidden" name="MainProductID" value="@productIds" />
+	}
 
-		@*--- LATEST ---*@
-		@if (sourceType == "latest") {
-			<input type="hidden" name="SortBy" value="Created" /> 
-			<input type="hidden" name="GroupId" value="@groupId" />
-		}
+	@*--- MOST SOLD ---*@
+	@if (sourceType == "most-sold")
+	{
+		<input type="hidden" name="SortBy" value="OrderCount" />
+		<input type="hidden" name="GroupId" value="@groupId" />
+	}
 
-		@*--- FREQUENTLY BOUGHT ---*@
-		@if (sourceType == "frequently") {
-			<input type="hidden" name="BoughtWithProductIds" value="[@productIds]" /> 
-		}
+	@*--- TRENDING ---*@
+	@if (sourceType == "trending")
+	{
+		<input type="hidden" name="SortBy" value="OrderCountGrowth" />
+		<input type="hidden" name="GroupId" value="@groupId" />
+	}
 
-		@*--- RELATED PRODUCTS ---*@
-		@if (sourceType == "related-products") {
-			<input type="hidden" name="MainProductID" value="@productIds" />
-		}
+	@*--- LATEST ---*@
+	@if (sourceType == "latest")
+	{
+		<input type="hidden" name="SortBy" value="Created" />
+		<input type="hidden" name="GroupId" value="@groupId" />
+	}
 
-		@if (sourceType != "variants") {
-			<input type="hidden" name="isVariant" value="false" />
-        } else {
-			<input type="hidden" name="isVariant" value="true" />
-        }
+	@*--- FREQUENTLY BOUGHT ---*@
+	@if (sourceType == "frequently")
+	{
+		<input type="hidden" name="BoughtWithProductIds" value="[@productIds]" />
+	}
 
-		<input type="hidden" name="SaleBadgeType" value="@saleBadgeType" />
-		<input type="hidden" name="SaleBadgeCssClassName" value="@saleBadgeCssClassName" />
-		<input type="hidden" name="NewBadgeCssClassName" value="@newBadgeCssClassName" />
-		<input type="hidden" name="NewPublicationDays" value="@newPublicationDays" />
+	@*--- RELATED PRODUCTS ---*@
+	@if (sourceType == "related-products")
+	{
+		<input type="hidden" name="MainProductID" value="@productIds" />
+	}
 
-		@if (campaignBadgesValues != "") {
-			<input type="hidden" name="CampaignBadgesValues" value="@campaignBadgesValues" />
-		}
+	@if (sourceType != "variants")
+	{
+		<input type="hidden" name="isVariant" value="false" />
+	}
+	else
+	{
+		<input type="hidden" name="isVariant" value="true" />
+	}
 
+	<input type="hidden" name="SaleBadgeType" value="@saleBadgeType" />
+	<input type="hidden" name="SaleBadgeCssClassName" value="@saleBadgeCssClassName" />
+	<input type="hidden" name="NewBadgeCssClassName" value="@newBadgeCssClassName" />
+	<input type="hidden" name="NewPublicationDays" value="@newPublicationDays" />
 
+	@if (campaignBadgesValues != "")
+	{
+		<input type="hidden" name="CampaignBadgesValues" value="@campaignBadgesValues" />
+	}
+
+	@if (facetsFound && !hideFilters)
+	{
 		<div class="modal" id="FacetsModal_@paragraphID">
 			<div class="modal-dialog modal-dialog-scrollable">
 				<div class="modal-content @modalTheme">
@@ -215,13 +244,16 @@
 						{
 							<button type="button" class="btn btn-secondary flex-fill" onclick="location.reload()">@Translate("Clear") (@selectedFacetsCount)</button>
 						}
-						<button type="button" class="btn btn-primary flex-fill" data-bs-dismiss="modal" 
-								onclick="UpdateRelatedProductsList(event, 'UpdateList', '@paragraphID')">@Translate("Update")</button>
+						<button type="button" class="btn btn-primary flex-fill" data-bs-dismiss="modal"
+								onclick="UpdateRelatedProductsList(event, 'UpdateList', '@paragraphID')">
+							@Translate("Update")
+							</button>
+						</div>
 					</div>
 				</div>
 			</div>
-		</div>
-	</form>
+		}
+</form>
 
 	//The products list table
 	<div class="h-100 @(contentPadding) @theme">
@@ -229,7 +261,7 @@
 			<h2 class="@titleFontSize mb-4">@title</h2>
 		} 
 
-		@if (facetsFound) {
+		@if (facetsFound && !hideFilters) {
 			<button type="button" class="btn btn-primary d-flex mb-3" data-bs-toggle="modal" data-bs-target="#FacetsModal_@paragraphID" onclick="UpdateRelatedProductsList(event, 'UpdateFacets', '@paragraphID')">
 				<span class="flex-fill text-start pe-3">
 					@Translate("Filter") @selectedFacetsLabel
@@ -301,7 +333,11 @@
 							}
 							@if (!hideProductName) {
 								<td scope="row">
-									@product.Name
+									@if (!string.IsNullOrEmpty(product.VariantName)) { 
+										<div>@product.Name - @product.VariantName</div>
+									} else { 
+										@product.Name
+									}
 
 									@if (showBadges) { 
 										<div class="fs-7">
@@ -397,28 +433,38 @@
 
 								<td width="@addToCartColWidth" style="min-width: @(addToCartColWidth)px" align="right">
 									<form method="post" action="@url">
+										@if (!string.IsNullOrEmpty(contextCart))
+										{
+											<input type="hidden" name="OrderContext" value="@contextCart" />
+											<input type="hidden" name="minicartid" value="@contextCart" />
+										}
 										<input type="hidden" name="redirect" value="false" />
 										<input type="hidden" name="ProductId" value="@product.Id" />
 										<input type="hidden" name="cartcmd" value="add" />
 
-										@if (!string.IsNullOrEmpty(product.VariantId)) {
+										@if (!string.IsNullOrEmpty(product.VariantId))
+										{
 											<input type="hidden" name="VariantId" value="@product.VariantId" />
 										}
 
-										@if (quantitySelector) {
+										@if (quantitySelector)
+										{
 											<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
 												<label for="Quantity_@(product.Id)_@product.VariantId" class="visually-hidden">@Translate("Quantity")</label>
-												<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number">
-												<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)" style="max-width: 3.5rem;">@ReadFile(iconPath+"shopping-cart.svg")</button>
-												@if (stepQty != "1") {
+												<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="0" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number">
+												<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button icon-2 @disableAddToCart" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)" style="max-width: 3rem;">@ReadFile(iconPath + "shopping-cart.svg")</button>
+												@if (stepQty != "1")
+												{
 													<div class="invalid-feedback d-none">
 														@Translate("Please select a quantity that is dividable by") @stepQty
 													</div>
 												}
 											</div>
-										} else {
+										}
+										else
+										{
 											<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" type="hidden">
-											<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)" style="max-width: 3.5rem;">@ReadFile(iconPath+"shopping-cart.svg")</button>
+											<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart icon-2" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)" style="max-width: 3rem;">@ReadFile(iconPath + "shopping-cart.svg")</button>
 										}
 									</form>
 								</td>

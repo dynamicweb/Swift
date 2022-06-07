@@ -16,6 +16,10 @@ const ProductList = function () {
 
 			let formData = new FormData(form);
 
+			if (e.currentTarget != undefined) {
+				e.preventDefault(); 
+			}
+
 			//Fire the 'update' event
 			let event = new CustomEvent("update.swift.productlist", {
 				cancelable: true,

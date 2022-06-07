@@ -1,0 +1,124 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@{ 
+	string contentPadding = Pageview.CurrentParagraph.Item["ContentPadding"] != null ? Pageview.CurrentParagraph.Item["ContentPadding"].ToString() : "";
+	contentPadding = contentPadding == "none" ? "px-0" : contentPadding;
+	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
+	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
+	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", "").Trim().ToLower() : " theme light";
+
+	string approvalKey = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Key")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Key") : "";
+	string email = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Email")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Email") : "";
+}
+
+@if (GetString("UserManagement:User.Login.Action") == "Recovery")
+{
+    bool userFound = true;
+    if (!string.IsNullOrWhiteSpace(GetString("UserManagement:User.Login.FoundUsersCount")))
+    {
+        if (GetInteger("UserManagement:User.Login.FoundUsersCount") == 0 || GetInteger("UserManagement:User.Login.FoundUsersCount") > 1)
+        {
+            userFound = false;
+        }
+    }
+    string isInvalid = !userFound ? "is-invalid" : "";
+
+    <div class="@(contentPadding) template_password-recovery">
+
+	    <div class="card border-0@(theme) mx-auto" style="max-width: 30rem;">
+
+		    <div class="card-header text-center p-4 border-bottom">
+			    <h4 class="display-6 m-0">@Translate("You have been invited to create an account")</h4>
+			    <p class="card-text">@Translate("Accept below and get the login informations for the new account. We will send you an email on how to set the password and login to the account.")</p>
+		    </div>
+
+		    <div class="card-body p-4">
+				<form method="post" action="@GetString("DWExtranetAction")" class="grid grid-1 gap-4">
+					<input type="hidden" name="ForgotPasswordMailTemplate" value="@GetString("UserManagement:User.Login.EmailTemplate")" />
+					<input type="hidden" name="ForgotPasswordSenderEmail" value="@GetString("UserManagement:User.Login.EmailSender")" />
+					<input type="hidden" name="ForgotPasswordMailSubject" value="@GetString("UserManagement:User.Login.EmailSubject")" />
+					<input type="hidden" name="AccessUserEmail" id="AccessUserEmail" value="@email" />
+					<input type="hidden" name="ApprovalKey" value="@approvalKey" />
+
+					<div class="grid grid-1">
+						<button type="submit" name="LoginAction" value="Recovery" class="btn btn-primary btn-lg" id="PasswordRecoveryButton">@Translate("Accept invitation")</button>
+					</div>
+				</form>
+		    </div>
+	    </div>
+    </div>
+}
+
+@if (GetString("UserManagement:User.Login.Action") == "RecoveryLinkSent")
+{
+    <div class="alert alert-info" role="alert">
+        @Translate("Check your email - we sent you an email with a link. Click it to continue to reset your password.")
+    </div>
+}
+
+@if (GetString("UserManagement:User.Login.Action") == "PasswordSent")
+{
+    <div class="alert alert-info" role="alert">
+        @Translate("Check your email - we sent you an email with the password.")
+    </div>
+}
+
+@if (GetString("UserManagement:User.Login.Action") == "NewPasswordForm")
+{
+    if (!GetBoolean("UserManagement:User.Login.RecoveryToken.FoundUser"))
+    {
+        <div class="alert alert-warning" role="alert">
+            @Translate("Something went wrong.")
+            @Translate("Try recover password") <a href="/default.aspx?id=@GetString("Global:Page.ID")" id="SomethingIsWrongTryAgainButton">@Translate("again")</a>
+        </div>
+    }
+
+    if (GetBoolean("UserManagement:User.Login.RecoveryToken.FoundUser") && GetBoolean("UserManagement:User.Login.RecoveryToken.OutOfDate"))
+    {
+        <div class="alert alert-warning" role="alert">
+            @Translate("The recovery password link out of date.") @Translate("Try recover password") <a href="/default.aspx?id=@GetString("Global:Page.ID")" id="OutOfDateTryAgainButton">@Translate("again")</a>
+        </div>
+    }
+
+    if (GetBoolean("UserManagement:User.Login.RecoveryToken.FoundUser") && !GetBoolean("UserManagement:User.Login.RecoveryToken.OutOfDate"))
+    {
+        string isInvalidNewPassword = !string.IsNullOrWhiteSpace(GetString("UserManagement:User.Login.Field.NewPassword.Error")) ? "is-invalid" : "";
+        string isInvalidNewPasswordConfirm = !string.IsNullOrWhiteSpace(GetString("UserManagement:User.Login.Field.NewPasswordConfirm.Error"))  ? "is-invalid" : "";
+
+        <div>
+            @Translate("Choose a new password")
+        </div>
+        <div class="mb-3">
+            @Translate("Notice")! @Translate("A strong password is a combination of letters and punctuation marks")<text>.</text>
+        </div>
+
+        <form method="post" action="@GetString("DWExtranetAction")">
+            <input type="hidden" name="RecoveryToken" value="@GetString("UserManagement:User.Login.RecoveryToken")" />
+            <input type="hidden" name="ForgotPasswordMailTemplate" value="@GetString("UserManagement:User.Login.EmailTemplate")" />
+            <input type="hidden" name="ForgotPasswordSenderEmail" value="@GetString("UserManagement:User.Login.EmailSender")" />
+            <input type="hidden" name="ForgotPasswordMailSubject" value="@GetString("UserManagement:User.Login.EmailSubject")" />
+
+            <div class="form-floating @isInvalidNewPassword mb-3">
+                <input type="password" id="UserManagement_Form_NewPassword" class="form-control" name="UserManagement_Form_NewPassword" value="" autocomplete="off" placeholder="@GetString("UserManagement:User.Login.Field.NewPassword.Name")" />
+                <label class="form-label" for="@GetString("UserManagement:User.Login.Field.NewPassword.Name")">@Translate("New password")</label>
+                <div class="invalid-feedback" for="@GetString("UserManagement:User.Login.Field.NewPassword.Name")">@GetString("UserManagement:User.Login.Field.NewPassword.Error")</div>
+            </div>
+             
+            <div class="form-floating @isInvalidNewPasswordConfirm mb-3">
+                <input type="password" id="UserManagement_Form_NewPasswordConfirm" class="form-control" name="UserManagement_Form_NewPasswordConfirm" value="" autocomplete="off" placeholder="@GetString("UserManagement:User.Login.Field.NewPasswordConfirm.Name")" />
+                <label class="form-label" for="@GetString("UserManagement:User.Login.Field.NewPasswordConfirm.Name")">@Translate("Confirm password")</label>
+                <div class="invalid-feedback" for="@GetString("UserManagement:User.Login.Field.NewPasswordConfirm.Name")">@GetString("UserManagement:User.Login.Field.NewPasswordConfirm.Error")</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" name="LoginAction" value="ChangePassword" id="ChangePasswordButton">@Translate("Submit")</button>
+        </form>
+	} 
+}
+
+@if (GetString("UserManagement:User.Login.Action") == "PasswordChanged")
+{
+    <div class="alert alert-info" role="alert">
+        @Translate("Password changed")
+    </div>
+}
+

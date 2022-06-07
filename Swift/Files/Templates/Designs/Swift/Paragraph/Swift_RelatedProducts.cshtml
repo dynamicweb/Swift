@@ -1,4 +1,5 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Core
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
@@ -18,27 +19,30 @@
 		productViewModelFound = true;
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
-	else if (Pageview.Item["DummyProduct"] != null)
+	if (Pageview.IsVisualEditorMode && !productViewModelFound)
 	{
-		productViewModelFound = true;
-		string dummyProductId = "";
-		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
-		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
-		if (productList.Products != null)
+		if (Pageview.Item["DummyProduct"] != null)
 		{
-			foreach (var p in productList.Products) { dummyProductId = p.Id; }
-			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
-			product = dummyProduct;
+			productViewModelFound = true;
+			string dummyProductId = "";
+			var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+			ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+			if (productList.Products != null)
+			{
+				foreach (var p in productList.Products) { dummyProductId = p.Id; }
+				ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+				product = dummyProduct;
+			}
+			else
+			{
+				product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+			}
 		}
-		else
+		else if (Pageview.Item["DummyProduct"] == null)
 		{
+			productViewModelFound = true;
 			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 		}
-	}
-	else if (Pageview.Item["DummyProduct"] == null)
-	{
-		productViewModelFound = true;
-		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 	}
 
 	string title = Model?.Item?.GetString("Title") != null ? Model.Item.GetString("Title") : Translate("Products");
@@ -76,6 +80,12 @@
 	if (Pageview.IsVisualEditorMode)
 	{
 		url += "&VisualEdit=True";
+	}
+
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
+	if (isLazyLoadingForProductInfoEnabled)
+	{
+		url += "&getproductinfo=true";
 	}
 
 	//Source type
@@ -206,11 +216,15 @@
 	string indicatorsVisibleOnSmallDevices = (Model.Item.GetBoolean("IndicatorsVisibleOnSmallDevices")) ? "slider-indicators-sm" : string.Empty;
 
 	bool productsFound = true;
-	if (string.IsNullOrEmpty(groupIds) && string.IsNullOrEmpty(productIds)) {
-		if (Pageview.IsVisualEditorMode) {
+	if (string.IsNullOrEmpty(groupIds) && string.IsNullOrEmpty(productIds))
+	{
+		if (Pageview.IsVisualEditorMode)
+		{
 			productIds = product.Id;
 			sourceType = "selected";
-		} else {
+		}
+		else
+		{
 			productsFound = false;
 		}
 	}
@@ -369,12 +383,16 @@
 
 
 @*Container element for the request*@
-@if (productsFound) { 
-	if (sourceType != "related-products") {
+@if (productsFound)
+{
+	if (sourceType != "related-products")
+	{
 		<div class="w-100 h-100">
 			<div id="RelatedProducts_@Model.ID" class="h-100" style="min-height: 345px"></div>
 		</div>
-	} else if (product?.RelatedGroups != null) {
+	}
+	else if (product?.RelatedGroups != null)
+	{
 		@* Create multiple slider containers, if type is Product relation *@
 		<div class="grid w-100 h-100" style="grid-row-gap: 4rem">
 			@foreach (var group in product.RelatedGroups)
@@ -383,7 +401,7 @@
 			}
 		</div>
 	}
-} 
+}
 
 @* Initialize *@
 @if (sourceType != "related-products")

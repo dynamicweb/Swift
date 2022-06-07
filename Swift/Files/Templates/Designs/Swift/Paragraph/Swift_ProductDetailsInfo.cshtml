@@ -3,6 +3,7 @@
 @using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
 @using Dynamicweb.Ecommerce.Products.FieldDisplayGroups
 @using Dynamicweb.Frontend
+@using Dynamicweb.Core
 @using System.Drawing
 
 @functions { 
@@ -13,7 +14,7 @@
 
 		int nThreshold = 105;
 		int bgDelta = Convert.ToInt32((bg.R * 0.299) + (bg.G * 0.587) +
-									  (bg.B * 0.114));
+									(bg.B * 0.114));
 
 		string foreColor = (255 - bgDelta < nThreshold) ? "#333" : "#fff";
 		return foreColor;
@@ -30,9 +31,11 @@
 
 	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
 	bool anonymousUser = Pageview.User == null;
-	bool hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser;
+	bool isErpConnectionDown = !Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsWebServiceConnectionAvailable();
+	bool hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHideAddToCart") && isErpConnectionDown;
 	hideAddToCart = product.VariantInfo.VariantInfo != null && Model.Item.GetBoolean("HideVariantSelector") ? true : hideAddToCart;
-	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+	bool hideStock = Model.Item.GetBoolean("HideStockState") || (Pageview.AreaSettings.GetBoolean("ErpDownHideStock") && isErpConnectionDown);
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && isErpConnectionDown;
 	bool hideFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("HideFavoritesSelector")) ? Model.Item.GetBoolean("HideFavoritesSelector") : false;
 
 	bool isDiscontinued = product.Discontinued;
@@ -116,50 +119,102 @@
 	bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
 	showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
 	showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
+	
+	string liveInfoClass = "";
+	string productInfoFeed = "";
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
+	if (isLazyLoadingForProductInfoEnabled)
+	{
+		if (Dynamicweb.Context.Current.Items.Contains("ProductInfoFeed"))
+		{
+			productInfoFeed = Dynamicweb.Context.Current.Items["ProductInfoFeed"]?.ToString();
+			if (!string.IsNullOrEmpty(productInfoFeed))
+			{
+				productInfoFeed = $"data-product-info-feed=\"{productInfoFeed}\"";
+			}
+		}
+		liveInfoClass = "js-live-info";
+	}
 }
 
-<div class="h-100 @(contentPadding) @(theme) item_@Model.Item.SystemName.ToLower()">
-	<div class="d-flex flex-column gap-4 js-product">
+<div class="h-100 @(contentPadding) @(theme) item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
+	<div class="d-flex flex-column gap-4 js-product" data-product-id="@product.Id">
 		@if (showBadges) {
 			<div class="swift_badge-collection">
 				@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
 			</div>
-        }
+		}
 
-		<div>
-			<h1 class="@titleFontSize" itemprop="name">@product.Name</h1>
+		<div class="d-flex flex-column gap-2">
+			<h1 class="@titleFontSize m-0" itemprop="name">@product.Name</h1>
 			@if (!Model.Item.GetBoolean("HideProductNumber"))
 			{
 				@RenderPartial("Paragraph/Swift_ProductNumber.cshtml", Model)
 			}
 		</div>
 
-		@RenderPartial("Paragraph/Swift_ProductPrice.cshtml", Model)
-
 		@if (!hidePrice && !isDiscontinued)
 		{
-			<div>
-				@if (product.Prices.Count > 0) {
-					if (quantityPricesLayout == "list") {
-						<div class="mt-3">
-							@foreach (PriceListViewModel quantityPrice in product.Prices)
-							{
-								string quantityLabel = Translate("PCS");
-								string quantityPriceSuffix = quantityPrice.Quantity > 1 ? Translate("pr. PCS") : "";
-
-								<small class="d-block opacity-75"><span>@quantityPrice.Quantity @quantityLabel</span> - <span class="fw-bold">@quantityPrice.Price.PriceFormatted @quantityPriceSuffix</span></small>
-							}
+			@RenderPartial("Paragraph/Swift_ProductPrice.cshtml", Model)
+			
+			if (isLazyLoadingForProductInfoEnabled)
+			{
+				<div class="product-prices-container @liveInfoClass d-none" data-show-if="LiveProductInfo.product.Prices.length > 0">
+					@if (quantityPricesLayout == "list")
+					{
+						<div class="mt-3 product-prices">
+							<small class="d-block opacity-75 product-prices-template"><span><span class="js-text-price-quantity"></span> @Translate("PCS")</span> - <span class="fw-bold"><span class="js-text-price-price"></span> <span class="d-none" data-show-if="LiveProductInfo.productPrice.Quantity > 1">@Translate("pr. PCS")</span></span></small>
 						</div>
-                    } else if (quantityPricesLayout == "table") {
+					}
+					else if (quantityPricesLayout == "table")
+					{
 						<div class="grid">
 							<table class="table table-sm mt-3 g-col-12 g-col-lg-6">
 								<thead>
+								<tr>
+									<td>@Translate("QTY")</td>
+									<td>@Translate("pr. PCS")</td>
+								</tr>
+								</thead>
+								<tbody class="product-prices">
+									<tr class="product-prices-template">
+										<td class="js-text-price-quantity"></td>
+										<td class="js-text-price-price"></td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					}
+				</div>
+			}
+			else
+			{
+				if (product.Prices.Count > 0)
+				{
+					<div>
+						@if (quantityPricesLayout == "list")
+						{
+							<div class="mt-3">
+								@foreach (PriceListViewModel quantityPrice in product.Prices)
+								{
+									string quantityLabel = Translate("PCS");
+									string quantityPriceSuffix = quantityPrice.Quantity > 1 ? Translate("pr. PCS") : "";
+
+									<small class="d-block opacity-75"><span>@quantityPrice.Quantity @quantityLabel</span> - <span class="fw-bold">@quantityPrice.Price.PriceFormatted @quantityPriceSuffix</span></small>
+								}
+							</div>
+						}
+						else if (quantityPricesLayout == "table")
+						{
+							<div class="grid">
+								<table class="table table-sm mt-3 g-col-12 g-col-lg-6">
+									<thead>
 									<tr>
 										<td>@Translate("QTY")</td>
 										<td>@Translate("pr. PCS")</td>
 									</tr>
-								</thead>
-								<tbody>
+									</thead>
+									<tbody>
 									@foreach (PriceListViewModel quantityPrice in product.Prices)
 									{
 										<tr>
@@ -167,12 +222,13 @@
 											<td>@quantityPrice.Price.PriceFormatted</td>
 										</tr>
 									}
-								</tbody>
-							</table>
-						</div>
-                    }
-                }
-			</div>
+									</tbody>
+								</table>
+							</div>
+						}
+					</div>
+				}
+			}
 		}
 
 		@RenderPartial("Paragraph/Swift_ProductShortDescription.cshtml", Model)
@@ -194,7 +250,7 @@
 		{
 			int groupNumber = 1;
 
-			<form class="mb-3 js-variant-selector" data-combinations="@string.Join(",", product.VariantCombinations())">
+			<form class="js-variant-selector" data-combinations="@string.Join(",", product.VariantCombinations())">
 				<input type="hidden" name="variantid" />
 
 				@foreach (var variantGroup in product.VariantGroups())
@@ -202,7 +258,7 @@
 					VariantGroupViewModel group = variantGroup;
 
 					<h3 class="h6">@group.Name</h3>
-					<div class="mb-3 js-variant-group" data-group-id="@groupNumber">
+					<div class="d-flex gap-2 flex-wrap js-variant-group" data-group-id="@groupNumber">
 						@foreach (var option in group.Options)
 						{
 							string active = variantId.Contains(option.Id) ? "active" : "";
@@ -210,17 +266,17 @@
 							if (!string.IsNullOrEmpty(option.Color))
 							{
 								string contrastColor = GetContrastColor(option.Color);
-								<button type="button" class="btn colorbox rounded-circle me-1 mb-2 d-inline-block variant-option border js-variant-option @active" style="background-color: @option.Color;  --variantoption-check-color: @contrastColor" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID"></button>
+								<button type="button" class="btn colorbox rounded-circle d-inline-block variant-option border js-variant-option @active" style="background-color: @option.Color;  --variantoption-check-color: @contrastColor" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID"></button>
 							}
 							else if (!string.IsNullOrEmpty(option.Color) && !string.IsNullOrEmpty(option.Image.Value))
 							{
-								<button type="button" class="btn p-0 d-inline-block mb-2 variant-option border js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id">
+								<button type="button" class="btn p-0 d-inline-block variant-option border js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id">
 									<img src="/Admin/Public/GetImage.ashx?image=@(option.Image.Value)&width=42&Format=WebP&Quality=70" />
 								</button>
 							}
 							else
 							{
-								<button type="button" class="btn btn-secondary d-inline-block mb-2 variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id">
+								<button type="button" class="btn btn-secondary d-inline-block variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id">
 									@option.Name
 								</button>
 							}
@@ -232,84 +288,91 @@
 			</form>
 		}
 
-		<div class="d-flex flex-row flex-nowrap gap-2">
-			@if (!hideAddToCart)
-			{
-				<form method="post" action="@url" class="flex-fill">
-					<input type="hidden" name="redirect" value="false" />
-					<input type="hidden" name="ProductId" value="@product.Id" />
-					<input type="hidden" name="cartcmd" value="add" />
+	<div class="d-flex flex-row flex-nowrap gap-2">
+		@if (!hideAddToCart)
+		{
+			<form method="post" action="@url" class="flex-fill">
+				<input type="hidden" name="redirect" value="false" />
+				<input type="hidden" name="ProductId" value="@product.Id" />
+				<input type="hidden" name="cartcmd" value="add" />
 
-					@if (!string.IsNullOrEmpty(product.VariantId))
-					{
-						<input type="hidden" name="VariantId" value="@product.VariantId" />
-					}
-					@if (!Model.Item.GetBoolean("QuantitySelector"))
-					{
-						<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" type="hidden">
-						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary w-100 js-add-to-cart-button @disableAddToCart" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)_@Pageview.CurrentParagraph.ID">@Translate("Add to cart")</button>
-					} else { 
-						<div class="input-group input-primary-button-group js-input-group d-flex flex-row flex-nowrap">
-							<label for="Quantity_@(product.Id)" class="visually-hidden">@Translate("Quantity")</label>
-							<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 96px; min-width:64px;" type="number">
-							<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)_@Pageview.CurrentParagraph.ID">@Translate("Add to cart")</button>
-						</div>
-
-						if (stepQty != "1")
-						{
-							<div class="invalid-feedback d-none">
-								@Translate("Please select a quantity that is dividable by") @stepQty
-							</div>
-						}
-					}
-				</form>
-				if (!anonymousUser && !hideFavoritesSelector)
+				@if (!string.IsNullOrEmpty(product.VariantId))
 				{
-					@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+					<input type="hidden" name="VariantId" value="@product.VariantId" />
 				}
-			}
-			else if (!anonymousUser && !hideFavoritesSelector && !isDiscontinued)
+				@if (!Model.Item.GetBoolean("QuantitySelector"))
+				{
+					<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" type="hidden">
+					<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary w-100 js-add-to-cart-button @disableAddToCart" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)_@Pageview.CurrentParagraph.ID">@Translate("Add to cart")</button>
+				} else { 
+					<div class="input-group input-primary-button-group js-input-group d-flex flex-row flex-nowrap">
+						<label for="Quantity_@(product.Id)" class="visually-hidden">@Translate("Quantity")</label>
+						<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 96px; min-width:64px;" type="number">
+						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button @disableAddToCart" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)_@Pageview.CurrentParagraph.ID">@Translate("Add to cart")</button>
+					</div>
+
+					if (stepQty != "1")
+					{
+						<div class="invalid-feedback d-none">
+							@Translate("Please select a quantity that is dividable by") @stepQty
+						</div>
+					}
+				}
+			</form>
+			if (!anonymousUser && !hideFavoritesSelector)
 			{
-				<div class="flex-fill" id="AddToFavorites_@Model.ID">
-					@Translate("Add to favorites") @RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
-				</div>
+				@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
 			}
+		}
+		else if (!anonymousUser && !hideFavoritesSelector && !isDiscontinued)
+		{
+			<div class="flex-fill" id="AddToFavorites_@Model.ID">
+				@Translate("Add to favorites") @RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+			</div>
+		}
 
-			@if (isDiscontinued && product.ReplacementProduct != null) {
-				List<ProductInfoViewModel> replacementProductList = new List<ProductInfoViewModel>();
-				replacementProductList.Add(product.ReplacementProduct);
-				var replacementProduct = replacementProductList.GetProducts().FirstOrDefault();
+		@if (isDiscontinued && product.ReplacementProduct != null) {
+			List<ProductInfoViewModel> replacementProductList = new List<ProductInfoViewModel>();
+			replacementProductList.Add(product.ReplacementProduct);
+			var replacementProduct = replacementProductList.GetProducts().FirstOrDefault();
 
-				if ((product.DiscontinuedAction == 0 || product.DiscontinuedAction == 1) && product?.ReplacementProduct.ProductId != null) {
-					var parms = new Dictionary<string, object>();
-					parms.Add("cssClass", "d-block mw-100 mh-100 m-auto");
-					parms.Add("fullwidth", true);
-					parms.Add("columns", Model.GridRowColumnCount);
+			if ((product.DiscontinuedAction == 0 || product.DiscontinuedAction == 1) && product?.ReplacementProduct.ProductId != null) {
+				var parms = new Dictionary<string, object>();
+				parms.Add("cssClass", "d-block mw-100 mh-100 m-auto");
+				parms.Add("fullwidth", true);
+				parms.Add("columns", Model.GridRowColumnCount);
 
-					string imagePath = replacementProduct?.DefaultImage?.Value != null ? replacementProduct.DefaultImage.Value : "";
+				string imagePath = replacementProduct?.DefaultImage?.Value != null ? replacementProduct.DefaultImage.Value : "";
 
-					var defaultGroupId = replacementProduct.PrimaryOrDefaultGroup.Id;
-					var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
+				var defaultGroupId = replacementProduct.PrimaryOrDefaultGroup.Id;
+				var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
 
-					string link = string.IsNullOrEmpty(selectedDetailPage) ? $"/Default.aspx?ID={Pageview.Page.ID}&groupid={defaultGroupId}" : selectedDetailPage;
-					link += "&productid=" + replacementProduct.Id;
-					link += !string.IsNullOrEmpty(replacementProduct.VariantId) ? "&variantid=" + replacementProduct.VariantId : "";
+				string link = string.IsNullOrEmpty(selectedDetailPage) ? $"/Default.aspx?ID={Pageview.Page.ID}&groupid={defaultGroupId}" : selectedDetailPage;
+				link += "&productid=" + replacementProduct.Id;
+				link += !string.IsNullOrEmpty(replacementProduct.VariantId) ? "&variantid=" + replacementProduct.VariantId : "";
 
-					<div class="w-100">
-						<div class="fw-bold w-100">@Translate("Sorry, this product is no longer available").</div>
-						<div>@Translate("We recommend this replacement product instead"):</div>
+				<div class="w-100">
+					<div class="fw-bold w-100">@Translate("Sorry, this product is no longer available").</div>
+					<div>@Translate("We recommend this replacement product instead"):</div>
 
-						<a href="@link">
-							@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
-						</a>
+					<a href="@link">
+						@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+					</a>
 
-						<div>@replacementProduct.Name</div>
+					<div>@replacementProduct.Name</div>
 
-						@if (!hidePrice)
-						{
-							<div class="mb-3">
-								<div class="h4" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
-									@if (showPricesWithVat == "false" && !neverShowVat)
+					@if (!hidePrice)
+					{
+						<div class="mb-3">
+							<div class="h4" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+								@if (showPricesWithVat == "false" && !neverShowVat)
+								{
+									if (isLazyLoadingForProductInfoEnabled)
+									{
+										<span itemprop="price" content="" class="d-none"></span>
+										<span class="text-decoration-line-through js-text-decoration-line-through opacity-75 me-3 text-price js-text-price d-none" data-show-if="LiveProductInfo.product.Price.Price != LiveProductInfo.product.PriceBeforeDiscount.Price"></span>
+									}
+									else
 									{
 										string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
 
@@ -318,6 +381,14 @@
 										{
 											<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
 										}
+									}
+								}
+								else
+								{
+									if (isLazyLoadingForProductInfoEnabled)
+									{
+										<span itemprop="price" content="" class="d-none"></span>
+										<span class="text-decoration-line-through js-text-decoration-line-through opacity-75 me-3 text-price js-text-price d-none" data-show-if="LiveProductInfo.product.Price.Price != LiveProductInfo.product.PriceBeforeDiscount.Price"></span>
 									}
 									else
 									{
@@ -329,8 +400,15 @@
 											<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
 										}
 									}
+								}
 
-									@if (showPricesWithVat == "false" && !neverShowVat)
+								@if (showPricesWithVat == "false" && !neverShowVat)
+								{
+									if (isLazyLoadingForProductInfoEnabled)
+									{
+										<span class="text-price js-text-price"><div class="spinner-border" role="status"></div></span>
+									}
+									else
 									{
 										string price = product.Price.PriceWithoutVatFormatted;
 										if (product?.VariantInfo?.VariantInfo != null)
@@ -343,6 +421,13 @@
 											price = priceMin + " - " + priceMax;
 										}
 										<span class="text-price">@price</span>
+									}
+								}
+								else
+								{
+									if (isLazyLoadingForProductInfoEnabled)
+									{
+										<span class="text-price js-text-price"><div class="spinner-border" role="status"></div></span>
 									}
 									else
 									{
@@ -358,9 +443,16 @@
 										}
 										<span class="text-price">@price</span>
 									}
-								</div>
+								}
+							</div>
 
-								@if (showPricesWithVat == "false" && !neverShowVat)
+							@if (showPricesWithVat == "false" && !neverShowVat)
+							{
+								if (isLazyLoadingForProductInfoEnabled)
+								{
+									<small class="opacity-85 fst-normal js-text-price-with-vat d-none" data-suffix="@Translate("Incl. VAT")"></small>
+								}
+								else
 								{
 									string price = product.Price.PriceWithVatFormatted;
 									if (product?.VariantInfo?.VariantInfo != null)
@@ -374,47 +466,76 @@
 									}
 									<small class="opacity-85 fst-normal">@price @Translate("Incl. VAT")</small>
 								}
-							</div>
-						}
+							}
+						</div>
+					}
 
-						<a href="@link" class="btn btn-primary w-100">@Translate("Go to the replacement")</a>
-					</div>
-				}
+					<a href="@link" class="btn btn-primary w-100">@Translate("Go to the replacement")</a>
+				</div>
 			}
+		}
 		</div>
 	</div>
-	@if (!Model.Item.GetBoolean("HideStockState"))
+	@if (!hideStock)
 	{
 		if (!IsNeverOutOfStock)
 		{
-			<div class="mt-3 js-stock-state">
+			if (isLazyLoadingForProductInfoEnabled)
+			{
+				string hideStockState = string.IsNullOrEmpty(product.VariantId) && product.VariantInfo.VariantInfo != null ? "d-none" : "";
+				<div class="js-product @liveInfoClass" data-product-id="@product.Id">
+					<div class="mt-3 js-stock-state spinner-border @hideStockState">
+						@if (!Model.Item.GetBoolean("HideInventory"))
+						{
+							<div class="small text-success d-none" data-show-if="LiveProductInfo.product.StockLevel > 0">
+								<span class="js-text-stock"></span>
+								@Translate("Products available in stock")
+							</div>
+						}
+						else
+						{
+							<div class="small text-success d-none" data-show-if="LiveProductInfo.product.StockLevel > 0">@Translate("Available in stock")</div>
+						}
+						<div class="small text-danger d-none" data-show-if="LiveProductInfo.product.StockLevel <= 0">@Translate("Out of Stock")</div>
+						
+						<div class="d-none" data-show-if="LiveProductInfo.product.ExpectedDelivery != null && new Date(LiveProductInfo.product.ExpectedDelivery) > new Date()">
+							<span>@Translate("Expected back in stock:")</span>
+							<span class="js-text-expected-delivery"></span>
+						</div>
+					</div>
+				</div>
+			}
+			else
+			{
+				<div class="mt-3 js-stock-state">
 
-				@if (product.StockLevel > 0)
-				{
-					if (!Model.Item.GetBoolean("HideInventory"))
+					@if (product.StockLevel > 0)
 					{
-						<p class="small text-success m-0">@product.StockLevel @Translate("Products available in stock")</p>
+						if (!Model.Item.GetBoolean("HideInventory"))
+						{
+							<div class="small text-success">@product.StockLevel @Translate("Products available in stock")</div>
+						}
+						else
+						{
+							<div class="small text-success">@Translate("Available in stock")</div>
+						}
 					}
+
 					else
 					{
-						<p class="small text-success m-0">@Translate("Available in stock")</p>
+						<div class="small text-danger">@Translate("Out of Stock")</div>
 					}
-				}
 
-				else
-				{
-					<p class="small text-danger m-0">@Translate("Out of Stock")</p>
-				}
+					@if (hasExpectedDelivery)
+					{
+						<div>
+							<span>@Translate("Expected back in stock:")</span>
+							<span>@expectedDeliveryDate</span>
+						</div>
+					}
 
-				@if (hasExpectedDelivery)
-				{
-					<p>
-						<span>@Translate("Expected back in stock:")</span>
-						<span>@expectedDeliveryDate</span>
-					</p>
-				}
-
-			</div>
+				</div>
+			}
 		}
 	}
 </div>

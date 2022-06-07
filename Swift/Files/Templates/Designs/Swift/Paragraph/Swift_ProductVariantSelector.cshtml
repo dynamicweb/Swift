@@ -1,6 +1,21 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
 
+@functions {
+	//Find contrast color (white, black)
+	public static string GetContrastColor(string hexString)
+	{
+		System.Drawing.Color bg = System.Drawing.ColorTranslator.FromHtml(hexString);
+
+		int nThreshold = 105;
+		int bgDelta = Convert.ToInt32((bg.R * 0.299) + (bg.G * 0.587) +
+									(bg.B * 0.114));
+
+		string foreColor = (255 - bgDelta < nThreshold) ? "#333" : "#fff";
+		return foreColor;
+	}
+}
+
 @{
 	ProductViewModel product = new ProductViewModel();
 
@@ -12,9 +27,12 @@
 		ShopId = Pageview.Area.EcomShopId
 	};
 
-	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails")) {
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
-	} else if (Pageview.Item["DummyProduct"] != null) {
+	}
+	else if (Pageview.Item["DummyProduct"] != null)
+	{
 
 		string dummyProductId = "";
 		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
@@ -24,51 +42,71 @@
 			foreach (var p in productList.Products) { dummyProductId = p.Id; }
 			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
 			product = dummyProduct;
-		} else {
+		}
+		else
+		{
 			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 		}
-	} else if (Pageview.Item["DummyProduct"] == null) {
+	}
+	else if (Pageview.Item["DummyProduct"] == null)
+	{
 		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 	}
+
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", string.Empty);
+	horizontalAlign = horizontalAlign == "center" ? "align-items-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "end" ? "align-items-end" : horizontalAlign;
+
+	string horizontalTextAlign = Model.Item.GetRawValueString("HorizontalAlignment", string.Empty);
+	horizontalTextAlign = horizontalTextAlign == "center" ? "text-center" : horizontalTextAlign;
+	horizontalTextAlign = horizontalTextAlign == "end" ? "text-end" : horizontalTextAlign;
+
+	bool hideGroupHeaders = Model.Item.GetBoolean("HideGroupHeaders");
 }
 
-@if (product.Id != null) {
+@if (product.Id != null)
+{
 	if (product.VariantGroups().Count != 0)
 	{
 		string[] variantId = product.VariantId.Split('.');
 		int groupNumber = 1;
 
-		<form class="mb-3 js-variant-selector item_@Model.Item.SystemName.ToLower()" data-combinations="@string.Join(",", product.VariantCombinations())">
+		<form class="d-flex flex-column @horizontalAlign js-variant-selector item_@Model.Item.SystemName.ToLower()" data-combinations="@string.Join(",", product.VariantCombinations())">
 			<input type="hidden" name="variantid" value="@variantId" />
 
 			@foreach (var variantGroup in product.VariantGroups())
 			{
 				VariantGroupViewModel group = variantGroup;
 
-				<h3 class="h6">@group.Name</h3>
-				<div class="mb-3 js-variant-group" data-group-id="@groupNumber">
-					@foreach (var option in group.Options)
-					{
-						string active = variantId.Contains(option.Id) ? "active" : "";
-
-						if (!string.IsNullOrEmpty(option.Color))
-						{
-							<button type="button" class="btn colorbox rounded-circle me-1 mb-2 d-inline-block variant-option js-variant-option @active" style="background-color: @option.Color" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID"></button>
-						}
-						else if (!string.IsNullOrEmpty(option.Color) && !string.IsNullOrEmpty(option.Image.Value))
-						{
-							<button type="button" class="btn p-0 d-inline-block mb-2 variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
-								<img src="/Admin/Public/GetImage.ashx?image=@(option.Image.Value)&width=42&Format=WebP&Quality=70" />
-							</button>
-						}
-						else
-						{
-							<button type="button" class="btn btn-secondary d-inline-block mb-2 variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
-								@option.Name
-							</button>
-						}
+				<div>
+					@if (!hideGroupHeaders) { 
+						<h3 class="h6 @horizontalTextAlign">@group.Name</h3>
 					}
+					<div class="d-flex gap-2 flex-wrap js-variant-group" data-group-id="@groupNumber">
+						@foreach (var option in group.Options)
+						{
+							string active = variantId.Contains(option.Id) ? "active" : "";
+
+							if (!string.IsNullOrEmpty(option.Color))
+							{
+								string contrastColor = GetContrastColor(option.Color);
+								<button type="button" class="btn colorbox rounded-circle d-inline-block variant-option border js-variant-option @active" style="background-color: @option.Color;  --variantoption-check-color: @contrastColor" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID"></button>							}
+							else if (!string.IsNullOrEmpty(option.Color) && !string.IsNullOrEmpty(option.Image.Value))
+							{
+								<button type="button" class="btn p-0 d-inline-block variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
+									<img src="/Admin/Public/GetImage.ashx?image=@(option.Image.Value)&width=42&Format=WebP&Quality=70" />
+								</button>
+							}
+							else
+							{
+								<button type="button" class="btn btn-secondary d-inline-block variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
+									@option.Name
+								</button>
+							}
+						}
+					</div>
 				</div>
+
 
 				groupNumber++;
 			}
@@ -78,11 +116,27 @@
 			swift.VariantSelector.init();
 		</script>
 	} else if (Pageview.IsVisualEditorMode) {
-		<div class="alert alert-dark m-0" role="alert">
-			<span>@Translate("Variant selector will be shown here")</span>
-		</div>
+		<form class="d-flex flex-column @horizontalAlign js-variant-selector item_@Model.Item.SystemName.ToLower()" data-combinations="VO1,VO2,VO3,VO4">
+			<div>
+				@if (!hideGroupHeaders) { 
+					<h3 class="h6 @horizontalTextAlign">@Translate("Sizes")</h3>
+				}
+				<div class="mb-3 js-variant-group" data-group-id="0">
+					<button type="button" class="btn btn-secondary d-inline-block mb-2 variant-option js-variant-option" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="VO1" id="@(product.Id)_VO1_@Pageview.CurrentParagraph.ID">S</button>
+					<button type="button" class="btn btn-secondary d-inline-block mb-2 variant-option js-variant-option" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="VO2" id="@(product.Id)_VO2_@Pageview.CurrentParagraph.ID">M</button>
+					<button type="button" class="btn btn-secondary d-inline-block mb-2 variant-option js-variant-option" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="VO3" id="@(product.Id)_VO3_@Pageview.CurrentParagraph.ID">L</button>
+					<button type="button" class="btn btn-secondary d-inline-block mb-2 variant-option js-variant-option" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="VO4" id="@(product.Id)_VO4_@Pageview.CurrentParagraph.ID">XL</button>
+				</div>
+			</div>
+		</form>
+
+		<script type="module">
+			swift.VariantSelector.init();
+		</script>
 	}
-} else if (Pageview.IsVisualEditorMode) {
+}
+else if (Pageview.IsVisualEditorMode)
+{
 	<div class="alert alert-dark m-0" role="alert">
 		<span>@Translate("No products available")</span>
 	</div>

@@ -1,0 +1,355 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb
+
+@{
+	string contentPadding = Pageview.CurrentParagraph.Item["ContentPadding"] != null ? Pageview.CurrentParagraph.Item["ContentPadding"].ToString() : "";
+	contentPadding = contentPadding == "none" ? "px-0" : contentPadding;
+	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
+	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
+	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " h-100 theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
+	string searchTerm = string.Empty;
+	if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request["userquery"]))
+	{
+		searchTerm = Dynamicweb.Context.Current.Request["userquery"];
+
+	}
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	var queryItems = GetLoop("QueryResultItem");
+
+	string activeState = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("Active")) ? Dynamicweb.Context.Current.Request.Form.Get("Active") : "";
+	string activeSelected = activeState.ToLower() == "true" ? "selected" : "";
+	string pendingSelected = activeState.ToLower() == "false" ? "selected" : "";
+}
+
+<div class="@(contentPadding)@(theme)">
+	<header class="p-3 py-sm-2 border-bottom">
+		<div class="d-flex flex-column flex-lg-row gap-3 gap-lg-4 w-100 align-items-left align-items-lg-center">
+			@if (!string.IsNullOrEmpty(searchTerm))
+			{
+				<h1 class="d-none d-lg-block h6 mb-0 flex-fill">@Translate("You have searched for") "@searchTerm"</h1>
+			}
+			else
+			{
+				string heading = Translate("Manage users");
+				heading = !string.IsNullOrEmpty(Pageview.User.Name) ? Translate("Manage users") + " - " + Pageview.User.Name : heading;
+				heading = !string.IsNullOrEmpty(Pageview.User.Company) ? Translate("Manage users") + " - " + Pageview.User.Name + ", " + Pageview.User.Company : heading;
+
+				<h1 class="d-none d-lg-block h6 mb-0 flex-fill">@heading</h1>
+			}
+
+			<div class="position-relative type-ahead-dropdown flex-fill">
+				<form class="suggest-form">
+					<div class="d-flex align-items-center">
+						<label for="userQuery_@Pageview.CurrentParagraph.ID" class="visually-hidden">@Translate("Search here")</label>
+						<span class="position-absolute icon-2 reset-search px-3">
+							@ReadFile(iconPath + "search.svg")
+						</span>
+						<input id="userQuery_@Pageview.CurrentParagraph.ID"
+							   type="search"
+							   class="form-control form-control-sm rounded-pill type-ahead-field py-2 ps-5 pe-5"
+							   placeholder="@Translate("Search for users")"
+							   aria-label="@Translate("Search for users")"
+							   aria-describedby="userQuery_@Pageview.CurrentParagraph.ID"
+							   name="userquery"
+							   value="@searchTerm"
+							   data-original="@searchTerm">
+
+						<button type="button"
+								onclick="const form = document.getElementById('userQuery_@Pageview.CurrentParagraph.ID'); form.value = ''; form.focus(); form.closest('form').submit();"
+								class="btn position-absolute end-0 icon-2 reset-search opacity-0 invisible"
+								aria-label="@Translate("Clear search field")">
+							@ReadFile(iconPath + "x.svg")
+						</button>
+					</div>
+				</form>
+			</div>
+
+			<form data-layout-template="Swift_PageCleanNoLayout.cshtml">
+				<select class="form-select form-select-sm" name="active" onchange="swift.PageUpdater.Update(event)">
+					<option value="">@Translate("Select state")</option>
+					<option value="true" @activeSelected>@Translate("Active")</option>
+					<option value="false" @pendingSelected>@Translate("Pending")</option>
+				</select>
+			</form>
+
+			<div class="text-center text-lg-end order-first order-lg-4">
+				<button class="btn btn-link" data-bs-toggle="modal" data-bs-target="#inviteUserModal">+ @Translate("Invite user")</button>
+			</div>
+		</div>
+	</header>
+
+	@if (queryItems.Count() != 0)
+	{
+		@* Bootstrap only support horizontally scrolled tables. Thus, we need to have separate designs for large and small screens.  *@
+
+		<table class="table d-none d-lg-table table-striped table-hover align-middle mb-0">
+			<thead>
+				<tr>
+					<th>
+						@Translate("Name")
+					</th>
+					<th>
+						@Translate("Email")
+					</th>
+					<th width="120">
+						@Translate("State")
+					</th>
+					<th width="200">&nbsp;</th>
+				</tr>
+			</thead>
+			<tbody class="border-top-0">
+				@foreach (var result in queryItems)
+				{
+					string badgeColor = result.GetBoolean("Active") ? "bg-success text-white" : "bg-warning text-dark";
+					string stateLabel = result.GetBoolean("Active") ? Translate("Active") : Translate("Pending");
+
+					<tr class="position-relative">
+						<td>
+							@if (!string.IsNullOrWhiteSpace(result.GetString("Name")))
+							{
+								@result.GetString("Name")
+							}
+						</td>
+						<td>
+							@if (!string.IsNullOrWhiteSpace(result.GetString("UserEmail")))
+							{
+								@result.GetString("UserEmail")
+							}
+						</td>
+						<td>
+							<span class="badge @badgeColor w-100">@stateLabel</span>
+						</td>
+						<td class="text-end">
+							<div class="d-inline-block">
+								<button class="btn btn-link p-0" onclick="SetDeleteUser('@result.GetString("Name")', '@result.GetString("UserID")', '@result.GetString("UserEmail")')" data-bs-toggle="modal" data-bs-target="#DeleteUserModal">
+									<div class="icon-2">
+										@ReadFile(iconPath + "trash-2.svg")
+									</div>
+								</button>
+							</div>
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+
+		@* Bootstrap only support horizontally scrolled tables. Thus, we need to have separate designs for large and small screens.  *@
+
+		<table class="table d-table d-lg-none table-borderless table-clean align-top mb-0 mt-4">
+			@foreach (var result in queryItems)
+			{
+				if (result.GetString("UserID") != Pageview.User.ID.ToString())
+				{
+					string badgeColor = result.GetBoolean("Active") ? "bg-success text-white" : "bg-warning text-dark";
+					string stateLabel = result.GetBoolean("Active") ? Translate("Active") : Translate("Pending");
+
+					<tbody class="border-bottom">
+						<tr>
+							<td>
+								@Translate("Name")
+							</td>
+							<td class="text-end">
+								@if (!string.IsNullOrWhiteSpace(result.GetString("Name")))
+								{
+									@result.GetString("Name")
+								}
+							</td>
+						</tr>
+						<tr>
+							<td>
+								@Translate("Email")
+							</td>
+							<td class="text-end text-break">
+								@if (!string.IsNullOrWhiteSpace(result.GetString("UserEmail")))
+								{
+									@result.GetString("UserEmail")
+								}
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<span class="badge @badgeColor w-100">@stateLabel</span>
+							</td>
+							<td class="text-end">
+								@if (!result.GetBoolean("Active"))
+								{
+									<button class="btn btn-link d-inline-block p-0" onclick="setInviteForm('@result.GetString("Name")', '@result.GetString("UserEmail")')" data-bs-toggle="modal" data-bs-target="#inviteUserModal">@Translate("Resend invite")</button>
+								}
+
+								<div class="d-inline-block">
+									<button class="btn btn-link p-0" onclick="SetDeleteUser('@result.GetString("Name")', '@result.GetString("UserID")', '@result.GetString("UserEmail")')" data-bs-toggle="modal" data-bs-target="#DeleteUserModal">
+										<div class="icon-2">
+											@ReadFile(iconPath + "trash-2.svg")
+										</div>
+									</button>
+								</div>
+							</td>
+						</tr>
+					</tbody>
+				}
+			}
+		</table>
+
+		<div class="modal fade" id="DeleteUserModal" tabindex="-1" aria-labelledby="DeleteUserModalLabel" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">@Translate("Delete user")</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						<form id="DeleteUserForm">
+							<input type="hidden" name="IsServicePage" value="true">
+							<input type="hidden" name="Action" value="DeleteUser">
+							<input type="hidden" name="UserId" id="DeleteUserID" value="" />
+							<input type="hidden" name="Name" id="DeleteUserName" value="" />
+						</form>
+						<div id="DeleteUserModalContent"></div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Translate("Close")</button>
+						<button type="button" class="btn btn-primary" onclick="DeleteUser()" data-bs-dismiss="modal">@Translate("Delete user")</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		var pageLoopItem = GetLoop("DwPaging.LoopPageGroup");
+		int pageCount = GetInteger("DwPaging.PageCount"),
+			currentPage = GetInteger("DwPaging.CurrentPage"),
+			prevPage = GetInteger("DwPaging.PreviousPageNumber"),
+			nextPage = GetInteger("DwPaging.NextPageNumber"),
+			itemsToLoad = 10,
+			pageSize = GetInteger("DwPaging.PageSize"),
+			totalItems = GetInteger("DwPaging.TotalItems"),
+			loadMore = pageSize + itemsToLoad,
+			firstPage = 1,
+			lastPage = pageCount;
+
+		if (GetBoolean("DwPaging.Pageable") == true)
+		{
+			string prevDisabled = currentPage == 1 ? "disabled" : "";
+			string nextDisabled = currentPage == pageCount ? "disabled" : "";
+
+			<div class="d-none d-lg-block">
+				<form id="pagination_@Pageview.CurrentParagraph.ID">
+					<div class="p-3 mt-3">
+						<ul class="pagination m-0">
+							<li class="page-item @(prevDisabled)">
+								<button type="submit" class="page-link" onclick="paginationSubmit(event, '@firstPage')">
+									<span class="icon-2">
+										@ReadFile(iconPath + "chevrons-left.svg")
+									</span>
+								</button>
+							</li>
+							<li class="page-item @(prevDisabled)">
+								<a class="page-link" href="@prevPage" onclick="paginationSubmit(event, '@prevPage')">
+									<span class="icon-2">
+										@ReadFile(iconPath + "chevron-left.svg")
+									</span>
+								</a>
+							</li>
+							@foreach (var pages in pageLoopItem)
+							{
+								var css = pages.GetBoolean("PageGroup.ActivePage") ? "page-item active" : "page-item";
+
+								<li class="@css">
+									<a href="@pages.GetString("PageGroup.PageLink")" class="page-link" onclick="paginationSubmit(event, '@pages.GetInteger("PageGroup.PageNumber")')">@pages.GetInteger("PageGroup.PageNumber")</a>
+								</li>
+							}
+							<li class="page-item @(nextDisabled)">
+								<a class="page-link" href="@nextPage" onclick="paginationSubmit(event, '@nextPage')">
+									<span class="icon-2">
+										@ReadFile(iconPath + "chevron-right.svg")
+									</span>
+								</a>
+							</li>
+							<li class="page-item @(nextDisabled)">
+								<button type="submit" class="page-link" onclick="paginationSubmit(event, '@lastPage')">
+									<span class="icon-2">
+										@ReadFile(iconPath + "chevrons-right.svg")
+									</span>
+								</button>
+							</li>
+						</ul>
+					</div>
+					<input type="hidden" name="pagenum" id="pageNumber_@Pageview.CurrentParagraph.ID" />
+				</form>
+				<script>
+					paginationSubmit = function (event, pageNumber) {
+						event.preventDefault();
+						document.querySelector('#pageNumber_@Pageview.CurrentParagraph.ID').value = pageNumber;
+						swift.PageUpdater.Update(document.querySelector("#pagination_@Pageview.CurrentParagraph.ID"));
+					}
+				</script>
+			</div>
+			<div class="d-block d-lg-none position-sticky bottom-0">
+				<form id="loadMore_@Pageview.CurrentParagraph.ID">
+					<input type="hidden" name="pagesize" id="pageSize_@Pageview.CurrentParagraph.ID" />
+					<div class="gap-2 grid grid-1 mx-3 pb-2 theme">
+						<button class="btn btn-primary w-100" type="submit" onclick="loadMore(event, '@loadMore')">
+							@Translate("Show more")
+						</button>
+						<div class="text-center fs-8">Showing @pageSize/@totalItems</div>
+					</div>
+				</form>
+				<script>
+					loadMore = function (event, pageSize) {
+						event.preventDefault();
+						document.querySelector('#pageSize_@Pageview.CurrentParagraph.ID').value = pageSize;
+						swift.PageUpdater.Update(document.querySelector("#loadMore_@Pageview.CurrentParagraph.ID"));
+					}
+				</script>
+			</div>
+		}
+	}
+	else
+	{
+		if (!string.IsNullOrEmpty(searchTerm))
+		{
+			<div class="alert alert-info text-center mt-3" role="alert">
+				@Translate("Your search ") <strong> "@searchTerm" </strong>@Translate("did not return any users that match your search")
+			</div>
+		}
+		else
+		{
+			<div class="alert alert-info text-center mt-3" role="alert">
+				@Translate("No users available")
+			</div>
+		}
+	}
+</div>
+
+@if (string.IsNullOrEmpty(Pageview.User.CustomerNumber))
+{
+	<div class="alert alert-info text-center mt-3" role="alert">
+		@Translate("You must have a valid customer number to add users")
+	</div>
+}
+
+
+<script>
+	function goToPage(page) {
+		let url = new URL(document.location.href);
+		url.searchParams.set('PageNum', page);
+		document.location.href = url;
+	}
+
+	function setInviteForm(name, email) {
+		document.querySelector("#UserManagement_Form_Name").value = name;
+		document.querySelector("#UserManagement_Form_Email").value = email;
+	}
+
+	function SetDeleteUser(name, userId, email) {
+		document.querySelector("#DeleteUserModalContent").innerHTML = '@Translate("You are about to delete") <b>' + name + '</b> @Translate("with the email") <b>' + email + '</b>, @Translate("Do you wish to continue?")';
+		document.querySelector("#DeleteUserID").value = userId;
+		document.querySelector("#DeleteUserName").value = name;
+	}
+
+	async function DeleteUser() {
+		var form = document.querySelector("#DeleteUserForm");
+		swift.PageUpdater.Update(form);
+	}
+</script>

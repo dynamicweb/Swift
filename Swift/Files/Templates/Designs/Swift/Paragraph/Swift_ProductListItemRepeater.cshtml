@@ -1,17 +1,39 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Core
 @using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+
+@functions
+{
+	string liveInfoClass = "";
+}
 
 @{ 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	
+	string productInfoFeed = "";
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
+	if (isLazyLoadingForProductInfoEnabled)
+	{
+		if (Dynamicweb.Context.Current.Items.Contains("ProductInfoFeed"))
+		{
+			productInfoFeed = Dynamicweb.Context.Current.Items["ProductInfoFeed"]?.ToString();
+			if (!string.IsNullOrEmpty(productInfoFeed))
+			{
+				productInfoFeed = $"data-product-info-feed=\"{productInfoFeed}\"";
+			}
+		}
+		liveInfoClass = "js-live-info";
+	}
+	
 }
 
 @if (!string.IsNullOrEmpty(theme)) {
-	<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()">
+	<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
 		@RenderProductList()
 	</div>
 } else {
-	<div class="item_@Model.Item.SystemName.ToLower()">
+	<div class="item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
 		@RenderProductList()
 	</div>
 }
@@ -87,6 +109,7 @@
 		pageSize += pageSizeSetting;
 
 		int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
+		string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
 
 		int listItemSourcePageId = Model.Item.GetInt32("ListComponentSource");
 		var page = Dynamicweb.Services.Pages.GetPage(listItemSourcePageId);
@@ -105,7 +128,19 @@
 			gridColumnMobileSize = gridColumnMobileSize == "list" ? "g-col-12" : gridColumnMobileSize;
 			gridColumnMobileSize = gridColumnMobileSize == "2-columns" ? "g-col-6" : gridColumnMobileSize;
 
-			string listItemTheme = !string.IsNullOrWhiteSpace(pageViewModel.Item.GetRawValueString("Theme")) ? " theme " + pageViewModel.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+			string listItemTheme = " theme " + pageViewModel.Item.GetRawValueString("Theme", string.Empty).Replace(" ", "").Trim().ToLower();
+			string listItemPadding = pageViewModel.Item.GetRawValueString("ContentPadding", string.Empty);
+			string listItemPaddingClass = string.Empty;
+
+			switch(listItemPadding)
+			{
+				case "small":
+					listItemPaddingClass = " p-2 p-xl-3";
+					break;
+				case "large":
+					listItemPaddingClass = " p-3 p-xl-4";
+					break;
+			}
 
 			<div class="grid">
 				@foreach (ProductViewModel product in productList.Products)
@@ -128,7 +163,7 @@
 						}
 
 						if (Model.Item.GetString("ListComponentSource") != null) {
-							<article class="@gridColumnMobileSize @gridColumnSize @listItemTheme p-3 d-flex flex-column position-relative product" itemscope itemtype="https://schema.org/Product">
+							<article class="@gridColumnMobileSize @gridColumnSize @listItemTheme @listItemPaddingClass d-flex flex-column position-relative product @liveInfoClass" data-product-id="@product.Id" itemscope itemtype="https://schema.org/Product">
 								<a href="@link" class="text-decoration-none stretched-link"></a>
 						
 								@RenderGrid(listItemSourcePageId)
@@ -172,7 +207,28 @@
 							<input type="hidden" name="SortBy" value="@sortBySelection" />
 							<input type="hidden" name="RequestType" value="UpdateList" />
 
-							<button class="btn btn-primary mb-3" type="button" onclick="swift.ProductList.Update(event)" id="LoadMoreButton_@Model.ID">@Translate("Load more products")</button>
+							@{ 
+								string nextPageLink = "/Default.aspx?ID=" + Pageview.Page.ID + "&PageSize=" + pageSize + "&SortBy=" + sortBySelection;
+
+								foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+								{
+									foreach (FacetViewModel facetItem in facetGroup.Facets)
+									{
+										foreach (FacetOptionViewModel facetOption in facetItem.Options)
+										{
+											if (facetOption.Selected)
+											{
+												nextPageLink += "&" + facetItem.QueryParameter + "=[" + facetOption.Value + "]";
+											}
+										}
+									}
+								}
+
+								nextPageLink += productList?.Group?.Id != null ? "&GroupID=" + productList.Group.Id : "";
+								nextPageLink += !string.IsNullOrEmpty(searchQuery) ? "&q=" + searchQuery : "";
+							}
+
+							<a href="@nextPageLink" class="btn btn-primary" type="button" onclick="swift.ProductList.Update(event)" id="LoadMoreButton_@Model.ID">@Translate("Load more products")</a>
 						</form>
 					}
 				</div>
