@@ -1,0 +1,113 @@
+@helper RenderCreateNewRequestFormFields() {
+	
+	<div class="mt-2 px-3 py-2">
+		<div class="form-floating">
+			<select id="RMATypeID" class="form-select" name="@(GetString("ParagraphID") + "RMATypeID")" onchange="changeRMAParameters()">
+				@foreach (LoopItem type in GetLoop("RMATypes"))
+				{
+					string rmaId = type.GetString("Ecom:RMA.Type.ID");
+					<option selected="@(!string.IsNullOrEmpty(type.GetString("Ecom:RMA.Type.Selected")))" value="@rmaId">@type.GetString("Ecom:RMA.Type.Name")</option>
+				}
+			</select>
+			<label for="RMATypeID" class="form-label">@Translate("Request type")</label>
+		</div>
+	</div>
+
+
+	if (!GetBoolean("Ecom:RMA.OrderID.IsSetFromRequest"))
+	{
+		<div class="px-3 py-2">
+			<div class="form-floating">
+				<select id="RMAOrderID" class="form-select" name="@(GetString("ParagraphID") + "RMAOrderID")" onchange="changeRMAParameters()">
+					<option selected="true" disabled="true" value="">@Translate("Nothing selected")</option>
+					@foreach (LoopItem order in GetLoop("Orders"))
+					{
+						string orderId = order.GetString("Ecom:Order.ID");
+						string orderDate = order.GetDate("Ecom:Order.Completed").ToString("HH:mm") != "00:00" ? order.GetDate("Ecom:Order.Completed").ToString() : order.GetDate("Ecom:Order.Completed").ToString().Replace("00:00", "");
+						
+						<option selected="@(!string.IsNullOrEmpty(order.GetString("Ecom:Order.Selected")))" value="@orderId">@(orderDate + ", #" + orderId + ", " + Translate("Price") + ": " + order.GetString("Ecom:Order.OrderLines.Total.Price"))</option>
+					}
+				</select>
+				<label for="RMAOrderID" class="form-label">@Translate("Select order")</label>
+			</div>
+		</div>
+		
+		<div class="alert alert-warning d-none" id="orderSelectError">
+			@Translate("The order is not selected")
+		</div>
+	}
+
+	bool hasRmaOrderLines = GetBoolean("Ecom:CustomerCenter.RMA.HasRMAOrderLines");
+	if (!hasRmaOrderLines && !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request[GetString("ParagraphID") + "RMAOrderID"]))
+	{
+		<div class="alert alert-warning" id="noAvailableProducts">
+			@Translate("There are no available products in this order")
+		</div>
+	}
+}
+
+@helper RenderCreateRequest()
+{
+	bool hasAddComment = GetBoolean("Ecom:CustomerCenter.RMA.HasAddComment");
+	bool hasRmaOrderLines = GetBoolean("Ecom:CustomerCenter.RMA.HasRMAOrderLines");
+	if (hasRmaOrderLines && hasAddComment)
+	{
+		<div class="p-3 js-comment">
+			<div class="form-floating">
+				<textarea class="form-control" id="RMAComment" rows="3" name="@(GetString("ParagraphID") + "RMAComment")" required></textarea>
+				<label for="RMAComment" class="u-pull--left">@($"{Translate("Additional Info")} ({Translate("required")})")</label>
+			</div>
+		</div>
+	}
+	
+	if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request[GetString("ParagraphID") + "RMAOrderID"]))
+	{
+		<button class="btn btn-primary m-3" onclick="createRMARequest()" type="button">@Translate("Create request")</button>
+		
+		<div class="alert alert-warning d-none" id="SelectRmaProducts">
+			@Translate("Please select products for the Request")
+		</div>
+	} 
+}
+
+<script>
+	function changeRMAParameters()
+	{
+		let orderEl = document.getElementById("RMAOrderID");
+		let orderSelectError = document.getElementById("orderSelectError");
+		let form = document.getElementById("RMAForm");
+		let checkedProducts = document.querySelectorAll(".js-rma-item-checkbox");
+		
+		if (orderEl.value === "") {
+			orderSelectError.classList.remove("d-none");
+		}
+		else
+		{
+			orderSelectError.classList.add("d-none");
+			for(let i = 0; i < checkedProducts.length; i++) {
+			  checkedProducts[i].checked = false;
+			}
+			form.submit();
+		}
+	}
+	
+	function createRMARequest()
+	{
+		let selectProductWarning = document.getElementById("SelectRmaProducts");
+		let checkedProducts = document.querySelectorAll(".js-rma-item-checkbox:checked");
+		let form = document.getElementById("RMAForm");
+
+		if (checkedProducts.length === 0) {
+			selectProductWarning.classList.remove("d-none");
+			return;
+		}
+		
+		selectProductWarning.classList.add("d-none");	
+		
+		if(!form.reportValidity()) {
+			return;
+		}
+		
+		form.submit();
+	}
+</script>
