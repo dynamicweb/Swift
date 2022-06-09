@@ -115,7 +115,7 @@ const Places = function () {
 
 				const addressField = document.querySelector("#" + fieldPrefix + "Address");
 				if (addressField != null) {
-					if (countrycode != "US" && countrycode != "UK") {
+					if (countrycode != "US" && countrycode != "GB" && countrycode != "CA") {
 						addressField.value = address + " " + streetnumber;
 					} else {
 						addressField.value = streetnumber + " " + address;
