@@ -1,0 +1,77 @@
+@using System
+@using System.Collections.Generic
+
+@functions {
+
+	public string GetRelativeTimeDescription(DateTime date)
+	{
+		TimeSpan timeSpan = DateTime.Now.Subtract(date);
+
+		if (timeSpan <= TimeSpan.FromSeconds(60))
+		{
+			return $"{timeSpan.Seconds} {Translate("seconds ago")}";
+		}
+		if (timeSpan <= TimeSpan.FromMinutes(60))
+		{
+			return timeSpan.Minutes > 1 ? $"{timeSpan.Minutes} {Translate("minutes ago")}" : Translate("a minute ago");
+		}
+		if (timeSpan <= TimeSpan.FromHours(24))
+		{
+			return timeSpan.Hours > 1 ? $"{timeSpan.Hours} {Translate("hours ago")}" : Translate("an hour ago");
+		}
+		if (timeSpan <= TimeSpan.FromDays(30))
+		{
+			return timeSpan.Days > 1 ? $"{timeSpan.Days} {Translate("days ago")}" : Translate("yesterday");
+		}
+		
+		return date.ToString("HH:mm") != "00:00" ? date.ToString() : date.ToString().Replace("00:00", "");
+	}
+
+}
+
+@helper RenderRmaHistory()
+{
+	if (string.IsNullOrWhiteSpace(GetString("Ecom:CustomerCenter.RMA.HasAddContent")))
+	{
+		// The RMA has an issue where the oldest comment if not the last of the loop, so we have to purposely loop for the first comment.
+		List<LoopItem> allComments = GetLoop("RMAComments");
+		List<LoopItem> allCommentsExceptFirst = allComments.Where(comment => comment.GetString("Ecom:RMA:Comment.Event.Description") != "RMA Created.").ToList();
+		LoopItem firstComment = allComments.FirstOrDefault(comment => comment.GetString("Ecom:RMA:Comment.Event.Description") == "RMA Created.");
+		
+		<h2 class="pb-0 p-3">@Translate("History")</h2>
+
+		foreach (LoopItem comment in allCommentsExceptFirst)
+		{
+			@RenderComment(comment)
+		}
+		@RenderComment(firstComment)
+	}	
+}
+
+@helper RenderComment(LoopItem comment)
+{
+	DateTime date = comment.GetDate("Ecom:RMA:Comment.Date");
+	string description = comment.GetString("Ecom:RMA:Comment.Event.Description");
+	string name = comment.GetString("Ecom:RMA:Comment.State.Name");
+	string text = comment.GetString("Ecom:RMA:Comment.Text");
+
+	<div class="col-md-12 border-bottom px-3 py-1">
+		<small class="text-muted">
+			@if (!string.IsNullOrWhiteSpace(description))
+			{
+				@description
+			}
+			<span class="px-1 small">@GetRelativeTimeDescription(date)</span>
+		</small>
+
+		@if (!string.IsNullOrWhiteSpace(name))
+		{
+			<div>@name</div>
+		}
+
+		@if (!string.IsNullOrEmpty(text))
+		{
+			<div>@text</div>
+		}
+	</div>
+}
