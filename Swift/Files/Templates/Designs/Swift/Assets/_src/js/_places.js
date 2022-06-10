@@ -56,20 +56,28 @@ const Places = function () {
 			// place.address_components are google.maps.GeocoderAddressComponent objects
 			// which are documented at http://goo.gle/3l5i5Mr
 
+
 			if (place.address_components != undefined) {
+				var countrycode = "";
 				var address = "";
+				var streetnumber = "";
 				var zip = "";
 				var region = "";
 				var country = "";
 				var locality = "";
 				var sublocality = "";
 
-				for (const component of place.address_components) {
+				for (const component of place.address_components) { 
 					const componentType = component.types[0];
 
 					switch (componentType) {
+						case "street_number": {
+							streetnumber =  component.short_name;
+							break;
+						}
+
 						case "route": {
-							address = component.long_name;
+							address = component.short_name;
 							break;
 						}
 
@@ -100,13 +108,18 @@ const Places = function () {
 
 						case "country":
 							country = component.short_name;
+							countrycode = component.short_name;
 							break;
 					}
 				}
 
 				const addressField = document.querySelector("#" + fieldPrefix + "Address");
 				if (addressField != null) {
-					addressField.value = address;
+					if (countrycode != "US" && countrycode != "GB" && countrycode != "CA") {
+						addressField.value = address + " " + streetnumber;
+					} else {
+						addressField.value = streetnumber + " " + address;
+					}
 				}
 
 				const zipField = document.querySelector("#" + fieldPrefix + "Zip");
