@@ -60,7 +60,6 @@
 	hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHideAddToCart") && isErpConnectionDown ? true : hideAddToCart;
 	bool hideFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("HideFavoritesSelector")) ? Model.Item.GetBoolean("HideFavoritesSelector") : false;
 
-	string detailsPageLink = Dynamicweb.Context.Current.Items["DetailsPageLink"] != null ? Dynamicweb.Context.Current.Items["DetailsPageLink"].ToString() : "";
 	string productTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductTheme")) ? " theme p-3 " + Model.Item.GetRawValueString("ProductTheme").Replace(" ", "").Trim().ToLower() : "";
 	string modalTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ModalTheme")) ? " theme " + Model.Item.GetRawValueString("ModalTheme").Replace(" ", "").Trim().ToLower() : "theme light";
 	string textPadding = !string.IsNullOrEmpty(Model.Item.GetString("ContentPadding")) ? Model.Item.GetRawValueString("ContentPadding") : "none";
@@ -104,12 +103,18 @@
 		int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
 
 		foreach (ProductViewModel product in productList.Products) {
-			var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
-			var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
+			bool hasDetailsTemplate = Dynamicweb.Context.Current.Items["HasDetailsTemplate"] != null ? Convert.ToBoolean(Dynamicweb.Context.Current.Items["HasDetailsTemplate"].ToString()) : false;
+			string detailsPageLink = Dynamicweb.Context.Current.Items["DetailsPageLink"] != null ? Dynamicweb.Context.Current.Items["DetailsPageLink"].ToString() : string.Empty;
+			string selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(product.PrimaryOrDefaultGroup.Id)?.Meta.PrimaryPage ?? string.Empty;
+			string detailsPageId = detailsPageLink != string.Empty ? detailsPageLink.Substring(detailsPageLink.LastIndexOf('=') + 1) : string.Empty;
+			string selectedDetailPageId = selectedDetailPage != string.Empty ? selectedDetailPage.Substring(selectedDetailPage.LastIndexOf('=') + 1) : string.Empty;
+			detailsPageId = string.IsNullOrEmpty(selectedDetailPage) ? detailsPageId : selectedDetailPageId;
 
-			string link = string.IsNullOrEmpty(selectedDetailPage) ? $"{detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
-			link += "&productid=" + product.Id;
-			link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
+			string link = hasDetailsTemplate ? "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") : "Default.aspx?ID=" + detailsPageId;
+			link += $"&GroupID={product.PrimaryOrDefaultGroup.Id}";
+			link += $"&ProductID={product.Id}";
+			link += !string.IsNullOrEmpty(product.VariantId) ? $"&VariantID={product.VariantId}" : "";
+			link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link);
 
 			string imagePath = product?.DefaultImage?.Value ?? "";
 			imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
