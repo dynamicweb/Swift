@@ -1,0 +1,234 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb
+
+@{
+	ProductViewModel product = new ProductViewModel();
+
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Item["DummyProduct"] != null)
+	{
+
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		}
+		else
+		{
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	}
+	else if (Pageview.Item["DummyProduct"] == null)
+	{
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+	}
+
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
+	horizontalAlign = horizontalAlign == "center" ? "justify-content-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "end" ? "justify-content-end" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "full" ? "" : horizontalAlign;
+
+	string buttonSize = Model.Item.GetRawValueString("ButtonSize", "regular");
+	buttonSize = buttonSize == "small" ? " btn-sm" : buttonSize;
+	buttonSize = buttonSize == "regular" ? string.Empty : buttonSize;
+	buttonSize = buttonSize == "large" ? " btn-lg" : buttonSize;
+
+	string flexFill = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "flex-fill" : "";
+	string fullWidth = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "w-100" : "";
+
+	string shopPageId = Pageview.CurrentParagraph.Item["ShopPageLink"] != null ? Pageview.CurrentParagraph.Item["ShopPageLink"].ToString() : "";
+
+	var ecomLanguages = Dynamicweb.Ecommerce.Services.Languages.GetLanguages();
+	var assetGroups = Dynamicweb.Ecommerce.Services.DetailsGroups.GetGroups();
+
+	List<string> productIds = new List<string>();
+
+	string confirmationPage = Pageview.CurrentParagraph.Item["ConfirmationPageLink"] != null ? Pageview.CurrentParagraph.Item["ConfirmationPageLink"].ToString() : "";
+
+	int languageCount = 0;
+}
+
+
+@if (product.Id != null)
+{
+	<div class="item_@Model.Item.SystemName.ToLower() w-100">
+		<form id="ProductExportForm" action="/dwapi/ecommerce/products/export">
+			<input type="hidden" name="ShopId" value="@Pageview.Area.EcomShopId" />
+			<input type="hidden" name="ProductIds" value="@product.Id" />
+			<div id="DownloadCartRecipientTokens"></div>
+
+			<div class="mb-2">
+				<h3 class="h5">@Translate("Product information")</h3>
+				<div>@Translate("Select a language and format for your product file")</div>
+			</div>
+
+			<div class="form-floating mb-3">
+				<select class="form-select bg-white" id="DownloadCartLanguageSelector" name="LanguageId" aria-label="@Translate("Language")">
+					<option value="">@Translate("None")</option>
+					@foreach (var language in ecomLanguages)
+					{
+						string selected = languageCount == 0 ? "selected" : "";
+
+						<option value="@language.LanguageId" @selected>@language.GetDisplayName()</option>
+
+						languageCount++;
+					}
+				</select>
+				<label for="DownloadCartLanguageSelector">@Translate("Language")</label>
+			</div>
+
+			<div class="form-floating mb-4">
+				<select class="form-select bg-white" id="DownloadCartFormatSelector" name="ExportFormat" aria-label="@Translate("Export format")">
+					<option value="">@Translate("None")</option>
+					<option value="json" selected>JSON</option>
+					<option value="csv">CSV</option>
+					<option value="xml">XML</option>
+				</select>
+				<label for="DownloadCartFormatSelector">@Translate("Export format")</label>
+			</div>
+
+			<div class="mb-2">
+				<h3 class="h5">@Translate("Image settings")</h3>
+				<div>@Translate("Select a resolution for your images")</div>
+			</div>
+
+			<div class="form-floating mb-4">
+				<input type="hidden" name="Dpi" id="DownloadCartDpi" value="72" />
+				<input type="hidden" name="ImageFormat" id="DownloadCartImageFormat" value="webp" />
+
+				<select class="form-select bg-white" id="DownloadCartImageImageSettingsSelector" aria-label="@Translate("Resolution")"
+						onchange="document.querySelector('#DownloadCartDpi').value = this.options[this.selectedIndex].getAttribute('data-dpi'); document.querySelector('#DownloadCartImageFormat').value = this.options[this.selectedIndex].getAttribute('data-image-format');">
+					<option data-dpi="72" data-image-format="webp" selected>@Translate("Web images") (dpi: 72)</option>
+					<option data-dpi="300" data-image-format="png">@Translate("Print images") (dpi: 300)</option>
+					<option data-dpi="600">@Translate("HQ images") (dpi: 600)</option>
+				</select>
+				<label for="DownloadCartImageFormatSelector">@Translate("Resolution")</label>
+			</div>
+
+			<div class="mb-2">
+				<h3 class="h5">@Translate("Product assets")</h3>
+				<div>@Translate("Optionally select additional product assets to download")</div>
+			</div>
+
+			<div class="form-floating mb-3">
+				<select class="form-select bg-white" name="AssetCategories" id="DownloadCartImageAssetsSelector" aria-label="@Translate("Selected image assets")">
+					<option value="all" selected>@Translate("All")</option>
+					@foreach (var group in assetGroups)
+					{
+						<option value="@group.SystemName">@group.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID)</option>
+					}
+				</select>
+				<label for="DownloadCartImageAssetsSelector">@Translate("Selected image assets")</label>
+			</div>
+
+			<div class="form-floating mb-2">
+				<input type="email" class="form-control bg-white" id="DownloadCartRecipientEmail" placeholder="@Translate("Send download link to")" required>
+				<div class="invalid-feedback">
+					@Translate("Please enter an email address")
+				</div>
+				<label for="DownloadCartRecipientEmail">@Translate("Send download link to")</label>
+			</div>
+
+			<div id="DownloadImagesWarning" class="alert alert-warning mb-2 d-none">@Translate("The solution does not have license to download")</div>
+
+			<div class="d-flex @horizontalAlign @fullWidth">
+				<button type="button" onclick="SetEmailAddresses(this)" class="btn btn-secondary @(buttonSize) @flexFill" title="@Translate("Send download link")">@Translate("Send download link")</button>
+			</div>
+		</form>
+	</div>
+
+	<script>
+		async function SetEmailAddresses(clickedButton) {
+			var emails = document.querySelector("#DownloadCartRecipientEmail").value;
+
+			var fetchOptions = {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(emails.replace(" ", "").split(","))
+			};
+
+			document.querySelector("#DownloadImagesWarning").classList.add("d-none");
+
+			clickedButton.disabled = true;
+			clickedButton.innerHTML = '<div style="animation: preloader-spin 2s infinite linear;" class="preloader-spin"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512"><title>circle-notch</title><g fill="#333333"><path d="M288 24.103v8.169a11.995 11.995 0 0 0 9.698 11.768C396.638 63.425 472 150.461 472 256c0 118.663-96.055 216-216 216-118.663 0-216-96.055-216-216 0-104.534 74.546-192.509 174.297-211.978A11.993 11.993 0 0 0 224 32.253v-8.147c0-7.523-6.845-13.193-14.237-11.798C94.472 34.048 7.364 135.575 8.004 257.332c.72 137.052 111.477 246.956 248.531 246.667C393.255 503.711 504 392.789 504 256c0-121.187-86.924-222.067-201.824-243.704C294.807 10.908 288 16.604 288 24.103z"></path></g></svg></div>';
+
+			let response = await fetch("/dwapi/users/createrecipients", fetchOptions);
+
+			if (response.ok) {
+				let inputText = await response.json().then(function (text) {
+					return text;
+				});
+
+				let emailsArray = inputText;
+				const recipiens = document.querySelector("#DownloadCartRecipientTokens");
+				recipiens.innerHTML = "";
+
+				emailsArray.forEach(function (email) {
+					var inputElement = document.createElement('input');
+					inputElement.name = "RecipientTokens";
+					inputElement.type = "hidden";
+					inputElement.value = email;
+					recipiens.appendChild(inputElement);
+				});
+
+				StartDownload(clickedButton);
+			} else {
+				clickedButton.disabled = false;
+				clickedButton.innerHTML = "@Translate("Send download link")";
+			}
+		}
+
+		async function StartDownload(clickedButton) {
+			var form = document.querySelector('#ProductExportForm');
+			let formData = new FormData(form);
+			const newParams = new URLSearchParams(formData); //Get parameters from the form
+			var url = new URL(form.action);	//Get the url from the form
+			var newUrl = url.origin + url.pathname + "?" + newParams.toString(); //Create url with the new parameters
+
+			var emailField = form.querySelector("#DownloadCartRecipientEmail");
+			clickedButton.disabled = false;
+
+			if (emailField.value == "") {
+				emailField.classList.add("is-invalid");
+				clickedButton.innerHTML = "@Translate("Send download link")";
+			} else {
+				emailField.classList.remove("is-invalid");
+
+				let response = await fetch(newUrl);
+
+				if (response.ok) {
+					clickedButton.innerHTML = "@Translate("Send download link")";
+
+					return false;
+				} else {
+					clickedButton.innerHTML = "@Translate("Send download link")";
+					document.querySelector("#DownloadImagesWarning").classList.remove("d-none");
+
+					return false;
+				}
+			}
+		}
+	</script>
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0">@Translate("No products available")</div>
+}
