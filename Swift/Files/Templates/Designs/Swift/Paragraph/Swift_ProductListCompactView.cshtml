@@ -76,7 +76,7 @@
 	textPadding = textPadding == "none" ? "" : textPadding;
 	textPadding = textPadding == "small" ? "p-2 p-lg-3" : textPadding;
 
-	string groupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GroupID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") : "";
+	string groupId = productList?.Group?.Id != null ? productList.Group.Id : "";
 	string url = Dynamicweb.Context.Current.Request.RawUrl;
 
 	var badgeParms = new Dictionary<string, object>();
@@ -120,7 +120,7 @@
 			detailsPageId = string.IsNullOrEmpty(selectedDetailPage) ? detailsPageId : selectedDetailPageId;
 
 			string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
-			link += $"&GroupID={product.PrimaryOrDefaultGroup.Id}";
+			link += $"&GroupID={groupId}";
 			link += $"&ProductID={product.Id}";
 			link += !string.IsNullOrEmpty(product.VariantId) ? $"&VariantID={product.VariantId}" : "";
 			link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link);
@@ -247,58 +247,59 @@
 					string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
 					string searchLayout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout") : "";
 
-					<form method="get" action="@url" data-response-target-element="content" class="w-100">
-						@foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+			<form method="get" action="@url" data-response-target-element="content" class="w-100">
+				@foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+				{
+					foreach (FacetViewModel facetItem in facetGroup.Facets)
+					{
+						foreach (FacetOptionViewModel facetOption in facetItem.Options)
 						{
-							foreach (FacetViewModel facetItem in facetGroup.Facets)
+							if (facetOption.Selected)
 							{
-								foreach (FacetOptionViewModel facetOption in facetItem.Options)
+								<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]" />
+							}
+						}
+					}
+				}
+
+				@if (groupId != string.Empty)
+				{
+					<input type="hidden" name="GroupId" value="@groupId" />
+				}
+
+				<input type="hidden" name="PageSize" value="@pageSize" />
+				<input type="hidden" name="SortBy" value="@sortBySelection" />
+				<input type="hidden" name="RequestType" value="UpdateList" />
+
+				@if (!string.IsNullOrEmpty(searchQuery))
+				{
+					<input type="hidden" name="q" value="@searchQuery" />
+					<input type="hidden" name="SearchLayout" value="@searchLayout" />
+				}
+
+				@{
+					string nextPageLink = "/Default.aspx?ID=" + Pageview.Page.ID + "&PageSize=" + pageSize + "&SortBy=" + sortBySelection;
+
+					foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+					{
+						foreach (FacetViewModel facetItem in facetGroup.Facets)
+						{
+							foreach (FacetOptionViewModel facetOption in facetItem.Options)
+							{
+								if (facetOption.Selected)
 								{
-									if (facetOption.Selected)
-									{
-										<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]" />
-									}
+									nextPageLink += "&" + facetItem.QueryParameter + "=[" + facetOption.Value + "]";
 								}
 							}
 						}
+					}
 
-						@if (productList?.Group?.Id != null)
-						{
-							<input type="hidden" name="GroupId" value="@productList.Group.Id" />
-						}
+					nextPageLink += productList?.Group?.Id != null ? "&GroupID=" + productList.Group.Id : "";
+					nextPageLink += !string.IsNullOrEmpty(searchQuery) ? "&q=" + searchQuery : "";
+				}
 
-						<input type="hidden" name="PageSize" value="@pageSize" />
-						<input type="hidden" name="SortBy" value="@sortBySelection" />
-						<input type="hidden" name="RequestType" value="UpdateList" />
-
-						@if (!string.IsNullOrEmpty(searchQuery)) { 
-							<input type="hidden" name="q" value="@searchQuery" />
-							<input type="hidden" name="SearchLayout" value="@searchLayout" />
-						}
-
-						@{ 
-							string nextPageLink = "/Default.aspx?ID=" + Pageview.Page.ID + "&PageSize=" + pageSize + "&SortBy=" + sortBySelection;
-
-							foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
-							{
-								foreach (FacetViewModel facetItem in facetGroup.Facets)
-								{
-									foreach (FacetOptionViewModel facetOption in facetItem.Options)
-									{
-										if (facetOption.Selected)
-										{
-											nextPageLink += "&" + facetItem.QueryParameter + "=[" + facetOption.Value + "]";
-										}
-									}
-								}
-							}
-
-							nextPageLink += productList?.Group?.Id != null ? "&GroupID=" + productList.Group.Id : "";
-							nextPageLink += !string.IsNullOrEmpty(searchQuery) ? "&q=" + searchQuery : "";
-						}
-
-						<a href="@nextPageLink" class="btn btn-primary" type="button" onclick="swift.ProductList.Update(event)" id="LoadMoreButton_@Model.ID">@Translate("Load more products")</a>
-					</form>
+				<a href="@nextPageLink" class="btn btn-primary" type="button" onclick="swift.ProductList.Update(event)" id="LoadMoreButton_@Model.ID">@Translate("Load more products")</a>
+			</form>
 				}
 			</div>
 		</div>
