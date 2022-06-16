@@ -101,7 +101,16 @@
 	}
 
 	string detailsPageLink = Dynamicweb.Context.Current.Items["DetailsPageLink"] != null ? Dynamicweb.Context.Current.Items["DetailsPageLink"].ToString() : "";
-	string url = Dynamicweb.Context.Current.Request.RawUrl;
+	
+	string url = Pageview.SearchFriendlyUrl;
+	url = url.LastIndexOf("?") != -1 ? url.Substring(0, url.LastIndexOf("?")) : url;
+
+	//Fix for non-friendly urls
+	if (Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") != null)
+	{
+		string groupId = Dynamicweb.Context.Current.Request.QueryString.Get("GroupID");
+		url += "?GroupID=" + groupId;
+	}
 
 	if (productList.TotalProductsCount > 0) {
 		int pageSizeSetting = 30;
@@ -128,7 +137,19 @@
 			gridColumnMobileSize = gridColumnMobileSize == "list" ? "g-col-12" : gridColumnMobileSize;
 			gridColumnMobileSize = gridColumnMobileSize == "2-columns" ? "g-col-6" : gridColumnMobileSize;
 
-			string listItemTheme = !string.IsNullOrWhiteSpace(pageViewModel.Item.GetRawValueString("Theme")) ? " theme " + pageViewModel.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+			string listItemTheme = " theme " + pageViewModel.Item.GetRawValueString("Theme", string.Empty).Replace(" ", "").Trim().ToLower();
+			string listItemPadding = pageViewModel.Item.GetRawValueString("ContentPadding", string.Empty);
+			string listItemPaddingClass = string.Empty;
+
+			switch(listItemPadding)
+			{
+				case "small":
+					listItemPaddingClass = " p-2 p-xl-3";
+					break;
+				case "large":
+					listItemPaddingClass = " p-3 p-xl-4";
+					break;
+			}
 
 			<div class="grid">
 				@foreach (ProductViewModel product in productList.Products)
@@ -151,7 +172,7 @@
 						}
 
 						if (Model.Item.GetString("ListComponentSource") != null) {
-							<article class="@gridColumnMobileSize @gridColumnSize @listItemTheme p-3 d-flex flex-column position-relative product @liveInfoClass" data-product-id="@product.Id" itemscope itemtype="https://schema.org/Product">
+							<article class="@gridColumnMobileSize @gridColumnSize @listItemTheme @listItemPaddingClass d-flex flex-column position-relative product @liveInfoClass" data-product-id="@product.Id" itemscope itemtype="https://schema.org/Product">
 								<a href="@link" class="text-decoration-none stretched-link"></a>
 						
 								@RenderGrid(listItemSourcePageId)
@@ -185,10 +206,6 @@
 										}
 									}
 								}
-							}
-
-							@if (productList?.Group?.Id != null) {
-								<input type="hidden" name="GroupId" value="@productList.Group.Id" />
 							}
 
 							<input type="hidden" name="PageSize" value="@pageSize" />
@@ -247,14 +264,30 @@
 			</div>
 		}
 	} else {
-		if (!isVisualEditor) {
-			<div class="alert alert-dark m-0">
-				@Translate("We did not find anything matching your search result")
-			</div>
-		} else {
+		string noProductsFoundMessage = !string.IsNullOrEmpty(Model.Item.GetString("NoProductsFoundMessage")) ? Model.Item.GetString("NoProductsFoundMessage") : Translate("We did not find anything matching your search result");
+		bool hasSubgroups = false;
+		
+		if (productList.SubGroups != null)
+        {
+			hasSubgroups = productList.SubGroups.Any();
+        }
+
+		if (!Model.Item.GetBoolean("HideNoProductsFoundMessage")) { 
+			if (!isVisualEditor)
+            {
+				<div class="alert alert-dark m-0" role="alert">
+					@noProductsFoundMessage
+				</div>
+            } else {
+				<div class="alert alert-dark m-0" role="alert">
+					@Translate("Product list: The list will be shown here, if any")
+				</div>
+			}
+		} else if (!hasSubgroups)
+        {
 			<div class="alert alert-dark m-0" role="alert">
-				<span>@Translate("Product list: The list will be shown here, if any")</span>
+				@noProductsFoundMessage
 			</div>
-		}
+        }
 	}
 }
