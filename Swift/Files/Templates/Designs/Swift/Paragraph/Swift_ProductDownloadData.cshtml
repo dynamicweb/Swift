@@ -71,7 +71,6 @@
 		<form id="ProductExportForm" action="/dwapi/ecommerce/products/export">
 			<input type="hidden" name="ShopId" value="@Pageview.Area.EcomShopId" />
 			<input type="hidden" name="ProductIds" value="@product.Id" />
-			<div id="DownloadCartRecipientTokens"></div>
 
 			<div class="mb-2">
 				<h3 class="h5">@Translate("Product information")</h3>
@@ -169,12 +168,17 @@
 				</div>
 			</div>
 
-			<div class="form-floating mb-3">
-				<input type="email" class="form-control bg-white" id="DownloadCartRecipientEmail" placeholder="@Translate("Send download link to")" required>
-				<div class="invalid-feedback">
-					@Translate("Please enter an email address")
+			<div class="js-recipients">
+				<div class="input-group mb-3 w-100 js-recipient-field">
+					<div class="form-floating flex-fill">
+						<input type="email" name="RecipientTokens" class="form-control bg-white" id="DownloadCartRecipientEmail" placeholder="@Translate("Send download link to")" required>
+						<div class="invalid-feedback">
+							@Translate("Please enter an email address")
+						</div>
+						<label for="DownloadCartRecipientEmail">@Translate("Send download link to")</label>
+					</div>
+					<button type="button" class="btn btn-outline-secondary js-recipient-add-btn" onclick="AddRecipent(this)">@Translate("Add")</button>
 				</div>
-				<label for="DownloadCartRecipientEmail">@Translate("Send download link to")</label>
 			</div>
 
 			<div id="DownloadImagesWarning" class="alert alert-warning mb-2 d-none">@Translate("The solution does not have license to download")</div>
@@ -186,39 +190,52 @@
 	</div>
 
 	<script>
+		let recipientsCount = 0;
+
+		function AddRecipent(clickedButton) {
+			const container = clickedButton.closest(".js-recipients");
+			const fieldToCopy = container.querySelector(".js-recipient-field").cloneNode(true);
+
+			//Cleanup
+			clickedButton.classList.add("d-none");
+			fieldToCopy.querySelector(".js-recipient-add-btn").classList.remove("d-none");
+			fieldToCopy.querySelector("input").id = "EmainRecipientExtra" + recipientsCount;
+			fieldToCopy.querySelector("input").value = "";
+			fieldToCopy.querySelector("label").for = "EmainRecipientExtra" + recipientsCount;
+			fieldToCopy.querySelector("label").innerHTML = "@Translate("And also to")";
+
+			recipientsCount++;
+
+			container.appendChild(fieldToCopy);
+
+			container.lastChild.querySelector("input").focus();
+		}
+
 		async function SetEmailAddresses(clickedButton) {
-			var emails = document.querySelector("#DownloadCartRecipientEmail").value;
+			var emails = [];
+
+			document.querySelectorAll(".js-recipient-field").forEach(function (field) {
+				emails.push(field.querySelector("input").value.replace(" ", ""));
+			});
 
 			var fetchOptions = {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify(emails.replaceAll(" ", "").split(","))
+				body: JSON.stringify(emails)
 			};
 
 			document.querySelector("#DownloadImagesWarning").classList.add("d-none");
 
 			clickedButton.disabled = true;
-			clickedButton.innerHTML = '<div style="animation: preloader-spin 2s infinite linear;" class="preloader-spin"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512"><title>circle-notch</title><g fill="#333333"><path d="M288 24.103v8.169a11.995 11.995 0 0 0 9.698 11.768C396.638 63.425 472 150.461 472 256c0 118.663-96.055 216-216 216-118.663 0-216-96.055-216-216 0-104.534 74.546-192.509 174.297-211.978A11.993 11.993 0 0 0 224 32.253v-8.147c0-7.523-6.845-13.193-14.237-11.798C94.472 34.048 7.364 135.575 8.004 257.332c.72 137.052 111.477 246.956 248.531 246.667C393.255 503.711 504 392.789 504 256c0-121.187-86.924-222.067-201.824-243.704C294.807 10.908 288 16.604 288 24.103z"></path></g></svg></div>';
+			clickedButton.innerHTML = '<div style="animation: preloader-spin 2s infinite linear;" class="preloader-spin"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512"><title>circle-notch</title><g fill="#ffffff"><path d="M288 24.103v8.169a11.995 11.995 0 0 0 9.698 11.768C396.638 63.425 472 150.461 472 256c0 118.663-96.055 216-216 216-118.663 0-216-96.055-216-216 0-104.534 74.546-192.509 174.297-211.978A11.993 11.993 0 0 0 224 32.253v-8.147c0-7.523-6.845-13.193-14.237-11.798C94.472 34.048 7.364 135.575 8.004 257.332c.72 137.052 111.477 246.956 248.531 246.667C393.255 503.711 504 392.789 504 256c0-121.187-86.924-222.067-201.824-243.704C294.807 10.908 288 16.604 288 24.103z"></path></g></svg></div>';
 
 			let response = await fetch("/dwapi/users/createrecipients", fetchOptions);
 
 			if (response.ok) {
 				let inputText = await response.json().then(function (text) {
 					return text;
-				});
-
-				let emailsArray = inputText;
-				const recipiens = document.querySelector("#DownloadCartRecipientTokens");
-				recipiens.innerHTML = "";
-
-				emailsArray.forEach(function (email) {
-					var inputElement = document.createElement('input');
-					inputElement.name = "RecipientTokens";
-					inputElement.type = "hidden";
-					inputElement.value = email;
-					recipiens.appendChild(inputElement);
 				});
 
 				StartDownload(clickedButton);
