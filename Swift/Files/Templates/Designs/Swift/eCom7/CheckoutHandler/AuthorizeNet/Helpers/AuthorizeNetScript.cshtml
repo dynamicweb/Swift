@@ -1,0 +1,106 @@
+﻿@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@helper RenderAuthorizeNetPaymentScript()
+{
+    <script>
+        function sendPaymentDataToAnet() {
+            const authData = {
+                clientKey: "@GetString("AuthorizeNet.PublicClientKey")",
+                apiLoginID: "@GetString("AuthorizeNet.ApiLoginId")",
+            };
+            const cardData = {
+                cardNumber: document.getElementById("cardNumber").value,
+                month: document.getElementById("expMonth").value,
+                year: document.getElementById("expYear").value,
+                cardCode: document.getElementById("cardCode").value,
+                zip: document.getElementById("zip").value,
+                fullName: document.getElementById("fullName").value,
+            };
+            const secureData = {
+                authData,
+                cardData,
+            };
+			let form = document.querySelector(".js-authorizeNetManualForm");
+			
+			if(!form.reportValidity()) {
+				return;	
+			}
+    
+            Accept.dispatchData(secureData, responseHandler);
+        }
+    
+        function responseHandler(response) {
+            if (response.messages.resultCode === "Error") {
+                var i = 0;
+                var message = "";
+                while (i < response.messages.message.length) {
+                    message += response.messages.message[i].text + "<br />";
+                    i = i + 1;
+                }
+                SetErrorText(message);
+            } else {
+                paymentFormUpdate(response.opaqueData);
+            }
+        }
+    
+        function SetErrorText(message) {
+            const errorBlock = document.getElementById("ErrorBlock"); 
+            errorBlock.innerHTML = message;
+            if (message) {
+				errorBlock.classList.remove("d-none");
+            } else {
+				errorBlock.classList.add("d-none");
+            }
+        }
+    
+        function paymentFormUpdate(opaqueData) {
+            document.getElementById("dataValue").value = opaqueData.dataValue;
+            document.getElementById("dataDescriptor").value = opaqueData.dataDescriptor;
+            
+            if (isManualForm()) {
+                // Security: blank out the sensitive data before submitting
+                document.getElementById("cardNumber").value = "";
+                document.getElementById("expMonth").value = "";
+                document.getElementById("expYear").value = "";
+                document.getElementById("cardCode").value = "";
+                document.getElementById("zip").value = "";
+                document.getElementById("fullName").value = "";
+            }
+            
+            document.getElementsByName("authorizeNetForm")[0].submit();
+        }
+        
+        function isManualForm() {
+          return document.querySelector(".js-authorizeNetManualForm") != null;
+        }
+        
+        function triggerOnLoadClick() {
+            setTimeout(function() {
+                document.querySelector(".form-pay-button").click();
+            }, 500)
+        }
+        
+        function triggerClickOnFakePayButton () {
+			let payButton = document.querySelector("#PayButton");
+			
+			if(payButton) {
+            	payButton.addEventListener("click", function() {
+                	document.querySelector(".form-pay-button").click();
+            	})
+			}
+        }
+        
+        document.addEventListener("DOMContentLoaded", function() {
+			let payButton = document.querySelector("#PayButton");
+			
+			if(payButton) {
+            	payButton.classList.remove("d-none");
+			}
+            triggerClickOnFakePayButton();
+            
+            if (!isManualForm()) {
+                triggerOnLoadClick();
+            }
+        })
+    </script>
+    <script type="text/javascript" src="@GetString("AuthorizeNet.JavaScriptUrl")" charset="utf-8"></script>
+}
