@@ -1,0 +1,167 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Frontend
+@using System.IO
+
+@functions {
+	public ProductViewModel product { get; set; } = new ProductViewModel();
+}
+
+@{
+	@* Get the product data *@
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Item["DummyProduct"] != null && Pageview.IsVisualEditorMode)
+	{
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		}
+		else
+		{
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	}
+	else if (Pageview.Item["DummyProduct"] == null)
+	{
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetAllProducts(Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+	}
+
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
+	horizontalAlign = horizontalAlign == "center" ? "align-items-center text-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "end" ? "align-items-end text-end" : horizontalAlign;
+
+	bool hideGroupHeaders = Model.Item.GetBoolean("HideGroupHeaders");
+
+	string variantsLayout = Model.Item.GetRawValueString("Layout", "images");
+}
+
+@if (product.Id != null)
+{
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && !Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsWebServiceConnectionAvailable();
+
+	int variantGroupCount = 0;
+	var selectedGroups = Model.Item.GetRawValueString("Groups").Split(',').ToList();
+	int showMaxVariants = Model.Item.GetInt32("MaxVariantsToRender") != 0 ? Model.Item.GetInt32("MaxVariantsToRender") : 1;
+
+	if (product.VariantGroups().Count != 0)
+	{
+		<div class="d-flex flex-column @horizontalAlign" id="item_@Model.Item.SystemName.ToLower()">
+			@foreach (var variantGroup in product.VariantGroups())
+			{
+				int variantsCount = 0;
+				string groupId = variantGroup.Id;
+
+				<div>
+					@foreach (var selectedGroupId in selectedGroups)
+					{
+						if (!hideGroupHeaders && groupId == selectedGroupId) { 
+							<h3 class="h6 m-0">@variantGroup.Name</h3>
+						}
+					}
+					<div class="d-flex gap-2 mb-2">
+						@foreach (var variant in variantGroup.Options)
+						{
+							foreach (var selectedGroupId in selectedGroups)
+							{
+								if (groupId == selectedGroupId)
+								{
+									var optionsCount = variantGroup.Options.Count();
+
+									if (variantsCount < showMaxVariants)
+									{
+										<article title="@product.Name @variant.Name" style="z-index: 1">
+											@if (!string.IsNullOrEmpty(variant.Color))
+											{
+												string defaultProductImage = Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value);
+												string variantImage = Dynamicweb.Context.Current.Server.UrlEncode(variant.Image.Value);
+												string defaultPrice = !hidePrice ? product.Price.PriceFormatted : "0";
+												string variantPrice = !hidePrice ? product.Price.PriceFormatted : "0";
+
+												if (variantsLayout == "images") { 												
+													if (isLazyLoadingForProductInfoEnabled)
+													{
+														<figure class="figure w-100 d-block m-0" data-price-formatted="" onmouseover="swift.StaticVariants.SwitchProduct(event, '@product.Id', this.getAttribute('data-price-formatted'), '@variantImage')" onmouseout="swift.StaticVariants.SwitchProduct(event, '@product.Id', this.getAttribute('data-price-formatted'), '@defaultProductImage')">
+															<div class="d-flex align-items-center justify-content-center">
+																<img src="/admin/public/GetImage.ashx?image=@variantImage&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" height="75" width="75" class="p-1 text-small" loading="lazy" decoding="async" alt="@product.Name, @variant.Name">
+															</div>
+														</figure>
+													}
+													else
+													{
+														<figure class="figure w-100 d-block m-0" onmouseover="swift.StaticVariants.SwitchProduct(event, '@product.Id', '@defaultPrice', '@variantImage')" onmouseout="swift.StaticVariants.SwitchProduct(event, '@product.Id', '@variantPrice', '@defaultProductImage')">
+															<div class="d-flex align-items-center justify-content-center">
+																<img src="/admin/public/GetImage.ashx?image=@variantImage&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" height="75" width="75" class="p-1 text-small" loading="lazy" decoding="async" alt="@product.Name, @variant.Name">
+															</div>
+														</figure>
+													}
+												} else { 
+													<span class="colorbox colorbox-sm rounded-circle border me-1" style="background-color: @variant.Color"></span>
+												}
+											}
+											else
+											{
+												<div class="d-flex align-items-center justify-content-center">
+													@variant.Name
+												</div>
+											}
+											<div class="visually-hidden">
+												<h4>@Translate("Variant Name")</h4>
+												<p>@product.Name, @variant.Name</p>
+												@if (!hidePrice)
+												{
+													<h4>@Translate("Variant Price")</h4>
+													if (isLazyLoadingForProductInfoEnabled)
+													{
+														<p><span class="text-price js-text-price"></span></p>
+													}
+													else
+													{
+														<p><span class="text-price">@product.Price.PriceFormatted</span></p>
+													}
+												}
+											</div>
+										</article>
+									}
+
+									variantsCount++;
+
+									if (variantsCount == showMaxVariants && optionsCount != showMaxVariants)
+									{
+										int left = optionsCount - showMaxVariants;
+										<div class="variant-option ms-1 d-flex justify-content-center align-items-center">
+											<span>+@left</span>
+										</div>
+									}
+								}
+							}
+						}
+					</div>
+				</div>
+			}
+		</div>
+	}
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0">@Translate("No products available")</div>
+}
