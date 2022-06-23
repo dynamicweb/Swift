@@ -9,7 +9,7 @@
 * Itemtype: New Slider, which is an alternative to the old carousel. Using Swiffy slider
 * Itemtype: Possible to hide Display group title ProductSpecification
 
-## Change
+## Changed
 * Itemtype: Related product slider: implement Swiffy slider instead of TinySlider
 
 ## Fixed
