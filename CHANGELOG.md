@@ -1,5 +1,47 @@
 # Changelog
 
+## [v1.12.0] - 23-06-2022
+
+## Added
+* Customer Center: RMA (Return merchandise Authorization) Possible to return your product. The RMA implementation is based on the old Customer Center app
+* Digital Assets Portal: Possible to have an overview over downloadable assets, which is not product related such as: Logo, company and employee images. General documents about the company.
+* Itemtype: On Row setting you can define how the responsive behaviour should be n mobile devices, stacked or side-by-side. It is also possible to choose which column should be presented first
+* Itemtype: New Slider, which is an alternative to the old carousel. Using Swiffy slider
+* Itemtype: Possible to hide Display group title ProductSpecification
+
+## Change
+* Itemtype: Related product slider: implement Swiffy slider instead of TinySlider
+
+## Fixed
+* Checkout: Remove the word 'checked' in address label
+* Checkout: Remove empty value attribute, when signing up for newsletter
+* Customer center: Unify order receipt in Cart and My orders
+* Digital Assets Portal: Adds the minimum quantity for the product on the download cart
+* Email: Missing double quotes in Swift_EmailMaster.cshtml
+* Express buy: Info text is not rendered, whe loading page for the first time
+* General: Fix broken layout on Cart steps, receipt and CC order detail 
+* General: Fix broken PIM queries, pointing to old repository Products instead of SwiftProducts
+* General: Fix Google places street number issue
+* General. Fix broken translation file
+* General: Fix live integration stock level
+* General: Fix typo in OrderDeatils, QuoteDetails and integration CC OrderDetails
+* Integration Customer Center: Not possible to download PDF if specific shop is selected in Live integration
+* Itemtype: Images are scaled wrong on mobile view for Related slider
+* Itemtype: Hide on scroll setting affacts placement of edit row marking and icons
+* Itemtype: Related product slider indicators invert colors is missing
+* Itemtype: Styling fixes on quote and download button
+* Itemtype: Component selector optimization, wrap the options in modal
+* Itemtype: Related product slider, remove vertical scrollbar Swiffy slider overflow-y fix
+* Itemtype: Repeater does not render grid
+* Itemtype: Product component Quote quantity select is not rendered when enabled
+* Itemtype: Removed force padding on the component repeater
+* Itemtype: Image is squashed in component row, improve the default image width implementation
+* Itemtype: Breadcrumb navigation error on Product Detail Pages, remove broken item id lookup
+* Itemtype: Not possible to edit row templates in visual editor, null check
+* Product list: Sort order changes from relevance to Name when clicking load more
+* Product list: Improve how we handle group setting when a product is updated
+* Product list: Improve no products found logic
+
 ## [v1.11.0] - 30-05-2022
 
 ## Bugfixes
