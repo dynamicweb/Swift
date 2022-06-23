@@ -1,0 +1,215 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb
+@using Dynamicweb.Core.Encoders
+
+@functions {
+	public string[] supportedImageFormats { get; set; }
+	public string[] supportedDocumentFormats { get; set; }
+	public string[] allSupportedFormats { get; set; }
+}
+
+@{
+	var assetsList = GetLoop("QueryResultItem");
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	@* Supported formats *@
+	supportedImageFormats = new string[] { ".jpg", ".jpeg", ".webp", ".png", ".gif", ".bmp", ".tiff", ".pdf" };
+	supportedDocumentFormats = new string[] { ".docx", ".xlsx", ".ppt", "pptx" };
+	allSupportedFormats = supportedImageFormats.Concat(supportedDocumentFormats).ToArray();
+
+	string url = Dynamicweb.Context.Current.Request.RawUrl;
+	string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("Search")) ? Dynamicweb.Context.Current.Request.QueryString.Get("Search") : "";
+	string searchLayout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout") : "";
+
+	var facetGroups = GetLoop("FacetGroups");
+	int facetGroupsCount = 0;
+	int totalFacetGroups = facetGroups.Count();
+
+	int facetOptionsCount = 0;
+}
+
+<form method="post" action="@url" data-response-target-element="content" class="w-100 mb-3">
+	<input type="hidden" name="PageSize" value="12" />
+	<input type="hidden" name="RequestType" value="UpdateList" />
+	<input type="hidden" name="Search" value="@searchQuery">
+
+	@foreach (var facetGroup in facetGroups)
+	{
+		foreach (var facetItem in facetGroup.GetLoop("Facets"))
+		{
+			var facetOptions = facetItem.GetLoop("FacetOptions");
+			string groupName = facetItem.GetString("Facet.Name");
+
+			foreach (var facetOption in facetOptions)
+			{
+				if (facetOption.GetBoolean("FacetOption.Selected"))
+				{
+					string facetLabel = HtmlEncoder.HtmlEncode(facetOption.GetString("FacetOption.Name"));
+
+					<input class="visually-hidden" id="Selected_@facetOption.GetString("FacetOption.Value")" name="@facetItem.GetString("Facet.QueryParameter")" onclick="swift.ProductList.Update(event)" type="checkbox" value="[@facetOption.GetString("FacetOption.Value")]" title="@facetLabel" checked>
+					<label class="btn btn-secondary d-inline-flex align-items-center" for="Selected_@facetOption.GetString("FacetOption.Value")">
+						<span>@(groupName): @facetLabel.Replace("/Product assets/", "")</span>
+						<span class="icon-2 ms-2 my-auto">
+							@ReadFile(iconPath + "check.svg")
+						</span>
+					</label>
+
+					facetOptionsCount++;
+				}
+			}
+		}
+	}
+
+	@if (facetOptionsCount > 2)
+	{
+		<button type="button" class="btn btn-sm me-sm-1 me-lg-2" onclick="swift.ProductList.ResetFacets(event)"><span class="icon-2">@ReadFile(iconPath + "rotate-ccw.svg")</span> @Translate("Clear filters")</button>
+	}
+</form>
+
+<form method="post" action="@url" data-response-target-element="content" class="w-100">
+	<input type="hidden" name="PageSize" value="12" id="PageSize" />
+	<input type="hidden" name="RequestType" value="UpdateList" />
+
+	<div class="grid gap-4">
+		<div class="g-col-12 g-col-lg-3">
+			<div class="mb-3">
+				<input type="text" class="form-control" placeholder="@Translate("Search")" name="Search" value="@searchQuery" id="AssetsSearchField" onkeyup="swift.Typeahead.debounce(() => swift.ProductList.Update(this), 600)()">
+			</div>
+
+			@foreach (var facetGroup in facetGroups)
+			{
+				string border = facetGroupsCount != totalFacetGroups ? "border-bottom" : "";
+
+				foreach (var facet in facetGroup.GetLoop("Facets"))
+				{
+					var facetOptions = facet.GetLoop("FacetOptions");
+					string groupName = facet.GetString("Facet.Name");
+
+					if (facetOptions.Count() > 0)
+					{
+						<div class="@border pb-2">
+							<div class="d-flex" data-bs-toggle="collapse" data-bs-target="#FacetGroup_@groupName.Replace(" ", "")" role="button" aria-expanded="true" aria-controls="FacetGroup_@groupName.Replace(" ", "")">
+								<h2 class="opacity-85 m-0 flex-fill h6 my-2">@Translate(groupName)</h2>
+								<div class="my-auto collapse-chevron-icon"></div>
+							</div>
+							<div class="collapse show" id="FacetGroup_@facet.GetString("Facet.Name").Replace(" ", "")">
+								@foreach (var option in facetOptions)
+								{
+									string facetLabel = HtmlEncoder.HtmlEncode(option.GetString("FacetOption.Name"));
+									string disabled = option.GetInteger("FacetOption.Count") <= 0 ? "disabled" : "";
+									string selected = option.GetBoolean("FacetOption.Selected") ? "checked" : "";
+
+									if (facetLabel.ToLower() == "true")
+									{
+										facetLabel = Translate("Yes");
+									}
+
+									if (facetLabel.ToLower() == "false")
+									{
+										facetLabel = Translate("No");
+									}
+
+									<label class="form-check mt-1" @disabled>
+										<input type="checkbox" onclick="swift.ProductList.Update(event)" class="form-check-input" name="@facet.GetString("Facet.QueryParameter")" value="[@option.GetString("FacetOption.Value")]" data-filter-value="@facetLabel" @selected>
+										<span class="form-check-label d-flex align-items-center">
+											<span class="flex-fill">@facetLabel.Replace("/Product assets/", string.Empty)</span>
+											<small class="opacity-85">@option.GetInteger("FacetOption.Count")</small>
+										</span>
+									</label>
+								}
+							</div>
+						</div>
+
+						facetGroupsCount++;
+					}
+				}
+			}
+		</div>
+		<div class="g-col-12 g-col-lg-9">
+			@if (assetsList.Count > 0)
+			{
+				int pageSizeSetting = 12;
+				int pageSize = GetInteger("DwPaging.PageSize");
+
+				int totalAssets = GetInteger("DwPaging.TotalItems");
+				int loadedAssets = pageSize > totalAssets ? totalAssets : pageSize;
+
+				<div class="grid gap-4">
+					@foreach (var asset in assetsList)
+					{
+						foreach (string format in allSupportedFormats)
+						{
+							string fileName = asset.GetString("FileName");
+							bool imageFound = false;
+
+							if (fileName.Contains(format))
+							{
+								int servicePageId = GetPageIdByNavigationTag("AssetInfoService");
+
+								<div class="g-col-6 g-col-lg-3 d-flex flex-column" onclick="swift.PageUpdater.UpdateFromUrl(this, '/Default.aspx?ID=@(servicePageId)&AssetId=@(fileName))]')" data-response-target-element="DynamicOffcanvas" data-bs-toggle="offcanvas" data-bs-target="#DynamicOffcanvas" aria-controls="DynamicOffcanvas" style="cursor: pointer">
+									<div class="ratio mb-3" style="--bs-aspect-ratio: 100%; background-color: hsl(0, 0%, 93%) ">
+										@foreach (string imageFormat in supportedImageFormats)
+										{
+											if (fileName.Contains(imageFormat))
+											{
+												string imagePath = !string.IsNullOrEmpty(asset.GetString("DirectoryRelativePath")) ? "/Admin/Public/GetImage.ashx?image=/Files" + asset.GetString("DirectoryRelativePath") + "/" + fileName + "&width=640&format=webp" : "";
+												<img src="@imagePath" loading="lazy" style="object-fit: cover" />
+
+												imageFound = true;
+											}
+										}
+
+										@if (imageFound == false)
+										{
+											<div class="position-absolute bg-black bg-opacity-10 w-100 h-100"></div>
+											<div class="d-flex align-items-center justify-content-center">
+												<span class="icon-4">@ReadFile(iconPath + "file.svg")</span>
+											</div>
+										}
+									</div>
+									<div class="flex-fill">
+										<h3 class="h6" style="word-break: break-all">@fileName</h3>
+									</div>
+									<div class="fs-6 opacity-50">
+										@(asset.GetString("FileSize"))kb
+									</div>
+								</div>
+							}
+						}
+					}
+
+					<div class="g-col-12 border-top w-100 mt-4"></div>
+				</div>
+
+				<div class="mt-5" id="LoadMoreButton">
+					<div class="text-center d-flex flex-column gap-3">
+						<div class="opacity-85">@loadedAssets @Translate("out of") @totalAssets @Translate("products")</div>
+						@if (GetInteger("DwPaging.PageCount") != 1)
+						{
+							int nextPageSize = pageSize += pageSizeSetting;
+							<button class="btn btn-primary" type="button" onclick="document.querySelector('#PageSize').value = '@nextPageSize'; swift.ProductList.Update(event)">@Translate("Load more assets")</button>
+							<button class="btn" type="button" onclick="document.body.scrollTop = 0; document.documentElement.scrollTop = 0;">@Translate("Back to top")</button>
+						}
+					</div>
+				</div>
+			}
+			else
+			{
+				<div class="alert alert-dark m-0" id="NoFiltersAlert">
+					@Translate("No assets found")
+				</div>
+			}
+		</div>
+	</div>
+</form>
+
+
+<script type="text/javascript">
+	if (document.querySelector("#AssetsSearchField")) {
+		const input = document.querySelector("#AssetsSearchField");
+		const end = input.value.length;
+
+		input.setSelectionRange(end, end);
+		input.focus();
+	}
+</script>
