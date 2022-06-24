@@ -1,0 +1,252 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb
+@using System.IO
+@using System.Web
+@using System.Collections
+
+@functions {
+	public string[] supportedImageFormats { get; set; }
+	public string[] supportedDocumentFormats { get; set; }
+	public string[] allSupportedFormats { get; set; }
+}
+
+@{ 
+	var assetsList = GetLoop("QueryResultItem");
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	@* Supported formats *@
+	supportedImageFormats = new string[] { ".jpg", ".jpeg", ".webp", ".png", ".gif", ".bmp", ".tiff", ".pdf" };
+	supportedDocumentFormats = new string[] { ".docx", ".xlsx", ".ppt", ".pptx" };
+	allSupportedFormats = supportedImageFormats.Concat(supportedDocumentFormats).ToArray();
+
+	bool imageFound = false;
+	string fileName;
+	string filePath = "";
+}
+
+
+<div class="d-flex flex-column p-4 pe-0 vh-100">
+	@foreach (var asset in assetsList)
+	{
+		<div class="flex-fill overflow-y-auto overflow-x-hidden pe-4 mb-4">
+			@foreach (string format in allSupportedFormats)
+			{
+				fileName = asset.GetString("FileName");
+				filePath = !string.IsNullOrEmpty(asset.GetString("DirectoryRelativePath")) ? asset.GetString("DirectoryRelativePath") + "/" + fileName : "";
+
+				if (fileName.Contains(format))
+				{
+					<div class="d-flex flex-row gap-4 mb-3">
+						<div style="width: 120px">
+							<div class="ratio" style="--bs-aspect-ratio: 100%">
+								@foreach (string imageFormat in supportedImageFormats)
+								{
+									if (fileName.Contains(imageFormat))
+									{
+										string imagePath = !string.IsNullOrEmpty(asset.GetString("DirectoryRelativePath")) ? "/Admin/Public/GetImage.ashx?image=/Files" + asset.GetString("DirectoryRelativePath") + "/" + fileName + "&width=300&format=webp" : "";
+
+										<img src="@imagePath" loading="lazy" style="object-fit: cover" />
+
+										imageFound = true;
+									}
+								}
+
+								@if (imageFound == false)
+								{
+									<div class="position-absolute bg-black bg-opacity-10 w-100 h-100"></div>
+									<div class="d-flex align-items-center justify-content-center">
+										<span class="icon-4">@ReadFile(iconPath + "file.svg")</span>
+									</div>
+								}
+							</div>
+						</div>
+						<div class="flex-fill">
+							<h3 class="h6 flex-fill" style="word-break: break-all">@fileName</h3>
+							<div class="fs-6 opacity-50">
+								@(asset.GetString("FileSize"))kb
+							</div>
+						</div>
+					</div>
+
+					@* Basic file data *@
+					<dl class="m-0">
+						<div class="d-flex flex-row">
+							<dt class="flex-fill">@Translate("Updated")</dt>
+							<dd>@asset.GetString("LastWriteTime")</dd>
+						</div>
+						<div class="d-flex flex-row">
+							<dt class="flex-fill">@Translate("Filetype")</dt>
+							<dd>@asset.GetString("Extension")</dd>
+						</div>
+					</dl>
+
+					if (imageFound && !fileName.Contains(".pdf")) {
+						string fileServerPath = HttpContext.Current.Server.MapPath("Files" + asset.GetString("DirectoryRelativePath") + "/" + asset.GetString("FileName"));
+						var attributes = Dynamicweb.Imaging.Image.GetImageAttributes(fileServerPath);
+						var dimensions = string.Format("{0} x {1}px", attributes.Size.Width, attributes.Size.Height);
+						var colors = string.Format("{0} ({1} {2})", attributes.ColorType, attributes.ColorDepth, Translate("bits"));
+
+						Dictionary<string, string> IPTC = new Dictionary<string, string>();
+						Dictionary<string, string> XMP = new Dictionary<string, string>();
+						Dictionary<string, string> EXIF = new Dictionary<string, string>();
+						Dictionary<string, string> DynamicwebMetadata = new Dictionary<string, string>();
+
+						@* Basic image data *@
+						<dl>
+							<div class="d-flex flex-row">
+								<dt class="flex-fill">@Translate("Dimensions")</dt>
+								<dd>@dimensions</dd>
+							</div>
+
+							<div class="d-flex flex-row">
+								<dt class="flex-fill">@Translate("Colors")</dt>
+								<dd>@colors</dd>
+							</div>
+						</dl>
+
+						if (Dynamicweb.Imaging.Image.LoadImageMetadata(fileServerPath, ref IPTC, ref EXIF, ref XMP)) { 
+							@* IPTC image data *@
+							if (IPTC.Count > 0) { 
+								<div class="border-bottom">
+									<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#IPTC_Group" role="button" aria-expanded="true" aria-controls="IPTC_Group">
+										<h2 class="my-3 opacity-85 m-0 flex-fill h6">IPTC</h2>
+										<div class="my-auto collapse-chevron-icon"></div>
+									</div>
+									<div class="collapse" id="IPTC_Group">
+										<dl class="pb-3">
+											@foreach (var metadata in IPTC)
+											{
+												if (!String.IsNullOrEmpty(metadata.Value))
+												{
+													if (metadata.Value.Length < 20) { 
+														<div class="d-flex flex-row">
+															<dt class="flex-fill">@metadata.Key</dt>
+															<dd>@metadata.Value</dd>
+														</div>
+													} else { 
+														<dt class="flex-fill">@metadata.Key</dt>
+														<dd>@metadata.Value</dd>
+													}
+												}
+											}
+										</dl>
+									</div>
+								</div>
+							}
+						
+							@* XMP image data *@
+							if (XMP.Count > 0) { 
+								<div class="border-bottom">
+									<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#XMP_Group" role="button" aria-expanded="true" aria-controls="XMP_Group">
+										<h2 class="my-3 opacity-85 m-0 flex-fill h6">XMP</h2>
+										<div class="my-auto collapse-chevron-icon"></div>
+									</div>
+									<div class="collapse" id="XMP_Group">
+										<dl class="pb-3">
+											@foreach (var metadata in XMP)
+											{
+												if (!String.IsNullOrEmpty(metadata.Value))
+												{
+													if (metadata.Value.Length < 20) { 
+														<div class="d-flex flex-row">
+															<dt class="flex-fill">@metadata.Key</dt>
+															<dd>@metadata.Value</dd>
+														</div>
+													} else { 
+														<dt class="flex-fill">@metadata.Key</dt>
+														<dd>@metadata.Value</dd>
+													}
+												}
+											}
+										</dl>
+									</div>
+								</div>
+							}
+
+							@* EXIF image data *@
+							if (EXIF.Count > 0) { 
+								<div class="border-bottom">
+									<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#EXIF_Group" role="button" aria-expanded="true" aria-controls="EXIF_Group">
+										<h2 class="my-3 opacity-85 m-0 flex-fill h6">EXIF</h2>
+										<div class="my-auto collapse-chevron-icon"></div>
+									</div>
+									<div class="collapse" id="EXIF_Group">
+										<dl class="pb-3">
+											@foreach (var metadata in EXIF)
+											{
+												if (!String.IsNullOrEmpty(metadata.Value))
+												{
+													if (metadata.Value.Length < 20) { 
+														<div class="d-flex flex-row">
+															<dt class="flex-fill">@metadata.Key</dt>
+															<dd>@metadata.Value</dd>
+														</div>
+													} else { 
+														<dt class="flex-fill">@metadata.Key</dt>
+														<dd>@metadata.Value</dd>
+													}
+												}
+											}
+										</dl>
+									</div>
+								</div>
+							}			
+						}
+					}
+				}
+			}
+		</div>
+
+		<form class="pe-4">
+			@if (imageFound && !filePath.Contains(".pdf")) {
+				filePath = "/Admin/Public/GetImage.ashx?image=/Files" + filePath;
+				
+
+				<div class="mb-2">
+					<h3 class="h5">@Translate("Image settings")</h3>
+					<div>@Translate("Select a resolution for your images")</div>
+				</div>
+
+				<div class="form-floating mb-4">
+					<select class="form-select bg-white" id="ImageSettingsSelector" aria-label="@Translate("Resolution")">
+						<option data-dpi="72" data-image-format="png" data-image-width="1000" selected>@Translate("Web images") (dpi: 72)</option>
+						<option data-dpi="300" data-image-format="jpg" data-image-width="2500">@Translate("Print images") (dpi: 300)</option>
+						<option data-dpi="600" data-image-format="jpg" data-image-width="10000">@Translate("HQ images") (dpi: 600)</option>
+					</select>
+					<label for="ImageFormatSelector">@Translate("Resolution")</label>
+				</div>
+				 
+				<script type="module">
+					document.querySelector("#ImageSettingsSelector").addEventListener("change", function (e) {
+						const selector = e.currentTarget;
+
+						let href = "@(filePath)";
+
+						if (selector.options[selector.selectedIndex].getAttribute('data-dpi')) {
+							href += "&resolution=" + selector.options[selector.selectedIndex].getAttribute('data-dpi');
+						}
+
+						if (selector.options[selector.selectedIndex].getAttribute('data-image-format')) {
+							href += "&format=" + selector.options[selector.selectedIndex].getAttribute('data-image-format');
+						}
+
+						if (selector.options[selector.selectedIndex].getAttribute('data-image-width')) {
+							href += "&width=" + selector.options[selector.selectedIndex].getAttribute('data-image-width');
+						}
+
+						href += "&width=10000&height=10000&donotupscale=1&crop=5";
+
+						document.querySelector('#AssetDownloadButton').href = href;
+					});
+				</script>
+
+				filePath = filePath + "&resolution=72&format=png&width=1000&donotupscale=1&crop=5";
+			} else {
+				filePath = "/Files" + filePath;
+			}
+
+			<a href="@filePath" download class="btn btn-primary w-100" id="AssetDownloadButton">@Translate("Download asset")</a>
+		</form>
+	}
+</div>
+
