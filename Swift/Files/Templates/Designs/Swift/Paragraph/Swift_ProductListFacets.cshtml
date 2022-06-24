@@ -3,6 +3,7 @@
 @using Dynamicweb.Frontend.Navigation
 @using Dynamicweb.Environment
 @using Dynamicweb.Core.Encoders
+@using System.Web
 
 @{
 	ProductListViewModel productList = new ProductListViewModel();
@@ -12,17 +13,19 @@
 		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
 	}
 
-	string url = "/Default.aspx?ID=" + Pageview.Page.ID;
+	string url = Pageview.SearchFriendlyUrl;
+	url = url.LastIndexOf("?") != -1 ? url.Substring(0, url.LastIndexOf("?")) : url;
+
+	//Fix for non-friendly urls
+	if (Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") != null)
+	{
+		string groupId = Dynamicweb.Context.Current.Request.QueryString.Get("GroupID");
+		url += "?GroupID=" + groupId;
+	}
+
 	if (!url.Contains("LayoutTemplate"))
 	{
 		url += url.Contains("?") ? "&LayoutTemplate=Designs/Swift/Swift_PageClean.cshtml" : "?LayoutTemplate=Designs/Swift/Swift_PageClean.cshtml";
-	}
-
-	string groupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GroupID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") : "";
-
-	if (groupId != "")
-	{
-		url += url.Contains("?") ? "&GroupID=" + groupId : "";
 	}
 
 	bool facetsFound = false;
@@ -84,7 +87,7 @@
 				@RenderForm(productList, "desktop", enableSorting, layout)
 
 				@if (selectedFacetsCount > 0) {
-					<button type="button" class="btn btn-clean btn-sm me-sm-1 me-lg-2" onclick="swift.ProductList.ResetFacets(event)"><span class="icon-2">@ReadFile(iconPath + "rotate-ccw.svg")</span> @Translate("Clear filters")</button>
+					<button type="button" class="btn btn-sm me-sm-1 me-lg-2" onclick="swift.ProductList.ResetFacets(event)"><span class="icon-2">@ReadFile(iconPath + "rotate-ccw.svg")</span> @Translate("Clear filters")</button>
 				}
 			</form>
 		</div>
@@ -141,9 +144,9 @@ else
 
 @helper RenderForm(ProductListViewModel productList, string deviceType, bool enableSorting, string layout = "vertical")
 {
-	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
-
 	string groupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GroupID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") : "";
+
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 	string pageSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("PageSize")) ? Dynamicweb.Context.Current.Request.QueryString.Get("PageSize") : productList.PageSize.ToString();
 
 	string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
@@ -160,12 +163,6 @@ else
 	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
 	contentPadding = contentPadding == "none" ? " px-0 py-2" : contentPadding;
 	contentPadding = contentPadding == "small" ? " px-3 py-2" : contentPadding;
-
-
-	if (productList?.Group?.Id != null)
-	{
-		<input type="hidden" name="GroupId" value="@productList.Group.Id" />
-	}
 
 	<input type="hidden" name="PageSize" value="@pageSize" />
 
@@ -309,7 +306,7 @@ else
 @helper RenderSorting(string deviceType) { 
 	string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "";
 	sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
-	string sortNameSelectedRelevance = sortBySelection.ToLower() == "" ? "checked" : "";
+	string sortNameSelectedRelevance = sortBySelection.ToLower() == "" || sortBySelection.ToLower() == "relevance" ? "checked" : "";
 	string sortNameSelectedAZ = sortBySelection.ToLower() == "nameforsort" ? "checked" : "";
 	string sortNameSelectedZA = sortBySelection.ToLower() == "-nameforsort" ? "checked" : "";
 	string sortPriceLowSelected = sortBySelection.ToLower() == "price" ? "checked" : "";

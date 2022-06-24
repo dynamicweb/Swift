@@ -108,9 +108,9 @@
 						CategoryFieldViewModel category = group.Value;
 						bool hideHeader = Model.Item.GetBoolean("HideGroupHeaders");
 
-					if (!hideHeader) { 
-						<h4 class="h4 mb-4">@group.Value.Name</h4>
-					}
+						if (!hideHeader) { 
+							<h4 class="h4 mb-4">@group.Value.Name</h4>
+						}
 
 						@RenderFieldsFromList(category.Fields, layout);
 					}
@@ -126,6 +126,7 @@
 @helper RenderFieldsFromList(Dictionary<string, FieldValueViewModel> fields, string layout) { 
 	string size = Model.Item.GetRawValueString("Size", "full");
 	string extraMargin = size == "full" ? "mb-3" : "";
+	bool hideFieldLabels = Model.Item.GetBoolean("HideFieldLabels");
 
 	<div class="@extraMargin">
 		@if (layout == "columns") {
@@ -163,8 +164,9 @@
 				}
 			</ul>
 		}
-		@if (layout == "commas") { 
+		@if (layout == "commas") {
 			List<string> featuresList = new List<string>();
+
 			foreach (var field in fields)
 			{
 				if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
@@ -177,35 +179,50 @@
 							} else if (!string.IsNullOrEmpty(option.Value)) {
 								options.Add(option.Name);
 							}
-                        }
+						}
 					}
 					string optionsString = (string.Join(", ", options.Select(x => x.ToString()).ToArray()));
 					if ((Translate(field.Value.Name) == Translate("Color") || Translate(field.Value.Name) == Translate("Colour"))) {
 						optionsString = (string.Join(" ", options.Select(x => x.ToString()).ToArray()));
 					}
-					featuresList.Add(field.Value.Name + ": " + optionsString);
+
+					if (!hideFieldLabels) {
+						featuresList.Add(field.Value.Name + ": " + optionsString);
+					} else {
+						featuresList.Add(optionsString);
+					}
 				} else {
 					if (!string.IsNullOrWhiteSpace(field.Value.Value.ToString())) {
 						if (field.Value.Value.ToString().Contains("#") && (Translate(field.Value.Name) == Translate("Color") || Translate(field.Value.Name) == Translate("Colour"))) {
 							string colorSpan = "<span class=\"colorbox-sm\" style=\"background-color: " + field.Value.Value + "\"></span>";
-							featuresList.Add(field.Value.Name + ": " + colorSpan);
+
+							if (!hideFieldLabels) {
+								featuresList.Add(field.Value.Name + ": " + colorSpan);
+							} else {
+								featuresList.Add(colorSpan);
+							}
 						} else {
-							featuresList.Add(field.Value.Name + ": " + field.Value.Value.ToString());
-                        }
+							if (!hideFieldLabels) {
+								featuresList.Add(field.Value.Name + ": " + field.Value.Value.ToString());
+							} else {
+								featuresList.Add(field.Value.Value.ToString());
+							}
+						}
 					}
-                }
+				}
 			}
 
 			string featuresString = (string.Join(", ", featuresList.Select(x => x.ToString()).ToArray()));
 
 			<div class="opacity-75 fs-7">@featuresString</div>
-		 }
+		}
 	</div>
 }
 
 @helper RenderField(FieldValueViewModel field, string layout) { 
 	string size = Model.Item.GetRawValueString("Size", "full");
 	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
+	bool hideFieldLabels = Model.Item.GetBoolean("HideFieldLabels");
 	bool noValues = false;
 
 	if (!string.IsNullOrEmpty(fieldValue)) {
@@ -218,27 +235,39 @@
 	if (!string.IsNullOrEmpty(fieldValue) && noValues == false) {
 		if (layout == "columns") {
 			<div class="grid g-col-6 g-col-lg-4">
-				<dt class="g-col-4 py-2 fw-bold">@field.Name</dt>
+				@if(!hideFieldLabels) 
+				{ 
+					<dt class="g-col-4 py-2 fw-bold">@field.Name</dt>
+				}
 				<dd class="g-col-8 py-2 mb-0">@RenderFieldValue(field)</dd>
 			</div>
 		}
 		if (layout == "list") {
 			string extraPadding = size == "full" ? "py-2" : "";
 
-			<dt class="g-col-4 @extraPadding fw-bold">@field.Name</dt>
+			if (!hideFieldLabels)
+			{
+				<dt class="g-col-4 @extraPadding fw-bold">@field.Name</dt>
+			}
 			<dd class="g-col-8 @extraPadding mb-0">
 				@RenderFieldValue(field)
 			</dd>
 		}
 		if (layout == "table") {
 			<tr>
-				<th class="fw-bold" scope="row">@field.Name</th>
+				@if (!hideFieldLabels)
+				{
+					<th class="fw-bold" scope="row">@field.Name</th>
+				}
 				<td>@RenderFieldValue(field)</td>
 			</tr>
 		}
 		if (layout == "bullets") {
 			<li>
-				<strong>@field.Name</strong>
+				@if (!hideFieldLabels)
+				{
+					<strong>@field.Name</strong>
+				}
 				<span>@RenderFieldValue(field)</span>
 			</li>
 		}
@@ -291,14 +320,17 @@
 
 		if (!isColor) {
 			if(isLink)
-            {
-				string linktTitle = !fieldValue.Contains("aspx") ? fieldValue : Translate("Go to link"); 
-				<a href="@field.Value" title="@field.Name">@linktTitle</a>
-            }
+			{
+				string linktTitle = !fieldValue.Contains("aspx") ? fieldValue : Translate("Go to link");
+				string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && fieldValue.Contains("http") ? "target=\"_blank\"" : string.Empty;
+				string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && fieldValue.Contains("http") ? "rel=\"noopener\"" : string.Empty;
+
+				<a href="@field.Value" title="@field.Name" @target @rel>@linktTitle</a>
+			}
 			else
-            {
+			{
 				@fieldValue
-            }
+			}
 
 		} else {
 			<span class="colorbox-sm" style="background-color: @fieldValue" title="@fieldValue"></span>

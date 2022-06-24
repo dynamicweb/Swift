@@ -1,0 +1,385 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Frontend
+
+@functions {
+
+	private Dynamicweb.Frontend.LinkViewModel GetLink(ItemViewModel item)
+	{
+		string linkType = item.GetRawValueString("LinkType", "page");
+		Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
+
+		if (linkType == "page" && item.GetLink("ButtonLink") != null)
+		{
+			link = item.GetLink("ButtonLink");
+		}
+
+		if (linkType == "product-group")
+		{
+			IList<ProductGroupViewModel> selectedGroups = item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
+			IList<string> groupIds = new List<string> { };
+
+			if (selectedGroups != null)
+			{
+				foreach (var fromGroup in selectedGroups)
+				{
+					groupIds.Add(fromGroup.Id);
+				}
+			}
+
+			link = new Dynamicweb.Frontend.LinkViewModel()
+			{
+				Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
+				IsExternal = false
+			};
+		}
+
+		if (linkType == "product")
+		{
+			ProductListViewModel products = item.GetValue<ProductListViewModel>("ProductLink");
+			IList<string> productIds = new List<string> { };
+
+			if (products != null)
+			{
+				foreach (var product in products.Products)
+				{
+					productIds.Add(product.Id);
+				}
+			}
+
+			string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
+			string pageTag = productIds.Count == 1 ? "ProductDetailPage" : "Shop";
+			link = new Dynamicweb.Frontend.LinkViewModel()
+			{
+				Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds).Trim(),
+				IsExternal = false
+			};
+		}
+
+		return link;
+	}
+}
+
+@{
+	bool movePageBehind = false;
+	bool isFirstPoster = false;
+	string movePageBehindClass = "";
+	if (Pageview.Page.PropertyItem != null)
+	{
+		string headerCssClass = Pageview.Page.PropertyItem["MoveThisPageBehindTheHeader"] != null ? Pageview.Page.PropertyItem["MoveThisPageBehindTheHeader"].ToString() : "sticky-top";
+		movePageBehind = headerCssClass == "fixed-top" && !Pageview.IsVisualEditorMode ? true : false;
+		if (movePageBehind)
+		{
+			movePageBehindClass = " poster-behind";
+			if (!Dynamicweb.Context.Current.Items.Contains("firstPosterIsRendered"))
+			{
+				isFirstPoster = true;
+				Dynamicweb.Context.Current.Items.Add("firstPosterIsRendered", true);
+			}
+		}
+	}
+
+	var uniqueId = Pageview.CurrentParagraph.ID.ToString();
+	string title = Model.Item.GetString("Title");
+	var sliderItems = Model.Item?.GetItems("Slider_Items") ?? Enumerable.Empty<Dynamicweb.Frontend.ItemViewModel>().ToList();
+
+	// Style
+	string buttonSize = Model.Item.GetRawValueString("buttonSize", "regular");
+	buttonSize = buttonSize == "small" ? " btn-sm" : buttonSize;
+	buttonSize = buttonSize == "regular" ? "" : buttonSize;
+	buttonSize = buttonSize == "large" ? " btn-lg" : buttonSize;
+	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
+	contentPadding = contentPadding == "none" ? "p-3 px-xl-3 py-xl-4" : contentPadding;
+	contentPadding = contentPadding == "small" ? "p-3 p-xl-4" : contentPadding;
+	contentPadding = contentPadding == "large" ? "p-4 p-xl-5" : contentPadding;
+	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-1");
+	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? "p-3 theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : string.Empty;
+
+	// Navgation
+	string slidesPerPage = $"slider-item-show{Model.Item.GetRawValueString("SlidesPerPage", "1")}";
+	string sliderRatio = Model.Item.GetRawValueString("SliderRatio", "original") != "original" ? $"slider-item-ratio {Model.Item.GetRawValueString("SliderRatio", string.Empty)}" : string.Empty;
+	string navigationStyle = $"{Model.Item.GetRawValueString("NavigationStyle", "slider-nav-round")}";
+	string navigationPlacement = $"{Model.Item.GetRawValueString("NavigationPlacement", "slider-nav-on-slides")}";
+	string indicatorStyle = $"{Model.Item.GetRawValueString("IndicatorStyle", string.Empty)}";
+	string revealSlides = Model.Item.GetRawValueString("RevealSlides", "no-reveal") == "reveal" ? "slider-item-reveal" : string.Empty;
+	string sliderItemsGap = Model.Item.GetRawValueString("SliderItemsGap", "slider-item-gap") == "slider-item-nogap" ? "slider-item-nogap" : string.Empty;
+	string navigationAlwaysVisible = (Model.Item.GetBoolean("NavigationAlwaysVisible")) ? "slider-nav-visible" : string.Empty;
+	string navigationVisibleOnTouch = (Model.Item.GetBoolean("NavigationVisibleOnTouch")) ? "slider-nav-touch" : string.Empty;
+	string navigationShowScrollbar = (Model.Item.GetBoolean("NavigationShowScrollbar")) ? "slider-nav-scrollbar" : string.Empty;
+	string scrollBarForceMobile = (Model.Item.GetBoolean("NavigationShowScrollbar")) ? "--swiffy-slider-track-height:0.5rem !important;" : string.Empty;
+	string navigationSmall = (Model.Item.GetBoolean("NavigationSmall")) ? "slider-nav-sm" : string.Empty;
+	string navigationInvertColors = (Model.Item.GetBoolean("NavigationInvertColors")) ? "slider-nav-dark" : string.Empty;
+	string navigationSlideEntirePage = (Model.Item.GetBoolean("NavigationSlideEntirePage")) ? "slider-nav-page" : string.Empty;
+	string navigationNoLoop = (Model.Item.GetBoolean("NavigationNoLoop")) ? "slider-nav-noloop" : string.Empty;
+	string indicatorsOutsideSlider = (Model.Item.GetBoolean("IndicatorsOutsideSlider") && indicatorStyle != string.Empty) ? "slider-indicators-outside" : string.Empty;
+	string indicatorsHighlightActive = (Model.Item.GetBoolean("IndicatorsHighlightActive")) ? "slider-indicators-highlight" : string.Empty;
+	string indicatorsInvertColors = (Model.Item.GetBoolean("IndicatorsInvertedColors")) ? "slider-indicators-dark" : string.Empty;
+	string indicatorsVisibleOnSmallDevices = (Model.Item.GetBoolean("IndicatorsVisibleOnSmallDevices")) ? "slider-indicators-sm" : string.Empty;
+	string animation = Model.Item.GetRawValueString("Animation", string.Empty) != string.Empty ? $"slider-nav-animation {Model.Item.GetRawValueString("Animation")}" : string.Empty;
+	string autoplay = (Model.Item.GetBoolean("Autoplay")) ? "slider-nav-autoplay" : string.Empty;
+	string autoplayInterval = Model.Item.GetRawValueString("AutoplayInterval", string.Empty);
+}
+
+<div id="slider_@uniqueId" class="swiffy-slider @(sliderRatio) @(slidesPerPage) @(navigationStyle) @(revealSlides) @(navigationPlacement) @(navigationAlwaysVisible) @(navigationVisibleOnTouch) @(sliderItemsGap) @(indicatorStyle) @(navigationShowScrollbar) @(navigationSmall) @(navigationInvertColors) @(indicatorsOutsideSlider) @(navigationNoLoop) @(indicatorsHighlightActive) @(indicatorsInvertColors) @(indicatorsVisibleOnSmallDevices) @(navigationSlideEntirePage) @(animation) @(autoplay) @(theme) item_@Model.Item.SystemName.ToLower()" style="--swiffy-slider-nav-light:var(--swift-foreground-color);--swiffy-slider-nav-dark:var(--swift-background-color);visibility:hidden;opacity:0;@(scrollBarForceMobile)" data-slider-nav-autoplay-interval="@(autoplayInterval)">
+	<ul class="slider-container">
+		@{
+			bool isFirst = true;
+		}
+
+		@foreach (var item in sliderItems)
+		{
+			@RenderItem(item, isFirst, contentPadding, buttonSize, titleFontSize, subtitleFontSize, movePageBehindClass)
+
+			isFirst = false;
+		}
+	</ul>
+
+	<button type="button" title="@Translate("Previous slide")" class="slider-nav" style="z-index:1;"></button>
+	<button type="button" title="@Translate("Next slide")" class="slider-nav slider-nav-next" style="z-index:1;"></button>
+
+	@if(indicatorStyle != "slider-indicators-hidden")
+    {
+		<div class="slider-indicators" style="z-index:1;">
+			@{
+				bool isActive = true;
+			}
+
+			@foreach (var item in sliderItems)
+			{
+				<button class="@if (isActive){<text>active</text>}" type="button"></button>
+
+				isActive = false;
+			}
+		</div>
+    }
+</div>
+
+<script type="module" src="~/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
+<script type="module">
+	swift.AssetLoader.Load('Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
+	document.addEventListener('load.swift.assetloader', () => {
+		swiffyslider.init()
+		document.querySelector('#slider_@uniqueId').style.opacity = 1;
+		document.querySelector('#slider_@uniqueId').style.visibility = "visible";
+	});
+</script>
+
+@helper RenderItem(ItemViewModel item, bool isFirst, string contentPadding, string buttonSize, string titleFontSize, string subtitleFontSize, string movePageBehindClass)
+{
+	string itemLayout = item.GetRawValueString("ItemLayout", "poster");
+	string layout = item.GetRawValueString("Layout", "align-middle-center-text-center");
+	string containerWidth = "container-xl";
+	int xPos = item?.GetFile("Image")?.FocalPositionFromLeft ?? 50;
+	int yPos = item?.GetFile("Image")?.FocalPositionFromTop ?? 50;
+	string theme = !string.IsNullOrWhiteSpace(item.GetRawValueString("Theme")) ? " theme " + item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	string active = isFirst ? "active" : "";
+	string alignment = string.Empty;
+	string maxWidth = item.GetRawValueString("TextReadability", "max-width-on");
+	maxWidth = maxWidth == "max-width-on" ? "style=\"grid-template-columns: minmax(auto,75ch);\"" : maxWidth;
+	maxWidth = maxWidth == "max-width-off" ? string.Empty : maxWidth;
+
+	switch (layout)
+	{
+		case "align-top-left-text-left":
+			alignment = "text-start justify-content-start align-items-start";
+			break;
+		case "align-top-center-text-center":
+			alignment = "text-center justify-content-center align-items-start";
+			break;
+		case "align-top-right-text-right":
+			alignment = "text-end justify-content-end align-items-start";
+			break;
+		case "align-middle-left-text-left":
+			alignment = "text-start justify-content-start align-items-center";
+			break;
+		case "align-middle-center-text-center":
+			alignment = "text-center justify-content-center align-items-center";
+			break;
+		case "align-middle-right-text-right":
+			alignment = "text-end justify-content-end align-items-center";
+			break;
+		case "align-bottom-left-text-left":
+			alignment = "text-start justify-content-start align-items-end";
+			break;
+		case "align-bottom-center-text-center":
+			alignment = "text-center justify-content-center align-items-end";
+			break;
+		case "align-bottom-right-text-right":
+			alignment = "text-end justify-content-end align-items-end";
+			break;
+	}
+
+	<li>
+		@switch (itemLayout)
+		{
+			case "poster":
+
+				<div class="h-100 @(theme)">
+					<div class="position-absolute top-0 bottom-0 end-0 start-0">
+						@RenderImage(item)
+					</div>
+
+					<div class="position-relative h-100">
+						<div class="h-100 grid grid-1 @(containerWidth) @contentPadding @(alignment)" @(maxWidth)>
+							<div class="grid grid-1 gap-3">
+								@RenderTitle(item, titleFontSize)
+								@RenderSubtitle(item, subtitleFontSize)
+								@RenderText(item)
+								@RenderButton(item, buttonSize)
+							</div>
+						</div>
+					</div>
+				</div>
+
+				break;
+
+			case "story-image-left":
+
+				<div class="h-100 @(theme)">
+					<div class="grid gap-0 h-100">
+						<div class="g-col-12 g-col-lg-6 g-col-xl-7">
+							<div class="overflow-hidden h-100 w-100">
+								@RenderImage(item)
+							</div>
+						</div>
+						<div class="g-col-12 g-col-lg-6 g-col-xl-5 grid grid-1 @(containerWidth) @contentPadding @(alignment)" @(maxWidth)>
+							<div class="grid grid-1 gap-3">
+								@RenderSubtitle(item, subtitleFontSize)
+								@RenderTitle(item, titleFontSize)
+								@RenderText(item)
+								@RenderButton(item, buttonSize)
+							</div>
+						</div>
+					</div>
+				</div>
+
+				break;
+
+			case "story-image-right":
+				
+				<div class="h-100 @(theme)">
+					<div class="grid gap-0 h-100">
+						<div class="g-col-12 g-col-lg-6 g-col-xl-5 grid grid-1 @(containerWidth) @contentPadding @(alignment)" @(maxWidth)>
+							<div class="grid grid-1 gap-3">
+								@RenderSubtitle(item, subtitleFontSize)
+								@RenderTitle(item, titleFontSize)
+								@RenderText(item)
+								@RenderButton(item, buttonSize)
+							</div>
+						</div>
+						<div class="g-col-12 g-col-lg-6 g-col-xl-7">
+							@RenderImage(item)
+						</div>
+					</div>
+				</div>
+
+				break;
+
+			case "logo":
+
+				if (!string.IsNullOrEmpty(item.GetString("Image")))
+				{
+					var altText = !string.IsNullOrEmpty(item.GetString("ImageAlt")) ? item.GetString("ImageAlt") : item.GetString("Title", string.Empty);
+					var image = item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel();
+					var link = GetLink(item);
+
+					if(link is object && !string.IsNullOrEmpty(link.Url))
+					{
+						string target = link.IsExternal ? "target=\"_blank\"" : string.Empty;
+						<a href="@link.Url" class="d-flex h-100 text-center" @(target)>
+							<img src="@image.Path" class="mw-100 mh-100 m-auto" alt="@altText" loading="lazy" style="object-fit: contain;" />
+						</a>
+					}
+					else
+					{
+						<div class="d-flex h-100 text-center">
+							<img src="@image.Path" class="mw-100 mh-100 m-auto" alt="@altText" loading="lazy" style="object-fit: contain;" />
+						</div>
+					}
+				}
+
+				break;
+		}
+	</li>
+}
+
+@helper RenderImage(ItemViewModel item)
+{
+	if (!string.IsNullOrEmpty(item.GetString("Image")))
+	{
+		var altText = !string.IsNullOrEmpty(item.GetString("ImageAlt")) ? item.GetString("ImageAlt") : item.GetString("Title", string.Empty);
+		var parms = new Dictionary<string, object>();
+		parms.Add("cssClass", "h-100 w-100");
+		parms.Add("columns", Model.GridRowColumnCount);
+		parms.Add("alt", altText);
+
+		@RenderPartial("Components/Image.cshtml", item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+	}
+}
+
+@helper RenderTitle(ItemViewModel item, string titleFontSize)
+{
+	if (!string.IsNullOrEmpty(item.GetString("Title")) && !item.GetBoolean("HideTitle"))
+	{
+		<h2 class="@titleFontSize m-0">@item.GetString("Title")</h2>
+	}
+}
+
+@helper RenderSubtitle(ItemViewModel item, string subtitleFontSize)
+{
+	if (!string.IsNullOrEmpty(item.GetString("Subtitle")))
+	{
+		<p class="@subtitleFontSize lead m-0">@item.GetString("Subtitle")</p>
+	}
+}
+
+@helper RenderText(ItemViewModel item)
+{
+	if (!string.IsNullOrEmpty(item.GetString("Text")))
+	{
+		<div class="mb-0-last-child">
+			@item.GetString("Text")
+		</div>
+	}
+}
+
+@helper RenderButton(ItemViewModel item, string buttonSize)
+{
+	var link = GetLink(item);
+	string stretchedLink = item.GetRawValueString("StretchedLink", string.Empty);
+	stretchedLink = stretchedLink == "not-clickable" ? string.Empty : stretchedLink;
+	stretchedLink = stretchedLink == "clickable" ? "stretched-link" : stretchedLink;
+
+	if (link != null && !string.IsNullOrEmpty(item.GetString("ButtonLabel")))
+	{
+		string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : "";
+		string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : "";
+
+		string buttonStyle = item.GetRawValueString("ButtonStyle", "primary");
+		buttonStyle = buttonStyle == "primary" ? "btn-primary" : buttonStyle;
+		buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
+
+		<div class="m-0">
+			<a href="@link.Url" class="btn @buttonStyle@(buttonSize) @(stretchedLink)" @target @rel>@item.GetString("ButtonLabel")</a>
+		</div>
+	}
+	else if (link != null && !string.IsNullOrEmpty(link.Url))
+	{
+		string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : "";
+		string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : "";
+
+		<a href="@link.Url" class="@(stretchedLink)" @target @rel>
+			<span class="visually-hidden">@item.GetString("Title")</span>
+		</a>
+	}
+}
+
+@if (movePageBehind && isFirstPoster)
+{
+	<script>
+		['resize', 'load'].forEach(function (e) {
+			window.addEventListener(e, () => swift.Scroll.setContentPosition());
+		});
+	</script>
+}
