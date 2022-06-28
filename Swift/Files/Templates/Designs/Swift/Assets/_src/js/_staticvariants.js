@@ -2,8 +2,6 @@ const StaticVariants = function () {
 
 	return {
 		SwitchProduct: function (e, id, price, imagesrc) {
-			console.log("sss");
-
 			var target = e.currentTarget;
 
 			var productImageElement = target.closest(".js-product").querySelector("#ProductImage_" + id);
