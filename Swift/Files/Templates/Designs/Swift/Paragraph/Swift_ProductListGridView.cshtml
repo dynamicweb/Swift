@@ -9,10 +9,12 @@
 	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
 	string liveInfoClass = "";
 	string productInfoFeed = "";
-	
+
 	string showPricesWithVat = "";
 	bool neverShowVat = false;
-	
+
+	bool isDetailPage = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductID"));
+
 	ProductListViewModel productList = new ProductListViewModel();
 }
 @{ 
@@ -41,17 +43,19 @@
 	string themePadding = theme != string.Empty ? "p-3" : string.Empty;
 }
 
-@if (!string.IsNullOrEmpty(theme))
-{
-	<div class="h-100@(theme) @themePadding item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
-		@RenderProductList()
-	</div>
-}
-else
-{
-	<div class="pt-3 item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
-		@RenderProductList()
-	</div>
+@if (!isDetailPage) { 
+	if (!string.IsNullOrEmpty(theme))
+	{
+		<div class="h-100@(theme) @themePadding item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
+			@RenderProductList()
+		</div>
+	}
+	else
+	{
+		<div class="pt-3 item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
+			@RenderProductList()
+		</div>
+	}
 }
 
 @helper RenderProductList ()
@@ -60,22 +64,14 @@ else
 	bool anonymousUser = Pageview.User == null;
 	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && !Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsWebServiceConnectionAvailable();
 
-	string detailsPageLink = Dynamicweb.Context.Current.Items["DetailsPageLink"] != null ? Dynamicweb.Context.Current.Items["DetailsPageLink"].ToString() : "";
-	string productTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductTheme")) ? " theme " + Model.Item.GetRawValueString("ProductTheme").Replace(" ", "").Trim().ToLower() : string.Empty;
+	string productTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductTheme")) ? " theme " + Model.Item.GetRawValueString("ProductTheme").Replace(" ", "").Trim().ToLower() : "";
 	string productThemePadding = productTheme != string.Empty ? "p-3" : string.Empty;
 
-	string url = Pageview.SearchFriendlyUrl;
-	url = url.LastIndexOf("?") != -1 ? url.Substring(0, url.LastIndexOf("?")) : url;
-
-	//Fix for non-friendly urls
-	if (Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") != null)
-	{
-		string groupId = Dynamicweb.Context.Current.Request.QueryString.Get("GroupID");
-		url += "?GroupID=" + groupId;
-	}
-
+	string url = Dynamicweb.Context.Current.Request.RawUrl;
 	bool hideFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("HideFavoritesSelector")) ? Model.Item.GetBoolean("HideFavoritesSelector") : false;
 	string staticVariantsLayout = Model.Item.GetRawValueString("StaticVariantsLayout", "hide");
+
+	string groupId = productList?.Group?.Id != null ? productList.Group.Id : "";
 
 	var badgeParms = new Dictionary<string, object>();
 	badgeParms.Add("saleBadgeType", Model.Item.GetRawValue("SaleBadgeType"));
@@ -112,12 +108,11 @@ else
 		<div class="grid grid-2 grid-lg-3">
 			@foreach (ProductViewModel product in productList.Products)
 			{
-				var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
-				var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
-
-				string link = string.IsNullOrEmpty(selectedDetailPage) ? $"{detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
-				link += "&productid=" + product.Id;
-				link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
+				string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
+				link += $"&GroupID={product.PrimaryOrDefaultGroup.Id}";
+				link += $"&ProductID={product.Id}";
+				link += !string.IsNullOrEmpty(product.VariantId) ? $"&VariantID={product.VariantId}" : "";
+				link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link);
 
 				string imagePath = product?.DefaultImage?.Value ?? "";
 				imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
@@ -481,6 +476,10 @@ else
 									}
 								}
 							}
+						}
+
+						@if (productList?.Group?.Id != null) {
+							<input type="hidden" name="GroupId" value="@productList.Group.Id" />
 						}
 
 						<input type="hidden" name="PageSize" value="@pageSize" />
