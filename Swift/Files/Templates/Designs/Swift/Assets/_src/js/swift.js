@@ -44,3 +44,13 @@ window.swift = swift;
 window.onpopstate = function (event) {
 	swift.Typeahead.navigateToPage(document.location.href);
 };
+
+window.addEventListener('DOMContentLoaded', () => {
+	const dropdowns = document.querySelectorAll('.js-dropdown');
+
+	dropdowns.forEach(dropdown => {
+		dropdown.addEventListener('mouseover', () => new bootstrap.Dropdown(dropdown.querySelector('.js-dropdown-toggle')).toggle());
+		dropdown.addEventListener('mouseout', () => new bootstrap.Dropdown(dropdown.querySelector('.js-dropdown-toggle')).toggle());
+	});
+});
+
