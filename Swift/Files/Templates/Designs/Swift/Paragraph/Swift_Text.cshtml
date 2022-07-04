@@ -34,16 +34,20 @@
 
 @helper RenderBody(string maxWidth)
 {
-	string linkType = Model.Item.GetRawValueString("LinkType", "page");
 	Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
+	Dynamicweb.Frontend.LinkViewModel link2 = new Dynamicweb.Frontend.LinkViewModel();
 
-	string StretchedLink = Model.Item.GetRawValueString("StretchedLink", "");
-	StretchedLink = StretchedLink == "column-not-clickable" ? "" : StretchedLink;
-	StretchedLink = StretchedLink == "column-clickable" ? " stretched-link" : StretchedLink;
+	string linkType = Model.Item.GetRawValueString("LinkType", "page");
+	string linkType2 = Model.Item.GetRawValueString("LinkType2", "page2");
 
 	if (linkType == "page" && Model.Item.GetLink("ButtonLink") != null)
 	{
 		link = Model.Item.GetLink("ButtonLink");
+	}
+	
+	if (linkType2 == "page2" && Model.Item.GetLink("ButtonLink2") != null)
+	{
+		link2 = Model.Item.GetLink("ButtonLink2");
 	}
 
 	if (linkType == "product-group")
@@ -62,6 +66,26 @@
 		link = new Dynamicweb.Frontend.LinkViewModel()
 		{
 			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds)
+		};
+	}
+	
+	if (linkType2 == "product-group2")
+	{
+		IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink2");
+		IList<string> groupIds = new List<string> { };
+
+		if (selectedGroups != null)
+		{
+			foreach (var fromGroup in selectedGroups)
+			{
+				groupIds.Add(fromGroup.Id);
+			}
+		}
+
+		link2 = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
+			IsExternal = false
 		};
 	}
 
@@ -83,6 +107,28 @@
 		link = new Dynamicweb.Frontend.LinkViewModel()
 		{
 			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds)
+		};
+	}
+	
+	if (linkType2 == "product2")
+	{
+	ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink2");
+	IList<string> productIds = new List<string> { };
+
+	if (products != null)
+		{
+		foreach (var product in products.Products)
+			{
+			productIds.Add(product.Id);
+			}
+		}
+
+	string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
+	string pageTag = productIds.Count == 1 ? "ProductDetailPage" : "Shop";
+	link2 = new Dynamicweb.Frontend.LinkViewModel()
+		{
+		Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag(pageTag) + "&" + productParameter + "=" + string.Join(",", productIds).Trim(),
+		IsExternal = false
 		};
 	}
 
@@ -114,25 +160,56 @@
 		</div>
 	}
 
-	if (link != null && !string.IsNullOrEmpty(Model.Item.GetString("ButtonLabel")))
+	if (link != null && !string.IsNullOrEmpty(link.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
 	{
 		string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : "";
+		string target2 = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link2.IsExternal ? "target=\"_blank\"" : "";
 		string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : "";
+		string rel2 = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link2.IsExternal ? "rel=\"noopener\"" : "";
+		string buttonLabel = Model.Item.GetString("ButtonLabel", string.Empty);
+		string buttonLabel2 = Model.Item.GetString("ButtonLabel2", string.Empty);
 		string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "");
 		buttonStyle = buttonStyle == "primary" ? "btn-primary" : buttonStyle;
-		buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
+		buttonStyle = buttonStyle == "secondary" ? "btn-secondary " : buttonStyle;
+		string buttonStyle2 = Model.Item.GetRawValueString("ButtonStyle2", "");
+		buttonStyle2 = buttonStyle2 == "primary" ? "btn-primary " : buttonStyle2;
+		buttonStyle2 = buttonStyle == "secondary" ? "btn-secondary " : buttonStyle2;
+		string stretchedLink = Model.Item.GetRawValueString("StretchedLink", "column-not-clickable");
+		string stretchedLink2 = Model.Item.GetRawValueString("StretchedLink2", "column-not-clickable");
+		string stretchedLinkClass = stretchedLink == "column-clickable" && string.IsNullOrEmpty(link2.Url) && string.IsNullOrEmpty(buttonLabel2) ? " stretched-link" : string.Empty;
+		string stretchedLinkClass2 = stretchedLink2 == "column-clickable" && string.IsNullOrEmpty(link.Url) && string.IsNullOrEmpty(buttonLabel) ? " stretched-link" : string.Empty;
+	
+		<div class="d-flex flex-wrap gap-3 mt-3">
+		
+			@if (link != null && !string.IsNullOrEmpty(link.Url) && !string.IsNullOrEmpty(buttonLabel)) 
+				{
+					if (!string.IsNullOrEmpty(buttonLabel))
+					{
+						<a href="@link.Url" @target @rel class="text-nowrap btn @(buttonStyle)@(stretchedLinkClass)">@buttonLabel</a>
+					}
+					else
+					{
+						<a href="@link.Url" @target @rel class="@(stretchedLinkClass)">
+							<span class="visually-hidden">@Model.Item.GetString("Title")</span>
+						</a>
+					}
+				}
 
-		<div class="mt-3">
-			<a href="@link.Url" @target @rel class="btn @(buttonStyle)@(StretchedLink)">@Model.Item.GetString("ButtonLabel")</a>
+				@if (link2 != null && !string.IsNullOrEmpty(link2.Url) && !string.IsNullOrEmpty(buttonLabel2))
+					{
+					if (!string.IsNullOrEmpty(buttonLabel2))
+						{
+						<a href="@link2.Url" @target2 @rel2 class="text-nowrap btn @(buttonStyle2)@(stretchedLinkClass2)">@buttonLabel2</a>
+					}
+					else
+					{
+						<a href="@link2.Url" @target2 @rel2 class="@(stretchedLinkClass2)">
+							<span class="visually-hidden">@Model.Item.GetString("Title")</span>
+						</a>
+					}
+				}
 		</div>
 	}
-	else if (link != null && !string.IsNullOrEmpty(link.Url))
-	{
-		string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : "";
-		string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : "";
-
-		<a href="@link.Url" @target @rel class="@StretchedLink">
-			<span class="visually-hidden">@Model.Item.GetString("Title")</span>
-		</a>
-	}
 }
+
+
