@@ -9,10 +9,12 @@
 	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
 	string liveInfoClass = "";
 	string productInfoFeed = "";
-	
+
 	string showPricesWithVat = "";
 	bool neverShowVat = false;
-	
+
+	bool isDetailPage = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductID"));
+
 	ProductListViewModel productList = new ProductListViewModel();
 }
 @{ 
@@ -41,17 +43,19 @@
 	string themePadding = theme != string.Empty ? "p-3" : string.Empty;
 }
 
-@if (!string.IsNullOrEmpty(theme))
-{
-	<div class="h-100@(theme) @themePadding item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
-		@RenderProductList()
-	</div>
-}
-else
-{
-	<div class="pt-3 item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
-		@RenderProductList()
-	</div>
+@if (!isDetailPage) { 
+	if (!string.IsNullOrEmpty(theme))
+	{
+		<div class="h-100@(theme) @themePadding item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
+			@RenderProductList()
+		</div>
+	}
+	else
+	{
+		<div class="pt-3 item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
+			@RenderProductList()
+		</div>
+	}
 }
 
 @helper RenderProductList ()
@@ -60,22 +64,14 @@ else
 	bool anonymousUser = Pageview.User == null;
 	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && !Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsWebServiceConnectionAvailable();
 
-	string detailsPageLink = Dynamicweb.Context.Current.Items["DetailsPageLink"] != null ? Dynamicweb.Context.Current.Items["DetailsPageLink"].ToString() : "";
-	string productTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductTheme")) ? " theme " + Model.Item.GetRawValueString("ProductTheme").Replace(" ", "").Trim().ToLower() : string.Empty;
+	string productTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductTheme")) ? " theme " + Model.Item.GetRawValueString("ProductTheme").Replace(" ", "").Trim().ToLower() : "";
 	string productThemePadding = productTheme != string.Empty ? "p-3" : string.Empty;
 
-	string url = Pageview.SearchFriendlyUrl;
-	url = url.LastIndexOf("?") != -1 ? url.Substring(0, url.LastIndexOf("?")) : url;
-
-	//Fix for non-friendly urls
-	if (Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") != null)
-	{
-		string groupId = Dynamicweb.Context.Current.Request.QueryString.Get("GroupID");
-		url += "?GroupID=" + groupId;
-	}
-
+	string url = Dynamicweb.Context.Current.Request.RawUrl;
 	bool hideFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("HideFavoritesSelector")) ? Model.Item.GetBoolean("HideFavoritesSelector") : false;
 	string staticVariantsLayout = Model.Item.GetRawValueString("StaticVariantsLayout", "hide");
+
+	string groupId = productList?.Group?.Id != null ? productList.Group.Id : "";
 
 	var badgeParms = new Dictionary<string, object>();
 	badgeParms.Add("saleBadgeType", Model.Item.GetRawValue("SaleBadgeType"));
@@ -109,18 +105,14 @@ else
 
 		int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
 
-		//REMOVE BEFORE RELEASE
-		Dynamicweb.Ecommerce.Common.Context.CartContext = Dynamicweb.Ecommerce.Orders.OrderContext.GetOrderContextById("ORDERCONTEXT2");
-
 		<div class="grid grid-2 grid-lg-3">
 			@foreach (ProductViewModel product in productList.Products)
 			{
-				var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
-				var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
-
-				string link = string.IsNullOrEmpty(selectedDetailPage) ? $"{detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
-				link += "&productid=" + product.Id;
-				link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
+				string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
+				link += $"&GroupID={product.PrimaryOrDefaultGroup.Id}";
+				link += $"&ProductID={product.Id}";
+				link += !string.IsNullOrEmpty(product.VariantId) ? $"&VariantID={product.VariantId}" : "";
+				link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link);
 
 				string imagePath = product?.DefaultImage?.Value ?? "";
 				imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
@@ -179,7 +171,7 @@ else
 				}
 
 
-				<article class="position-relative@(productTheme) product-list-item product @liveInfoClass" data-product-id="@product.Id" itemscope itemtype="https://schema.org/Product">
+				<article class="position-relative@(productTheme) product-list-item product js-product @liveInfoClass" data-product-id="@product.Id" itemscope itemtype="https://schema.org/Product">
 					@if (!anonymousUser && !hideFavoritesSelector && product.VariantInfo.VariantInfo == null) {
 						<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
 							@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
@@ -261,7 +253,7 @@ else
 																	
 																		if (isLazyLoadingForProductInfoEnabled)
 																		{
-																			<figure class="figure w-100 d-block m-0" data-price-formatted="" onmouseover="switchVariantProduct('@product.Id', this.getAttribute('data-price-formatted'), '@variantImage')" onmouseout="switchVariantProduct('@product.Id', this.getAttribute('data-price-formatted'), '@defaultProductImage')">
+																			<figure class="w-100 d-block m-0" data-price-formatted="" onmouseover="swift.StaticVariants.SwitchProduct(event, '@product.Id', this.getAttribute('data-price-formatted'), '@variantImage')" onmouseout="swift.StaticVariants.SwitchProduct(event, '@product.Id', this.getAttribute('data-price-formatted'), '@defaultProductImage')">
 																				<div class="d-flex align-items-center justify-content-center">
 																					<img src="/admin/public/GetImage.ashx?image=@variantImage&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" height="75" width="75" class="p-1 text-small" loading="lazy" decoding="async" alt="@product.Name, @variant.Name">
 																				</div>
@@ -269,7 +261,7 @@ else
 																		}
 																		else
 																		{
-																			<figure class="figure w-100 d-block m-0" onmouseover="switchVariantProduct('@product.Id', '@defaultPrice', '@variantImage')" onmouseout="switchVariantProduct('@product.Id', '@variantPrice', '@defaultProductImage')">
+																			<figure class="w-100 d-block m-0" onmouseover="swift.StaticVariants.SwitchProduct(event, '@product.Id', '@defaultPrice', '@variantImage')" onmouseout="swift.StaticVariants.SwitchProduct(event, '@product.Id', '@variantPrice', '@defaultProductImage')">
 																				<div class="d-flex align-items-center justify-content-center">
 																					<img src="/admin/public/GetImage.ashx?image=@variantImage&width=75&height=75&crop=5&FillCanvas=true&format=webp&Quality=70" height="75" width="75" class="p-1 text-small" loading="lazy" decoding="async" alt="@product.Name, @variant.Name">
 																				</div>
@@ -465,7 +457,7 @@ else
 			<div class="text-center d-flex flex-column gap-3">
 				<div class="opacity-85">@loadedProducts @Translate("out of") @productList.TotalProductsCount @Translate("products")</div>
 				@if (productList.PageCount != 1) {
-					string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "NameForSort";
+					string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "Relevance";
 					sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
 
 					string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
@@ -484,6 +476,10 @@ else
 									}
 								}
 							}
+						}
+
+						@if (productList?.Group?.Id != null) {
+							<input type="hidden" name="GroupId" value="@productList.Group.Id" />
 						}
 
 						<input type="hidden" name="PageSize" value="@pageSize" />
@@ -521,26 +517,6 @@ else
 				}
 			</div>
 		</div>
-
-		<script>
-			function switchVariantProduct(id, price, imagesrc) {
-				var productImageElement = document.querySelector("#ProductImage_" + id);
-				var productPriceElement = document.querySelector("#ProductPrice_" + id + " .text-price");
-
-				if (productPriceElement) {
-					productPriceElement.innerText = price;
-				}
-
-				if (productImageElement) {
-					productImageElement.src = imagesrc;
-
-					var imageSrcset = productImageElement.srcset;
-					imageSrcset = imageSrcset.replace(/image=.*?&/g, 'image=' + imagesrc + "&");
-
-					productImageElement.srcset = imageSrcset;
-				}
-			}
-		</script>
 	} else {
 		if (!Pageview.IsVisualEditorMode) {
 			<div class="alert alert-dark m-0">
