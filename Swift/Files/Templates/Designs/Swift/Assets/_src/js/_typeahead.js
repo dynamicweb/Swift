@@ -10,7 +10,7 @@ const Typeahead = function() {
 				// handle dropdown navigation if present
 				document.querySelectorAll(".js-type-ahead-menu").forEach(function (menu) {
 					if (menu.classList.contains("show")) {
-						Typeahead.debounce(() => Typeahead.handleArrowNavigation(e.key, menu), 100)();
+						Typeahead.debounce(() => Typeahead.handleArrowNavigation(e.key, menu), 300)();
 						return;
 					}
 				});
@@ -23,7 +23,7 @@ const Typeahead = function() {
 						field.setAttribute("data-original", val)
 					});
 		
-					Typeahead.debounce(() => Typeahead.getSuggestions(searchField), 100)();
+					Typeahead.debounce(() => Typeahead.getSuggestions(searchField), 300)();
 				} else {
 					Typeahead.hideSearchResults();
 				}
@@ -238,25 +238,7 @@ const Typeahead = function() {
 		},
 
 		navigateToPage: async function(href) {
-			var fetchHref = href;
-			if (href.indexOf("?") > 0) {
-				fetchHref += "&feed=true"
-			} else {
-				fetchHref += "?feed=true"
-			}
-			let response = await fetch(fetchHref);
-
-			if (!response.ok) {
-				throw new Error('HTTP error! status: ${response.status}');
-			} else {
-				let html = await response.text().then(function (text) {
-					return text;
-				});
-
-				document.querySelectorAll(".js-async-placeholder").forEach(function(placeholder) {
-					placeholder.outerHTML = html;
-				});
-			}
+			
 		},
 
 		init: function(){
