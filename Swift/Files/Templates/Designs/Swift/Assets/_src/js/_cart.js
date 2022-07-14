@@ -24,7 +24,7 @@ const Cart = function () {
 
 			if (globalDispatcher != false && localDispatcher != false) {
 				//UI updates
-				var clickedButtonWidth = clickedButton.width + "px";
+				var clickedButtonWidth = clickedButton.offsetWidth + "px";
 
 				clickedButton.setAttribute("data-content", clickedButton.innerHTML);
 				clickedButton.style.width = clickedButtonWidth;
