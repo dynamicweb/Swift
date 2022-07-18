@@ -33,6 +33,8 @@
 			{
 				fileName = asset.GetString("FileName");
 				filePath = !string.IsNullOrEmpty(asset.GetString("DirectoryRelativePath")) ? asset.GetString("DirectoryRelativePath") + "/" + fileName : "";
+				string fileServerPath = HttpContext.Current.Server.MapPath("Files" + asset.GetString("DirectoryRelativePath") + "/" + asset.GetString("FileName"));
+				bool fileExists = File.Exists(fileServerPath);
 
 				if (fileName.Contains(format))
 				{
@@ -41,7 +43,7 @@
 							<div class="ratio" style="--bs-aspect-ratio: 100%">
 								@foreach (string imageFormat in supportedImageFormats)
 								{
-									if (fileName.Contains(imageFormat))
+									if (fileName.Contains(imageFormat) && fileExists)
 									{
 										string imagePath = !string.IsNullOrEmpty(asset.GetString("DirectoryRelativePath")) ? "/Admin/Public/GetImage.ashx?image=/Files" + asset.GetString("DirectoryRelativePath") + "/" + fileName + "&width=300&format=webp" : "";
 
@@ -81,117 +83,122 @@
 					</dl>
 
 					if (imageFound && !fileName.Contains(".pdf")) {
-						string fileServerPath = HttpContext.Current.Server.MapPath("Files" + asset.GetString("DirectoryRelativePath") + "/" + asset.GetString("FileName"));
-						var attributes = Dynamicweb.Imaging.Image.GetImageAttributes(fileServerPath);
-						var dimensions = string.Format("{0} x {1}px", attributes.Size.Width, attributes.Size.Height);
-						var colors = string.Format("{0} ({1} {2})", attributes.ColorType, attributes.ColorDepth, Translate("bits"));
+						if (fileExists) { 
+							var attributes = Dynamicweb.Imaging.Image.GetImageAttributes(fileServerPath);
+							var dimensions = string.Format("{0} x {1}px", attributes.Size.Width, attributes.Size.Height);
+							var colors = string.Format("{0} ({1} {2})", attributes.ColorType, attributes.ColorDepth, Translate("bits"));
 
-						Dictionary<string, string> IPTC = new Dictionary<string, string>();
-						Dictionary<string, string> XMP = new Dictionary<string, string>();
-						Dictionary<string, string> EXIF = new Dictionary<string, string>();
-						Dictionary<string, string> DynamicwebMetadata = new Dictionary<string, string>();
+							Dictionary<string, string> IPTC = new Dictionary<string, string>();
+							Dictionary<string, string> XMP = new Dictionary<string, string>();
+							Dictionary<string, string> EXIF = new Dictionary<string, string>();
+							Dictionary<string, string> DynamicwebMetadata = new Dictionary<string, string>();
 
-						@* Basic image data *@
-						<dl>
-							<div class="d-flex flex-row">
-								<dt class="flex-fill">@Translate("Dimensions")</dt>
-								<dd>@dimensions</dd>
-							</div>
+							@* Basic image data *@
+							<dl>
+								<div class="d-flex flex-row">
+									<dt class="flex-fill">@Translate("Dimensions")</dt>
+									<dd>@dimensions</dd>
+								</div>
 
-							<div class="d-flex flex-row">
-								<dt class="flex-fill">@Translate("Colors")</dt>
-								<dd>@colors</dd>
-							</div>
-						</dl>
+								<div class="d-flex flex-row">
+									<dt class="flex-fill">@Translate("Colors")</dt>
+									<dd>@colors</dd>
+								</div>
+							</dl>
 
-						if (Dynamicweb.Imaging.Image.LoadImageMetadata(fileServerPath, ref IPTC, ref EXIF, ref XMP)) { 
-							@* IPTC image data *@
-							if (IPTC.Count > 0) { 
-								<div class="border-bottom">
-									<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#IPTC_Group" role="button" aria-expanded="true" aria-controls="IPTC_Group">
-										<h2 class="my-3 opacity-85 m-0 flex-fill h6">IPTC</h2>
-										<div class="my-auto collapse-chevron-icon"></div>
-									</div>
-									<div class="collapse" id="IPTC_Group">
-										<dl class="pb-3">
-											@foreach (var metadata in IPTC)
-											{
-												if (!String.IsNullOrEmpty(metadata.Value))
+							if (Dynamicweb.Imaging.Image.LoadImageMetadata(fileServerPath, ref IPTC, ref EXIF, ref XMP)) { 
+								@* IPTC image data *@
+								if (IPTC.Count > 0) { 
+									<div class="border-bottom">
+										<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#IPTC_Group" role="button" aria-expanded="true" aria-controls="IPTC_Group">
+											<h2 class="my-3 opacity-85 m-0 flex-fill h6">IPTC</h2>
+											<div class="my-auto collapse-chevron-icon"></div>
+										</div>
+										<div class="collapse" id="IPTC_Group">
+											<dl class="pb-3">
+												@foreach (var metadata in IPTC)
 												{
-													if (metadata.Value.Length < 20) { 
-														<div class="d-flex flex-row">
+													if (!String.IsNullOrEmpty(metadata.Value))
+													{
+														if (metadata.Value.Length < 20) { 
+															<div class="d-flex flex-row">
+																<dt class="flex-fill">@metadata.Key</dt>
+																<dd>@metadata.Value</dd>
+															</div>
+														} else { 
 															<dt class="flex-fill">@metadata.Key</dt>
 															<dd>@metadata.Value</dd>
-														</div>
-													} else { 
-														<dt class="flex-fill">@metadata.Key</dt>
-														<dd>@metadata.Value</dd>
+														}
 													}
 												}
-											}
-										</dl>
+											</dl>
+										</div>
 									</div>
-								</div>
-							}
+								}
 						
-							@* XMP image data *@
-							if (XMP.Count > 0) { 
-								<div class="border-bottom">
-									<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#XMP_Group" role="button" aria-expanded="true" aria-controls="XMP_Group">
-										<h2 class="my-3 opacity-85 m-0 flex-fill h6">XMP</h2>
-										<div class="my-auto collapse-chevron-icon"></div>
-									</div>
-									<div class="collapse" id="XMP_Group">
-										<dl class="pb-3">
-											@foreach (var metadata in XMP)
-											{
-												if (!String.IsNullOrEmpty(metadata.Value))
+								@* XMP image data *@
+								if (XMP.Count > 0) { 
+									<div class="border-bottom">
+										<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#XMP_Group" role="button" aria-expanded="true" aria-controls="XMP_Group">
+											<h2 class="my-3 opacity-85 m-0 flex-fill h6">XMP</h2>
+											<div class="my-auto collapse-chevron-icon"></div>
+										</div>
+										<div class="collapse" id="XMP_Group">
+											<dl class="pb-3">
+												@foreach (var metadata in XMP)
 												{
-													if (metadata.Value.Length < 20) { 
-														<div class="d-flex flex-row">
+													if (!String.IsNullOrEmpty(metadata.Value))
+													{
+														if (metadata.Value.Length < 20) { 
+															<div class="d-flex flex-row">
+																<dt class="flex-fill">@metadata.Key</dt>
+																<dd>@metadata.Value</dd>
+															</div>
+														} else { 
 															<dt class="flex-fill">@metadata.Key</dt>
 															<dd>@metadata.Value</dd>
-														</div>
-													} else { 
-														<dt class="flex-fill">@metadata.Key</dt>
-														<dd>@metadata.Value</dd>
+														}
 													}
 												}
-											}
-										</dl>
+											</dl>
+										</div>
 									</div>
-								</div>
-							}
+								}
 
-							@* EXIF image data *@
-							if (EXIF.Count > 0) { 
-								<div class="border-bottom">
-									<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#EXIF_Group" role="button" aria-expanded="true" aria-controls="EXIF_Group">
-										<h2 class="my-3 opacity-85 m-0 flex-fill h6">EXIF</h2>
-										<div class="my-auto collapse-chevron-icon"></div>
-									</div>
-									<div class="collapse" id="EXIF_Group">
-										<dl class="pb-3">
-											@foreach (var metadata in EXIF)
-											{
-												if (!String.IsNullOrEmpty(metadata.Value))
+								@* EXIF image data *@
+								if (EXIF.Count > 0) { 
+									<div class="border-bottom">
+										<div class="d-flex collapsed" data-bs-toggle="collapse" data-bs-target="#EXIF_Group" role="button" aria-expanded="true" aria-controls="EXIF_Group">
+											<h2 class="my-3 opacity-85 m-0 flex-fill h6">EXIF</h2>
+											<div class="my-auto collapse-chevron-icon"></div>
+										</div>
+										<div class="collapse" id="EXIF_Group">
+											<dl class="pb-3">
+												@foreach (var metadata in EXIF)
 												{
-													if (metadata.Value.Length < 20) { 
-														<div class="d-flex flex-row">
+													if (!String.IsNullOrEmpty(metadata.Value))
+													{
+														if (metadata.Value.Length < 20) { 
+															<div class="d-flex flex-row">
+																<dt class="flex-fill">@metadata.Key</dt>
+																<dd>@metadata.Value</dd>
+															</div>
+														} else { 
 															<dt class="flex-fill">@metadata.Key</dt>
 															<dd>@metadata.Value</dd>
-														</div>
-													} else { 
-														<dt class="flex-fill">@metadata.Key</dt>
-														<dd>@metadata.Value</dd>
+														}
 													}
 												}
-											}
-										</dl>
+											</dl>
+										</div>
 									</div>
-								</div>
-							}			
-						}
+								}			
+							}
+						} 
+					}
+
+					if (!fileExists) { 
+						<div class="alert alert-warning mt-3" role="alert">@Translate("The file does not exist on the server")</div>
 					}
 				}
 			}

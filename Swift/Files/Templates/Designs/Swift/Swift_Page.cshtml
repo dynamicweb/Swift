@@ -2,7 +2,11 @@
 @using System
 @using Dynamicweb.Ecommerce.ProductCatalog
 @MasterPageFile("Swift_Master.cshtml")
+
 @{
+	string productIdFromUrl = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ProductID") : string.Empty;
+	bool isProductDetail = !string.IsNullOrEmpty(productIdFromUrl) && Pageview.Page.NavigationTag.ToLower() == "shop";
+
 	bool isArticlePagePage = Model.ItemType == "Swift_Article";
 	string schemaOrgProp = string.Empty;
 	if(isArticlePagePage)
@@ -20,7 +24,18 @@
 
 	if (Model.Item != null)
 	{
-		gridContent = Model.Grid("Grid", "Grid", "default:true;sort:1", "Page");
+		if (!isProductDetail)
+		{
+			gridContent = Model.Grid("Grid", "Grid", "default:true;sort:1", "Page");
+		}
+		else
+		{
+			var productObject = Dynamicweb.Ecommerce.Products.Product.GetProductById(productIdFromUrl);
+			var detailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(productObject.PrimaryGroupId)?.Meta.PrimaryPage ?? string.Empty;
+			var detailPageId = detailPage != string.Empty ? Convert.ToInt16(detailPage.Substring(detailPage.LastIndexOf('=') + 1)) : GetPageIdByNavigationTag("ProductDetailPage");
+
+			@RenderGrid(detailPageId)
+		}
 	}
 
 	bool doNotRenderPage = false;
@@ -38,7 +53,6 @@
 	//Render the page
 	if (!doNotRenderPage) {
 		string itemIdentifier = Model?.Item?.SystemName != null ? "item_" + Model.Item.SystemName.ToLower() : "item_Swift_Page";
-
 
 		if (theme != "")
 		{

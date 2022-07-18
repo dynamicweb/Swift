@@ -2,6 +2,7 @@ const Typeahead = function() {
 	var tabIndex = -1;
 	var tabIndexOld = 0;
 	var timeout;
+	var controller = new AbortController();
 
 	return {
 		suggest: function(e, searchField){
@@ -86,16 +87,23 @@ const Typeahead = function() {
 			var resultsPageId = searchField.closest(".js-suggest-form").getAttribute("data-search-results-page");
 			var defaultDetailsPageId = searchField.closest(".js-suggest-form").getAttribute("data-product-details-page-id");
 			var searchUrl = "/Default.aspx?ID=" + resultsPageId + "&defaultpdpId=" + defaultDetailsPageId + "&feed=true&redirect=false&eq=" + encodeURIComponent(searchField.value.toLowerCase());
-			let response = await fetch(searchUrl);
 
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			} else {
-				let html = await response.text().then(function (text) {
-					return text;
-				});
+			const signal = controller.signal;
+			let abortError = false;
+			let response = await fetch(searchUrl, { signal }).catch(function (error) {
+				abortError = true;
+			});
 
-				Typeahead.displaySuggestions(html, searchField);
+			if (!abortError) {
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}`);
+				} else {
+					let html = await response.text().then(function (text) {
+						return text;
+					});
+
+					Typeahead.displaySuggestions(html, searchField);
+				}
 			}
 		},
 
@@ -204,6 +212,9 @@ const Typeahead = function() {
 
 		debounce: function(func, wait, immediate) {
 			return function () {
+				controller.abort();
+				controller = new AbortController();
+
 				var context = this, args = arguments;
 				var later = function () {
 					timeout = null;
