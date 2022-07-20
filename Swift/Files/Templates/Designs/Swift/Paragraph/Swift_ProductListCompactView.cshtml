@@ -42,7 +42,7 @@
 }
 
 @if (!isDetailPage) { 
-	@if (!string.IsNullOrEmpty(theme))
+	if (!string.IsNullOrEmpty(theme))
 	{
 		<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
 			@RenderProductList()
@@ -131,6 +131,8 @@ if (productList.TotalProductsCount > 0)
 
 	foreach (ProductViewModel product in productList.Products)
 	{
+		var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
+		var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
 		string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
 		link += $"&GroupID={product.PrimaryOrDefaultGroup.Id}";
 		link += $"&ProductID={product.Id}";
@@ -182,7 +184,27 @@ if (productList.TotalProductsCount > 0)
 			}
 
 			<article class="grid gap-2 gap-lg-3 mb-3 @(productTheme) product @liveInfoClass" data-product-id="@product.Id">
-				<a href="@link" class="g-col-12 g-col-lg-8 d-flex text-decoration-none mb-2 mb-lg-0">
+				<a href="@link" class="g-col-12 g-col-lg-8 d-flex text-decoration-none mb-2 mb-lg-0" onclick="return clickProductLink('@product.Id', '@product.Name', '@product.VariantName', '@product.Price.CurrencyCode', '@product.Price.Price')">
+
+					<script>
+						function clickProductLink(productId, productName, productVariant, productCurrency, productPrice) {
+							gtag("event", "select_item", {
+								item_list_id: "product_list_compactview",
+								item_list_name: "Product list (Compact view)",
+								items: [
+									{
+										item_id: productId,
+										item_name: productName,
+										currency: productCurrency,
+										item_list_id: "product_list_compactview",
+										item_list_name: "Product list (Compact view)",
+										item_variant: productVariant,
+										price: productPrice
+									}
+								]
+							});
+						}
+					</script>
 
 					@if (!Model.Item.GetBoolean("HideImage"))
 					{
@@ -227,30 +249,29 @@ if (productList.TotalProductsCount > 0)
 						{
 							<div class="g-col-12 g-col-lg-2 text-end align-self-center d-none d-lg-block">
 								@RenderStockState(product)
-	
-		<div class="text-center d-flex flex-column gap-3">
+							</div>
+						}
+					</div>
+				</a>
+
+				<div class="g-col-12 g-col-lg-4 d-flex justify-content-end">
+					@if (!hidePrice)
+					{
+						<div class="me-3 my-auto">
+							@RenderPrice(product)
 						</div>
 					}
+					@if (!anonymousUser && !hideFavoritesSelector && product.VariantInfo.VariantInfo == null)
+					{
+						@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+					}
+					@RenderAddToCart(product)
 				</div>
-			</a>
+			</article>
+		}
 
-			<div class="g-col-12 g-col-lg-4 d-flex justify-content-end">
-				@if (!hidePrice)
-				{
-					<div class="me-3 my-auto">
-						@RenderPrice(product)
-					</div>
-				}
-				@if (!anonymousUser && !hideFavoritesSelector && product.VariantInfo.VariantInfo == null)
-				{
-					@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
-				}
-				@RenderAddToCart(product)
-			</div>
-		</article>
-	}
-
-	<div class="my-3" id="LoadMoreButton">
+		<div class="my-3" id="LoadMoreButton">
+			<div class="text-center d-flex flex-column gap-3">
 				<div class="opacity-85">@loadedProducts @Translate("out of") @productList.TotalProductsCount @Translate("products")</div>
 				@if (productList.PageCount != 1)
 				{
