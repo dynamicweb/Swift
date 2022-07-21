@@ -3,6 +3,28 @@ const Cart = function () {
 		Update: async function (e) {
 			var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
 
+			var productReferer = e.currentTarget.getAttribute("data-referer");
+			var productId = e.currentTarget.getAttribute("data-product-id");
+			var productName = e.currentTarget.getAttribute("data-product-name");
+			var productPrice = e.currentTarget.getAttribute("data-product-price");
+			var productCurrency = e.currentTarget.getAttribute("data-product-currency");
+
+			// Push data to Google Analytics
+			gtag("event", "add_to_cart", {
+				currency: productCurrency,
+				value: productPrice,
+				items: [
+					{
+						item_id: productId,
+						item_name: productName,
+						currency: productCurrency,
+						item_list_id: productReferer,
+						price: productPrice,
+						quantity: 1
+					}
+				]
+			});
+			  
 			//Setup the form data
 			var form = clickedButton.closest("form");
 			let formData = new FormData(form);
