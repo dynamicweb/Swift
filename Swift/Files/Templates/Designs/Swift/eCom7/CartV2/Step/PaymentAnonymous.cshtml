@@ -3,6 +3,10 @@
 @using System.IO
 
 @{
+	string googleAnalyticsTrackingID = Pageview.AreaSettings.GetString("GoogleAnalyticsTrackingID");
+	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
+	bool allowCookies = Dynamicweb.Environment.CookieManager.GetCookieOptInLevel() == 0 || !Dynamicweb.Environment.CookieManager.CookieOptInLevelExists ? false : true;
+
 	string deliveryAddressString = GetString("Ecom:Order.Delivery.Company") + GetString("Ecom:Order.Delivery.Address") + GetString("Ecom:Order.Delivery.Zip") + GetString("Ecom:Order.Delivery.City") + GetString("Ecom:Order.Delivery.Phone");
 	string billingAddressString = GetString("Ecom:Order.Customer.Company") + GetString("Ecom:Order.Customer.Address") + GetString("Ecom:Order.Customer.Zip") + GetString("Ecom:Order.Customer.City") + GetString("Ecom:Order.Customer.Phone");
 	string useSameAddressChecked = (deliveryAddressString == billingAddressString) || billingAddressString == "" ? "checked=\"checked\"" : "";
@@ -128,24 +132,29 @@
 		document.querySelector("#CurrentStep").name = "@GetString("CartV2.CurrentStepButtonName")";
 		swift.PageUpdater.Update(document.querySelector("#ordersubmit"));
 	}
-
-	gtag("event", "add_payment_info", {
-		currency: "@GetString("Ecom:Order.CurrencyCode")",
-		value: @GetString("Ecom:Order.Price.Price.Value"),
-		items: [
-			@foreach (LoopItem orderline in GetLoop("OrderLines")) {
-				<text>
-				{
-					item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
-					item_name: "@orderline.GetString("Ecom:Order:OrderLine.ProductName")",
-					currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
-					price: @orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.Price.Value")
-				},
-				</text>
-			}
-		]
-	});
 </script>
+
+@if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowCookies)
+{
+	<script>
+		gtag("event", "add_payment_info", {
+			currency: "@GetString("Ecom:Order.CurrencyCode")",
+			value: @GetString("Ecom:Order.Price.Price.Value"),
+			items: [
+				@foreach (LoopItem orderline in GetLoop("OrderLines")) {
+					<text>
+					{
+						item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
+						item_name: "@orderline.GetString("Ecom:Order:OrderLine.ProductName")",
+						currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
+						price: @orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.Price.Value")
+					},
+					</text>
+				}
+			]
+		});
+	</script>
+}
 
 @Include("Helpers/Logo.cshtml")
 @Include("Helpers/StepsBreadcrumbs.cshtml")

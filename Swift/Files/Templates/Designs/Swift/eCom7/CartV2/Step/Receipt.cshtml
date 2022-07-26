@@ -3,6 +3,10 @@
 @using System.IO
 
 @{ 
+	string googleAnalyticsTrackingID = Pageview.AreaSettings.GetString("GoogleAnalyticsTrackingID");
+	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
+	bool allowCookies = Dynamicweb.Environment.CookieManager.GetCookieOptInLevel() == 0 || !Dynamicweb.Environment.CookieManager.CookieOptInLevelExists ? false : true;
+
 	int frontPageId = Dynamicweb.Services.Pages.GetFirstPageForArea(Pageview.AreaID).ID;
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
 	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
@@ -263,28 +267,31 @@
 	</div>
 </div>
 
-<script>
-	gtag("event", "purchase", {
-		transaction_id: "@GetString("Ecom:Order.ID")",
-		value: @GetString("Ecom:Order.Price.Price.Value"),
-		tax: @GetString("Ecom:Order.Taxes.Total.Price.Value"),
-		shipping: @GetString("Ecom:Order.ShippingFee.Price.Value"),
-		currency: "@GetString("Ecom:Order.Price.Currency.Code")",
-		items: [
-		@foreach (LoopItem orderline in GetLoop("OrderLines"))
-		{
-			<text>
+@if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowCookies)
+{
+	<script>
+		gtag("event", "purchase", {
+			transaction_id: "@GetString("Ecom:Order.ID")",
+			value: @GetString("Ecom:Order.Price.Price.Value"),
+			tax: @GetString("Ecom:Order.Taxes.Total.Price.Value"),
+			shipping: @GetString("Ecom:Order.ShippingFee.Price.Value"),
+			currency: "@GetString("Ecom:Order.Price.Currency.Code")",
+			items: [
+			@foreach (LoopItem orderline in GetLoop("OrderLines"))
 			{
-				item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
-				item_name: "@orderline.GetString("Ecom:Order:OrderLine.ProductName")",
-				currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
-				price: @orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.Price.Value")
+				<text>
+				{
+					item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
+					item_name: "@orderline.GetString("Ecom:Order:OrderLine.ProductName")",
+					currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
+					price: @orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.Price.Value")
+				}
+				</text>
 			}
-			</text>
-		}
-		]
-	});
-</script>
+			]
+		});
+	</script>
+}
 
 @helper RenderPageHeader()
 {
