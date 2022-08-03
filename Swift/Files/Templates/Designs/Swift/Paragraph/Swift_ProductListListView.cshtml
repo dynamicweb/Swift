@@ -11,7 +11,9 @@
 	string productInfoFeed = "";
 	string showPricesWithVat = "";
 	bool neverShowVat = false;
-	
+
+	bool isDetailPage = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductID"));
+
 	ProductListViewModel productList = new ProductListViewModel();
 }
 @{
@@ -39,14 +41,16 @@
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 }
 
-@if (!string.IsNullOrEmpty(theme)) {
-	<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
-		@RenderProductList(productList)
-	</div>
-} else {
-	<div class="item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
-		@RenderProductList(productList)
-	</div>
+@if (!isDetailPage) { 
+	if (!string.IsNullOrEmpty(theme)) {
+		<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
+			@RenderProductList(productList)
+		</div>
+	} else {
+		<div class="item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
+			@RenderProductList(productList)
+		</div>
+	}
 }
 
 @helper RenderProductList (ProductListViewModel productList) { 
@@ -60,7 +64,6 @@
 	hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHideAddToCart") && isErpConnectionDown ? true : hideAddToCart;
 	bool hideFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("HideFavoritesSelector")) ? Model.Item.GetBoolean("HideFavoritesSelector") : false;
 
-	string detailsPageLink = Dynamicweb.Context.Current.Items["DetailsPageLink"] != null ? Dynamicweb.Context.Current.Items["DetailsPageLink"].ToString() : "";
 	string productTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductTheme")) ? " theme p-3 " + Model.Item.GetRawValueString("ProductTheme").Replace(" ", "").Trim().ToLower() : "";
 	string modalTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ModalTheme")) ? " theme " + Model.Item.GetRawValueString("ModalTheme").Replace(" ", "").Trim().ToLower() : "theme light";
 	string textPadding = !string.IsNullOrEmpty(Model.Item.GetString("ContentPadding")) ? Model.Item.GetRawValueString("ContentPadding") : "none";
@@ -68,15 +71,8 @@
 	textPadding = textPadding == "small" ? "p-2 p-lg-3" : textPadding;
 	textPadding = textPadding == "large" ? "p-3 p-lg-4" : textPadding;
 
-	string url = Pageview.SearchFriendlyUrl;
-	url = url.LastIndexOf("?") != -1 ? url.Substring(0, url.LastIndexOf("?")) : url;
-
-	//Fix for non-friendly urls
-	if (Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") != null)
-	{
-		string groupId = Dynamicweb.Context.Current.Request.QueryString.Get("GroupID");
-		url += "?GroupID=" + groupId;
-	}
+	string groupId = productList?.Group?.Id != null ? productList.Group.Id : "";
+	string url = Dynamicweb.Context.Current.Request.RawUrl;
 
 	var badgeParms = new Dictionary<string, object>();
 	badgeParms.Add("saleBadgeType", Model.Item.GetRawValue("SaleBadgeType"));
@@ -111,12 +107,11 @@
 		int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
 
 		foreach (ProductViewModel product in productList.Products) {
-			var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
-			var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
-
-			string link = string.IsNullOrEmpty(selectedDetailPage) ? $"{detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
-			link += "&productid=" + product.Id;
-			link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
+			string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
+			link += $"&GroupID={product.PrimaryOrDefaultGroup.Id}";
+			link += $"&ProductID={product.Id}";
+			link += !string.IsNullOrEmpty(product.VariantId) ? $"&VariantID={product.VariantId}" : "";
+			link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link);
 
 			string imagePath = product?.DefaultImage?.Value ?? "";
 			imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
@@ -217,14 +212,14 @@
 									@RenderMainFeatures(mainFeatures)
 								</div>
 							</div>
-                        } else {
+						} else {
 							if (!Model.Item.GetBoolean("HideShortDescription")) {
 								<div class="fs-7 d-none d-lg-block">
 									@product.ShortDescription
 								</div>
 							}
 							@RenderMainFeatures(mainFeatures)
-                        }
+						}
 					</div>
 				</a>
 
@@ -254,7 +249,7 @@
 						<div class="text-end align-self-end d-none d-lg-block">
 							@RenderPrice(product)
 						</div>
-                    }
+					}
 				</div>
 			</article>
 
@@ -264,7 +259,7 @@
 			<div class="text-center d-flex flex-column gap-3">
 				<div class="opacity-85">@loadedProducts @Translate("out of") @productList.TotalProductsCount @Translate("products")</div>
 				@if (productList.PageCount != 1) {
-					string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "NameForSort";
+					string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "Relevance";
 					sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
 
 					string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
@@ -283,6 +278,10 @@
 									}
 								}
 							}
+						}
+
+						@if (productList?.Group?.Id != null) {
+							<input type="hidden" name="GroupId" value="@productList.Group.Id" />
 						}
 
 						<input type="hidden" name="PageSize" value="@pageSize" />

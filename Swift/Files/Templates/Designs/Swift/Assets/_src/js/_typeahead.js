@@ -2,6 +2,7 @@ const Typeahead = function() {
 	var tabIndex = -1;
 	var tabIndexOld = 0;
 	var timeout;
+	var controller = new AbortController();
 
 	return {
 		suggest: function(e, searchField){
@@ -9,7 +10,7 @@ const Typeahead = function() {
 				// handle dropdown navigation if present
 				document.querySelectorAll(".js-type-ahead-menu").forEach(function (menu) {
 					if (menu.classList.contains("show")) {
-						Typeahead.debounce(() => Typeahead.handleArrowNavigation(e.key, menu), 100)();
+						Typeahead.debounce(() => Typeahead.handleArrowNavigation(e.key, menu), 300)();
 						return;
 					}
 				});
@@ -22,7 +23,7 @@ const Typeahead = function() {
 						field.setAttribute("data-original", val)
 					});
 		
-					Typeahead.debounce(() => Typeahead.getSuggestions(searchField), 100)();
+					Typeahead.debounce(() => Typeahead.getSuggestions(searchField), 300)();
 				} else {
 					Typeahead.hideSearchResults();
 				}
@@ -86,16 +87,23 @@ const Typeahead = function() {
 			var resultsPageId = searchField.closest(".js-suggest-form").getAttribute("data-search-results-page");
 			var defaultDetailsPageId = searchField.closest(".js-suggest-form").getAttribute("data-product-details-page-id");
 			var searchUrl = "/Default.aspx?ID=" + resultsPageId + "&defaultpdpId=" + defaultDetailsPageId + "&feed=true&redirect=false&eq=" + encodeURIComponent(searchField.value.toLowerCase());
-			let response = await fetch(searchUrl);
 
-			if (!response.ok) {
-				throw new Error(`HTTP error! status: ${response.status}`);
-			} else {
-				let html = await response.text().then(function (text) {
-					return text;
-				});
+			const signal = controller.signal;
+			let abortError = false;
+			let response = await fetch(searchUrl, { signal }).catch(function (error) {
+				abortError = true;
+			});
 
-				Typeahead.displaySuggestions(html, searchField);
+			if (!abortError) {
+				if (!response.ok) {
+					throw new Error(`HTTP error! status: ${response.status}`);
+				} else {
+					let html = await response.text().then(function (text) {
+						return text;
+					});
+
+					Typeahead.displaySuggestions(html, searchField);
+				}
 			}
 		},
 
@@ -204,6 +212,9 @@ const Typeahead = function() {
 
 		debounce: function(func, wait, immediate) {
 			return function () {
+				controller.abort();
+				controller = new AbortController();
+
 				var context = this, args = arguments;
 				var later = function () {
 					timeout = null;
@@ -227,25 +238,7 @@ const Typeahead = function() {
 		},
 
 		navigateToPage: async function(href) {
-			var fetchHref = href;
-			if (href.indexOf("?") > 0) {
-				fetchHref += "&feed=true"
-			} else {
-				fetchHref += "?feed=true"
-			}
-			let response = await fetch(fetchHref);
-
-			if (!response.ok) {
-				throw new Error('HTTP error! status: ${response.status}');
-			} else {
-				let html = await response.text().then(function (text) {
-					return text;
-				});
-
-				document.querySelectorAll(".js-async-placeholder").forEach(function(placeholder) {
-					placeholder.outerHTML = html;
-				});
-			}
+			
 		},
 
 		init: function(){

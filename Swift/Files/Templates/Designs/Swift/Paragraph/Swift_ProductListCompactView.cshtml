@@ -11,6 +11,8 @@
 	string productInfoFeed = "";
 	string showPricesWithVat = "";
 	bool neverShowVat = false;
+
+	bool isDetailPage = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductID"));
 	
 	ProductListViewModel productList = new ProductListViewModel();
 }
@@ -39,102 +41,95 @@
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 }
 
-@if (!string.IsNullOrEmpty(theme))
-{
-	<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
-		@RenderProductList()
-	</div>
-}
-else
-{
-	<div class="item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
-		@RenderProductList()
-	</div>
-}
+@if (!isDetailPage) { 
+	if (!string.IsNullOrEmpty(theme))
+	{
+		<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
+			@RenderProductList()
+		</div>
+	}
+	else
+	{
+		<div class="item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
+			@RenderProductList()
+		</div>
+	}
+} 
 
 @helper RenderProductList()
 {
-	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
-	bool anonymousUser = Pageview.User == null;
-	bool hideProductNumber = !string.IsNullOrEmpty(Model.Item.GetString("HideProductNumber")) ? Model.Item.GetBoolean("HideProductNumber") : false;
-	bool isErpConnectionDown = !Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsWebServiceConnectionAvailable();
-	bool hideStock = Model.Item.GetBoolean("HideStockState") || (Pageview.AreaSettings.GetBoolean("ErpDownHideStock") && isErpConnectionDown);
-	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && isErpConnectionDown;
-	bool hideAddToCart = !string.IsNullOrEmpty(Model.Item.GetString("HideAddToCart")) ? Model.Item.GetBoolean("HideAddToCart") : false;
-	hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHideAddToCart") && isErpConnectionDown ? true : hideAddToCart;
-	bool hideFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("HideFavoritesSelector")) ? Model.Item.GetBoolean("HideFavoritesSelector") : false;
+string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+bool anonymousUser = Pageview.User == null;
+bool hideProductNumber = !string.IsNullOrEmpty(Model.Item.GetString("HideProductNumber")) ? Model.Item.GetBoolean("HideProductNumber") : false;
+bool isErpConnectionDown = !Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsWebServiceConnectionAvailable();
+bool hideStock = Model.Item.GetBoolean("HideStockState") || (Pageview.AreaSettings.GetBoolean("ErpDownHideStock") && isErpConnectionDown);
+bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && isErpConnectionDown;
+bool hideAddToCart = !string.IsNullOrEmpty(Model.Item.GetString("HideAddToCart")) ? Model.Item.GetBoolean("HideAddToCart") : false;
+hideAddToCart = anonymousUsersLimitations.Contains("cart") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHideAddToCart") && isErpConnectionDown ? true : hideAddToCart;
+bool hideFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("HideFavoritesSelector")) ? Model.Item.GetBoolean("HideFavoritesSelector") : false;
 
-	string listItemLayout = !string.IsNullOrEmpty(Model.Item.GetString("ListItemLayout")) ? Model.Item.GetString("ListItemLayout") : "full";
+string listItemLayout = !string.IsNullOrEmpty(Model.Item.GetString("ListItemLayout")) ? Model.Item.GetString("ListItemLayout") : "full";
 
-	string detailsPageLink = Dynamicweb.Context.Current.Items["DetailsPageLink"] != null ? Dynamicweb.Context.Current.Items["DetailsPageLink"].ToString() : "";
-	string productTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductTheme")) ? " theme p-3 " + Model.Item.GetRawValueString("ProductTheme").Replace(" ", "").Trim().ToLower() : "";
-	string modalTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ModalTheme")) ? " theme " + Model.Item.GetRawValueString("ModalTheme").Replace(" ", "").Trim().ToLower() : "theme light";
-	string textPadding = !string.IsNullOrEmpty(Model.Item.GetString("ContentPadding")) ? Model.Item.GetRawValueString("ContentPadding") : "none";
-	textPadding = textPadding == "none" ? "" : textPadding;
-	textPadding = textPadding == "small" ? "p-2 p-lg-3" : textPadding;
+string productTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductTheme")) ? " theme p-3 " + Model.Item.GetRawValueString("ProductTheme").Replace(" ", "").Trim().ToLower() : "";
+string modalTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ModalTheme")) ? " theme " + Model.Item.GetRawValueString("ModalTheme").Replace(" ", "").Trim().ToLower() : "theme light";
+string textPadding = !string.IsNullOrEmpty(Model.Item.GetString("ContentPadding")) ? Model.Item.GetRawValueString("ContentPadding") : "none";
+textPadding = textPadding == "none" ? "" : textPadding;
+textPadding = textPadding == "small" ? "p-2 p-lg-3" : textPadding;
 
-	string url = Pageview.SearchFriendlyUrl;
-	url = url.LastIndexOf("?") != -1 ? url.Substring(0, url.LastIndexOf("?")) : url;
+string groupId = productList?.Group?.Id != null ? productList.Group.Id : "";
+string url = Dynamicweb.Context.Current.Request.RawUrl;
 
-	//Fix for non-friendly urls
-	if (Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") != null)
+var badgeParms = new Dictionary<string, object>();
+badgeParms.Add("saleBadgeType", Model.Item.GetRawValue("SaleBadgeType"));
+badgeParms.Add("saleBadgeCssClassName", Model.Item.GetRawValue("SaleBadgeDesign"));
+badgeParms.Add("newBadgeCssClassName", Model.Item.GetRawValue("NewBadgeDesign"));
+badgeParms.Add("newPublicationDays", Model.Item.GetInt32("NewPublicationDays"));
+badgeParms.Add("campaignBadgesValues", Model.Item.GetRawValueString("CampaignBadges"));
+
+var favoriteParameters = new Dictionary<string, object>();
+if (!anonymousUser && !hideFavoritesSelector)
+{
+	int defaultFavoriteListId = 0;
+
+	IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
+	if (favoreiteLists.Count() == 1)
 	{
-		string groupId = Dynamicweb.Context.Current.Request.QueryString.Get("GroupID");
-		url += "?GroupID=" + groupId;
-	}
-
-	var badgeParms = new Dictionary<string, object>();
-	badgeParms.Add("saleBadgeType", Model.Item.GetRawValue("SaleBadgeType"));
-	badgeParms.Add("saleBadgeCssClassName", Model.Item.GetRawValue("SaleBadgeDesign"));
-	badgeParms.Add("newBadgeCssClassName", Model.Item.GetRawValue("NewBadgeDesign"));
-	badgeParms.Add("newPublicationDays", Model.Item.GetInt32("NewPublicationDays"));
-	badgeParms.Add("campaignBadgesValues", Model.Item.GetRawValueString("CampaignBadges"));
-
-	var favoriteParameters = new Dictionary<string, object>();
-	if (!anonymousUser && !hideFavoritesSelector)
-	{
-		int defaultFavoriteListId = 0;
-
-		IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
-		if (favoreiteLists.Count() == 1)
+		foreach (FavoriteList list in favoreiteLists)
 		{
-			foreach (FavoriteList list in favoreiteLists)
-			{
-				defaultFavoriteListId = list.ListId;
-			}
+			defaultFavoriteListId = list.ListId;
 		}
-
-		favoriteParameters.Add("ListId", defaultFavoriteListId);
 	}
 
-	if (productList.TotalProductsCount > 0)
+	favoriteParameters.Add("ListId", defaultFavoriteListId);
+}
+
+if (productList.TotalProductsCount > 0)
+{
+	int pageSizeSetting = 30;
+	int pageSize = productList.PageSize;
+	pageSize += pageSizeSetting;
+
+	int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
+
+	foreach (ProductViewModel product in productList.Products)
 	{
-		int pageSizeSetting = 30;
-		int pageSize = productList.PageSize;
-		pageSize += pageSizeSetting;
+		string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
+		link += $"&GroupID={product.PrimaryOrDefaultGroup.Id}";
+		link += $"&ProductID={product.Id}";
+		link += !string.IsNullOrEmpty(product.VariantId) ? $"&VariantID={product.VariantId}" : "";
+		link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link);
 
-		int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
+		string imagePath = product?.DefaultImage?.Value ?? "";
+		imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
+		imagePath = "/Admin/Public/GetImage.ashx?width=" + 48 + "&image=" + imagePath + "&format=webp";
 
-		foreach (ProductViewModel product in productList.Products)
-		{
-			var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
-			var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
+		string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
+		ratio = ratio != "0" ? ratio : "";
+		string ratioCssClass = ratio != "" ? " ratio" : "";
+		string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
 
-			string link = string.IsNullOrEmpty(selectedDetailPage) ? $"{detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
-			link += "&productid=" + product.Id;
-			link += !string.IsNullOrEmpty(product.VariantId) ? "&variantid=" + product.VariantId : "";
-
-			string imagePath = product?.DefaultImage?.Value ?? "";
-			imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
-			imagePath = "/Admin/Public/GetImage.ashx?width=" + 48 + "&image=" + imagePath + "&format=webp";
-
-			string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
-			ratio = ratio != "0" ? ratio : "";
-			string ratioCssClass = ratio != "" ? " ratio" : "";
-			string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
-
-			string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
-			string imageId = "ProductImage_" + product.Id + product.VariantId;
+		string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
+		string imageId = "ProductImage_" + product.Id + product.VariantId;
 
 			@* Alternative image *@
 			var supportedImageFormats = new string[] { ".jpg", ".webp", ".png", ".gif" };
@@ -240,7 +235,7 @@ else
 				<div class="opacity-85">@loadedProducts @Translate("out of") @productList.TotalProductsCount @Translate("products")</div>
 				@if (productList.PageCount != 1)
 				{
-					string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "NameForSort";
+					string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "Relevance";
 					sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
 
 					string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
@@ -261,38 +256,44 @@ else
 							}
 						}
 
-						<input type="hidden" name="PageSize" value="@pageSize" />
-						<input type="hidden" name="SortBy" value="@sortBySelection" />
-						<input type="hidden" name="RequestType" value="UpdateList" />
-
-						@if (!string.IsNullOrEmpty(searchQuery)) { 
-							<input type="hidden" name="q" value="@searchQuery" />
-							<input type="hidden" name="SearchLayout" value="@searchLayout" />
+						@if (productList?.Group?.Id != null)
+						{
+							<input type="hidden" name="GroupId" value="@productList.Group.Id" />
 						}
 
-						@{ 
-							string nextPageLink = "/Default.aspx?ID=" + Pageview.Page.ID + "&PageSize=" + pageSize + "&SortBy=" + sortBySelection;
+				<input type="hidden" name="PageSize" value="@pageSize" />
+				<input type="hidden" name="SortBy" value="@sortBySelection" />
+				<input type="hidden" name="RequestType" value="UpdateList" />
 
-							foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+				@if (!string.IsNullOrEmpty(searchQuery))
+				{
+					<input type="hidden" name="q" value="@searchQuery" />
+					<input type="hidden" name="SearchLayout" value="@searchLayout" />
+				}
+
+				@{
+					string nextPageLink = "/Default.aspx?ID=" + Pageview.Page.ID + "&PageSize=" + pageSize + "&SortBy=" + sortBySelection;
+
+					foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+					{
+						foreach (FacetViewModel facetItem in facetGroup.Facets)
+						{
+							foreach (FacetOptionViewModel facetOption in facetItem.Options)
 							{
-								foreach (FacetViewModel facetItem in facetGroup.Facets)
+								if (facetOption.Selected)
 								{
-									foreach (FacetOptionViewModel facetOption in facetItem.Options)
-									{
-										if (facetOption.Selected)
-										{
-											nextPageLink += "&" + facetItem.QueryParameter + "=[" + facetOption.Value + "]";
-										}
-									}
+									nextPageLink += "&" + facetItem.QueryParameter + "=[" + facetOption.Value + "]";
 								}
 							}
-
-							nextPageLink += productList?.Group?.Id != null ? "&GroupID=" + productList.Group.Id : "";
-							nextPageLink += !string.IsNullOrEmpty(searchQuery) ? "&q=" + searchQuery : "";
 						}
+					}
 
-						<a href="@nextPageLink" class="btn btn-primary" type="button" onclick="swift.ProductList.Update(event)" id="LoadMoreButton_@Model.ID">@Translate("Load more products")</a>
-					</form>
+					nextPageLink += productList?.Group?.Id != null ? "&GroupID=" + productList.Group.Id : "";
+					nextPageLink += !string.IsNullOrEmpty(searchQuery) ? "&q=" + searchQuery : "";
+				}
+
+				<a href="@nextPageLink" class="btn btn-primary" type="button" onclick="swift.ProductList.Update(event)" id="LoadMoreButton_@Model.ID">@Translate("Load more products")</a>
+			</form>
 				}
 			</div>
 		</div>
