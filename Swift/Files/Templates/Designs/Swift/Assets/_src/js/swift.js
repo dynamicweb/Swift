@@ -7,6 +7,7 @@ import { ProductList } from './_productlist';
 import { PageUpdater } from './_pageupdater';
 import { LocationsMap } from './_locationsmap';
 import { Places } from './_places';
+import { ProductExport } from './_productexport';
 import { StaticVariants } from './_staticvariants';
 import { VariantSelector } from './_variantselector';
 import { Video } from './_video';
@@ -28,6 +29,7 @@ const swift = function () {
 		PageUpdater: PageUpdater,
 		LocationsMap: LocationsMap,
 		Places: Places,
+		ProductExport: ProductExport,
 		StaticVariants: StaticVariants,
 		VariantSelector: VariantSelector,
 		Typeahead: Typeahead,
