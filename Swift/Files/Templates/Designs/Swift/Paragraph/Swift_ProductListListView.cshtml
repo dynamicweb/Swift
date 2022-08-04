@@ -11,7 +11,9 @@
 	string productInfoFeed = "";
 	string showPricesWithVat = "";
 	bool neverShowVat = false;
-	
+
+	bool isDetailPage = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductID"));
+
 	ProductListViewModel productList = new ProductListViewModel();
 }
 @{
@@ -39,14 +41,16 @@
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 }
 
-@if (!string.IsNullOrEmpty(theme)) {
-	<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
-		@RenderProductList(productList)
-	</div>
-} else {
-	<div class="item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
-		@RenderProductList(productList)
-	</div>
+@if (!isDetailPage) { 
+	if (!string.IsNullOrEmpty(theme)) {
+		<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
+			@RenderProductList(productList)
+		</div>
+	} else {
+		<div class="item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
+			@RenderProductList(productList)
+		</div>
+	}
 }
 
 @helper RenderProductList (ProductListViewModel productList) {
@@ -99,54 +103,52 @@
 		favoriteParameters.Add("ListId", defaultFavoriteListId);
 	}
 
-if (productList.TotalProductsCount > 0)
-{
-	int pageSizeSetting = 30;
-	int pageSize = productList.PageSize;
-	pageSize += pageSizeSetting;
+	if (productList.TotalProductsCount > 0) {
+		int pageSizeSetting = 30;
+		int pageSize = productList.PageSize;
+		pageSize += pageSizeSetting;
 
-	int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
+		int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
 
-	if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowCookies)
-	{
-		<script>
-			gtag("event", "view_item_list", {
-				item_list_id: "product_list_listview",
-				item_list_name: "Product list (Listview)",
-				items: [
-					@foreach (ProductViewModel product in productList.Products)
-					{
-						<text>{
-							item_id: "@product.Number",
-							item_name: "@product.Name",
-							currency: "@product.Price.CurrencyCode",
-							price: @product.Price.Price
-						},</text>
-					}
-				]
-			});
-		</script>
-	}
+		if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowCookies)
+		{
+			<script>
+				gtag("event", "view_item_list", {
+					item_list_id: "product_list_listview",
+					item_list_name: "Product list (Listview)",
+					items: [
+						@foreach (ProductViewModel product in productList.Products)
+						{
+							<text>{
+								item_id: "@product.Number",
+								item_name: "@product.Name",
+								currency: "@product.Price.CurrencyCode",
+								price: @product.Price.Price
+							},</text>
+						}
+					]
+				});
+			</script>
+		}
 
+		foreach (ProductViewModel product in productList.Products) {
+			string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
+			link += $"&GroupID={product.PrimaryOrDefaultGroup.Id}";
+			link += $"&ProductID={product.Id}";
+			link += !string.IsNullOrEmpty(product.VariantId) ? $"&VariantID={product.VariantId}" : "";
+			link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link);
 
-	foreach (ProductViewModel product in productList.Products) {
-		string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
-		link += $"&GroupID={product.PrimaryOrDefaultGroup.Id}";
-		link += $"&ProductID={product.Id}";
-		link += !string.IsNullOrEmpty(product.VariantId) ? $"&VariantID={product.VariantId}" : "";
-		link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link);
+			string imagePath = product?.DefaultImage?.Value ?? "";
+			imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
+			imagePath = "/Admin/Public/GetImage.ashx?width=" + 80 + "&image=" + imagePath + "&format=webp";
 
-		string imagePath = product?.DefaultImage?.Value ?? "";
-		imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
-		imagePath = "/Admin/Public/GetImage.ashx?width=" + 80 + "&image=" + imagePath + "&format=webp";
+			string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
+			ratio = ratio != "0" ? ratio : "";
+			string ratioCssClass = ratio != "" ? " ratio" : "";
+			string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
 
-		string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
-		ratio = ratio != "0" ? ratio : "";
-		string ratioCssClass = ratio != "" ? " ratio" : "";
-		string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
-
-		string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
-		string imageId = "ProductImage_" + product.Id + product.VariantId;
+			string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
+			string imageId = "ProductImage_" + product.Id + product.VariantId;
 
 			@* Alternative image *@
 			var supportedImageFormats = new string[] { ".jpg", ".webp", ".png", ".gif" };
@@ -258,14 +260,14 @@ if (productList.TotalProductsCount > 0)
 									@RenderMainFeatures(mainFeatures)
 								</div>
 							</div>
-                        } else {
+						} else {
 							if (!Model.Item.GetBoolean("HideShortDescription")) {
 								<div class="fs-7 d-none d-lg-block">
 									@product.ShortDescription
 								</div>
 							}
 							@RenderMainFeatures(mainFeatures)
-                        }
+						}
 					</div>
 				</a>
 
@@ -295,7 +297,7 @@ if (productList.TotalProductsCount > 0)
 						<div class="text-end align-self-end d-none d-lg-block">
 							@RenderPrice(product)
 						</div>
-                    }
+					}
 				</div>
 			</article>
 
