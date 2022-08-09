@@ -3,11 +3,20 @@ const Cart = function () {
 		Update: async function (e) {
 			var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
 
+			//Setup the form data
+			var form = clickedButton.closest("form");
+			let formData = new FormData(form);
+			var fetchOptions = {
+				method: 'POST',
+				body: formData
+			};
+
 			var productReferer = e.currentTarget.getAttribute("data-referer");
 			var productId = e.currentTarget.getAttribute("data-product-id");
 			var productName = e.currentTarget.getAttribute("data-product-name");
 			var productPrice = e.currentTarget.getAttribute("data-product-price");
 			var productCurrency = e.currentTarget.getAttribute("data-product-currency");
+			var addQuantity = formData.get("Quantity");
 
 			// Push data to Google Analytics
 			gtag("event", "add_to_cart", {
@@ -20,21 +29,13 @@ const Cart = function () {
 						currency: productCurrency,
 						item_list_id: productReferer,
 						price: productPrice,
-						quantity: 1
+						quantity: addQuantity
 					}
 				]
 			});
-			  
-			//Setup the form data
-			var form = clickedButton.closest("form");
-			let formData = new FormData(form);
-			var fetchOptions = {
-				method: 'POST',
-				body: formData
-			};
 
-			//Fire the 'update' event
 			let event = new CustomEvent("update.swift.cart", {
+			//Fire the 'update' event
 				cancelable: true,
 				detail: {
 					formData: formData,
