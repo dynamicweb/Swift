@@ -14,41 +14,44 @@
 	{
 		searchTerm = Dynamicweb.Context.Current.Request["eq"].Trim();
 	}
+
+	string resultsPage = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl("Default.aspx?ID=" + GetPageIdByNavigationTag("ContentSearch"));
 }
 
-<li class="text-wrap">
-	<h6 class="dropdown-header ps-5 pe-3 py-3">@Translate("Content")</h6>
-</li>
+<li class="text-wrap border-top pb-3"></li>
 
-@foreach (var result in resultsList)
-{
-	var resultProperties = result.GetLoop("Properties").ToDictionary(x => x.GetString("Name"), y => y.GetString("Value"));
+@if (GetInteger("DwPaging.PageSize") != 1) {
+	foreach (var result in resultsList)
+	{
+		var resultProperties = result.GetLoop("Properties").ToDictionary(x => x.GetString("Name"), y => y.GetString("Value"));
 
-	var pageId = resultProperties.ContainsKey("PageId") ? resultProperties["PageId"] : "";
-	var title = resultProperties.ContainsKey("PageMenuText") ? resultProperties["PageMenuText"] : "";
+		var pageId = resultProperties.ContainsKey("PageId") ? resultProperties["PageId"] : "";
+		var title = resultProperties.ContainsKey("PageMenuText") ? resultProperties["PageMenuText"] : "";
+		title = !string.IsNullOrEmpty(result.GetString("PageMetaTitle")) ? result.GetString("PageMetaTitle") : title;
 
-	var link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl($"Default.aspx?ID={pageId}");
+		var link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl($"Default.aspx?ID={pageId}");
 
-	<li class="dropdown-item d-flex flex-row flex-lg-row-reverse align-items-center text-wrap px-0 text-wrap @itemPadding" onclick="swift.Typeahead.selectSuggestion(this);" data-param="ID" data-paramvalue="@pageId" data-selected-details-page="@link">
+		<li class="dropdown-item d-flex flex-row flex-lg-row-reverse align-items-center text-wrap px-0 text-wrap @itemPadding" onclick="swift.Typeahead.selectSuggestion(this);" data-param="ID" data-paramvalue="@pageId" data-selected-details-page="@link">
+			<span aria-hidden="true" class="d-lg-none dropdown-item-search-icon d-flex align-items-center justify-content-center"></span>
+			<span class="js-suggestion flex-fill text-break">@title</span>
+			<span class="d-flex align-items-center justify-content-center mx-2" style="height: 32px; width: 32px" title="@title">
+				@ReadFile(iconPath + "file.svg")
+			</span>
+		</li>	
+	}
+} else if (resultsList.Count != 0) { 
+	<li class="dropdown-item d-flex flex-row flex-lg-row-reverse align-items-center text-wrap px-0 text-wrap @itemPadding" onclick="swift.Typeahead.selectSuggestion(this);" data-all-results-page="@resultsPage">
 		<span aria-hidden="true" class="d-lg-none dropdown-item-search-icon d-flex align-items-center justify-content-center"></span>
-		<span class="js-suggestion flex-fill text-break">@title</span>
-		<span class="d-flex align-items-center justify-content-center mx-2" style="height: 32px; width: 32px" title="@title">
+		<span class="flex-fill text-break">@Translate("Click here to view all") @GetString("QueryResult.TotalCount") @Translate("content pages")<mark> "<span class="js-suggestion">@searchTerm</span>"</mark></span>
+		<span class="d-flex align-items-center justify-content-center mx-2" style="height: 32px; width: 32px">
 			@ReadFile(iconPath + "file.svg")
 		</span>
-	</li>	
+	</li>
 }
 
 @if (!string.IsNullOrEmpty(searchTerm))
 {
-	if (resultsList.Count > 0)
-	{
-		string resultsPage = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl("Default.aspx?ID=" + GetPageIdByNavigationTag("ContentSearch"));
-
-		<li class="dropdown-item text-center text-decoration-underline text-wrap @itemPadding" onclick="swift.Typeahead.selectSuggestion(this);" data-all-results-page="@resultsPage" >
-			@Translate("View all") @GetString("QueryResult.TotalCount") @Translate("content results for")<mark> "<span class="js-suggestion">@searchTerm</span>"</mark>
-		</li>
-	}
-	else
+	if (resultsList.Count == 0)
 	{
 		<li class="dropdown-item text-center text-decoration-underline text-wrap @itemPadding" onclick="swift.Typeahead.selectSuggestion(this);" style="cursor: pointer;">
 			@Translate("We have no results for")<mark> "<span class="js-suggestion">@searchTerm</span>"</mark>
