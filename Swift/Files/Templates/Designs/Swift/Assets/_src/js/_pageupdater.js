@@ -1,47 +1,62 @@
 const PageUpdater = function () {
+	var timeout;
+	var controller = new AbortController();
 
 	return {
-		Update: async function (e) {
-			var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
-			var form = clickedButton.closest("form");
-			var preloader = form.getAttribute("data-preloader");
-			var responseTargetElement = form.getAttribute("data-response-target-element") ? "#" + form.getAttribute("data-response-target-element") : "#content";
-			responseTargetElement = document.querySelector(responseTargetElement);
-			var layoutTemplate = form.getAttribute("data-layout-template") ? form.getAttribute("data-layout-template") : "Swift_PageClean.cshtml";
+		Update: async function (e, enableDebouncing = false) {
+			if (!enableDebouncing) {
+				var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
+				var form = clickedButton.closest("form");
+				var preloader = form.getAttribute("data-preloader");
+				var responseTargetElement = form.getAttribute("data-response-target-element") ? "#" + form.getAttribute("data-response-target-element") : "#content";
+				responseTargetElement = document.querySelector(responseTargetElement);
+				var layoutTemplate = form.getAttribute("data-layout-template") ? form.getAttribute("data-layout-template") : "Swift_PageClean.cshtml";
 
-			let formData = new FormData(form);
-			formData.set("LayoutTemplate", layoutTemplate);
-			var fetchOptions = {
-				method: 'POST',
-				body: formData
-			};
+				let formData = new FormData(form);
+				formData.set("LayoutTemplate", layoutTemplate);
+				const signal = controller.signal;
+				var fetchOptions = {
+					method: 'POST',
+					body: formData,
+					signal: signal
+				};
 
-			//Fire the 'update' event
-			let event = new CustomEvent("update.swift.pageupdater", {
-				cancelable: true,
-				detail: {
-					formData: formData,
-					parentEvent: e
+				//Fire the 'update' event
+				let event = new CustomEvent("update.swift.pageupdater", {
+					cancelable: true,
+					detail: {
+						formData: formData,
+						parentEvent: e
+					}
+				});
+				var globalDispatcher = document.dispatchEvent(event);
+				var localDispatcher = clickedButton.dispatchEvent(event);
+
+				if (globalDispatcher != false && localDispatcher != false) {
+					//UI updates
+					var preloaderTargetElement = preloader != "inline" ? form : responseTargetElement;
+					var addPreloaderTimer = setTimeout(function () {
+						PageUpdater.AddPreloaders(preloader, preloaderTargetElement);
+					}, 200); //Small delay to secure that the preloader is not loaded all the time
+
+					//Fetch
+					let abortError = false;
+					let response;
+
+					response = await fetch(form.action, fetchOptions).catch(function (error) {
+						abortError = true;
+					});
+
+					if (!abortError) {
+						if (response.ok) {
+							PageUpdater.Success(response, addPreloaderTimer, formData, responseTargetElement, clickedButton);
+						} else {
+							PageUpdater.Error(response, addPreloaderTimer);
+						}
+					}
 				}
-			});
-			var globalDispatcher = document.dispatchEvent(event);
-			var localDispatcher = clickedButton.dispatchEvent(event);
-
-			if (globalDispatcher != false && localDispatcher != false) {
-				//UI updates
-				var preloaderTargetElement = preloader != "inline" ? form : responseTargetElement;
-				var addPreloaderTimer = setTimeout(function () {
-					PageUpdater.AddPreloaders(preloader, preloaderTargetElement);
-				}, 200); //Small delay to secure that the preloader is not loaded all the time
-
-				//Fetch
-				let response = await fetch(form.action, fetchOptions);
-
-				if (response.ok) {
-					PageUpdater.Success(response, addPreloaderTimer, formData, responseTargetElement, clickedButton);
-				} else {
-					PageUpdater.Error(response, addPreloaderTimer);
-				}
+			} else {
+				PageUpdater.Debounce(() => PageUpdater.Update(e, false), 300)()
 			}
 		},
 
@@ -170,7 +185,24 @@ const PageUpdater = function () {
 			if (document.querySelector("#overlay")) {
 				document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
 			}
-		}
+		},
+
+		Debounce: function (func, wait, immediate) {
+			return function () {
+				controller.abort();
+				controller = new AbortController();
+
+				var context = this, args = arguments;
+				var later = function () {
+					timeout = null;
+					if (!immediate) func.apply(context, args);
+				};
+				var callNow = immediate && !timeout;
+				clearTimeout(timeout);
+				timeout = setTimeout(later, wait);
+				if (callNow) func.apply(context, args);
+			};
+		},
 	}
 }();
 
