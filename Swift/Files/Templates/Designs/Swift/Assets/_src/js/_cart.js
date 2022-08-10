@@ -47,6 +47,18 @@ const Cart = function () {
 			}
 		},
 
+		UpdateOnEnterKey: async function (e) {
+			var input = e.currentTarget != undefined ? e.currentTarget : e;
+
+			input.onkeydown = (e) => {
+				if (e.keyCode === 13) {
+					e.preventDefault()
+					Cart.Update(e);
+					input.value = 0;
+				}
+			};
+		},
+
 		Success: async function (response, clickedButton, formData) {
 			let html = await response.text().then(function (text) {
 				return text;
