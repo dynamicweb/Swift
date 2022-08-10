@@ -11,11 +11,11 @@ const Cart = function () {
 				body: formData
 			};
 
-			var productReferer = e.currentTarget.getAttribute("data-referer");
-			var productId = e.currentTarget.getAttribute("data-product-id");
-			var productName = e.currentTarget.getAttribute("data-product-name");
-			var productPrice = e.currentTarget.getAttribute("data-product-price");
-			var productCurrency = e.currentTarget.getAttribute("data-product-currency");
+			var productId = formData.get("ProductId");
+			var productName = formData.get("ProductName");
+			var productCurrency = formData.get("ProductCurrency");
+			var productReferer = formData.get("ProductReferer");
+			var productPrice = formData.get("ProductPrice");
 			var addQuantity = formData.get("Quantity");
 
 			// Push data to Google Analytics
