@@ -27,6 +27,7 @@
 * Customer center: integration customer center, better icon wrapping and text allignment
 * Digital Assets: Error in panel if image is renamed or deleted
 * Digital Assets: double details in panel, render only from first or default
+* General: Support OnEnterKey for quantity fields on Product list and Product detail page
 * General: Typeahead abort request while still making new request
 * General: Render footer on iPad Safari
 * General: On Expressbuy debouncer and abort, fix request when typing in the search field
