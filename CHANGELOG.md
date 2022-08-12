@@ -1,11 +1,11 @@
 # Changelog
 
 # v1.13.0
-## [1.13.0] - 11-08-2022
+## [1.13.0] - 12-08-2022
 
 ## Added
 * Customer Center: My orders, Reorder functionality
-* General: Support Google Analytics 4, support eCommerce tracking (Google API key and Measurement ID is required). This is Part 1: It supports GA4 on product list: List, Grid and Compact view templates, Checkout and add to favorite. Part 2 will consist of supporting GA4 on the product components.
+* General: Support Google Analytics 4, support eCommerce tracking (Google API key and Measurement ID is required). This is Part 1: It supports GA4 on product list: List, Grid and Compact view templates, Checkout and add to favorite. Part 2 will consist of supporting GA4 on the product components
 * General: Button link is added in Themes
 * Itemtype: TextAdvanced
 * Itemtype: Product group slider
@@ -47,6 +47,7 @@
 * Itemtype: Always render grid in Visual Editor, fix cannot edit row templates
 * Itemtype: ProductDetailsGallery, better image rendering on mobile view
 * Itemtype: Group navigation, added scrollbar, navigation arrows and fixed wrapping
+* Itemtype: Use correct tag for dservice pageid for Product components AddToCart and AddToQuote, to avoid issues when adding a product variant
 
 ## Removed
 * Newsletter email: Remove old newsletter files (The old newsletter will no longer be supported). Instead use the new Email concept
