@@ -1,10 +1,13 @@
 const Favorites = function () {
-
 	return {
 		Toggle: function (e, url, type) {
+			var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
+
 			if (type == 'single-list') { //Only one favorite list is available
+				this.PushToGAAddToWishlist(clickedButton);
 				swift.PageUpdater.UpdateFromUrl(e, url);
 			} else if (type == 'multiple-lists') { //Multiple favorite lists are available
+				this.PushToGAAddToWishlist(clickedButton);
 				var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
 				clickedButton.setAttribute('data-response-target-element', 'DynamicOffcanvas');
 				swift.PageUpdater.UpdateFromUrl(e, url);
@@ -154,7 +157,28 @@ const Favorites = function () {
 		},
 
 		Error: function (e) {
+		},
 
+		PushToGAAddToWishlist: function (clickedButton) {
+			var productId = clickedButton.getAttribute("data-product-id");
+			var productName = clickedButton.getAttribute("data-product-name");
+			var productPrice = clickedButton.getAttribute("data-product-price");
+			var productCurrency = clickedButton.getAttribute("data-product-currency");
+
+			console.log(productId, productName, productPrice, productCurrency);
+			gtag("event", "add_to_wishlist", {
+				currency: productCurrency,
+				value: productPrice,
+				items: [
+					{
+						item_id: productId,
+						item_name: productName,
+						currency: productCurrency,
+						price: productPrice,
+						quantity: 1
+					}
+				],
+			});
 		}
 	}
 }();

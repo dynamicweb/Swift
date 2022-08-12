@@ -16,6 +16,7 @@
 	
 	ProductListViewModel productList = new ProductListViewModel();
 }
+
 @{
 	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
 	{
@@ -86,6 +87,10 @@ badgeParms.Add("newBadgeCssClassName", Model.Item.GetRawValue("NewBadgeDesign"))
 badgeParms.Add("newPublicationDays", Model.Item.GetInt32("NewPublicationDays"));
 badgeParms.Add("campaignBadgesValues", Model.Item.GetRawValueString("CampaignBadges"));
 
+string googleAnalyticsTrackingID = Pageview.AreaSettings.GetString("GoogleAnalyticsTrackingID");
+string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
+bool allowCookies = Dynamicweb.Environment.CookieManager.GetCookieOptInLevel() == 0 || !Dynamicweb.Environment.CookieManager.CookieOptInLevelExists ? false : true;
+
 var favoriteParameters = new Dictionary<string, object>();
 if (!anonymousUser && !hideFavoritesSelector)
 {
@@ -111,8 +116,31 @@ if (productList.TotalProductsCount > 0)
 
 	int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
 
+	if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowCookies)
+	{
+		<script>
+			gtag("event", "view_item_list", {
+				item_list_id: "product_list_compactview",
+				item_list_name: "Product list (Compactview)",
+				items: [
+					@foreach (ProductViewModel product in productList.Products)
+					{
+						<text>{
+							item_id: "@product.Number",
+							item_name: "@product.Name",
+							currency: "@product.Price.CurrencyCode",
+							price: @product.Price.Price
+						},</text>
+					}
+				]
+			});
+		</script>
+	}
+
 	foreach (ProductViewModel product in productList.Products)
 	{
+		var defaultGroupId = product.PrimaryOrDefaultGroup.Id;
+		var selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
 		string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
 		link += $"&GroupID={product.PrimaryOrDefaultGroup.Id}";
 		link += $"&ProductID={product.Id}";
@@ -164,7 +192,30 @@ if (productList.TotalProductsCount > 0)
 			}
 
 			<article class="grid gap-2 gap-lg-3 mb-3 @(productTheme) product @liveInfoClass" data-product-id="@product.Id">
-				<a href="@link" class="g-col-12 g-col-lg-8 d-flex text-decoration-none mb-2 mb-lg-0">
+				<a href="@link" class="g-col-12 g-col-lg-8 d-flex text-decoration-none mb-2 mb-lg-0" onclick="return clickProductLink('@product.Id', '@product.Name', '@product.VariantName', '@product.Price.CurrencyCode', '@product.Price.Price')">
+
+					@if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowCookies)
+					{
+						<script>
+							function clickProductLink(productId, productName, productVariant, productCurrency, productPrice) {
+								gtag("event", "select_item", {
+									item_list_id: "product_list_compactview",
+									item_list_name: "Product list (Compact view)",
+									items: [
+										{
+											item_id: productId,
+											item_name: productName,
+											currency: productCurrency,
+											item_list_id: "product_list_compactview",
+											item_list_name: "Product list (Compact view)",
+											item_variant: productVariant,
+											price: productPrice
+										}
+									]
+								});
+							}
+						</script>
+					}
 
 					@if (!Model.Item.GetBoolean("HideImage"))
 					{
@@ -450,7 +501,7 @@ if (productList.TotalProductsCount > 0)
 					<p class="fs-7 text-success m-0 d-none" data-show-if="LiveProductInfo.product.StockLevel > 0">@Translate("In stock")</p>
 				}
 				<p class="fs-7 text-danger m-0 d-none" data-show-if="LiveProductInfo.product.StockLevel <= 0">@Translate("Out of Stock")</p>
-						
+
 				<p class="d-none" data-show-if="LiveProductInfo.product.ExpectedDelivery != null && new Date(LiveProductInfo.product.ExpectedDelivery) > new Date()">
 					<span>@Translate("Expected:")</span>
 					<span class="js-text-expected-delivery"></span>
@@ -521,6 +572,10 @@ if (productList.TotalProductsCount > 0)
 			<form method="post" action="@url" class="d-inline-block my-auto">
 				<input type="hidden" name="redirect" value="false" />
 				<input type="hidden" name="ProductId" value="@product.Id" />
+				<input type="hidden" name="ProductName" value="@product.Name" />
+				<input type="hidden" name="ProductCurrency" value="@Dynamicweb.Ecommerce.Common.Context.Currency.Code" />
+				<input type="hidden" name="ProductReferer" value="product_list_listview" />
+				<input type="hidden" name="ProductPrice" value="@product.Price.PriceFormatted" />
 				<input type="hidden" name="cartcmd" value="add" />
 
 				@if (!string.IsNullOrEmpty(product.VariantId))
@@ -532,7 +587,7 @@ if (productList.TotalProductsCount > 0)
 				{
 					<div class="input-group input-primary-button-group d-flex flex-row w-100">
 						<label for="Quantity_@(product.Id)_@product.VariantId" class="visually-hidden">@Translate("Quantity")</label>
-						<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number">
+						<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number" onkeydown="swift.Cart.UpdateOnEnterKey(event)">
 						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)"><span class="icon-2">@ReadFile(iconPath + "shopping-cart.svg")</span></button>
 						@if (stepQty != "1")
 						{
@@ -556,9 +611,9 @@ if (productList.TotalProductsCount > 0)
 
 			string variantSelectorServicePageId = !string.IsNullOrEmpty(Model.Item.GetString("VariantSelectorServicePageId")) ? Model.Item.GetLink("VariantSelectorServicePageId").PageId.ToString() : "";
 			variantSelectorServicePageId = variantSelectorServicePageId != "" ? variantSelectorServicePageId : GetPageIdByNavigationTag("VariantSelectorService").ToString();
-			
+
 			string disableVariantSelector = isLazyLoadingForProductInfoEnabled ? "disabled" : "";
-			
+
 			<form action="/Default.aspx?ID=@variantSelectorServicePageId" data-response-target-element="DynamicModalContent" data-preloader="inline" class="d-inline-block">
 				<input type="hidden" name="ProductID" value="@product.Id" />
 				<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()" />
