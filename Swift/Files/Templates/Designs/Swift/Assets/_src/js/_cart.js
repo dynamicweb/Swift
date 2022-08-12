@@ -11,8 +11,31 @@ const Cart = function () {
 				body: formData
 			};
 
-			//Fire the 'update' event
+			var productId = formData.get("ProductId");
+			var productName = formData.get("ProductName");
+			var productCurrency = formData.get("ProductCurrency");
+			var productReferer = formData.get("ProductReferer");
+			var productPrice = formData.get("ProductPrice");
+			var addQuantity = formData.get("Quantity");
+
+			// Push data to Google Analytics
+			gtag("event", "add_to_cart", {
+				currency: productCurrency,
+				value: productPrice,
+				items: [
+					{
+						item_id: productId,
+						item_name: productName,
+						currency: productCurrency,
+						item_list_id: productReferer,
+						price: productPrice,
+						quantity: addQuantity
+					}
+				]
+			});
+
 			let event = new CustomEvent("update.swift.cart", {
+			//Fire the 'update' event
 				cancelable: true,
 				detail: {
 					formData: formData,
