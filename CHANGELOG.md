@@ -1,7 +1,7 @@
 # Changelog
 
 # v1.13.0
-## [1.13.0] - 12-08-2022
+## [1.13.0] - 15-08-2022
 
 ## Added
 * Customer Center: My orders, Reorder functionality
