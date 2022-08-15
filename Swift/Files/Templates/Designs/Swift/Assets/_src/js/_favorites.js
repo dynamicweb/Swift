@@ -165,20 +165,21 @@ const Favorites = function () {
 			var productPrice = clickedButton.getAttribute("data-product-price");
 			var productCurrency = clickedButton.getAttribute("data-product-currency");
 
-			console.log(productId, productName, productPrice, productCurrency);
-			gtag("event", "add_to_wishlist", {
-				currency: productCurrency,
-				value: productPrice,
-				items: [
-					{
-						item_id: productId,
-						item_name: productName,
-						currency: productCurrency,
-						price: productPrice,
-						quantity: 1
-					}
-				],
-			});
+			if (typeof gtag !== "undefined") {
+				gtag("event", "add_to_wishlist", {
+					currency: productCurrency,
+					value: productPrice,
+					items: [
+						{
+							item_id: productId,
+							item_name: productName,
+							currency: productCurrency,
+							price: productPrice,
+							quantity: 1
+						}
+					],
+				});
+			}
 		}
 	}
 }();
