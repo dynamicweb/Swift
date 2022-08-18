@@ -49,8 +49,12 @@ window.addEventListener('DOMContentLoaded', () => {
 	const dropdowns = document.querySelectorAll('.js-dropdown');
 
 	dropdowns.forEach(dropdown => {
-		dropdown.addEventListener('mouseover', () => new bootstrap.Dropdown(dropdown.querySelector('.js-dropdown-toggle')).toggle());
-		dropdown.addEventListener('mouseout', () => new bootstrap.Dropdown(dropdown.querySelector('.js-dropdown-toggle')).toggle());
+		const dropdownToggle = dropdown.querySelector('.js-dropdown-toggle');
+
+		if (dropdownToggle) {
+			dropdown.addEventListener('mouseover', () => new bootstrap.Dropdown(dropdownToggle).toggle());
+			dropdown.addEventListener('mouseout', () => new bootstrap.Dropdown(dropdownToggle).toggle());
+		}
 	});
 });
 
