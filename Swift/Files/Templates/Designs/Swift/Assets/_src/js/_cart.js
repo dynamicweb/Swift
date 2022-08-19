@@ -13,6 +13,7 @@ const Cart = function () {
 
 			var productId = formData.get("ProductId");
 			var productName = formData.get("ProductName");
+			var productVariantName = formData.get("ProductVariantName");
 			var productCurrency = formData.get("ProductCurrency");
 			var productReferer = formData.get("ProductReferer");
 			var productPrice = formData.get("ProductPrice");
@@ -27,6 +28,7 @@ const Cart = function () {
 						{
 							item_id: productId,
 							item_name: productName,
+							item_variant: productVariantName,
 							currency: productCurrency,
 							item_list_id: productReferer,
 							price: productPrice,
