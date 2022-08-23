@@ -1,5 +1,21 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 @using Dynamicweb
+@using Dynamicweb.Environment
+
+@functions {
+	private string GetTrackingId()
+	{
+		return Pageview.AreaSettings.GetString("GoogleAnalyticsTrackingID");
+	}
+	private string GetMeasurementId()
+	{
+		return Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
+	}
+	private bool AllowTracking()
+	{
+		return CookieManager.GetCookieOptInLevel() == CookieOptInLevel.All || (CookieManager.GetCookieOptInLevel() == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
+	}
+}
 
 @{
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
@@ -28,6 +44,7 @@
 				</div>
 			</header>
 
+			@RenderOrderLinesForTracking()
 			@RenderOrderLines()
 
 			<div class="d-none d-lg-block">
@@ -58,6 +75,33 @@
 		<h1 class="h3 mb-2">@Translate("Shopping Cart")</h1>
 		<p class="mb-0"><span>@Translate("Items in your shopping cart"):</span> <span>@GetString("Ecom:Order.OrderLines.TotalProductQuantity")</span></p>
 	</div>
+}
+
+@helper RenderOrderLinesForTracking()
+{
+	if (!string.IsNullOrWhiteSpace(GetMeasurementId()) && AllowTracking())
+	{
+	<script>
+		gtag("event", "view_cart", {
+			currency: "@GetString("Ecom:Order.Currency.Code")",
+			value: "@GetString("Ecom:Order.Price.PriceWithVAT.Value")",
+			items: [
+				@foreach (LoopItem orderline in GetLoop("OrderLines"))
+				{
+					<text>
+						{
+							item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
+							item_name: "@orderline.GetString("Ecom:Order:OrderLine.ProductName")",
+							currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
+							price: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.Price.Value")",
+							quantity: "@orderline.GetString("Ecom:Order:OrderLine.Quantity")"
+						},
+					</text>
+				}
+			]
+		});
+	</script>
+	}
 }
 
 @helper RenderOrderLines()

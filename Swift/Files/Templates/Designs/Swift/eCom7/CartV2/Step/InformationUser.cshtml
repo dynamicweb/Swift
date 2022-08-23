@@ -2,8 +2,14 @@
 @using Dynamicweb
 @using Dynamicweb.Rendering
 @using System.IO
+@using Dynamicweb.Environment
 
 @{ 
+	string googleAnalyticsTrackingID = Pageview.AreaSettings.GetString("GoogleAnalyticsTrackingID");
+	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
+	var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
+	bool allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
+
 	List<string> addressList = new List<string>();
 	if (!string.IsNullOrEmpty(GetString("UserManagement:User.Address")))
 	{
@@ -41,6 +47,7 @@
 			<input type="hidden" name="EcomOrderCustomerAddress" value="@GetString("UserManagement:User.Address")" />
 			<input type="hidden" name="EcomOrderCustomerZip" value="@GetString("UserManagement:User.Zip")" />
 			<input type="hidden" name="EcomOrderCustomerCity" value="@GetString("UserManagement:User.City")" />
+			<input type="hidden" name="EcomOrderCustomerState" value="@GetString("UserManagement:User.State")" />
 			<input type="hidden" name="EcomOrderCustomerCountry" value="@GetString("UserManagement:User.CountryCode")">
 
 			@RenderAddressUser()
@@ -55,6 +62,29 @@
 	@RenderSummarySidebar()
 
 </div>
+
+@if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowTracking)
+{
+	<script>
+		gtag("event", "begin_checkout", {
+			currency: "@GetString("Ecom:Order.CurrencyCode")",
+			value: @GetString("Ecom:Order.Price.Price.Value"),
+			items: [
+				@foreach (LoopItem orderline in GetLoop("OrderLines")) {
+					<text>
+					{
+						item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
+						item_name: "@orderline.GetString("Ecom:Order:OrderLine.ProductName")",
+						currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
+						price: @orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.Price.Value"),
+						quantity: "@orderline.GetString("Ecom:Order:OrderLine.Quantity")" 
+					},
+					</text>
+				}
+			]
+		});
+	</script>
+}
 
 @Include("Helpers/Logo.cshtml")
 @Include("Helpers/StepsBreadcrumbs.cshtml")

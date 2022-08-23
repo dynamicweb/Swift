@@ -86,7 +86,7 @@ const Typeahead = function() {
 		getSuggestions: async function (searchField) {
 			var resultsPageId = searchField.closest(".js-suggest-form").getAttribute("data-search-results-page");
 			var defaultDetailsPageId = searchField.closest(".js-suggest-form").getAttribute("data-product-details-page-id");
-			var searchUrl = "/Default.aspx?ID=" + resultsPageId + "&defaultpdpId=" + defaultDetailsPageId + "&feed=true&redirect=false&eq=" + encodeURIComponent(searchField.value.toLowerCase());
+			var searchUrl = "/Default.aspx?ID=" + resultsPageId + "&defaultpdpId=" + defaultDetailsPageId + "&redirect=false&eq=" + encodeURIComponent(searchField.value.toLowerCase());
 
 			const signal = controller.signal;
 			let abortError = false;
@@ -102,15 +102,25 @@ const Typeahead = function() {
 						return text;
 					});
 
-					Typeahead.displaySuggestions(html, searchField);
+					var parser = new DOMParser();
+					var doc = parser.parseFromString(html, 'text/html');
+					var listElements = doc.querySelectorAll("li");
+
+					Typeahead.displaySuggestions(listElements, searchField);
 				}
 			}
 		},
 
-		displaySuggestions: function (data, searchField) {
-			if (data.length > 5) {
+		displaySuggestions: function (listElements, searchField) {
+			if (listElements.length > 5) {
 				var closestDropdown = searchField.closest(".js-type-ahead-dropdown");
-				closestDropdown.querySelector(".js-type-ahead-menu").innerHTML = data;
+				var dropdownMenu = closestDropdown.querySelector(".js-type-ahead-menu");
+
+				dropdownMenu.innerHTML = "";
+
+				listElements.forEach(function (element) {
+					dropdownMenu.appendChild(element)
+				});
 
 				Typeahead.showSearchResults(searchField);
 			}
@@ -138,7 +148,7 @@ const Typeahead = function() {
 
 				if (elm.getAttribute("data-param") && elm.getAttribute("data-paramvalue")) {
 					
-					if (elm.getAttribute("data-param").includes("ProductId")) {
+					if (elm.getAttribute("data-param").includes("ProductId") || elm.getAttribute("data-param").includes("ID")) {
 						var productDetailPage = formElm.getAttribute("data-product-details-page");
 						productDetailPage = elm.getAttribute("data-selected-details-page") != null ? elm.getAttribute("data-selected-details-page") : productDetailPage;
 
@@ -159,8 +169,10 @@ const Typeahead = function() {
 					parm.removeAttribute("name");
 					parm.removeAttribute("value");
 
-					var productListPage = formElm.getAttribute("data-product-list-page");
-					formElm.setAttribute("action", productListPage);
+					var allResultsPage = formElm.getAttribute("data-product-list-page");
+					allResultsPage = elm.getAttribute("data-all-results-page") ? elm.getAttribute("data-all-results-page") : allResultsPage;
+
+					formElm.setAttribute("action", allResultsPage);
 				}
 			});
 		},
@@ -183,6 +195,7 @@ const Typeahead = function() {
 
 		selectSuggestion: function (elm) {
 			Typeahead.preSelectSuggestion(elm);
+
 			elm.closest(".js-type-ahead-dropdown").querySelector(".js-suggest-form").submit();
 		},
 

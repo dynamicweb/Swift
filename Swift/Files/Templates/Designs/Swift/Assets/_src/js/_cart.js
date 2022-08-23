@@ -11,8 +11,35 @@ const Cart = function () {
 				body: formData
 			};
 
-			//Fire the 'update' event
+			var productId = formData.get("ProductId");
+			var productName = formData.get("ProductName");
+			var productVariantName = formData.get("ProductVariantName");
+			var productCurrency = formData.get("ProductCurrency");
+			var productReferer = formData.get("ProductReferer");
+			var productPrice = formData.get("ProductPrice");
+			var addQuantity = formData.get("Quantity");
+
+			// Push data to Google Analytics
+			if (typeof gtag !== "undefined") {
+				gtag("event", "add_to_cart", {
+					currency: productCurrency,
+					value: productPrice,
+					items: [
+						{
+							item_id: productId,
+							item_name: productName,
+							item_variant: productVariantName,
+							currency: productCurrency,
+							item_list_id: productReferer,
+							price: productPrice,
+							quantity: addQuantity
+						}
+					]
+				});
+			}
+
 			let event = new CustomEvent("update.swift.cart", {
+			//Fire the 'update' event
 				cancelable: true,
 				detail: {
 					formData: formData,
@@ -45,6 +72,18 @@ const Cart = function () {
 					Cart.Error(response, clickedButton);
 				}
 			}
+		},
+
+		UpdateOnEnterKey: async function (e) {
+			var input = e.currentTarget != undefined ? e.currentTarget : e;
+
+			input.onkeydown = (e) => {
+				if (e.keyCode === 13) {
+					e.preventDefault()
+					Cart.Update(e);
+					input.value = 0;
+				}
+			};
 		},
 
 		Success: async function (response, clickedButton, formData) {

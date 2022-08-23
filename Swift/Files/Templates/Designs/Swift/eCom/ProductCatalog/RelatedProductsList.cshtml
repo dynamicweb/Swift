@@ -2,6 +2,7 @@
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Core.Encoders
+@using Dynamicweb.Environment
 
 @{ 
 	var productList = Model.Products;
@@ -132,6 +133,10 @@
 
 	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
 
+	string googleAnalyticsTrackingID = Pageview.AreaSettings.GetString("GoogleAnalyticsTrackingID");
+	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
+	var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
+	bool allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
 }
 
 @if (productList.Count > 0 && requestType != "UpdateFacets") {
@@ -273,6 +278,34 @@
         }
 
 		<div class="table-responsive w-100">
+			@if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowTracking)
+			{
+				string itemVariant = string.Empty;
+
+				<script>
+					gtag("event", "view_item_list", {
+						item_list_id: "related_product_list",
+						item_list_name: "Related products list",
+						items: [
+							@foreach (var product in productList)
+							{
+								if (!string.IsNullOrEmpty(product.VariantName))
+								{
+									itemVariant = $"item_variant:'{product.VariantName}',";
+								}
+								<text>{
+									item_id: '@product.Number',
+									item_name: '@product.Name',
+									@itemVariant
+									currency: '@product.Price.CurrencyCode',
+									price: @product.Price.Price
+								},</text>
+							}
+						]
+					});
+				</script>
+			}
+
 			<table class="table table-sm table-striped align-middle text-nowrap">
 				<thead>
 					<tr class="fw-bold">
@@ -333,9 +366,12 @@
 							}
 							@if (!hideProductName) {
 								<td scope="row">
-									@if (!string.IsNullOrEmpty(product.VariantName)) { 
+									@if (!string.IsNullOrEmpty(product.VariantName))
+									{
 										<div>@product.Name - @product.VariantName</div>
-									} else { 
+									}
+									else
+									{
 										@product.Name
 									}
 
@@ -440,6 +476,11 @@
 										}
 										<input type="hidden" name="redirect" value="false" />
 										<input type="hidden" name="ProductId" value="@product.Id" />
+										<input type="hidden" name="ProductName" value="@product.Name" />
+										<input type="hidden" name="ProductVariantName" value="@product.VariantName" />
+										<input type="hidden" name="ProductCurrency" value="@Dynamicweb.Ecommerce.Common.Context.Currency.Code" />
+										<input type="hidden" name="ProductPrice" value="@product.Price" />
+										<input type="hidden" name="ProductReferer" value="product_list_related">
 										<input type="hidden" name="cartcmd" value="add" />
 
 										@if (!string.IsNullOrEmpty(product.VariantId))
@@ -451,7 +492,7 @@
 										{
 											<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
 												<label for="Quantity_@(product.Id)_@product.VariantId" class="visually-hidden">@Translate("Quantity")</label>
-												<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="0" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number">
+												<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="0" step="@stepQty" @minQty class="form-control" style="max-width: 100px" type="number" onkeydown="swift.Cart.UpdateOnEnterKey(event)">
 												<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button icon-2 @disableAddToCart" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)" style="max-width: 3rem;">@ReadFile(iconPath + "shopping-cart.svg")</button>
 												@if (stepQty != "1")
 												{
@@ -482,8 +523,7 @@
 
 			<div class="text-center">
 				<div class="m-2">@Model.PageSize @Translate("out of") @totalProducts</div>
-				<button type="button" class="btn btn-primary" 
-						onclick="document.querySelector('#RelatedProductsListPageSize_@paragraphID').value = '@pageSize'; UpdateRelatedProductsList(event, 'UpdateList', '@paragraphID')">@Translate("Load more")</button>
+				<button type="button" class="btn btn-primary" onclick="document.querySelector('#RelatedProductsListPageSize_@paragraphID').value = '@pageSize'; UpdateRelatedProductsList(event, 'UpdateList', '@paragraphID')">@Translate("Load more")</button>
 			</div>
 		}
 	</div>
