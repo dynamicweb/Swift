@@ -101,21 +101,21 @@
 		secondaryButtonShape = secondaryButtonShape == "rounded" ? ".25rem" : secondaryButtonShape;
 		secondaryButtonShape = secondaryButtonShape == "pill" ? "12.5rem" : secondaryButtonShape;
 	
+
 		if(Model.Item.GetDouble("ButtonSecondaryXPadding") != 0.0)
-        {
+		{
 			secondaryButtonXpadding = Model.Item.GetDouble("ButtonSecondaryXPadding").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 		}
 
 		if(Model.Item.GetDouble("ButtonSecondaryYPadding") != 0.0)
-        {
+		{
 			secondaryButtonYpadding = Model.Item.GetDouble("ButtonSecondaryYPadding").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 		}
-		
+	
 		@* Link *@
 		linkFontWeight = Model.Item.GetRawValueString("LinkFontWeight", "normal");
 		linkCasing = Model.Item.GetRawValueString("LinkCasing", "initial");
-
-}
+	}
 
 var fontsToLink = string.Join("&", fontList.Where(x => !string.IsNullOrEmpty(x)).Distinct().Select(x => string.Format("family={0}", x)));
 
@@ -136,7 +136,7 @@ try
 		Regex cssUrlGoogleFontsRegEx = new Regex(@"url\((?<googleFontUrl>.+?)\)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 		string firstPartOfCss = googleCss.Substring(googleCss.LastIndexOf("{"), googleCss.LastIndexOf("}")- googleCss.LastIndexOf("{"));
 
-		MatchCollection matches = cssUrlGoogleFontsRegEx.Matches(firstPartOfCss);//We will only take the first URL as that is what is primarily used. If the remaining woff fonts needs loading, the browser will take care of that.
+		MatchCollection matches = cssUrlGoogleFontsRegEx.Matches(googleCss);//We will only take the first URL as that is what is primarily used. If the remaining woff fonts needs loading, the browser will take care of that.
 
 		for (var i = 0; i < matches.Count; i++)
 		{
@@ -146,7 +146,7 @@ try
 			{
 				googleFontUrls.Add(url, url);
 			}
-			break;//We will only take the first URL as that is what is primarily used. If the remaining woff fonts needs loading, the browser will take care of that.
+			//break;//We will only take the first URL as that is what is primarily used. If the remaining woff fonts needs loading, the browser will take care of that.
 		}
 
 		if (googleFontUrls.Count > 0)
@@ -154,7 +154,18 @@ try
 			var fontSb = new System.Text.StringBuilder();
 			foreach (string url in googleFontUrls.Values)
 			{
-				fontSb.AppendLine($"<link rel=\"preload\" href=\"{url}\" as=\"font\" type=\"font/woff2\" crossorigin>");
+				var fontPathAndFilename = url.Replace("https://fonts.gstatic.com/s/", "");
+				var localUrl = $"/Files/Templates/Designs/Swift/Assets/css/Fonts/{fontPathAndFilename}";
+				var fullPath = Dynamicweb.Core.SystemInformation.MapPath(localUrl);
+				var fileinfo = new System.IO.FileInfo(fullPath);
+
+				var data = client.DownloadData(new Uri(url));
+				System.IO.Directory.CreateDirectory(fileinfo.DirectoryName);
+				System.IO.File.WriteAllBytes(fullPath, data);
+
+				googleCss = googleCss.Replace(url, localUrl);
+
+				fontSb.AppendLine($"<link rel=\"preload\" href=\"{localUrl}\" as=\"font\" type=\"font/woff2\" crossorigin>");
 			}
 			string htmlPathFontPreload = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_GoogleFontUrls_{Model.Area.ID}.html");
 			Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(fontSb.ToString(), htmlPathFontPreload, false);
