@@ -54,7 +54,10 @@ window.addEventListener('DOMContentLoaded', () => {
 		const dropdownToggle = dropdown.querySelector('.js-dropdown-toggle');
 
 		if (dropdownToggle) {
-			dropdown.addEventListener('mouseover', () => new bootstrap.Dropdown(dropdownToggle).toggle());
+			dropdown.addEventListener('mouseover', () => {
+				new bootstrap.Dropdown(dropdownToggle).toggle();
+				dropdownToggle.style.outline = "none";
+			});
 			dropdown.addEventListener('mouseout', () => new bootstrap.Dropdown(dropdownToggle).toggle());
 		}
 	});
