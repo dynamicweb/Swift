@@ -1,5 +1,52 @@
 # Changelog
 
+# v1.13.1
+## [1.13.1] - 25-08-2022
+
+## Disclaimer
+* This is a partly hotfix for javascript issues in v.1.13.0
+
+## Bugfixes
+* Express buy: Tax lines not in orderlines + added total sales tax to summary
+* General: Repisitories are missing a secondary instance
+* General: Missing Refere to AddToCart component to support Google Analytics 4
+* General: Missing tracing on Variant modal to support Google Analytics 4
+* General: Better check for tracking permission around Google Analytics 4, trigger when Statistical in cookies is set to true
+* General: Fixes code errors that will not compile on .net
+* General: fix wrong translation + add missing
+* General: Error in console when hovering over megamenu, check if js-dropdown-toggle exist
+* General: Required Bootstrap version 5.1.3 and not ^5.1.3 
+* General: Missing States/Region field
+* Itemtypes: Remove added space to search term
+* Itemtypes: Content search design optimization
+* Itemtypes: Remove dotted outline for mega menu items
+* Itemtypes: Related products, changed getList to getRawValueString for better performance
+* Itemtypes: Fix error in console when adding to favorites, as = " style " on styles likes
+* Itemtypes: TextAdvance, fix spacing
+* Itemtypes: Item repeater, Fix empty product link 
+* Itemtypes: ProductDetailsMediatable, Wrong unit is file size Bytes to KB conversion
+* Itemtypes: flex-nowrap on AddToCart and AddToQuote component
+* Product Detail: Support DefaultVariant on product links
+
+## Changed
+* General: btn link refactor
+
+## Added
+* Checkout: Add payment provider templates EbizCharge, Cybersource and 
+ChargeLogic
+* Customer center: Possible to download products assets and product info based on an order
+* Itemtypes: Content search, possible to search for content pages on the site
+* Itemtypes: Possible to add padding on buttons in Branding
+* General: GetAllProducts -> GetLastActiveProducts
+* General: Download google fonts to local directory, due to GDPR law
+* General: Tracking on related product list to support Google Analytics 4
+
+## Removed
+* Email: Undo email button links URL fix
+* General: Remove use of helper in master related to live integration dialog
+* General: Remove @translate tag around stock states inStock and OutOfStock
+* General: Category images dissapears, Remove group ID from URL as it is already there on ProductListGridView
+
 # v1.13.0
 ## [1.13.0] - 15-08-2022
 
