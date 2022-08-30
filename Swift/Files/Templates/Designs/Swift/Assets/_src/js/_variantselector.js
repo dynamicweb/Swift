@@ -35,6 +35,10 @@ const VariantSelector = function () {
 			var combinations = variantSelectorElement.getAttribute("data-combinations");
 			combinations = combinations.split(",");
 
+			if (variantSelectorElement.getAttribute("data-variant-url")) {
+				window.history.replaceState({}, '', variantSelectorElement.getAttribute("data-variant-url"));
+			}
+
 			//Go through each option, in their group, and check the availability
 			variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
 				var groupId = option.closest(".js-variant-group").getAttribute("data-group-id");
@@ -143,10 +147,16 @@ const VariantSelector = function () {
 
 				if (globalDispatcher != false && localDispatcher != false) {
 					//Update the url
-					var url = new URL(window.location);
-					var searchParams = url.searchParams;
-					searchParams.set('variantid', selections.join("."));
-					url.search = searchParams.toString();
+
+					if (variantSelectorElement.getAttribute("data-base-url")) {
+						var url = variantSelectorElement.getAttribute("data-base-url");
+					} else {
+						var url = new URL(window.location);
+						var searchParams = url.searchParams;
+						searchParams.set('variantid', selections.join("."));
+						url.search = searchParams.toString();
+					}
+
 					window.history.replaceState({}, '', decodeURI(url));
 
 					//Call the async PageUpdater
