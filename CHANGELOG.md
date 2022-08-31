@@ -1,12 +1,12 @@
 # Changelog
 
 # v1.14.0
-## ## [1.14.0] - 01-09-2022
+## [1.14.0] - 01-09-2022
 
 ## Digital Assets Portal
 Make the product assets and digital media assets available for download, which can help businesses to optimize their work process, by giving them a self-service website with downloadable product assets and media assets. 
 
-### Include these area:
+### Includes these area:
 * **Digital Assets:** Possible to download media assets that is not product related e.g. logo, employee images, guides, company events images in different resolution
 * **Product Assets:** A product list overview where it is possible to use filter to help users to find the right product
 * **Product Detail:** On the product detail page it is possible to download product assets for the chosen product
@@ -15,7 +15,7 @@ Make the product assets and digital media assets available for download, which c
 * **Email:** A link will be send to one or more email addresses, where a zip file can be downloaded
 
 A Dynamicweb license is needed, in order to use the download functionality
-Remember to run update script from 1500, in order to receive ProductExportMail.cshtml from Dynamicweb, which is needed for receiving a mail with a download link. On existing solution delete the old ProductExportMail.cshtml which is not viewmodel base.
+Remember to run update script from 1500, in order to receive newest ProductExportMail.cshtml from Dynamicweb, which is needed for receiving a mail with a download link. On existing solution delete the old ProductExportMail.cshtml which is not viewmodel base.
 
 ## Analyse and measure traffic with Google Analytics 4
 * Google announced that Google Analytics 3 (Universal) will no longer be supported July 1st 2023. Google Analytics 4 (GA4) will take its place because of GDPR and Cookie issues in the current Google Analytics 3.
@@ -25,9 +25,9 @@ Remember to run update script from 1500, in order to receive ProductExportMail.c
 * Swift supports Debug view mode, enable the debug mode in website settings and you can debug real-time report that GA4 provides, track data immediately when testing on your website. (You need to be login in DW backend in order to use debug view mode for testing)
 
 **General**
--	Measurement ID is needed to use GA4, which is placed in website settings
--	GA4 will be triggered when accepting All cookies or statistical cookies
--	Here are the ecommerce events that are supported in Swift
+* Measurement ID is needed to use GA4, which is placed in website settings
+* GA4 will be triggered when accepting All cookies or statistical cookies
+* Here are the ecommerce events that are supported in Swift
 https://doc.dynamicweb.com/swift/setup-project/guides/google-analytics-4
 
 ## Content marketing
@@ -48,7 +48,7 @@ https://doc.dynamicweb.com/swift/setup-project/guides/google-analytics-4
 * This allows the Sales rep. to create new users in frontend, without logging in the backend administration. The sales rep. can get a list of customers that he/she has created and see an overview over who has accepted their invitation.
 * This is a strong functionality that can be used together with impersonation, when a sales rep. can create an order on-behalf of their customers.
 
-## GDPR, Compliance, Lighthouse score & Scema.org
+## GDPR, Compliance, Lighthouse score & Schema.org
 
 ### Google fonts
 * Google hosted fonts can be violating the EU privacy regulation in some EU countries, i.e. Germany, therefore Google font is now downloaded and served from the solution.
@@ -73,16 +73,16 @@ https://doc.dynamicweb.com/swift/setup-project/guides/google-analytics-4
 * **Text and image:** possible to add 2 buttons
 
 ### Content
-*	**Related products:** Use Swiffy slider instead of tiny slider for related products slider
-*	**Product group slider:** On the front page or other regular content page possible to use Product group as a slider to have an easier way to access and promote product groups.
+* **Related products:** Use Swiffy slider instead of tiny slider for related products slider
+* **Product group slider:** On the front page or other regular content page possible to use Product group as a slider to have an easier way to access and promote product groups.
 * **TextAdvanced:** New content element where you have advanced settings to control top/bottom, right/left padding, accent colors, font sizes for eyebrow, title and subtitle.
 
 ### Product detail
-*	Optimization on how Product page is rendered to make breadcrumb work optimal
-*	Possible to hide display group Title e.g. when using rich text for extra information
+* Optimization on how Product page is rendered to make breadcrumb work optimal
+* Possible to hide display group Title e.g. when using rich text for extra information
 
 ### Product components
-*	**Quote button component:** Possible to add directly to the quote cart from product detail page
+* **Quote button component:** Possible to add directly to the quote cart from product detail page
 
 ### Checkout
 * **Payment providers:** ChargeLogic, Cybersource and EbizCharge

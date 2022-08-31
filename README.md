@@ -37,7 +37,8 @@ This repository contains a `./Files` with design files, images, and other static
 
 ## Requirements
 
-* **Swift 1.13.0** requires **Dynamicweb version 9.13.11** or newer
+* **Swift 1.14.0** requires **Dynamicweb version 9.13.11** or newer
+* **Swift 1.13.1** requires **Dynamicweb version 9.13.11** or newer
 * **Swift 1.12.0** requires **Dynamicweb version 9.13.8** or newer
 * **Swift 1.11.0** requires **Dynamicweb version 9.13.6** or newer
 * **Swift 1.10.0** requires **Dynamicweb version 9.13.6** or newer
