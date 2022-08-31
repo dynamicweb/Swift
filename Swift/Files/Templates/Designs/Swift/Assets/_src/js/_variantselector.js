@@ -6,6 +6,7 @@ const VariantSelector = function () {
 			document.querySelectorAll(".js-variant-selector").forEach(function (variantSelector) {
 				VariantSelector.UpdateAllVariants(variantSelector);
 				VariantSelector.CheckSelectionComplete(variantSelector, false);
+
 			});
 		},
 
@@ -34,10 +35,6 @@ const VariantSelector = function () {
 		UpdateAllVariants: function (variantSelectorElement) {
 			var combinations = variantSelectorElement.getAttribute("data-combinations");
 			combinations = combinations.split(",");
-
-			if (variantSelectorElement.getAttribute("data-variant-url")) {
-				window.history.replaceState({}, '', variantSelectorElement.getAttribute("data-variant-url"));
-			}
 
 			//Go through each option, in their group, and check the availability
 			variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
@@ -150,6 +147,7 @@ const VariantSelector = function () {
 
 					if (variantSelectorElement.getAttribute("data-base-url")) {
 						var url = variantSelectorElement.getAttribute("data-base-url");
+						url += "&variantid=" + selections.join(".");
 					} else {
 						var url = new URL(window.location);
 						var searchParams = url.searchParams;
@@ -161,6 +159,18 @@ const VariantSelector = function () {
 
 					//Call the async PageUpdater
 					swift.PageUpdater.Update(variantSelectorElement);
+
+					//Set the friendly url returned from the request
+					variantSelectorElement.addEventListener("updated.swift.pageupdater", function (data) {
+						var htmlTempContainer = document.createElement('div');
+						htmlTempContainer.innerHTML = data.detail.html;
+
+						if (htmlTempContainer.querySelector(".js-variant-selector").getAttribute("data-friendly-url")) {
+							window.history.replaceState({}, '', htmlTempContainer.querySelector(".js-variant-selector").getAttribute("data-friendly-url"));
+						}
+
+						VariantSelector.init();
+					});
 				}
 			}
 		}
