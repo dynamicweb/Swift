@@ -1,5 +1,96 @@
 # Changelog
 
+# v1.14.0
+## ## [1.14.0] - 01-09-2022
+
+## Digital Assets Portal
+Make the product assets and digital media assets available for download, which can help businesses to optimize their work process, by giving them a self-service website with downloadable product assets and media assets. 
+
+### Include these area:
+* **Digital Assets:** Possible to download media assets that is not product related e.g. logo, employee images, guides, company events images in different resolution
+* **Product Assets:** A product list overview where it is possible to use filter to help users to find the right product
+* **Product Detail:** On the product detail page it is possible to download product assets for the chosen product
+* **Download cart:** It is possible to collect multiple products in the download cart 
+* **My orders:** Download product assets based on your orders in Customer center
+* **Email:** A link will be send to one or more email addresses, where a zip file can be downloaded
+
+A Dynamicweb license is needed, in order to use the download functionality
+Remember to run update script from 1500, in order to receive ProductExportMail.cshtml from Dynamicweb, which is needed for receiving a mail with a download link. On existing solution delete the old ProductExportMail.cshtml which is not viewmodel base.
+
+## Analyse and measure traffic with Google Analytics 4
+* Google announced that Google Analytics 3 (Universal) will no longer be supported July 1st 2023. Google Analytics 4 (GA4) will take its place because of GDPR and Cookie issues in the current Google Analytics 3.
+* Swift is releasing GA4, where the ecommerce events are supported. This will enable you to see e.g. **Monetisation on E-commerce purchases, Engagement events & conversions**
+* GA4 gives you a more intelligent user privacy and tracking features, it gives users more intuitive and precise control over what personal data is collected, which is important to help your business comply with current and future privacy regulations.
+* With GA4 you can analyse your ecommerce website, by measuring traffic and engagement across your websites. You will get simplified goals and events setup, which was a complex set up before regarding transactional functions such checkouts.
+* Swift supports Debug view mode, enable the debug mode in website settings and you can debug real-time report that GA4 provides, track data immediately when testing on your website. (You need to be login in DW backend in order to use debug view mode for testing)
+
+**General**
+-	Measurement ID is needed to use GA4, which is placed in website settings
+-	GA4 will be triggered when accepting All cookies or statistical cookies
+-	Here are the ecommerce events that are supported in Swift
+https://doc.dynamicweb.com/swift/setup-project/guides/google-analytics-4
+
+## Content marketing
+
+### Content search
+* Help visitors find what they are looking for on the website either products or content information. Content search can help visitors to quickly find new information about the company’s business e.g. through articles. 
+* Swift has product search, but now content search is also available. Content search can be used together with the product search or by itself e.g. if you have a website that does not include ecommerce.
+
+### Better Responsive behaviour
+* Improve the visual presentation of your website on smaller devices.
+* Define how your content elements should be placed: stacked, side by side. 
+* Control spacing and padding and define which column what should be placed first.
+
+## B2B solution
+
+### Create & Manage users
+* Easier way for Sales rep. to create & manage customers. A sales representative has the opportunity to create and manage users in Customer center
+* This allows the Sales rep. to create new users in frontend, without logging in the backend administration. The sales rep. can get a list of customers that he/she has created and see an overview over who has accepted their invitation.
+* This is a strong functionality that can be used together with impersonation, when a sales rep. can create an order on-behalf of their customers.
+
+## GDPR, Compliance, Lighthouse score & Scema.org
+
+### Google fonts
+* Google hosted fonts can be violating the EU privacy regulation in some EU countries, i.e. Germany, therefore Google font is now downloaded and served from the solution.
+
+### Alt text
+* Add Alt text for images on content elements. Alt text is used for visitors that are unable to see the images on the website, but uses tool such as screen readers
+
+### Heading level
+* SEO requires there should always be a < h1 > on a content page. Define heading level on content the elements by settings h-tags e.g.  < h1 > < h2 >. As default we set < h2 >
+
+### Schema.org
+* Schema.org helps the search engine to better understand the info that is on the website, to have a more rich search result. Schema.org been added for articles , employee and block quotes elements
+
+## Improvements & Maintenance
+
+### General
+* **Clickable/non clickable menus:** support both for Content pages and Ecommerce groups
+
+### Design
+* **Themes:** Button link is added and can be used on the content elements
+* **Themes:** Accent colors is added. Currently only supported for TextAdvanced content element (We have a plan to support it on the other content elements)
+* **Text and image:** possible to add 2 buttons
+
+### Content
+*	**Related products:** Use Swiffy slider instead of tiny slider for related products slider
+*	**Product group slider:** On the front page or other regular content page possible to use Product group as a slider to have an easier way to access and promote product groups.
+* **TextAdvanced:** New content element where you have advanced settings to control top/bottom, right/left padding, accent colors, font sizes for eyebrow, title and subtitle.
+
+### Product detail
+*	Optimization on how Product page is rendered to make breadcrumb work optimal
+*	Possible to hide display group Title e.g. when using rich text for extra information
+
+### Product components
+*	**Quote button component:** Possible to add directly to the quote cart from product detail page
+
+### Checkout
+* **Payment providers:** ChargeLogic, Cybersource and EbizCharge
+
+### Email
+* We no longer support our old Newsletter emails, instead use the improved Email concept.
+* The new Email concept will also include designing System email on Visual editor but, this is still under development. 
+
 # v1.13.1
 ## [1.13.1] - 25-08-2022
 
