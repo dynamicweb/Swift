@@ -4,7 +4,7 @@
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/Dynamicweb%20Release-v9.13.11-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/)
 
 
-![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Swift-Bikeshop.png)
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Q2-2022-1-14-0.png)
 
 
 # Introduction  
