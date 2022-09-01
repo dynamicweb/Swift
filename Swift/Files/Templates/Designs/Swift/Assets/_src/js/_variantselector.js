@@ -6,6 +6,7 @@ const VariantSelector = function () {
 			document.querySelectorAll(".js-variant-selector").forEach(function (variantSelector) {
 				VariantSelector.UpdateAllVariants(variantSelector);
 				VariantSelector.CheckSelectionComplete(variantSelector, false);
+
 			});
 		},
 
@@ -143,14 +144,33 @@ const VariantSelector = function () {
 
 				if (globalDispatcher != false && localDispatcher != false) {
 					//Update the url
-					var url = new URL(window.location);
-					var searchParams = url.searchParams;
-					searchParams.set('variantid', selections.join("."));
-					url.search = searchParams.toString();
+
+					if (variantSelectorElement.getAttribute("data-base-url")) {
+						var url = variantSelectorElement.getAttribute("data-base-url");
+						url += "&variantid=" + selections.join(".");
+					} else {
+						var url = new URL(window.location);
+						var searchParams = url.searchParams;
+						searchParams.set('variantid', selections.join("."));
+						url.search = searchParams.toString();
+					}
+
 					window.history.replaceState({}, '', decodeURI(url));
 
 					//Call the async PageUpdater
 					swift.PageUpdater.Update(variantSelectorElement);
+
+					//Set the friendly url returned from the request
+					variantSelectorElement.addEventListener("updated.swift.pageupdater", function (data) {
+						var htmlTempContainer = document.createElement('div');
+						htmlTempContainer.innerHTML = data.detail.html;
+
+						if (htmlTempContainer.querySelector(".js-variant-selector").getAttribute("data-friendly-url")) {
+							window.history.replaceState({}, '', htmlTempContainer.querySelector(".js-variant-selector").getAttribute("data-friendly-url"));
+						}
+
+						VariantSelector.init();
+					});
 				}
 			}
 		}
