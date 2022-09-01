@@ -3,6 +3,8 @@
 # v1.14.0
 ## [1.14.0] - 01-09-2022
 
+Dynamicweb proudly presents Swift 1.14.0 (Q2-2022). This introduce Digital Assets Portal and Google Analytics 4, which can improve work process and possible to analyse and measure traffic on the website. The main headlines for this release are:
+
 ## Digital Assets Portal
 Make the product assets and digital media assets available for download, which can help businesses to optimize their work process, by giving them a self-service website with downloadable product assets and media assets. 
 
