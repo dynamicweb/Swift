@@ -4,7 +4,7 @@
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/Dynamicweb%20Release-v9.13.11-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/)
 
 
-![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Swift-Bikeshop.png)
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Q2-2022-1-14-0.png)
 
 
 # Introduction  
@@ -30,14 +30,15 @@ This repository contains a `./Files` with design files, images, and other static
 1. Prepare the hosting environment
 2. Install the Dynamicweb application
 3. Set up a website in IIS Manager and add the Swift-folder as a virtual directory
-4. Download the [Swift Product Image folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.10.0/Swift_v1.10.0_DemoProductImages.zip "Download Swift Product Image folder") and insert the folder here `Swift/Files/Files/Images/Products`
+4. Download the [Swift Product Image folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.14.0/Swift_20220901_DemoProductImages.zip "Download Swift Product Image folder") and insert the folder here `Swift/Files/Files/Images/Products`
 5. Build the Swift design
 6. Install the Swift database & connect solution to it
 7. Log in and install a license
 
 ## Requirements
 
-* **Swift 1.13.0** requires **Dynamicweb version 9.13.11** or newer
+* **Swift 1.14.0** requires **Dynamicweb version 9.13.11** or newer
+* **Swift 1.13.1** requires **Dynamicweb version 9.13.11** or newer
 * **Swift 1.12.0** requires **Dynamicweb version 9.13.8** or newer
 * **Swift 1.11.0** requires **Dynamicweb version 9.13.6** or newer
 * **Swift 1.10.0** requires **Dynamicweb version 9.13.6** or newer
@@ -70,8 +71,8 @@ After following these guides you will have a freshly installed Dynamicweb soluti
 
 | Download |      |
 | ------ | ------ |
-| Database | [Swift database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.10.0/Swift_v1.10.0_Database.zip "Download Swift database")|
-| Image folder | [Swift Product Image](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.10.0/Swift_v1.10.0_DemoProductImages.zip "Download Swift Product Image folder") |
+| Database | [Swift database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.14.0/Swift_20220901_Database.zip "Download Swift database")|
+| Image folder | [Swift Product Image](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.14.0/Swift_20220901_DemoProductImages.zip "Download Swift Product Image folder") |
 
 
 ## Add Swift-folder as virtual directory
