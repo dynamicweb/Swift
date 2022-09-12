@@ -50,7 +50,6 @@ module.exports = [
         mode: mode,
         entry: {
             'swiffy-slider': './Swift/Files/Templates/Designs/Swift/Assets/_src/js/modules/swiffy-slider.js',
-            'tiny-slider': './Swift/Files/Templates/Designs/Swift/Assets/_src/js/modules/tiny-slider.js',
 			'plyr': './Swift/Files/Templates/Designs/Swift/Assets/_src/js/modules/plyr.js',
 			'aos': './Swift/Files/Templates/Designs/Swift/Assets/_src/js/modules/aos.js',
 			'flatpickr': './Swift/Files/Templates/Designs/Swift/Assets/_src/js/modules/flatpickr.js',

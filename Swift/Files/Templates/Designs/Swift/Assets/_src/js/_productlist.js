@@ -144,9 +144,6 @@ const ProductList = function () {
 					}
 				}
 
-				//Initialize all the sliders
-				swift.Sliders.init();
-
 				//Modal
 				var requestType = formData.get("RequestType");
 
