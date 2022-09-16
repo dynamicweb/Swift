@@ -3,7 +3,7 @@ const AssetLoader = function () {
 	return {
 
 		Load: function (assetPath, assetType) {
-			
+						
 			if (assetType == "js") { //if filename is a external JavaScript file
 				var asset = document.createElement('script')
 				asset.setAttribute("type", "text/javascript")
@@ -15,6 +15,7 @@ const AssetLoader = function () {
 				asset.setAttribute("type", "text/css")
 				asset.setAttribute("href", assetPath)
 			}
+
 			asset.addEventListener("load", function (e) {
 				let event = new CustomEvent("load.swift.assetloader", {
 					cancelable: true,
@@ -25,8 +26,7 @@ const AssetLoader = function () {
 				document.dispatchEvent(event);
 			});
 
-			
-			if (typeof asset != "undefined") {
+			if (typeof asset !== "undefined") {
 				this.AppendToHead(asset);
 			}
 		},
@@ -53,6 +53,13 @@ const AssetLoader = function () {
 
 			if (!assetFound) {
 				head.appendChild(asset)
+			}
+
+			if (assetFound) {
+				let event = new CustomEvent("load.swift.assetloader", {
+					cancelable: true,
+				});
+				document.dispatchEvent(event);
 			}
 		}
 	}
