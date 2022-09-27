@@ -40,15 +40,15 @@
 	List<CategoryFieldViewModel> displayGroups = new List<CategoryFieldViewModel>();
 
 	foreach (var selection in selectedDisplayGroupIds)
-	{
-		foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
 		{
-			if (selection == group.Id)
+		foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
 			{
+			if (selection == group.Id)
+				{
 				displayGroups.Add(group);
+				}
 			}
 		}
-	}
 
 	bool showProductFields = Model.Item.GetBoolean("ProductFields");
 
@@ -59,164 +59,166 @@
 	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-4");
 
 	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
-	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
-	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
+	contentPadding = contentPadding == "none" ? string.Empty : contentPadding;
+	contentPadding = contentPadding == "small" ? " p-2 p-md-3" : contentPadding;
+	contentPadding = contentPadding == "large" ? " p-4 p-md-5" : contentPadding;
 
 	string layout = Model.Item.GetRawValueString("Layout", "list");
 	string size = Model.Item.GetRawValueString("Size", "full");
+	string gaps = size == "full" ? " gap-4" : " gap-2";
+
 
 	if (Pageview.IsVisualEditorMode && displayGroups.Count() == 0)
-	{
+		{
 		product.ProductFields.Clear();
 		product.ProductFields.Add(Translate("Width"), new FieldValueViewModel { Name = Translate("Width"), Value = "99cm" });
 		product.ProductFields.Add(Translate("Height"), new FieldValueViewModel { Name = Translate("Height"), Value = "195cm" });
 		showProductFields = true;
+		}
+
+	if (layout == "commas")
+	{ 
+		gaps = size == "full" ? " gap-4" : " gap-2";
+	
 	}
 
-	<div class="@(theme) h-100 item_@Model.Item.SystemName.ToLower()">
-		<div class="@contentPadding">
-			@if ((product.ProductFields != null && Model.Item.GetBoolean("ProductFields")) || (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields")) || (displayGroups.Count != 0)) {
-				if (!hideTitle)
-				{
-					<div class="text-start pb-2 pb-lg-4">
-						<h2 class="@titleFontSize">@Model.Item.GetString("Title")</h2>
-					</div>
-				}
+	<div class="grid h-100@(gaps)@(theme)@(contentPadding) item_@Model.Item.SystemName.ToLower()">
+		@if ((product.ProductFields != null && Model.Item.GetBoolean("ProductFields")) || (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields")) || (displayGroups.Count != 0)) {
+			if (!hideTitle)
+			{
+				<h2 class="g-col-12 @titleFontSize mb-0">@Model.Item.GetString("Title")</h2>
 			}
+		}
 
-			@if (displayGroups.Count != 0) {
-				foreach (var group in displayGroups) {
+		@if (displayGroups.Count != 0) {
+			foreach (var group in displayGroups) {
+				bool hideHeader = Model.Item.GetBoolean("HideGroupHeaders");
+
+				if (!hideHeader) { 
+					<h4 class="g-col-12 h4 mb-0">@group.Name</h4>
+				}
+
+				@RenderFieldsFromList(group.Fields, layout);
+			}
+		}
+
+		@if (product.ProductFields != null && showProductFields) {
+			if (product.ProductFields.Count > 0) {
+				@RenderFieldsFromList(product.ProductFields, layout);
+			}
+		}
+
+		@if (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields")) {
+			if (product.ProductCategories.Count > 0) {
+				foreach (var group in product.ProductCategories) {
+					CategoryFieldViewModel category = group.Value;
 					bool hideHeader = Model.Item.GetBoolean("HideGroupHeaders");
 
 					if (!hideHeader) { 
-						<h4 class="h4 mb-4">@group.Name</h4>
+						<h4 class="g-col-12 h4 mb-0">@group.Value.Name</h4>
 					}
 
-					@RenderFieldsFromList(group.Fields, layout);
+					@RenderFieldsFromList(category.Fields, layout);
 				}
 			}
-
-			@if (product.ProductFields != null && showProductFields) {
-				if (product.ProductFields.Count > 0) {
-					@RenderFieldsFromList(product.ProductFields, layout);
-				}
-			}
-
-			@if (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields")) {
-				if (product.ProductCategories.Count > 0) {
-					foreach (var group in product.ProductCategories) {
-						CategoryFieldViewModel category = group.Value;
-						bool hideHeader = Model.Item.GetBoolean("HideGroupHeaders");
-
-						if (!hideHeader) { 
-							<h4 class="h4 mb-4">@group.Value.Name</h4>
-						}
-
-						@RenderFieldsFromList(category.Fields, layout);
-					}
-				}
-			}
-		</div>
+		}
 	</div>
 } else if (Pageview.IsVisualEditorMode) { 
 	<div class="alert alert-warning m-0">@Translate("No products available")</div>
 }
 
-
 @helper RenderFieldsFromList(Dictionary<string, FieldValueViewModel> fields, string layout) { 
 	string size = Model.Item.GetRawValueString("Size", "full");
-	string extraMargin = size == "full" ? "mb-3" : "";
+	string gaps = size != "full" ? " gap-1" : string.Empty;
 	bool hideFieldLabels = Model.Item.GetBoolean("HideFieldLabels");
 
-	<div class="@extraMargin">
-		@if (layout == "columns") {
-			string gaps = size == "full" ? "gap-0" : "gap-2";
-
-			<div class="grid @gaps">
-				@foreach (var field in fields) {
-					@RenderField(field.Value, layout)
-				}
-			</div>
-		}
-		@if (layout == "list") {
-			<dl class="grid gap-0">
-				@foreach (var field in fields) {
-					@RenderField(field.Value, layout)
-				}
-			</dl>
-		}
-		@if (layout == "table") {
-			string tableSize = size == "full" ? "" : "table-sm";
-
-			<table class="table table-striped @tableSize">
+	if (layout == "columns") {
+		<div class="g-col-12 grid@(gaps)">
+			@foreach (var field in fields) {
+				@RenderField(field.Value, layout)
+			}
+		</div>
+	}
+	if (layout == "list") {
+		<dl class="g-col-12 grid@(gaps)">
+			@foreach (var field in fields) {
+				@RenderField(field.Value, layout)
+			}
+		</dl>
+	}
+	if (layout == "table") {
+		string tableSize = size == "full" ? "" : " table-sm";
+		<div class="g-col-12">
+			<table class="table table-striped@(tableSize)">
 				@foreach (var field in fields) {
 					@RenderField(field.Value, layout)
 				}
 			</table>
-		}
-		@if (layout == "bullets") {
-			string listSize = size == "full" ? "" : "m-0 p-0 lh-1 fs-7 opacity-75";
-			string listStyle = size == "full" ? "" : "style=\"list-style-position: inside\"";
-
+		</div>
+	}
+	if (layout == "bullets") {
+		string listSize = size == "full" ? "" : "m-0 p-0 lh-1 fs-7 opacity-75";
+		string listStyle = size == "full" ? "" : "style=\"list-style-position: inside\"";
+		<div class="g-col-12">
 			<ul class="@listSize" @listStyle>
 				@foreach (var field in fields) {
 					@RenderField(field.Value, layout)
 				}
 			</ul>
-		}
-		@if (layout == "commas") {
-			List<string> featuresList = new List<string>();
+		</div>
+	}
+	if (layout == "commas") {
+		List<string> featuresList = new List<string>();
 
-			foreach (var field in fields)
-			{
-				if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
-					List<string> options = new List<string>();
-					foreach (FieldOptionValueViewModel option in field.Value.Value as System.Collections.Generic.List<FieldOptionValueViewModel>) {
-						if (!string.IsNullOrWhiteSpace(option.Value)) {
-							if (option.Value.ToString().Contains("#") && (Translate(field.Value.Name) == Translate("Color") || Translate(field.Value.Name) == Translate("Colour"))) {
-								string colorSpan = "<span class=\"colorbox-sm\" style=\"background-color: " + option.Value + "\"></span>";
-								options.Add(colorSpan);
-							} else if (!string.IsNullOrEmpty(option.Value)) {
-								options.Add(option.Name);
-							}
+		foreach (var field in fields)
+		{
+			if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+				List<string> options = new List<string>();
+				foreach (FieldOptionValueViewModel option in field.Value.Value as System.Collections.Generic.List<FieldOptionValueViewModel>) {
+					if (!string.IsNullOrWhiteSpace(option.Value)) {
+						if (option.Value.ToString().Contains("#") && (Translate(field.Value.Name) == Translate("Color") || Translate(field.Value.Name) == Translate("Colour"))) {
+							string colorSpan = "<span class=\"colorbox-sm\" style=\"background-color: " + option.Value + "\"></span>";
+							options.Add(colorSpan);
+						} else if (!string.IsNullOrEmpty(option.Value)) {
+							options.Add(option.Name);
 						}
 					}
-					string optionsString = (string.Join(", ", options.Select(x => x.ToString()).ToArray()));
-					if ((Translate(field.Value.Name) == Translate("Color") || Translate(field.Value.Name) == Translate("Colour"))) {
-						optionsString = (string.Join(" ", options.Select(x => x.ToString()).ToArray()));
-					}
+				}
+				string optionsString = (string.Join(", ", options.Select(x => x.ToString()).ToArray()));
+				if ((Translate(field.Value.Name) == Translate("Color") || Translate(field.Value.Name) == Translate("Colour"))) {
+					optionsString = (string.Join(" ", options.Select(x => x.ToString()).ToArray()));
+				}
 
-					if (!hideFieldLabels) {
-						featuresList.Add(field.Value.Name + ": " + optionsString);
-					} else {
-						featuresList.Add(optionsString);
-					}
+				if (!hideFieldLabels) {
+					featuresList.Add(field.Value.Name + ": " + optionsString);
 				} else {
-					if (!string.IsNullOrWhiteSpace(field.Value.Value.ToString())) {
-						if (field.Value.Value.ToString().Contains("#") && (Translate(field.Value.Name) == Translate("Color") || Translate(field.Value.Name) == Translate("Colour"))) {
-							string colorSpan = "<span class=\"colorbox-sm\" style=\"background-color: " + field.Value.Value + "\"></span>";
+					featuresList.Add(optionsString);
+				}
+			} else {
+				if (!string.IsNullOrWhiteSpace(field.Value.Value.ToString())) {
+					if (field.Value.Value.ToString().Contains("#") && (Translate(field.Value.Name) == Translate("Color") || Translate(field.Value.Name) == Translate("Colour"))) {
+						string colorSpan = "<span class=\"colorbox-sm\" style=\"background-color: " + field.Value.Value + "\"></span>";
 
-							if (!hideFieldLabels) {
-								featuresList.Add(field.Value.Name + ": " + colorSpan);
-							} else {
-								featuresList.Add(colorSpan);
-							}
+						if (!hideFieldLabels) {
+							featuresList.Add(field.Value.Name + ": " + colorSpan);
 						} else {
-							if (!hideFieldLabels) {
-								featuresList.Add(field.Value.Name + ": " + field.Value.Value.ToString());
-							} else {
-								featuresList.Add(field.Value.Value.ToString());
-							}
+							featuresList.Add(colorSpan);
+						}
+					} else {
+						if (!hideFieldLabels) {
+							featuresList.Add(field.Value.Name + ": " + field.Value.Value.ToString());
+						} else {
+							featuresList.Add(field.Value.Value.ToString());
 						}
 					}
 				}
 			}
-
-			string featuresString = (string.Join(", ", featuresList.Select(x => x.ToString()).ToArray()));
-
-			<div class="opacity-75 fs-7">@featuresString</div>
 		}
-	</div>
+
+		string featuresString = (string.Join(", ", featuresList.Select(x => x.ToString()).ToArray()));
+
+		<div class="g-col-12 opacity-75 fs-7">@featuresString</div>
+	}
 }
 
 @helper RenderField(FieldValueViewModel field, string layout) { 
@@ -234,22 +236,21 @@
 
 	if (!string.IsNullOrEmpty(fieldValue) && noValues == false) {
 		if (layout == "columns") {
-			<div class="grid g-col-6 g-col-lg-4">
+
+			<div class="grid g-col-6 g-col-lg-4 gap-1">
 				@if(!hideFieldLabels) 
 				{ 
-					<dt class="g-col-4 py-2 fw-bold">@field.Name</dt>
+					<dt class="g-col-12 g-col-lg-4">@field.Name</dt>
 				}
-				<dd class="g-col-8 py-2 mb-0">@RenderFieldValue(field)</dd>
+				<dd class="g-col-12 g-col-lg-8 mb-0 text-break">@RenderFieldValue(field)</dd>
 			</div>
 		}
 		if (layout == "list") {
-			string extraPadding = size == "full" ? "py-2" : "";
-
 			if (!hideFieldLabels)
 			{
-				<dt class="g-col-4 @extraPadding fw-bold">@field.Name</dt>
+				<dt class="g-col-4">@field.Name</dt>
 			}
-			<dd class="g-col-8 @extraPadding mb-0">
+			<dd class="g-col-8 mb-0 text-break">
 				@RenderFieldValue(field)
 			</dd>
 		}
@@ -257,9 +258,9 @@
 			<tr>
 				@if (!hideFieldLabels)
 				{
-					<th class="fw-bold" scope="row">@field.Name</th>
+					<th class="w-25 w-lg-50" scope="row">@field.Name</th>
 				}
-				<td>@RenderFieldValue(field)</td>
+				<td class="text-break">@RenderFieldValue(field)</td>
 			</tr>
 		}
 		if (layout == "bullets") {
