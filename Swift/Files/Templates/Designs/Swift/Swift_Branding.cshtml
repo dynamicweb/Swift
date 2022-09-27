@@ -3,6 +3,42 @@
 @using System.Text.RegularExpressions
 @MasterPageFile("Swift_MasterNoLayout.cshtml")
 
+@functions {
+	private GoogleFontViewModel GetViewModelValue(object value)
+	{
+		Dynamicweb.Content.Items.Editors.GoogleFont font = default;
+
+		if (value is object)
+		{
+			font = Dynamicweb.Core.Converter.Deserialize<Dynamicweb.Content.Items.Editors.GoogleFont>(value.ToString());
+
+			if (string.IsNullOrWhiteSpace(font.Family))
+			{
+				font = default;
+			}
+		}
+
+		return CreateGoogleFontViewModel(font);
+	}
+
+	private GoogleFontViewModel CreateGoogleFontViewModel(Dynamicweb.Content.Items.Editors.GoogleFont font)
+	{
+		GoogleFontViewModel model = null;
+		if (font is object)
+		{
+			model = new GoogleFontViewModel
+			{
+				Family = font.Family,
+				Version = font.Version,
+				Weight = font.SelectedVariant,
+				File = font.Files[font.SelectedVariant]
+			};
+		}
+
+		return model;
+	}
+}
+
 @{
 	List<string> fontList = new List<string>();
 
@@ -43,6 +79,7 @@
 	{
 		@* HEADER font*@
 		headerFont = Model.Item.GetGoogleFont("HeaderFont");
+		headerFont = GetViewModelValue(Model.Item.GetRawValueString("HeaderFont"));
 		if (headerFont != null)
 		{
 			headerFontFamily = headerFont.Family;
@@ -55,6 +92,7 @@
 
 		@* DISPLAY font*@
 		displayFont = Model.Item.GetGoogleFont("DisplayFont");
+		displayFont = GetViewModelValue(Model.Item.GetRawValueString("DisplayFont"));
 		if (displayFont != null)
 		{
 			displayFontFamily = displayFont.Family;
@@ -67,6 +105,7 @@
 
 		@* BODY font*@
 		bodyFont = Model.Item.GetGoogleFont("BodyFont");
+		bodyFont = GetViewModelValue(Model.Item.GetRawValueString("BodyFont"));
 		if (bodyFont != null)
 		{
 			bodyFontFamily = bodyFont.Family;
@@ -83,13 +122,13 @@
 		primaryButtonShape = Model.Item.GetRawValueString("PrimaryButtonShape", "0");
 		primaryButtonShape = primaryButtonShape == "rounded" ? ".25rem" : primaryButtonShape;
 		primaryButtonShape = primaryButtonShape == "pill" ? "12.5rem" : primaryButtonShape;
-		
-		if(Model.Item.GetDouble("ButtonPrimaryXPadding") != 0.0)
-        {
+
+		if (Model.Item.GetDouble("ButtonPrimaryXPadding") != 0.0)
+		{
 			primaryButtonXpadding = Model.Item.GetDouble("ButtonPrimaryXPadding").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
-        }
-		if(Model.Item.GetDouble("ButtonPrimaryYPadding") != 0.0)
-        {
+		}
+		if (Model.Item.GetDouble("ButtonPrimaryYPadding") != 0.0)
+		{
 			primaryButtonYpadding = Model.Item.GetDouble("ButtonPrimaryYPadding").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 		}
 
@@ -100,41 +139,68 @@
 		secondaryButtonShape = Model.Item.GetRawValueString("SecondaryButtonShape", "0");
 		secondaryButtonShape = secondaryButtonShape == "rounded" ? ".25rem" : secondaryButtonShape;
 		secondaryButtonShape = secondaryButtonShape == "pill" ? "12.5rem" : secondaryButtonShape;
-	
 
-		if(Model.Item.GetDouble("ButtonSecondaryXPadding") != 0.0)
+
+		if (Model.Item.GetDouble("ButtonSecondaryXPadding") != 0.0)
 		{
 			secondaryButtonXpadding = Model.Item.GetDouble("ButtonSecondaryXPadding").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 		}
 
-		if(Model.Item.GetDouble("ButtonSecondaryYPadding") != 0.0)
+		if (Model.Item.GetDouble("ButtonSecondaryYPadding") != 0.0)
 		{
 			secondaryButtonYpadding = Model.Item.GetDouble("ButtonSecondaryYPadding").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 		}
-	
+
 		@* Link *@
 		linkButtonFontWeight = Model.Item.GetRawValueString("LinkFontWeight", "normal");
 		linkButtonCasing = Model.Item.GetRawValueString("LinkCasing", "initial");
 	}
 
-var fontsToLink = string.Join("&", fontList.Where(x => !string.IsNullOrEmpty(x)).Distinct().Select(x => string.Format("family={0}", x)));
+	var fontsToLink = string.Join("&", fontList.Where(x => !string.IsNullOrEmpty(x)).Distinct().Select(x => string.Format("family={0}", x)));
+	var fontLink = $"https://fonts.googleapis.com/css2?{fontsToLink}&display=swap";
+	var sb = new System.Text.StringBuilder();
 
-var sb = new System.Text.StringBuilder();
 
-
-string googleCss = string.Empty;
-try
-{
-	using (var client = new System.Net.WebClient())
+	async System.Threading.Tasks.Task<string> GetGoogleCss(string fonturl)
 	{
+		var client = new System.Net.Http.HttpClient();
+		client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("*/*"));
+		client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("font/woff2"));
+		client.DefaultRequestHeaders.Add("User-Agent", Dynamicweb.Context.Current.Request.UserAgent);
 
-		client.Headers.Add("user-agent", Dynamicweb.Context.Current.Request.UserAgent);
-		googleCss = client.DownloadString($"https://fonts.googleapis.com/css2?{fontsToLink}&display=swap");
-		//googleCss = System.Text.RegularExpressions.Regex.Replace(googleCss, @"\s+", ""); //minify the css.
+		System.Net.Http.HttpResponseMessage response = await client.GetAsync(fonturl);
+		response.EnsureSuccessStatusCode();
+		if (response.StatusCode == System.Net.HttpStatusCode.OK)
+		{
+			return await response.Content.ReadAsStringAsync();
+		}
+		return string.Empty;
+	}
+
+	async System.Threading.Tasks.Task DownloadAndSavefont(string fontUrl, string localPath)
+	{
+		var fullPath = Dynamicweb.Core.SystemInformation.MapPath(localPath);
+		var fileinfo = new System.IO.FileInfo(fullPath);
+		var client = new System.Net.Http.HttpClient();
+		System.Net.Http.HttpResponseMessage dataResponse = await client.GetAsync(fontUrl);
+		dataResponse.EnsureSuccessStatusCode();
+		if (dataResponse.StatusCode == System.Net.HttpStatusCode.OK)
+		{
+			var data = await dataResponse.Content.ReadAsByteArrayAsync();
+			System.IO.Directory.CreateDirectory(fileinfo.DirectoryName);
+			System.IO.File.WriteAllBytes(fullPath, data);
+		}
+
+	}
+
+	string googleCss = string.Empty;
+	try
+	{
+		googleCss = GetGoogleCss(fontLink).GetAwaiter().GetResult();
 
 		Dictionary<string, string> googleFontUrls = new Dictionary<string, string>();
 		Regex cssUrlGoogleFontsRegEx = new Regex(@"url\((?<googleFontUrl>.+?)\)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-		string firstPartOfCss = googleCss.Substring(googleCss.LastIndexOf("{"), googleCss.LastIndexOf("}")- googleCss.LastIndexOf("{"));
+		string firstPartOfCss = googleCss.Substring(googleCss.LastIndexOf("{"), googleCss.LastIndexOf("}") - googleCss.LastIndexOf("{"));
 
 		MatchCollection matches = cssUrlGoogleFontsRegEx.Matches(googleCss);//We will only take the first URL as that is what is primarily used. If the remaining woff fonts needs loading, the browser will take care of that.
 
@@ -156,12 +222,9 @@ try
 			{
 				var fontPathAndFilename = url.Replace("https://fonts.gstatic.com/s/", "");
 				var localUrl = $"/Files/Templates/Designs/Swift/Assets/fonts/{fontPathAndFilename}";
-				var fullPath = Dynamicweb.Core.SystemInformation.MapPath(localUrl);
-				var fileinfo = new System.IO.FileInfo(fullPath);
 
-				var data = client.DownloadData(new Uri(url));
-				System.IO.Directory.CreateDirectory(fileinfo.DirectoryName);
-				System.IO.File.WriteAllBytes(fullPath, data);
+
+				DownloadAndSavefont(url, localUrl).GetAwaiter().GetResult();
 
 				googleCss = googleCss.Replace(url, localUrl);
 
@@ -173,11 +236,9 @@ try
 
 		sb.AppendLine(googleCss);
 	}
-}
-catch (Exception ex)
-{
-	//Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(Dynamicweb.Context.Current.Server.MapPath($"~/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_error.txt"), ex.ToString(), false);
-	@ex.ToString()
+	catch (Exception ex)
+	{
+		@ex.ToString()
 		sb.AppendLine($"@import url('https://fonts.googleapis.com/css2?{fontsToLink}&display=swap');");
 	}
 
