@@ -48,7 +48,7 @@
 		fontFaceSb.AppendLine("font-style: normal;");
 		fontFaceSb.AppendLine($"font-weight: {weight};");
 		fontFaceSb.AppendLine("font-display: swap;");
-		fontFaceSb.AppendLine($"src: url({font.Path}) format('{font.Extension.Replace(".",string.Empty)}');");
+		fontFaceSb.AppendLine($"src: url('{font.Path}') format('{font.Extension.Replace(".",string.Empty)}');");
 		fontFaceSb.AppendLine("}");
 		return fontFaceSb.ToString();
 	}
@@ -217,7 +217,6 @@
 		return string.Empty;
 	}
 
-
 	async System.Threading.Tasks.Task DownloadAndSavefont(string fontUrl, string localPath)
 	{
 		var fullPath = Dynamicweb.Core.SystemInformation.MapPath(localPath);
@@ -239,65 +238,46 @@
 	{
 		googleCss = GetGoogleCss(fontLink).GetAwaiter().GetResult();
 
-		if (!string.IsNullOrEmpty(fontsToLink))
+		Dictionary<string, string> googleFontUrls = new Dictionary<string, string>();
+		Regex cssUrlGoogleFontsRegEx = new Regex(@"url\((?<googleFontUrl>.+?)\)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
+		string firstPartOfCss = googleCss.Substring(googleCss.LastIndexOf("{"), googleCss.LastIndexOf("}") - googleCss.LastIndexOf("{"));
+
+		MatchCollection matches = cssUrlGoogleFontsRegEx.Matches(googleCss);//We will only take the first URL as that is what is primarily used. If the remaining woff fonts needs loading, the browser will take care of that.
+
+		for (var i = 0; i < matches.Count; i++)
 		{
-			using (var client = new System.Net.WebClient())
+			Match match = matches[i];
+			string url = match.Groups["googleFontUrl"].Value;
+			if (!googleFontUrls.ContainsKey(url))
 			{
-				client.Headers.Add("user-agent", Dynamicweb.Context.Current.Request.UserAgent);
-				googleCss = client.DownloadString($"https://fonts.googleapis.com/css2?{fontsToLink}&display=swap");
-				//googleCss = System.Text.RegularExpressions.Regex.Replace(googleCss, @"\s+", ""); //minify the css.
-
-				Dictionary<string, string> googleFontUrls = new Dictionary<string, string>();
-				Regex cssUrlGoogleFontsRegEx = new Regex(@"url\((?<googleFontUrl>.+?)\)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-				string firstPartOfCss = googleCss.Substring(googleCss.LastIndexOf("{"), googleCss.LastIndexOf("}") - googleCss.LastIndexOf("{"));
-
-				MatchCollection matches = cssUrlGoogleFontsRegEx.Matches(googleCss);//We will only take the first URL as that is what is primarily used. If the remaining woff fonts needs loading, the browser will take care of that.
-
-				for (var i = 0; i < matches.Count; i++)
-				{
-					Match match = matches[i];
-					string url = match.Groups["googleFontUrl"].Value;
-					if (!googleFontUrls.ContainsKey(url))
-					{
-						googleFontUrls.Add(url, url);
-					}
-					//break;//We will only take the first URL as that is what is primarily used. If the remaining woff fonts needs loading, the browser will take care of that.
-				}
-
-				if (googleFontUrls.Count > 0)
-				{
-					var fontSb = new System.Text.StringBuilder();
-					foreach (string url in googleFontUrls.Values)
-					{
-						var fontPathAndFilename = url.Replace("https://fonts.gstatic.com/s/", "");
-						var localUrl = $"/Files/Templates/Designs/Swift/Assets/fonts/{fontPathAndFilename}";
-
-						var fullPath = Dynamicweb.Core.SystemInformation.MapPath(localUrl);
-						var fileinfo = new System.IO.FileInfo(fullPath);
-
-						var data = client.DownloadData(new Uri(url));
-						System.IO.Directory.CreateDirectory(fileinfo.DirectoryName);
-						System.IO.File.WriteAllBytes(fullPath, data);
-
-						DownloadAndSavefont(url, localUrl).GetAwaiter().GetResult();
-
-						googleCss = googleCss.Replace(url, localUrl);
-
-						fontSb.AppendLine($"<link rel=\"preload\" href=\"{localUrl}\" as=\"font\" type=\"font/woff2\" crossorigin>");
-					}
-					string htmlPathFontPreload = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_GoogleFontUrls_{Model.Area.ID}.html");
-					Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(fontSb.ToString(), htmlPathFontPreload, false);
-				}
-
-				sb.AppendLine(googleCss);
+				googleFontUrls.Add(url, url);
 			}
 		}
+
+		if (googleFontUrls.Count > 0)
+		{
+			var fontSb = new System.Text.StringBuilder();
+			foreach (string url in googleFontUrls.Values)
+			{
+				var fontPathAndFilename = url.Replace("https://fonts.gstatic.com/s/", "");
+				var localUrl = $"/Files/Templates/Designs/Swift/Assets/fonts/{fontPathAndFilename}";
+
+				DownloadAndSavefont(url, localUrl).GetAwaiter().GetResult();
+
+				googleCss = googleCss.Replace(url, localUrl);
+
+				fontSb.AppendLine($"<link rel=\"preload\" href=\"{localUrl}\" as=\"font\" type=\"font/woff2\" crossorigin>");
+			}
+			string htmlPathFontPreload = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_GoogleFontUrls_{Model.Area.ID}.html");
+			Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(fontSb.ToString(), htmlPathFontPreload, false);
+		}
+
+		sb.AppendLine(googleCss);
 	}
 	catch (Exception ex)
 	{
-		//Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(Dynamicweb.Context.Current.Server.MapPath($"~/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_error.txt"), ex.ToString(), false);
 		@ex.ToString()
-			sb.AppendLine($"@import url('https://fonts.googleapis.com/css2?{fontsToLink}&display=swap');");
+		sb.AppendLine($"@import url('https://fonts.googleapis.com/css2?{fontsToLink}&display=swap');");
 	}
 
 	sb.AppendLine("");
