@@ -4,7 +4,7 @@
 ## [1.14.1] - 28-09-2022
 
 ## Disclaimer
-* Tiny Slider is depricaded and has been removed from Swift code base (_slides.js, _slider.scss, tiny-slider.js and all occurrences has been removed) 
+* Tiny Slider is deprecated and has been removed from Swift code base (_slides.js, _slider.scss, tiny-slider.js and all occurrences has been removed) 
 * Itemtype Swift_Carousel has been removed (replaced by itemtype Swift_Slider that uses SwiffySlider) 
 
 ## Bugixes
@@ -60,7 +60,7 @@
 * Itemtypes: Off-canvas, Nav link clickable if the page is set to not clickable
 
 ## Removed
-* Itemtypes: Carousel is removed
+* Itemtypes: Swift_Carousel is removed
 
 # v1.14.0
 ## [1.14.0] - 01-09-2022
