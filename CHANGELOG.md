@@ -7,7 +7,7 @@
 * Tiny Slider is deprecated and has been removed from Swift code base (_slides.js, _slider.scss, tiny-slider.js and all occurrences has been removed) 
 * Itemtype Swift_Carousel has been removed (replaced by itemtype Swift_Slider that uses SwiffySlider) 
 
-## Bugixes
+## Bugfixes
 * General:  Hide cookie notice while in Visual editor
 * General: Unfocused addtofavorites button after click
 * General: Error in frontend if unit fields type is emptied, Extra null-check before using Substring
