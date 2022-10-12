@@ -21,15 +21,22 @@
 	var websiteAreaId = websiteArea != null ? websiteArea.ID : 0;
 	int brandingPageId = websiteArea != null ? Convert.ToInt32(websiteArea.Item["BrandingPage"]) : 0;
 	int themePageId = websiteArea != null ? Convert.ToInt32(websiteArea.Item["ThemesPage"]) : 0;
-	int fontsPageId = websiteArea != null ? Dynamicweb.Services.Pages.GetPageByNavigationTag(websiteAreaId, "FontsPage").ID : 0;
+	var fontsPage = Dynamicweb.Services.Pages?.GetPageByNavigationTag(websiteAreaId, "FontsPage") ?? null;
+	int fontsPageId = fontsPage is object ? fontsPage.ID : 0;
+	bool hasFontsPage = fontsPage is object;
+	bool hasFonts = hasFontsPage ? Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(fontsPageId).Count() > 0 : false;
 
 	var brandingPage = Dynamicweb.Services.Pages?.GetPage(brandingPageId) ?? null;
 	var themesParagraphLastChanged = Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(themePageId).OrderByDescending(p => p.Audit.LastModifiedAt).FirstOrDefault();
-	var fontsParagraphLastChanged = Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(fontsPageId).OrderByDescending(p => p.Audit.LastModifiedAt).FirstOrDefault();
+
+	var fontsParagraphLastChanged = hasFontsPage && hasFonts ? Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(fontsPageId).OrderByDescending(p => p.Audit.LastModifiedAt).FirstOrDefault() : null;
 
 	var cssStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("~/Files/Templates/Designs/Swift/Assets/css/styles.css"));
-	var cssLastModified = brandingPage.Audit.LastModifiedAt > fontsParagraphLastChanged.Audit.LastModifiedAt ? brandingPage.Audit.LastModifiedAt : fontsParagraphLastChanged.Audit.LastModifiedAt;
-	var cssThemeAndBrandingStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath($"~/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_@(websiteArea).min.css"));
+	var cssLastModified = brandingPage.Audit.LastModifiedAt;
+	if (hasFontsPage && hasFonts)
+	{
+		cssLastModified = brandingPage.Audit.LastModifiedAt > fontsParagraphLastChanged?.Audit.LastModifiedAt ? brandingPage.Audit.LastModifiedAt : fontsParagraphLastChanged.Audit.LastModifiedAt;
+	}
 
 	Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_{websiteArea}.min.css?{cssLastModified.Ticks}; rel=preload; as=style;");
 
@@ -104,9 +111,9 @@
 				<label class="swift-brand-label" for="@(editorId)_@(name)_@(option.Value)">
 					<div class="swift-brand-option">
 						<div style="display:flex;align-items:center;justify-content:space-between;height:100%;flex-direction:column;gap:.5rem;text-align:center;">
-							<div class="fs-5" style="font-family:'@(font.GetString("FontFamilyName"))';font-weight:@(font.GetString("FontWeight")); line-height:1.5;">The quick, brown fox jumps over a lazy dog</div>
+							<div class="fs-5" style="font-family:'@(font.GetString("FontFamilyName"))';font-weight:@(font.GetString("FontWeight")); font-style:@(font.GetString("FontStyle")); line-height:1.5;">The quick, brown fox jumps over a lazy dog</div>
 							<div>
-								<div>@font.GetString("FontFamilyName") <small>(@font.GetRawValueString("FontWeight", string.Empty))</small></div>
+								<div>@font.GetString("FontFamilyName") <small>(@font.GetRawValueString("FontWeight", string.Empty), @font.GetRawValueString("FontStyle", string.Empty))</small></div>
 							</div>
 						</div>
 					</div>
@@ -117,6 +124,6 @@
 
 	@if (Model.Options.Count == 0)
 		{
-		<div class="swift-alert">@Translate("No text styles found")</div>
+		<div class="swift-alert">@Translate("No custom fonts found")</div>
 		}
 </div>
