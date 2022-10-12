@@ -39,18 +39,11 @@
 		return model;
 	}
 
-	private string createFontFace(FileViewModel font, string name, string weight)
-	{
-		var fontFaceSb = new System.Text.StringBuilder();
-
-		fontFaceSb.AppendLine("@font-face {");
-		fontFaceSb.AppendLine($"font-family: '{name}';");
-		fontFaceSb.AppendLine("font-style: normal;");
-		fontFaceSb.AppendLine($"font-weight: {weight};");
-		fontFaceSb.AppendLine("font-display: swap;");
-		fontFaceSb.AppendLine($"src: url('{font.Path}') format('{font.Extension.Replace(".",string.Empty)}');");
-		fontFaceSb.AppendLine("}");
-		return fontFaceSb.ToString();
+	private ItemViewModel GetCustomFont(string fieldName)
+	{ 
+		var id = Dynamicweb.Core.Converter.ToInt32(Model.Item.GetRawValueString(fieldName));
+		var font = id > 0 ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(Dynamicweb.Services.Paragraphs.GetParagraph(id))?.Item : null;
+		return font;
 	}
 }
 
@@ -58,21 +51,21 @@
 	List<string> fontList = new List<string>();
 
 	GoogleFontViewModel headerFont = null;
-	FileViewModel headerFontCustom = null;
+	ItemViewModel headerFontCustom = null;
 	string headerFontFamily = "Roboto";
 	string headerFontWeight = "300";
 	string headerCasing = "inherit";
 	string headerLineHeight = "1.2";
 	string headerLetterSpacing = "0";
 	GoogleFontViewModel displayFont = null;
-	FileViewModel displayFontCustom = null;
+	ItemViewModel displayFontCustom = null;
 	string displayFontFamily = "Roboto";
 	string displayFontWeight = "bold";
 	string displayCasing = "inherit";
 	string displayLineHeight = "1.2";
 	string displayLetterSpacing = "0";
 	GoogleFontViewModel bodyFont = null;
-	FileViewModel bodyFontCustom = null;
+	ItemViewModel bodyFontCustom = null;
 	string bodyFontFamily = "Roboto";
 	string bodyFontWeight = "regular";
 	string bodyLineHeight = "1.5";
@@ -94,15 +87,15 @@
 	string linkButtonCasing = "inherit";
 
 	if (Model.Item != null)
-	{
+		{
 		@* HEADER font*@
 		headerFont = Model.Item.GetGoogleFont("HeaderFont");
 		headerFont = GetViewModelValue(Model.Item.GetRawValueString("HeaderFont"));
-		headerFontCustom = Model.Item.GetFile("HeaderFontCustom");
+		headerFontCustom = GetCustomFont("HeaderFontCustom");
 		if (headerFontCustom is object)
         {
-			headerFontFamily = "Header Font Family";
-			headerFontWeight = Model.Item.GetRawValueString("HeaderFontCustomWeight", "normal");
+			headerFontFamily = headerFontCustom.GetString("FontFamilyName");
+			headerFontWeight = headerFontCustom.GetRawValueString("FontWeight");
         }
 
 		if (headerFont != null && headerFontCustom == null)
@@ -119,11 +112,11 @@
 		@* DISPLAY font*@
 		displayFont = Model.Item.GetGoogleFont("DisplayFont");
 		displayFont = GetViewModelValue(Model.Item.GetRawValueString("DisplayFont"));
-		displayFontCustom = Model.Item.GetFile("DisplayFontCustom");
+		displayFontCustom = GetCustomFont("DisplayFontCustom");
 		if (displayFontCustom is object)
         {
-			displayFontFamily = "Display Font Family";
-			displayFontWeight = Model.Item.GetRawValueString("DisplayFontCustomWeight", "normal");
+			displayFontFamily = displayFontCustom.GetString("FontFamilyName");
+			displayFontWeight = displayFontCustom.GetRawValueString("FontWeight");
         }
 
 		if (displayFont != null && displayFontCustom == null)
@@ -140,11 +133,11 @@
 		@* BODY font*@
 		bodyFont = Model.Item.GetGoogleFont("BodyFont");
 		bodyFont = GetViewModelValue(Model.Item.GetRawValueString("BodyFont"));
-		bodyFontCustom = Model.Item.GetFile("BodyFontCustom");
+		bodyFontCustom = GetCustomFont("BodyFontCustom");
 		if (bodyFontCustom is object)
         {
-			bodyFontFamily = "Body Font Family";
-			bodyFontWeight = Model.Item.GetRawValueString("BodyFontCustomWeight", "normal");
+			bodyFontFamily = bodyFontCustom.GetString("FontFamilyName");
+			bodyFontWeight = bodyFontCustom.GetRawValueString("FontWeight");
         }
 
 		if (bodyFont != null && bodyFontCustom == null)
@@ -278,24 +271,9 @@
 	{
 		@ex.ToString()
 		sb.AppendLine($"@import url('https://fonts.googleapis.com/css2?{fontsToLink}&display=swap');");
-	}
+		}
 
 	sb.AppendLine("");
-
-	if (headerFontCustom is object)
-	{
-		sb.AppendLine(createFontFace(headerFontCustom, headerFontFamily, headerFontWeight));
-	}
-
-	if (displayFontCustom is object)
-	{
-		sb.AppendLine(createFontFace(displayFontCustom, displayFontFamily, displayFontWeight));
-	}
-
-	if (bodyFontCustom is object)
-	{
-		sb.AppendLine(createFontFace(bodyFontCustom, bodyFontFamily, bodyFontWeight));
-	}
 
 	sb.AppendLine(".brand {");
 
@@ -336,6 +314,7 @@
 
 	string cssPathEcommerceBadges = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_ecommerce_badge_styles_{Model.Area.ID}.css");
 	string cssPathTheme = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_theme_styles_{Model.Area.ID}.css");
+	string cssPathFont = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_font_styles_{Model.Area.ID}.css");
 	string cssPathBranding = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_branding_styles_{Model.Area.ID}.css");
 	string cssPathCombined = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_{Model.Area.ID}.min.css");
 
@@ -343,8 +322,9 @@
 
 	string combinedCss = Dynamicweb.Core.Helpers.TextFileHelper.ReadTextFile(cssPathBranding);
 	combinedCss += Dynamicweb.Core.Helpers.TextFileHelper.ReadTextFile(cssPathTheme);
+	combinedCss += Dynamicweb.Core.Helpers.TextFileHelper.ReadTextFile(cssPathFont);
 	combinedCss += Dynamicweb.Core.Helpers.TextFileHelper.ReadTextFile(cssPathEcommerceBadges);
-	combinedCss = System.Text.RegularExpressions.Regex.Replace(combinedCss, @"\s+", ""); //minify the css.
+	combinedCss = System.Text.RegularExpressions.Regex.Replace(combinedCss, @"\s+(?=([^']*'[^']*')*[^']*$)", ""); //minify the css.
 	combinedCss = combinedCss.Replace("\00a0", " "); //Re-insert spaces for content text
 	Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(combinedCss, cssPathCombined, false);
 }
