@@ -10,7 +10,7 @@ const Typeahead = function() {
 				// handle dropdown navigation if present
 				document.querySelectorAll(".js-type-ahead-menu").forEach(function (menu) {
 					if (menu.classList.contains("show")) {
-						Typeahead.debounce(() => Typeahead.handleArrowNavigation(e.key, menu), 300)();
+						Typeahead.debounce(() => Typeahead.handleArrowNavigation(e.key, menu), 50)();
 						return;
 					}
 				});
@@ -147,14 +147,10 @@ const Typeahead = function() {
 				var parm = formElm.querySelector(".js-type-ahead-parameter");
 
 				if (elm.getAttribute("data-param") && elm.getAttribute("data-paramvalue")) {
-					
+
 					if (elm.getAttribute("data-param").includes("ProductId") || elm.getAttribute("data-param").includes("ID")) {
 						var productDetailPage = formElm.getAttribute("data-product-details-page");
 						productDetailPage = elm.getAttribute("data-selected-details-page") != null ? elm.getAttribute("data-selected-details-page") : productDetailPage;
-
-						formElm.querySelector("input[name='SearchLayout']").disabled = true;
-						formElm.querySelector("input[name='q']").disabled = true;
-						formElm.querySelector(".js-type-ahead-parameter").disabled = true;
 
 						formElm.method = "post";
 						formElm.setAttribute("action", productDetailPage);
