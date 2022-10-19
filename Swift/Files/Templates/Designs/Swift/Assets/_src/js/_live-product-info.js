@@ -8,6 +8,7 @@ const LiveProductInfo = function () {
 			priceFormattedAttr: "data-price-formatted",
 			contentAttr: "content",
 			productIdAttr: "data-product-id",
+			productVariantIdAttr: "data-variant-id",
 			showIfAttr: "data-show-if",
 			innerSliderId: "tns1-iw",
 			loaderClass: "spinner-border",
@@ -105,8 +106,11 @@ const LiveProductInfo = function () {
 			const self = this;
 			liveInfoContainers.forEach(function (container) {
 				self.product = self.GetProductData(container, data)
-				const product = self.product;
-				if (!product) return;
+				const mainProduct = self.product;
+				if (!mainProduct) return;
+
+				const variantId = container.getAttribute(self.config.productVariantIdAttr);
+				const product = variantId === "" ? mainProduct : GetVariantInfo(mainProduct, variantId);
 				
 				container.querySelectorAll(self.selectors.loader).forEach(function (el){
 					el.classList.remove(self.config.loaderClass);
@@ -210,6 +214,29 @@ const LiveProductInfo = function () {
 			return data.Products ? data.Products.filter(function (el) {
 				return el.Id === productId;
 			})[0] : data;
+		},
+
+		GetVariantInfo: function (mainProduct, variantId) {
+			if (mainProduct.VariantInfo != null && variantId !== "") {
+				return GetVariantInfo(mainProduct.VariantInfo, variantId)
+			}
+
+			function GetVariantInfo(parentVariantInfo, variantId) {
+				if (parentVariantInfo.VariantID === variantId) {
+					return parentVariantInfo;
+				}
+
+				for (let v = 0; v < parentVariantInfo.VariantInfo.length ; v++) {
+					const productVariantId = parentVariantInfo.VariantInfo[v].VariantID;
+
+					if (productVariantId === variantId) {
+						return parentVariantInfo.VariantInfo[v];
+					}
+					else if (variantId.startsWith(productVariantId)) {
+						return GetVariantInfo(parentVariantInfo.VariantInfo[v], variantId);
+					}
+				}
+			}
 		},
 
 		UpdateValue: function (containers, value, showElement) {
