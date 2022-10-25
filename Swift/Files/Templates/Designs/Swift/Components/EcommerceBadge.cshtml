@@ -7,75 +7,113 @@
 
 @{
 	string sizeCssClass = GetViewParameter("size") != null ? GetViewParameter("size").ToString() : "";
+	string newBadgeCssClassName = GetViewParameter("newBadgeCssClassName") != null ? GetViewParameterString("newBadgeCssClassName").Trim().ToLower() : "";
+	bool newBadgeEnabled = newBadgeCssClassName != "" && newBadgeCssClassName != "none" ? true : false;
 
-	string saleBadgeType = GetViewParameter("saleBadgeType") != null ? GetViewParameterString("saleBadgeType") : "amount";
+	List<string> campaignBadgesValues = GetViewParameter("campaignBadgesValues") != null ? GetViewParameterString("campaignBadgesValues").Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList() : new List<string>();
+}
+
+
+@if (Model.Discount.Price != 0)
+{
 	string saleBadgeCssClassName = GetViewParameter("saleBadgeCssClassName") != null ? GetViewParameterString("saleBadgeCssClassName").Trim().ToLower() : "";
 	bool saleBadgeEnabled = saleBadgeCssClassName != "" && saleBadgeCssClassName != "none" ? true : false;
 
-	DateTime createdDate = Model.Created.Value;
-	string newBadgeCssClassName = GetViewParameter("newBadgeCssClassName") != null ? GetViewParameterString("newBadgeCssClassName").Trim().ToLower() : "";
-	bool newBadgeEnabled = newBadgeCssClassName != "" && newBadgeCssClassName != "none" ? true : false;
-	double newPublicationDays = GetViewParameter("newPublicationDays") != null ? GetViewParameterDouble("newPublicationDays") : 0;
+	if (saleBadgeEnabled)
+	{
+		string saleBadgeType = GetViewParameter("saleBadgeType") != null ? GetViewParameterString("saleBadgeType") : "amount";
+		string title = saleBadgeType == "amount" ? "-" + Model.Discount.PriceFormatted : "";
+		title = saleBadgeType == "percentage" ? "-" + Math.Floor((Model.Discount.Price / Model.PriceBeforeDiscount.Price) * 100) + "%" : title;
 
-	List<string> campaignBadgesValues = GetViewParameter("campaignBadgesValues") != null ? GetViewParameterString("campaignBadgesValues").Split(new char[] { ',' }).ToList() : new List<string>();
-
-	var badgesPage =  Pageview.AreaSettings.GetLink("EcommerceBadgesPage") != null ? Pageview.AreaSettings.GetLink("EcommerceBadgesPage").PageId : 0;
-	var allBadges = badgesPage != 0 ? Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(badgesPage) : null;
-}
-
-
-@if (saleBadgeEnabled && Model.Discount.Price != 0) {
-	string title = saleBadgeType == "amount" ? "-" + Model.Discount.PriceFormatted : "";
-	title = saleBadgeType == "percentage" ? "-" + Math.Floor((Model.Discount.Price / Model.PriceBeforeDiscount.Price)*100) + "%" : title;
-
-	string hideAutoLabel = "";
-	if (saleBadgeType == "amount" || saleBadgeType == "percentage") {
-		hideAutoLabel = "badge-no-label";
-	}
-
-	<span class="@sizeCssClass"><span class="badge @hideAutoLabel @(saleBadgeCssClassName) rounded-0">@title</span></span>
-}
-
-@if ((newBadgeEnabled && newPublicationDays == 0) || (newBadgeEnabled && (createdDate.AddDays(newPublicationDays) > DateTime.Now))) {
-	<span class="@sizeCssClass"><span class="badge @newBadgeCssClassName rounded-0"></span></span>
-} 
-
-@if (allBadges != null) { 
-	int badgesCount = 0;
-
-	foreach (string campaign in campaignBadgesValues) {
-		string campaignType = string.Empty;
-
-		foreach (Paragraph badge in allBadges) {
-			var paragraphviewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(badge);
-
-			if (campaign == paragraphviewModel.Item.GetString("CssClassName").Trim().ToLower()) {
-				campaignType = paragraphviewModel.Item.GetRawValueString("CampaignType");
-			}
+		string hideAutoLabel = "";
+		if (saleBadgeType == "amount" || saleBadgeType == "percentage")
+		{
+			hideAutoLabel = "badge-no-label";
 		}
 
-		if (!string.IsNullOrEmpty(campaign)) {
-			FieldValueViewModel availableCampaignsObject;
-			Model.ProductFields.TryGetValue("Campaign", out availableCampaignsObject);
+		<span class="@sizeCssClass"><span class="badge @hideAutoLabel @(saleBadgeCssClassName) rounded-0">@title</span></span>
+	}
+}
 
-			if (availableCampaignsObject != null) {
-		 		List<FieldOptionValueViewModel> availableCampaigns = (List<FieldOptionValueViewModel>)availableCampaignsObject.Value;
+@if (newBadgeEnabled)
+{
+	DateTime createdDate = Model.Created.Value;
+	double newPublicationDays = GetViewParameter("newPublicationDays") != null ? GetViewParameterDouble("newPublicationDays") : 0;
 
-				foreach (FieldOptionValueViewModel availableOption in availableCampaigns) {
+	if ((newPublicationDays == 0) || (createdDate.AddDays(newPublicationDays) > DateTime.Now))
+	{
+		<span class="@sizeCssClass"><span class="badge @newBadgeCssClassName rounded-0"></span></span>
+	}
+}
 
+@if (campaignBadgesValues.Any())
+{
+	Dictionary<string, ParagraphInfoViewModel> badgeConfigurations;
+
+	if (Dynamicweb.Context.Current.Items.Contains("badgeConfigurations"))
+	{
+		badgeConfigurations = (Dictionary<string, ParagraphInfoViewModel>)Dynamicweb.Context.Current.Items["badgeConfigurations"];
+	}
+	else
+	{
+		var badgesPage = Pageview.AreaSettings.GetLink("EcommerceBadgesPage") != null ? Pageview.AreaSettings.GetLink("EcommerceBadgesPage").PageId : 0;
+		var allBadges = badgesPage != 0 ? Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(badgesPage) : null;
+
+		badgeConfigurations = new Dictionary<string, ParagraphInfoViewModel>();
+		foreach (Paragraph badge in allBadges)
+		{
+			var paragraphviewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(badge);
+			string cssClassName = paragraphviewModel.Item.GetString("CssClassName").Trim().ToLower();
+			if (!badgeConfigurations.ContainsKey(cssClassName)) {
+				badgeConfigurations.Add(cssClassName, paragraphviewModel);
+			}
+		}
+		Dynamicweb.Context.Current.Items.Add("badgeConfigurations", badgeConfigurations);
+	}
+
+	int badgesCount = 0;
+	if (badgeConfigurations.Any())
+	{
+		foreach (string campaign in campaignBadgesValues)
+		{
+			if (!string.IsNullOrEmpty(campaign))
+			{
+
+				FieldValueViewModel availableCampaignsObject;
+				Model.ProductFields.TryGetValue("Campaign", out availableCampaignsObject);
+				string campaignType = string.Empty;
+
+				if (availableCampaignsObject != null && badgeConfigurations.ContainsKey(campaign))
+				{
+					ParagraphInfoViewModel paragraphviewModel;
+					if (badgeConfigurations.TryGetValue(campaign, out paragraphviewModel))
+					{
+						campaignType = paragraphviewModel.Item.GetRawValueString("CampaignType");
+					}
+				}
+
+				List<FieldOptionValueViewModel>
+					availableCampaigns = (List<FieldOptionValueViewModel>)availableCampaignsObject.Value;
+
+				foreach (FieldOptionValueViewModel availableOption in availableCampaigns)
+				{
 					if (campaignType == availableOption.Value)
 					{
 						<span class="@sizeCssClass"><span class="badge @campaign.Trim().ToLower() rounded-0"></span></span>
 						badgesCount++;
+						break;
 					}
 				}
 			}
 		}
 	}
 
-	if (badgesCount == 0 && Pageview.IsVisualEditorMode) { 
+	if (badgesCount == 0 && Pageview.IsVisualEditorMode)
+	{
 		<span class="@sizeCssClass"><span class="badge bg-success text-light rounded-0">@Translate("Badge example")</span></span>
 	}
-} else if (Pageview.IsVisualEditorMode) {
+}
+else if (Pageview.IsVisualEditorMode)
+{
 	<span class="@sizeCssClass"><span class="badge bg-success text-light rounded-0">@Translate("Badge example")</span></span>
 }
