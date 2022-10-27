@@ -34,6 +34,7 @@
 * Itemtypes: Ecommerce badges, Optimize performance
 * Itemtypes: Slider - Removed padding from slider when theme is selected, and removed padding for every slider item
 * Itemtypes: Search icon is now back to its usual size, it was suddenly 14x14  instead of 21x21
+* Itemtypes: Navigation and mega menu, fixed dropdown not rendering when full-width row is selected
 
 ## Changes
 * Repository: Reorganize repository settings
