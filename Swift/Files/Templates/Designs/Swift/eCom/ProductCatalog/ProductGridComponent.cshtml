@@ -1,0 +1,94 @@
+@inherits ViewModelTemplate<ProductListViewModel>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@functions {
+	public ProductViewModel GetDummyProduct()
+	{
+		ProductViewModel product = new ProductViewModel();
+
+		ProductViewModelSettings productSetting = new ProductViewModelSettings
+		{
+			LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+			CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+			CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+			ShopId = Pageview.Area.EcomShopId
+		};
+
+		if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+		{
+			product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+		}
+		else
+		{
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+
+		return product;
+	}
+}
+
+@{
+	int paragraphId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ParagraphId")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.Form.Get("ParagraphId")) : 0;
+	var paragraph = Dynamicweb.Services.Paragraphs?.GetParagraph(paragraphId) ?? null;
+	ParagraphInfoViewModel paragraphViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(paragraph);
+
+	int listItemSourcePageId = paragraphViewModel.Item.GetInt32("ListComponentSource");
+	var page = Dynamicweb.Services.Pages.GetPage(listItemSourcePageId);
+}
+
+
+@if (paragraphViewModel != null && page != null)
+{
+	string gridColumnSize = paragraphViewModel.Item.GetRawValueString("GridLayout", "3");
+	gridColumnSize = gridColumnSize == "2" ? "g-col-lg-6" : gridColumnSize;
+	gridColumnSize = gridColumnSize == "3" ? "g-col-lg-4" : gridColumnSize;
+	gridColumnSize = gridColumnSize == "4" ? "g-col-lg-3" : gridColumnSize;
+	gridColumnSize = gridColumnSize == "6" ? "g-col-lg-2" : gridColumnSize;
+	gridColumnSize = gridColumnSize == "1" ? "g-col-lg-12" : gridColumnSize;
+
+	var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page);
+	string listItemTheme = " theme " + pageViewModel.Item.GetRawValueString("Theme", string.Empty).Replace(" ", "").Trim().ToLower();
+	string listItemPadding = pageViewModel.Item.GetRawValueString("ContentPadding", string.Empty);
+	string listItemPaddingClass = string.Empty;
+
+	<div class="grid gap-3">
+		@if (Model.Products.Count > 0)
+		{
+			foreach (ProductViewModel product in Model.Products)
+			{
+				if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+				{
+					Dynamicweb.Context.Current.Items["ProductDetails"] = product;
+				}
+				else
+				{
+					Dynamicweb.Context.Current.Items.Add("ProductDetails", product);
+				}
+
+				<div class="@gridColumnSize @listItemTheme @listItemPaddingClass position-relative">
+					@RenderGrid(listItemSourcePageId)
+				</div>
+			}
+		}
+		else if (Pageview.IsVisualEditorMode)
+		{
+			if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+			{
+				Dynamicweb.Context.Current.Items["ProductDetails"] = GetDummyProduct();
+			}
+			else
+			{
+				Dynamicweb.Context.Current.Items.Add("ProductDetails", GetDummyProduct());
+			}
+
+			for (int i = 0; i < 4; i++) { 
+				<div class="g-col-6 @gridColumnSize @listItemTheme @listItemPaddingClass position-relative">
+					@RenderGrid(listItemSourcePageId)
+				</div>
+			}
+		}
+	</div>
+}
+
