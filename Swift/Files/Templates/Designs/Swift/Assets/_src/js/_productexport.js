@@ -16,8 +16,8 @@ const ProductExport = function () {
 			const container = clickedButton.closest(".js-recipients");
 			const fieldToCopy = container.querySelector(".js-recipient-field").cloneNode(true);
 
-			clickedButton.classList.add("d-none");
-			fieldToCopy.querySelector(".js-recipient-add-btn").classList.remove("d-none");
+			clickedButton.setAttribute("disabled", "");
+			fieldToCopy.querySelector(".js-recipient-add-btn").removeAttribute("disabled");
 			fieldToCopy.querySelector("input").id = "EmailRecipientExtra" + recipientsCount;
 			fieldToCopy.querySelector("input").value = "";
 			fieldToCopy.querySelector("label").for = "EmailRecipientExtra" + recipientsCount;
