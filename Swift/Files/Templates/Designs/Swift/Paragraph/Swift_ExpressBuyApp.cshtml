@@ -5,9 +5,13 @@
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 
 	string orderId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("OrderID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("OrderID") : "";
+
+	int frontPageId = Dynamicweb.Services.Pages.GetFirstPageForArea(Pageview.AreaID).ID;
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 }
 
-@if (!string.IsNullOrEmpty(orderId)) {
+@if (!string.IsNullOrEmpty(orderId))
+{
 	<script type="module">
 		window.addEventListener('load', (event) => {
 			swift.PageUpdater.Update(document.querySelector('#ExpressBuySearchForm'), true)
@@ -16,16 +20,37 @@
 }
 
 <div class="grid gap-0 min-vh-lg-100 h-lg-100 item_@Model.Item.SystemName.ToLower()">
-	
+
 	<section class="g-col-12 g-col-lg-8 p-3 p-lg-5 d-flex flex-column align-content-stretch order-last order-lg-first position-relative">
-		@Header()
-		@Search()
+		<header class="d-flex flex-grow-0 pb-3 pb-lg-0">
+			@if (string.IsNullOrEmpty(orderId))
+			{
+				@SearchHeader()
+			}
+			else
+			{
+				@OrderHeader(orderId)
+			}
+
+			<div class="d-flex align-items-start gap-2">
+				<a href="/Default.aspx?id=@frontPageId" class="btn btn-link pe-0">
+					<div class="d-flex gap-2 align-items-center lh-base">
+						<span class="icon-2">
+							@ReadFile(iconPath + "arrow-left.svg")
+						</span>
+						<span>@Translate("Leave")</span>
+					</div>
+				</a>
+			</div>
+		</header>
+
+		@Search(orderId)
 	</section>
 
 	<aside class="g-col-12 g-col-lg-4 order-first order-lg-last @(theme)">
 
 		<div class="h-100 p-3 p-lg-5">
-			@if(!Pageview.IsVisualEditorMode)
+			@if (!Pageview.IsVisualEditorMode)
 			{
 
 				<div id="CartSummaryContainer">
@@ -51,32 +76,24 @@
 </div>
 
 
-@helper Header()
+@helper SearchHeader()
 {
-	int frontPageId = Dynamicweb.Services.Pages.GetFirstPageForArea(Pageview.AreaID).ID;
-	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
-
-	<header class="d-flex flex-grow-0 pb-3 pb-lg-0">
-		<div class="flex-fill">
-			<h1 class="h3">@Translate("Express buy")</h1>
-			<p class="mb-0">@Translate("Use the search to find your products")</p>
-		</div>
-		<div class="d-flex align-items-start gap-2">
-			<a href="/Default.aspx?id=@frontPageId" class="btn btn-link pe-0">
-				<div class="d-flex gap-2 align-items-center lh-base">
-					<span class="icon-2">
-						@ReadFile(iconPath + "arrow-left.svg")
-					</span>
-					<span>@Translate("Leave")</span>
-				</div>
-			</a>
-		</div>
-	</header>
+	<div class="flex-fill">
+		<h1 class="h3">@Translate("Express buy")</h1>
+		<p class="mb-0">@Translate("Use the search to find your products")</p>
+	</div>
 }
 
-@helper Search()
+@helper OrderHeader(string orderId)
 {
-	string orderId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("OrderID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("OrderID") : "";
+	<div class="flex-fill">
+		<h1 class="h3">@Translate("Reorder for order"): @orderId</h1>
+		<p class="mb-0">@Translate("Review your order before adding it to the cart")</p>
+	</div>
+}
+
+@helper Search(string orderId)
+{
 	string url = !string.IsNullOrEmpty(orderId) ? $"/Default.aspx?OrderID={orderId}" : "/Default.aspx";
 
 	Dynamicweb.Frontend.LinkViewModel checkoutAnonymousPageId = Model.Item.GetLink("CheckoutAnonymousPageLink");
@@ -92,9 +109,9 @@
 	{
 		searchTerm = Dynamicweb.Context.Current.Request["q"];
 	}
-	
+
 	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
-	
+
 	<form class="position-sticky top-0" action="@url" id="ExpressBuySearchForm" data-response-target-element="ExpressBuyResultsContainer" onsubmit="event.preventDefault()" data-preloader="inline">
 		<div class="theme py-3 py-lg-4 w-100">
 			<input type="hidden" name="ID" value="@Model.PageID">
@@ -102,26 +119,28 @@
 			<input type="hidden" name="redirect" value="false">
 			<input type="hidden" name="isVariant" value="true,false">
 			<input type="hidden" name="defaultQuantityAsZero" value="@defaultQuantityAsZero">
-            @if (isLazyLoadingForProductInfoEnabled)
-            {
-	            <input type="hidden" name="getproductinfo" value="true">
-            }
+			@if (isLazyLoadingForProductInfoEnabled)
+			{
+				<input type="hidden" name="getproductinfo" value="true">
+			}
 
-			<div class="input-group">
-				<span class="position-absolute top-0 icon-2 px-3 d-flex align-items-center h-100 search-icon" style="z-index: 10;">
-					@ReadFile(iconPath + "search.svg")
-				</span>
-				<label for="search_@Model.ID" class="visually-hidden">@Translate("Search here")</label>
-				<input id="search_@Model.ID"
-					   class="form-control rounded-pill py-2 ps-5 pe-3"
-					   type="search"
-					   placeholder="@Translate("Search here")"
-					   autocomplete="off"
-					   maxlength="255"
-					   name="q"
-					   value="@searchTerm"
-					   onkeyup="swift.PageUpdater.Update(document.querySelector('#ExpressBuySearchForm'), true)">
-			</div>
+			@if (string.IsNullOrEmpty(orderId)) { 
+				<div class="input-group">
+					<span class="position-absolute top-0 icon-2 px-3 d-flex align-items-center h-100 search-icon" style="z-index: 10;">
+						@ReadFile(iconPath + "search.svg")
+					</span>
+					<label for="search_@Model.ID" class="visually-hidden">@Translate("Search here")</label>
+					<input id="search_@Model.ID"
+						   class="form-control rounded-pill py-2 ps-5 pe-3"
+						   type="search"
+						   placeholder="@Translate("Search here")"
+						   autocomplete="off"
+						   maxlength="255"
+						   name="q"
+						   value="@searchTerm"
+						   onkeyup="swift.PageUpdater.Update(document.querySelector('#ExpressBuySearchForm'), true)">
+				</div>
+			}
 		</div>
 	</form>
 
@@ -147,10 +166,10 @@
 		<input type="hidden" name="quoteCheckoutPageLink" value="@quoteCheckoutPageLink">
 		<input type="hidden" name="CartType" value="ExpressBuy">
 		@if (isLazyLoadingForProductInfoEnabled)
-        {
-            <input type="hidden" name="getproductinfo" value="true">
-        }
-            
+		{
+			<input type="hidden" name="getproductinfo" value="true">
+		}
+
 		<div id="ExpressBuyResultsContainer" class="grid gap-2">
 			@* Initial form for first load (We pass all the settings to the actual template) *@
 			@{
