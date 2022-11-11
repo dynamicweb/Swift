@@ -73,33 +73,39 @@
 	IList<string> relateFromProductIds = new List<string> { };
 	IList<string> relateFromGroupIds = new List<string> { };
 
+	ProductListViewModel relateToViewModel = Model.Item.GetValue<ProductListViewModel>("RelateTo");
+
 	//--- PRODUCTS ---
-	List<string> productsToRelateTo = Model.Item.GetString("RelateTo").Split(',').ToList();
-	if (productsToRelateTo != null)
+	if (sourceType == "variants" || sourceType == "frequently" || sourceType == "selected")
 	{
-		if (sourceType == "variants" || sourceType == "frequently" || sourceType == "selected")
+		foreach (var fromProduct in relateToViewModel.Products)
 		{
-			foreach (var productSelection in productsToRelateTo)
-			{
-				var productId = productSelection.Length > 2 ? productSelection.Remove(0, 2) : productSelection;
-				relateFromProductIds.Add(productId);
-			}
+			var productId = fromProduct.Id;
+			relateFromProductIds.Add(productId);
 		}
 	}
 
 	//--- GROUPS ---
-	var groupsToRelateTo = Model.Item.GetString("RelateTo").Split(',').ToList();
-	if (groupsToRelateTo != null)
+	if (sourceType == "most-sold" || sourceType == "trending" || sourceType == "latest")
 	{
-		if (sourceType == "most-sold" || sourceType == "trending" || sourceType == "latest")
+		var groupsToRelateTo = Model.Item.GetString("RelateTo").Split(',').ToList();
+
+		foreach (var fromGroup in groupsToRelateTo)
 		{
-			foreach (var fromGroup in groupsToRelateTo)
-			{
-				var groupId = fromGroup.Length > 2 ? fromGroup.Remove(0, 2) : fromGroup;
+			var groupId = fromGroup.Length > 2 ? fromGroup.Remove(0, 2) : fromGroup;
+
+			if (!fromGroup.Contains("p_")) {
 				relateFromGroupIds.Add(groupId);
 			}
 		}
+
+		foreach (var fromProduct in relateToViewModel.Products)
+		{
+			var groupId = fromProduct.PrimaryOrDefaultGroup.Id;
+			relateFromGroupIds.Add(groupId);
+		}
 	}
+
 
 	//Create group id collection and products id collection strings
 	string productIds = relateFromProductIds.Count > 0 ? string.Join(",", relateFromProductIds) : "";
@@ -116,12 +122,6 @@
 			groupIds = product.PrimaryOrDefaultGroup.Id;
 		}
 	}
-
-	//Set the parameters to the url
-	string linkParameters = "";
-	linkParameters += sourceType == "variants" ? "&isVariant=true" : "";
-
-	url += linkParameters;
 }
 
 @*Container element for the request*@
@@ -129,15 +129,36 @@
 {
 	<form method="post" action="@url" id="ComponentSliderProductsForm_@Model.ID" data-response-target-element="ComponentSliderProducts_@Model.ID" data-preloader="inline" data-update-url="false" class="item_@Model.Item.SystemName.ToLower()">
 		<input type="hidden" name="ParagraphId" value="@Model.ID" />
+		<input type="hidden" name="PageSize" value="32" />
 
 		@if (!string.IsNullOrEmpty(groupIds))
 		{
 			<input type="hidden" name="GroupId" value="@groupIds" />
 		}
-
-		@if (!string.IsNullOrEmpty(productIds))
+		@if (sourceType != "frequently" && !string.IsNullOrEmpty(productIds))
 		{
 			<input type="hidden" name="MainProductId" value="@productIds" />
+		}
+
+		@if (sourceType == "variants")
+		{
+			<input type="hidden" name="isVariant" value="true">
+		}
+		@if (sourceType == "most-sold")
+		{
+			<input type="hidden" name="SortBy" value="OrderCount">
+		}
+		@if (sourceType == "trending")
+		{
+			<input type="hidden" name="SortBy" value="OrderCountGrowth">
+		}
+		@if (sourceType == "frequently" && !string.IsNullOrEmpty(productIds))
+		{
+			<input type="hidden" name="BoughtWithProductIds" value="[@productIds]">
+		}
+		@if (sourceType == "latest")
+		{
+			<input type="hidden" name="SortBy" value="Created">
 		}
 	</form>
 
