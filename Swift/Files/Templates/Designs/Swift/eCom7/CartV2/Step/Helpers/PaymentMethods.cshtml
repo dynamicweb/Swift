@@ -1,5 +1,7 @@
 @helper RenderPaymentMethods()
 {
+	string paymentErrorMessage = GetString("Ecom:Cart.ValidationError.EcomCartPaymethodId.ErrorMessage");
+	
 	<div class="list-group" id="PaymentMethodsGroup">
 		@foreach (LoopItem method in GetLoop("Paymethods")) {
 			<label class="list-group-item list-group-item-action">
@@ -33,5 +35,85 @@
 				</dl>
 			</label>
 		}
+		@paymentErrorMessage
 	</div>
+	
+	LoopItem selectedPaymentMethodWithSavedCardSupport = GetLoop("Paymethods").FirstOrDefault(p => p.GetBoolean("Ecom:Cart.Paymethod.IsSelected") && p.GetBoolean("Ecom:Cart.Paymethod.SupportSavedCard") && Pageview.User != null);
+	if (selectedPaymentMethodWithSavedCardSupport != null)
+	{
+		bool cardIsSaved = !string.IsNullOrEmpty(GetString("Ecom:Order.SavedCardName"));
+		string cardIsSavedValue = cardIsSaved ? "true" : string.Empty;
+		string savedCardName = "";
+		
+		<div class="list-group" id="SavedCardsGroup">
+			<h4 class="fs-6 fw-normal mb-0 mt-4">@Translate("Saved Cards")</h4>
+		    <p class="fs-8 mb-3">@Translate("Pay with a saved card")</p>
+			
+			@foreach (LoopItem card in GetLoop("SavedCards"))
+			{
+				savedCardName = !card.GetBoolean("Ecom:SavedCard.IsSelected") ? card.GetString("Ecom:SavedCard.Name") : savedCardName;
+				
+				<label class="list-group-item list-group-item-action">
+					<div class="form-check fw-normal">
+						<input class="form-check-input" type="radio" name="EcomCartSavedCardID" id="EcomSavedCardID_@card.GetString("Ecom:SavedCard.ID")" value="@card.GetString("Ecom:SavedCard.ID")" checked="@card.GetBoolean("Ecom:SavedCard.IsSelected")" data-card-name="@card.GetString("Ecom:SavedCard.Name")"  onChange="selectSavedCard(this)">
+						<span class="form-check-label">@card.GetString("Ecom:SavedCard.Name")</span>
+					</div>
+				</label>
+			}
+			
+			<label class="list-group-item list-group-item-action">
+				<dl class="grid gap-0 gap-sm-3 align-items-center mb-0">
+					<dt class="g-col-4 fw-normal">
+						<div class="form-check">
+							<input class="form-check-input" type="radio" name="EcomCartSavedCardID" id="SaveNewCard" value="" checked="@cardIsSavedValue" onChange="selectNewCard(this)">
+							<span class="form-check-label fst-italic">@Translate("Save a new card")</span>
+						</div>
+					</dt>
+					<dd class="g-col-6 mb-0">
+						<input type="checkbox" class="d-none" name="EcomOrderSavedCardCreate" id="EcomOrderSavedCardCreate" value="true" checked="@cardIsSavedValue">
+						<input type="text" class="form-control" id="NewSavedCardName" value="@GetString("Ecom:Order.SavedCardName")" onchange="document.getElementById('MySavedCardName').value=this.value" placeholder="@Translate("New saved card name")">
+					</dd>
+				</dl>
+			</label>
+			
+			<input type="hidden" name="EcomOrderSavedCardName" id="MySavedCardName" value="@savedCardName"/>
+		</div>
+	}
 }
+
+<script>
+	function selectSavedCard(element) {
+		let cardName =element.getAttribute('data-card-name');
+		
+		resetRadioButton(element);
+		updateSavedCardName(cardName);
+		updateNewCardValue(false);
+	}
+	
+	function selectNewCard(element) {
+		resetRadioButton(element);
+		updateSavedCardName("");
+		updateNewCardValue(true);
+	}
+	
+	function resetRadioButton(element) {
+		let radioList = document.querySelector("input[name='EcomCartSavedCardID']");
+		for (let i = 0; i < radioList.length; i++) {
+			if (radioList[i].checked && radioList[i].id !== element.id) radioList[i].checked = false;
+		}
+	}
+	
+	function updateSavedCardName(value) {
+		let savedCardNameField = document.querySelector("#MySavedCardName");
+		if (savedCardNameField) {
+			savedCardNameField.value = value;
+		}
+	}
+	
+	function updateNewCardValue(value) {
+		let newCardField = document.querySelector("#EcomOrderSavedCardCreate");
+		if (newCardField) {
+			newCardField.checked = value;
+		}
+	}
+</script>
