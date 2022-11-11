@@ -2,6 +2,7 @@
 @using Dynamicweb.Frontend
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Environment
 
 @functions {
 	public ProductViewModel GetDummyProduct()
@@ -30,6 +31,11 @@
 }
 
 @{
+	string googleAnalyticsTrackingID = Pageview.AreaSettings.GetString("GoogleAnalyticsTrackingID");
+	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
+	var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
+	bool allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
+
 	int paragraphId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ParagraphId")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.Form.Get("ParagraphId")) : 0;
 	var paragraph = Dynamicweb.Services.Paragraphs?.GetParagraph(paragraphId) ?? null;
 	ParagraphInfoViewModel paragraphViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(paragraph);
@@ -41,7 +47,8 @@
 
 @if (paragraphViewModel != null && page != null)
 {
-	if (Model.Products.Any() || Pageview.IsVisualEditorMode) { 
+	if (Model.Products.Any() || Pageview.IsVisualEditorMode)
+	{
 		int modelId = paragraphViewModel.ID;
 
 		string navigationStyle = $"{paragraphViewModel.Item.GetRawValueString("NavigationStyle", "slider-nav-round")}";
@@ -101,6 +108,27 @@
 					<ul class="slider-container">
 						@foreach (ProductViewModel product in Model.Products)
 						{
+							string detailsPageLink = !string.IsNullOrEmpty(GetPageIdByNavigationTag("Shop").ToString()) ? GetPageIdByNavigationTag("Shop").ToString() : string.Empty;
+							string selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(product.PrimaryOrDefaultGroup.Id)?.Meta.PrimaryPage ?? string.Empty;
+							string detailsPageId = detailsPageLink != string.Empty ? detailsPageLink.Substring(detailsPageLink.LastIndexOf('=') + 1) : string.Empty;
+							string selectedDetailPageId = selectedDetailPage != string.Empty ? selectedDetailPage.Substring(selectedDetailPage.LastIndexOf('=') + 1) : string.Empty;
+							detailsPageId = string.IsNullOrEmpty(selectedDetailPage) ? detailsPageId : selectedDetailPageId;
+
+							string variantIdForLink = !string.IsNullOrEmpty(product.VariantId) ? $"&VariantID={product.VariantId}" : "";
+							variantIdForLink = string.IsNullOrEmpty(variantIdForLink) && !string.IsNullOrEmpty(product.DefaultVariantId) ? $"&VariantID={product.DefaultVariantId}" : variantIdForLink;
+
+							string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
+							link += $"&GroupID={product.PrimaryOrDefaultGroup.Id}";
+							link += $"&ProductID={product.Id}";
+							link += variantIdForLink;
+							link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link);
+
+							string clickProductLink = string.Empty;
+							if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowTracking)
+							{
+								clickProductLink = "onclick=\"return clickProductLink('" + @product.Id + "', '" + @product.Name + "', '" + @product.VariantName + "', '" + @product.Price.CurrencyCode + "', '" + @product.Price.Price + "')\"";
+							}
+
 							if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 							{
 								Dynamicweb.Context.Current.Items["ProductDetails"] = product;
@@ -111,10 +139,13 @@
 							}
 
 							<li class="d-flex flex-column @listItemTheme @listItemPaddingClass">
+								<a href="@link" class="stretched-link" @clickProductLink>
+									<span class="visually-hidden">@product.Name</span>
+								</a>
 								@RenderGrid(listItemSourcePageId)
 							</li>
 						}
-				
+
 						@if (!Model.Products.Any() && Pageview.IsVisualEditorMode)
 						{
 							if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
