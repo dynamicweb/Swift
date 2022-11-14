@@ -1,6 +1,23 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 @using System.IO
 
+@functions{
+	private Dynamicweb.Frontend.PageInfoViewModel GetCategory(int categoryId)
+	{
+		var categoryParagraph = Dynamicweb.Services.Pages.GetPage(categoryId);
+		var category = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(categoryParagraph);
+
+		return category;
+	}
+
+	private string GetCategorySticker(Dynamicweb.Frontend.PageInfoViewModel category)
+	{
+		var bg = category.Item.GetColor("StickerColorForeground");
+		var sticker = $"<span class=\"badge theme\" style=\"color: var(--swift-background-color); background-color: var(--swift-foreground-color);\">{category.Item.GetString("Title")}</span>";
+		return sticker;
+	}
+}
+
 @foreach (LoopItem item in GetLoop("ItemPublisher:Items.List"))
 {
 	string title = !string.IsNullOrEmpty(item.GetString("ItemPublisher:Item.Title")) && !item.GetBoolean("ItemPublisher:Item.HideTitle") ? item.GetString("ItemPublisher:Item.Title") : string.Empty;
@@ -46,9 +63,12 @@
 		case "image-right":
 			articleItemLayoutClass = !string.IsNullOrEmpty(coverImage) && renderContentWrapper ? "d-flex flex-column flex-lg-row" : "d-flex flex-column";
 			break;
+		case "compact-list":
+			articleItemLayoutClass = !string.IsNullOrEmpty(coverImage) && renderContentWrapper ? "d-flex flex-column flex-lg-row align-items-center" : "d-flex flex-column align-items-center";
+			break;
 	}
 
-	string orderReverseClass = articleItemLayout == "image-right" ? "order-first order-lg-last" : string.Empty;
+	string orderReverseClass = articleItemLayout == "image-right" || articleItemLayout == "compact-list" ? "order-first order-lg-last" : string.Empty;
 
 	string ratio = Pageview.CurrentParagraph.Item["ImageAspectRatio"] != null ? Pageview.CurrentParagraph.Item["ImageAspectRatio"].ToString() : string.Empty;
 	ratio = ratio != "0" ? ratio : string.Empty;
@@ -84,6 +104,7 @@
 
 	<article class="@articleItemLayoutClass@(gapClass)@(themeClass)@(shapeClass) overflow-hidden lift" itemscope itemtype="https://schema.org/CreativeWork">
 
+
 		@if (Path.GetExtension(coverImagePath).ToLower() == ".svg")
 		{
 			if (!renderContentWrapper)
@@ -92,20 +113,20 @@
 			}
 			else
 			{
-				coverImageWrapperClass = "pt-3 pt-md-4 w-100 ";
+				coverImageWrapperClass = articleItemLayout == "compact-list" ? "col-12 col-lg-4 pt-3 pt-md-4 " : "pt-3 pt-md-4 w-100 ";
 			}
 
 			<a class="@(coverImageWrapperClass)@(orderReverseClass)" title="@title" href="@link" tabindex="-1">
 				<div class="d-flex justify-content-center align-items-center overflow-hidden@(ratioCssClass)" @ratioVariable>
 					@ReadFile(coverImagePath)
 				</div>
-			</a> 
+			</a>
 		}
 		else
 		{
 			if (articleItemLayout == "image-top")
 			{
-				<a class="@(orderReverseClass)" title="@title" href="@link" tabindex="-1">
+				<a class="@(orderReverseClass) position-relative" title="@title" href="@link" tabindex="-1">
 					<figure class="overflow-hidden m-0 mx-auto@(ratioCssClass)" @ratioVariable>
 						@RenderImage(coverImagePath, title, cssPosition, articleItemLayout, imageObjectFit, gridSettings, carouselSettings)
 					</figure>
@@ -115,12 +136,12 @@
 			{
 				if (renderContentWrapper)
 				{
-					coverImageWrapperClass = "w-100 ";
+					coverImageWrapperClass = articleItemLayout == "compact-list" ? "col-12 col-lg-4 " : "w-100 ";
 				}
 
 				<a class="@(coverImageWrapperClass)@(orderReverseClass)" title="@title" href="@link" tabindex="-1">
 
-					<figure class="h-lg-100 overflow-hidden m-0 mx-auto ratio ratio-16x9">
+					<figure class="h-lg-100 overflow-hidden m-0 mx-auto ratio @(articleItemLayout == "compact-list" ? "ratio-4x3" : "ratio-16x9")">
 						@RenderImage(coverImagePath, title, cssPosition, articleItemLayout, imageObjectFit, gridSettings, carouselSettings)
 					</figure>
 				</a>
@@ -129,11 +150,11 @@
 
 		@if (renderContentWrapper)
 		{
-			<div class="d-flex flex-column flex-grow-1 gap-3 w-100@(themePadding)">
-				
+			<div class="d-flex flex-column flex-grow-1 @(articleItemLayout == "compact-list" ? "gap-2" : "gap-3") w-100@(themePadding)">
+
 				@if (renderArticleInfoWrapper)
 				{
-					<div class="d-flex align-items-center justify-content-between gap-3">
+					<div class="d-flex align-items-center justify-content-between gap-3@(articleItemLayout == "compact-list" ? " order-last" : string.Empty)">
 						@if (item.GetInteger("ItemPublisher:Item.Author") != 0)
 						{
 							int authorID = item.GetInteger("ItemPublisher:Item.Author");
@@ -170,9 +191,10 @@
 								</div>
 							</div>
 						}
+
 						@if (!string.IsNullOrEmpty(publishedDate))
 						{
-							
+
 							string articleDateTime = item.GetDate("ItemPublisher:Item.PublishedDate").Year + "-" + item.GetDate("ItemPublisher:Item.PublishedDate").Month + "-" + item.GetDate("ItemPublisher:Item.PublishedDate").Day;
 
 							<div class="d-flex align-items-center gap-1 fs-8 opacity-75">
@@ -183,9 +205,15 @@
 							</div>
 						}
 
+
 					</div>
 				}
-
+				@if (item.GetString("ItemPublisher:Item.SystemName") == "Swift_Article")
+				{
+					<div class="d-inline-flex">
+						@GetCategorySticker(GetCategory(Dynamicweb.Services.Pages.GetPage(item.GetInteger("ItemPublisher:Item.Field.PageId")).ParentPageId))
+					</div>
+				}
 				@if (!string.IsNullOrEmpty(title))
 				{
 					<a class="text-decoration-none text-decoration-underline-hover" href="@link">
@@ -257,15 +285,11 @@
 
 	string coverImagePathM = $"/Admin/Public/GetImage.ashx?image={coverImagePath}&width=640&quality=85&format=webp";
 	string coverImagePathL = $"/Admin/Public/GetImage.ashx?image={coverImagePath}&width=960&quality=85&format=webp";
-	string coverImagePathXL = $"/Admin/Public/GetImage.ashx?image={coverImagePath}&width=1280&quality=85&format=webp";
-	string coverImagePathXXL = $"/Admin/Public/GetImage.ashx?image={coverImagePath}&width=1920&quality=85&format=webp";
 	string imagePathFallBack = coverImagePathM;
 
 	<img srcset="
 			@coverImagePathM   640w,
-			@coverImagePathL   960w,
-			@coverImagePathXL  1280w,
-			@coverImagePathXXL 1920w"
+			@coverImagePathL   960w"
 		 src="@imagePathFallBack"
 		 sizes="(min-width: 992px) @imgSizeSelector, 100vw"
 		 loading="lazy"
