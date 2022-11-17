@@ -137,7 +137,11 @@ const VariantSelector = function () {
 					}
 				});
 
-				variantSelectorElement.querySelector("[name='variantid']").value = selections.join(".");
+				var variantIdElement = variantSelectorElement.querySelector("[name='variantid']");
+
+				if (variantIdElement) {
+					variantIdElement.value = selections.join(".");
+				}
 
 				var globalDispatcher = document.dispatchEvent(event);
 				var localDispatcher = variantSelectorElement.dispatchEvent(event);
