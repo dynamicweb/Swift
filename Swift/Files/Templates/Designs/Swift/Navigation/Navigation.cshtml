@@ -10,7 +10,7 @@
 	string theme = !string.IsNullOrEmpty(Model.Parameters["theme"].ToString()) ? Model.Parameters["theme"].ToString() : "";
 }
 
-<nav class="navbar navbar-expand d-none d-lg-flex nav-wrapper py-0 mx-n2 @navOrientation @navAlignment desktop">
+<nav class="navbar navbar-expand d-none d-lg-flex nav-wrapper py-0 mx-n2 position-static @navOrientation @navAlignment desktop">
 	@{@RenderFirstLevelNodes(Model.Nodes, theme, navOrientation)}
 </nav>
 
@@ -29,6 +29,7 @@
 
 		@foreach (var node in nodes)
 		{
+			string linkHref = node.Link;
 			var page = Dynamicweb.Services.Pages.GetPage(node.PageId);
 			string pageType = page.ItemType;
 
@@ -37,26 +38,33 @@
 			bool countrySelector = page.Item["CountrySelector"] != null ? Convert.ToBoolean(page.Item["CountrySelector"].ToString()) : false;
 			bool languageSelector = page.Item["LanguageSelector"] != null ? Convert.ToBoolean(page.Item["LanguageSelector"].ToString()) : false;
 			bool currencySelector = page.Item["CurrencySelector"] != null ? Convert.ToBoolean(page.Item["CurrencySelector"].ToString()) : false;
+			string dropdownAttributes = string.Empty;
+			string dropdownClasses = string.Empty;
 
 			var hasChildren = node.Nodes.Count() > 0 || pageType == "Swift_SignIn";
-			string dropdownAttributes = hasChildren ? " role=\"button\" data-bs-toggle=\"dropdown\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
+
+			if(hasChildren && !showOnlyFirstNavLevel)
+			{
+				linkHref = "#";
+				dropdownAttributes = hasChildren ? " role=\"button\" aria-haspopup=\"true\" aria-expanded=\"false\"" : "";
+			}
 
 			string nodeId = !string.IsNullOrEmpty(node.GroupId) ? "Navigation_" + node.GroupId + "_" + Pageview.CurrentParagraph.ID : "Navigation_Page_Desktop_" + node.PageId.ToString() + "_" + Pageview.CurrentParagraph.ID;
 
 			if (pageType != "Swift_Preferences")
 			{
-				<li class="nav-item@(hasChildren ? " dropdown" : "")">
+				<li class="nav-item@(hasChildren ? " dropdown js-dropdown has-submenu position-static" : "")">
 					@if (node.IsClickable)
 					{
-						<a class="nav-link nav-link-clean text-nowrap nav-link-underline @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@(hasChildren ? "#" : node.Link)" @dropdownAttributes @(node.IsActive ? " aria-current='page'" : "") id="@nodeId">
+						<a href="@linkHref" class="nav-link nav-link-clean text-nowrap nav-link-underline @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle js-dropdown-toggle" : "")" @dropdownAttributes @(node.IsActive ? " aria-current='page'" : "") id="@nodeId">
 							@{@RenderNavigationItem(node)}
 						</a>
 					}
-					else
+					else 
 					{
-				<span class="nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing" @dropdownAttributes id="@nodeId">
-					@{@RenderNavigationItem(node)}
-				</span>
+						<span class="nav-link nav-link-clean text-nowrap @linkFontSize @linkFontWeight @linkCasing@(hasChildren ? " dropdown-toggle js-dropdown-toggle" : "")" @dropdownAttributes id="@nodeId">
+							@{@RenderNavigationItem(node)}
+						</span>
 					}
 
 					@if (hasChildren)
@@ -113,10 +121,10 @@
 
 					<li class="nav-item@(hasChildren ? " dropdown" : "")">
 						<form action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
-							<input type="hidden" name="CurrentPageID" value="@Pageview.ID" />
-							<input type="hidden" name="GroupID" value="@groupId" />
-							<input type="hidden" name="ProductID" value="@productId" />
-							<input type="hidden" name="VariantID" value="@variantId" />
+							<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+							<input type="hidden" name="GroupID" value="@groupId">
+							<input type="hidden" name="ProductID" value="@productId">
+							<input type="hidden" name="VariantID" value="@variantId">
 							<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link nav-link-clean text-nowrap border-0 @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal" id="OpenPreferences_@Pageview.CurrentParagraph.ID">
 								@if (languageSelector)
 								{
@@ -232,11 +240,11 @@
 
 				<div class="nav-item">
 					<form action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
-						<input type="hidden" name="Layout" value="modal" />
-						<input type="hidden" name="CurrentPageID" value="@Pageview.ID" />
-						<input type="hidden" name="GroupID" value="@groupId" />
-						<input type="hidden" name="ProductID" value="@productId" />
-						<input type="hidden" name="VariantID" value="@variantId" />
+						<input type="hidden" name="Layout" value="modal">
+						<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+						<input type="hidden" name="GroupID" value="@groupId">
+						<input type="hidden" name="ProductID" value="@productId">
+						<input type="hidden" name="VariantID" value="@variantId">
 						<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link nav-link-clean text-nowrap border-0 @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
 							@if (languageSelector)
 							{
@@ -392,14 +400,14 @@
 
 	<li class="nav-item dropdown">
 		<form class="d-none d-lg-block" action="/Default.aspx?ID=@node.PageId" data-response-target-element="@(preferencesType)Dropdown_@Pageview.CurrentParagraph.ID" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
-			<input type="hidden" name="Type" value="@preferencesType" />
-			<input type="hidden" name="CurrentPageID" value="@Pageview.ID" />
-			<input type="hidden" name="GroupID" value="@groupId" />
-			<input type="hidden" name="ProductID" value="@productId" />
-			<input type="hidden" name="VariantID" value="@variantId" />
-			<input type="hidden" name="FontSize" value="@linkFontSize" />
-			<input type="hidden" name="FontWeight" value="@linkFontWeight" />
-			<input type="hidden" name="Casing" value="@linkCasing" />
+			<input type="hidden" name="Type" value="@preferencesType">
+			<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+			<input type="hidden" name="GroupID" value="@groupId">
+			<input type="hidden" name="ProductID" value="@productId">
+			<input type="hidden" name="VariantID" value="@variantId">
+			<input type="hidden" name="FontSize" value="@linkFontSize">
+			<input type="hidden" name="FontWeight" value="@linkFontWeight">
+			<input type="hidden" name="Casing" value="@linkCasing">
 
 			<a id="@nodeId" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="nav-link nav-link-clean text-nowrap nav-link-underline @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "") dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(node.IsActive ? " aria-current='page'" : "")>
 				@{@RenderNavigationItem(node, preferencesType)}
@@ -411,11 +419,11 @@
 		</form>
 
 		<form class="d-block d-lg-none" action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
-			<input type="hidden" name="Layout" value="modal" />
-			<input type="hidden" name="CurrentPageID" value="@Pageview.ID" />
-			<input type="hidden" name="GroupID" value="@groupId" />
-			<input type="hidden" name="ProductID" value="@productId" />
-			<input type="hidden" name="VariantID" value="@variantId" />
+			<input type="hidden" name="Layout" value="modal">
+			<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+			<input type="hidden" name="GroupID" value="@groupId">
+			<input type="hidden" name="ProductID" value="@productId">
+			<input type="hidden" name="VariantID" value="@variantId">
 			<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link nav-link-clean text-nowrap border-0 @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
 				@{@RenderNavigationItem(node, preferencesType)}
 			</button>

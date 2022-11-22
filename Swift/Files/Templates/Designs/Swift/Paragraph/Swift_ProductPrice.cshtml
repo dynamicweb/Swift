@@ -37,6 +37,9 @@
 	bool isErpConnectionDown = !Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsWebServiceConnectionAvailable();
 	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && isErpConnectionDown;
 
+	bool showInformativePrice = Model.Item.GetBoolean("ShowInformativePrice");
+	string unitId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("UnitId")) ? Dynamicweb.Context.Current.Request.Form.Get("UnitId") : string.Empty;
+
 	string priceFontSize = Model.Item.GetRawValueString("PriceSize", "fs-2");
 	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
 	string layout = Model.Item.GetRawValueString("Layout", "horizontal");
@@ -80,8 +83,16 @@
 	}
 
 	<div class="@textAlign @liveInfoClass item_@Model.Item.SystemName.ToLower()" data-product-id="@product.Id" @productInfoFeed>
+		@if (showInformativePrice && product.PriceInformative.Price != 0) 
+		{ 
+			<div class="opacity-50">
+				<span>@Translate("RRP") </span>
+				<span class="text-decoration-line-through text-price">@product.PriceInformative.PriceFormatted</span>
+			</div>
+		}
 		<div class="@priceFontSize m-0 d-flex @flexDirection @flexGap @horizontalAlign" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
 			<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
+
 
 			@if (showPricesWithVat == "false" && !neverShowVat)
 			{
@@ -92,7 +103,7 @@
 				}
 				else
 				{
-					string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
+					string beforePrice = !string.IsNullOrEmpty(unitId) ? product.GetPrice(unitId).PriceBeforeDiscount.PriceWithoutVatFormatted : product.PriceBeforeDiscount.PriceWithoutVatFormatted;
 
 					<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
 					if (product.Price.Price != product.PriceBeforeDiscount.Price)
@@ -110,7 +121,7 @@
 				}
 				else
 				{
-					string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
+					string beforePrice = !string.IsNullOrEmpty(unitId) ? product.GetPrice(unitId).PriceBeforeDiscount.PriceFormatted : product.PriceBeforeDiscount.PriceFormatted;
 
 					<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
 
@@ -128,12 +139,13 @@
 				if (isLazyLoadingForProductInfoEnabled && !Pageview.IsVisualEditorMode)
 				{
 					<span class="text-price js-text-price">
-						<div class="spinner-border" role="status"></div>
+						<span class="spinner-border" role="status"></span>
 					</span>
 				}
 				else
 				{
-					string price = product.Price.PriceWithoutVatFormatted;
+					string price = !string.IsNullOrEmpty(unitId) ? product.GetPrice(unitId).Price.PriceWithoutVatFormatted : product.Price.PriceWithoutVatFormatted;
+
 					if (product?.VariantInfo?.VariantInfo != null)
 					{
 						priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
@@ -153,12 +165,13 @@
 				if (isLazyLoadingForProductInfoEnabled && !Pageview.IsVisualEditorMode)
 				{
 					<span class="text-price js-text-price">
-						<div class="spinner-border" role="status"></div>
+						<span class="spinner-border" role="status"></span>
 					</span>
 				}
 				else
 				{
-					string price = product.Price.PriceFormatted;
+					string price = !string.IsNullOrEmpty(unitId) ? product.GetPrice(unitId).Price.PriceFormatted : product.Price.PriceFormatted;
+
 					if (product?.VariantInfo?.VariantInfo != null)
 					{
 						priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
@@ -179,7 +192,7 @@
 				Uri url = Dynamicweb.Context.Current.Request.Url;
 			}
 
-			<link itemprop="url" href="@url" />
+			<link itemprop="url" href="@url">
 
 			@{
 				bool IsNeverOutOfStock = product.NeverOutOfstock;
@@ -212,7 +225,8 @@
 			}
 			else
 			{
-				string price = product.Price.PriceWithVatFormatted;
+				string price = !string.IsNullOrEmpty(unitId) ? product.GetPrice(unitId).Price.PriceWithVatFormatted : product.Price.PriceWithVatFormatted;
+
 				if (product?.VariantInfo?.VariantInfo != null)
 				{
 					priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";

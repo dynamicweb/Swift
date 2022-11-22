@@ -1,4 +1,57 @@
 # Changelog
+# v1.15.0
+## [1.15.0] - 27-10-2022
+
+## Bugfixes
+* Checkout: Hide sign in button is sign in page field is empty
+* Checkout: Fix date format when using flatpickr - remove value from input settings it with js
+* Customer center: Updated OrderDetails.cshtml for correct Order Id tag name on OrderDetails.cshtml
+* General: W3C validation error, Remove self closing tags 
+* General: Open graph, fix wrong meta tags and remove deprecated twitter:image:alt 
+* General: Add disabled property to quantity selectors if AddToCart buttons have on RelatedProductList, VariantSelector, Swift_ProductAddToCart, Swift_PtroductDetailsInfo, Swift_ProductListCompactView and Swift_productListListView
+* General: Outlined item type icons 
+* General: Fixed validation errors, Element div not allowed as child of element button in this context
+* General: add method attribute to login form
+* Itemtypes: Mega menu, remove duplicate ids
+* Itemtypes: Swift_Slider.cshtml, fixed possible merge error leaking code to the view
+* Itemtypes: Preferences, Butten not translated correct
+* Itemtypes: Product specification, added null check in comma list
+* Itemtypes: Article list publish date is not rendered + added missing Schema.org microdata
+* Itemtypes: Product List Facets and Product List Selected Facets: Fixed missing translation
+* Itemtypes: Article header, fixed broken default user icon when there is no user image
+* Itemtypes: Product Group List, Swap icons to horizontal alignment icons on the settings
+* Itemtypes: Changed name from GENERAL to Item type name + settings.
+* Itemtypes: Related product list, Quantity input field is broken in list, set the width of the column based on the width of the button
+* Itemtypes: Media, remove documents from the slideshow loop in modals
+* Itemtypes: Slider, ratio icon: Switch original to fill
+* Itemtypes: Enable Static Variants on ProductDetail and ProductComponents
+* Itemtypes: typeahead, adjusted delay in typeahead dropdown + removed disabling of input fields
+* Itemtypes: Product components - Product list item repeater - Removed double links
+* Customer center: Null check on RMA's default group id
+* Itemtypes: Product component, Product Add To Cart - Buttons now have same sizes
+* Itemtypes: ProductComponentEdit and ProductComponentParagraph - No theme is set to default theme
+* Itemtypes: Fixed links in footer with subpages
+* Itemtypes: Ecommerce badges, Optimize performance
+* Itemtypes: Slider - Removed padding from slider when theme is selected, and removed padding for every slider item
+* Itemtypes: Search icon is now back to its usual size, it was suddenly 14x14  instead of 21x21
+* Itemtypes: Navigation and mega menu, fixed dropdown not rendering when full-width row is selected
+
+## Changes
+* Repository: Reorganize repository settings
+
+## Added
+* Generel: Possible to select own custom fonts in Swift Branding. [Read the set up guide](https://doc.dynamicweb.com/swift/setup-project/design/branding#sideNavTitle1-3)
+* General: Added option to disable wide breakpoints in website settings. Define if you want to have entire website to be wide width or narrow width
+* General: Add Authorize.Net payment provider templates
+* General: Correct settings for user and group types in User area
+* Itemtypes: Product group slider, added option for current group id + hide output if ! count > 0
+* Itemtypes: Units selector added on the add to cart component - Part 1
+* Itemtypes: Product component, Header - added heading levels to product components
+* Itemtypes: Article header, Added space around setting
+* Itemtypes: Allow main product to be added to the favorite list on Product List Grid View, Product Slider, Default Product Image, Product Details Info, Product List Compact View, Product List List View, Product Add To Cart, Product Add to Favorites
+
+## Remove 
+* Itemtypes: Remove Carousel from Articles
 
 # v1.14.1
 ## [1.14.1] - 28-09-2022

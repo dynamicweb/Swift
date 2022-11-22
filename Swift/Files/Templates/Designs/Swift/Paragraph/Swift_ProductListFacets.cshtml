@@ -99,14 +99,14 @@
 	//Mobile
 	<div class="d-block d-lg-none mt-lg-0 @(contentPadding)@(theme) FacetsForm_Mobile_@Model.Item.SystemName.ToLower()_@Model.ID">
 		<button type="button" class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#FacetsModal">
-			<div class="d-flex align-items-center">
+			<span class="d-flex align-items-center">
 				<span class="flex-grow-1 text-start">
 					@Translate("Filter") @selectedFacetsLabel
 				</span>
 				<span class="icon-2">
 					@ReadFile(iconPath + "sliders.svg")
 				</span>
-			</div>
+			</span>
 		</button>
 
 		<form method="post" action="@url" data-response-target-element="content" class="modal" id="FacetsModal" tabindex="-1" aria-hidden="false">
@@ -171,11 +171,11 @@ else
 	contentPadding = contentPadding == "none" ? " px-0 py-2" : contentPadding;
 	contentPadding = contentPadding == "small" ? " px-3 py-2" : contentPadding;
 
-	<input type="hidden" name="PageSize" value="@pageSize" />
+	<input type="hidden" name="PageSize" value="@pageSize">
 
 	if (!string.IsNullOrEmpty(searchQuery)) { 
-		<input type="hidden" name="q" value="@searchQuery" />
-		<input type="hidden" name="SearchLayout" value="@searchLayout" />
+		<input type="hidden" name="q" value="@searchQuery">
+		<input type="hidden" name="SearchLayout" value="@searchLayout">
 	}
 
 	if (Model.Item.GetBoolean("EnableGroupNavigation"))
@@ -239,18 +239,33 @@ else
 		foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
 		{
 			string border = groupCount != totalGroups ? "border-bottom" : "";
-
+			
 			foreach (FacetViewModel facet in facetGroup.Facets)
 			{
+				string collapseClass = string.Empty;
+				string showClass = " show";
+				string ariaExpanded = "true";
+				var expandedFacetGroups = Model.Item.GetRawValueString("ExpandFacetGroups", "all"); 
+
+				if (expandedFacetGroups != "all" && System.Text.RegularExpressions.Regex.IsMatch(expandedFacetGroups, "([0-9])"))
+				{
+					if (groupCount >= Dynamicweb.Core.Converter.ToInt32(expandedFacetGroups))
+					{
+						collapseClass = " collapsed";
+						showClass = string.Empty;
+						ariaExpanded = "false";
+					}
+				}
+
 				if (facet.Options.Count() > 0)
 				{
 					if (layout == "vertical") {
 						<div class="@border@(contentPadding)@(@groupsTheme)">
-							<div class="d-flex" data-bs-toggle="collapse" data-bs-target="#FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID" role="button" aria-expanded="true" aria-controls="FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID">
+							<div class="d-flex@(collapseClass)" data-bs-toggle="collapse" data-bs-target="#FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID" role="button" aria-expanded="@ariaExpanded" aria-controls="FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID">
 								<h2 class="opacity-85 m-0 flex-fill h6 my-2">@Translate(facet.Name)</h2>
 								<div class="my-auto collapse-chevron-icon"></div>
 							</div>
-							<div class="collapse show" id="FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID">
+							<div class="collapse@(showClass)" id="FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID">
 								@foreach (FacetOptionViewModel facetOption in facet.Options.OrderByDescending(facetOption => facetOption.Name))
 								{
 									string renderType = facet.RenderType;
@@ -279,7 +294,7 @@ else
 							}
 						}
 
-						string label = selectedFacetsInGroup > 0 ? facet.Name + "<span class=\"badge bg-dark opacity-50 text-white ms-2\">" + selectedFacetsInGroup + "</span>" : facet.Name;	
+						string label = selectedFacetsInGroup > 0 ? @Translate(facet.Name) + "<span class=\"badge bg-dark opacity-50 text-white ms-2\">" + selectedFacetsInGroup + "</span>" : @Translate(facet.Name);	
 
 						<div class="dropdown @hideSelector js-facets-selector">
 							  <button class="btn @(groupsTheme) dropdown-toggle" type="button" id="FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID" data-bs-toggle="dropdown" aria-expanded="false">
@@ -441,14 +456,18 @@ else
 	}
 
 	<div class="colorbox">
-		<input type="checkbox" onclick="swift.ProductList.Update(event)" class="@disabled @selected" name="@facet.QueryParameter" value="[@facetOption.Value]" data-filter-value="@facetLabel" @selected title="@facetOption.Label">
-		@if (colorCode.Contains("#"))
-		{
-			<span class="colorbox-background" style="background-color: @colorCode"></span>
-		}
-		else
-		{
-			<img class="colorbox-background" src="/Admin/Public/GetImage.ashx?width=25&height=25&image=@image" />
-		}
+		<label>
+			<input type="checkbox" onclick="swift.ProductList.Update(event)" class="@disabled @selected" name="@facet.QueryParameter" value="[@facetOption.Value]" data-filter-value="@facetLabel" @selected title="@facetOption.Label">
+			@if (colorCode.Contains("#"))
+			{
+				<span class="colorbox-background" style="background-color: @colorCode"></span>
+				<span class="visually-hidden">@facetOption.Label</span>
+			}
+			else
+			{
+				<img class="colorbox-background" src="/Admin/Public/GetImage.ashx?width=25&height=25&image=@image">
+				<span class="visually-hidden">@facetOption.Label</span>
+			}
+		</label>
 	</div>
 }
