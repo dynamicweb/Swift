@@ -132,6 +132,11 @@ const Places = function () {
 					regionField.value = region;
 				}
 
+				const stateField = document.querySelector("#" + fieldPrefix + "State");
+				if (stateField != null) {
+					stateField.value = region;
+				}
+
 				var countryField = document.querySelector("#" + fieldPrefix + "Country");
 				countryField = countryField == null ? document.querySelector("#" + fieldPrefix + "CountryCode") : countryField;
 				if (countryField != null) {
