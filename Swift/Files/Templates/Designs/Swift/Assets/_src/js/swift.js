@@ -1,4 +1,5 @@
 import * as bootstrap from 'bootstrap';
+import * as htmx from 'htmx.org';
 import { Favorites } from './_favorites';
 import { Cart } from './_cart';
 import { Scroll } from './_scroll';
@@ -16,6 +17,7 @@ import { LiveProductInfo } from './_live-product-info';
 
 //Bootstrap
 window.bootstrap = bootstrap;
+window.htmx = htmx;
 
 //Swift modules
 const swift = function () {
@@ -39,6 +41,12 @@ const swift = function () {
 export { swift };
 
 window.swift = swift;
+
+htmx.logger = function (elt, event, data) {
+	if (console) {
+		console.log(event, elt, data);
+	}
+}
 
 //Popstate
 window.onpopstate = function (event) {
