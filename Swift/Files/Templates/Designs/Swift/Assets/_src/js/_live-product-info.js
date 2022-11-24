@@ -12,6 +12,8 @@ const LiveProductInfo = function () {
 			showIfAttr: "data-show-if",
 			innerSliderId: "tns1-iw",
 			loaderClass: "spinner-border",
+			repositoryName: "Products",
+			queryName: "Products"
 		},
 
 		selectors: {
@@ -39,17 +41,18 @@ const LiveProductInfo = function () {
 		},
 		
 		init: function() {
-			LiveProductInfo.UpdateProductInfo();
+            const self = this;
+            self.UpdateProductInfo();
 
 			// NOTE: don't have a custom event that is fired after slider is loaded
 			// https://doc.dynamicweb.com/forum/cms-standard-features/cms-standard-features/js-event-for-loaded-related-products
-			const relatedProducts = document.querySelector(LiveProductInfo.selectors.relatedProducts);
+			const relatedProducts = document.querySelector(self.selectors.relatedProducts);
 			if (relatedProducts) {
 				const observer = new MutationObserver(function (mutationsList, observer) {
 					mutationsList.forEach(function (m) {
-						if (m.target.id === LiveProductInfo.config.innerSliderId) {
+						if (m.target.id === self.config.innerSliderId) {
 							observer.disconnect();
-							LiveProductInfo.UpdateProductInfo(relatedProducts);
+							self.UpdateProductInfo(relatedProducts);
 						}
 					})
 				});
@@ -87,8 +90,22 @@ const LiveProductInfo = function () {
 				if (uniqueFeeds.includes(feedUrl)) return;
 				uniqueFeeds.push(feedUrl);
 				
-				fetch(feedUrl, {
-					method: "GET"
+				const query = new URLSearchParams(self.SanitizeParameters(feedUrl.split('?')[1]));
+				const pageSize = self.GetValue(parseInt(query.get('PageSize')), 100);
+				const productIds = self.GetValue(query.getAll('ProductIds').join(','), el.getAttribute(self.config.productIdAttr));
+				query.delete('ProductIds');
+				query.delete('PageSize');
+		
+				const path = '/dwapi/ecommerce/products?RepositoryName=' + swift.LiveProductInfo.config.repositoryName + '&QueryName=' + swift.LiveProductInfo.config.queryName;
+				const url = path + '&' + query.toString();
+		
+				fetch(url, {
+					headers: {
+						'Accept': 'application/json',
+						'Content-Type': 'application/json'
+					},
+					method: 'POST',
+					body: JSON.stringify({ PageSize: pageSize, Parameters : { MainProductID : productIds } })
 				})
 					.then(function (response) {
 						return response.json()
@@ -106,34 +123,53 @@ const LiveProductInfo = function () {
 			const self = this;
 			liveInfoContainers.forEach(function (container) {
 				self.product = self.GetProductData(container, data)
-				const mainProduct = self.product;
-				if (!mainProduct) return;
+				const product = self.product;
+				if (!product) return;
 
-				const variantId = container.getAttribute(self.config.productVariantIdAttr);
-				const product = variantId === "" ? mainProduct : GetVariantInfo(mainProduct, variantId);
-				
+				removeLoaders(container);
+				setProductPrice(container, product);
+				setPriceMatrix(container, product);
+				setStockLevel(container, product);
+				setExpectedDelivery(container, product);
+				updateVariantSelector(container);
+			});
+
+			function removeLoaders(container) {
 				container.querySelectorAll(self.selectors.loader).forEach(function (el){
 					el.classList.remove(self.config.loaderClass);
 				});
+			}
 
-				if (self.product.Price != null && container.querySelectorAll(self.selectors.price)) {
-					let price = product.Price.PriceFormatted;
+			function setProductPrice(container, product) {
+				if (product.Price != null && container.querySelectorAll(self.selectors.price)) {
+					setPrice(container, product);
+					setPriceWithVat(container, product);
+					setPriceBeforeDiscount(container, product);
+				}
 
-					if(product.VariantInfo != null)
-					{
-						if(product.VariantInfo.PriceMin != null && product.VariantInfo.PriceMax != null && product.VariantInfo.PriceMin.Price != product.VariantInfo.PriceMax.Price)
+				function setPrice(container, product) {
+					const priceContainers = container.querySelectorAll(self.selectors.price);
+					if (priceContainers) {
+						let price = product.Price.PriceFormatted;
+						if(product.VariantInfo != null && isPdpWithVariantId())
 						{
-							price = product.VariantInfo.PriceMin.PriceFormatted + " - " + product.VariantInfo.PriceMax.PriceFormatted;
+							if(product.VariantInfo.PriceMin != null && product.VariantInfo.PriceMax != null && product.VariantInfo.PriceMin.Price != product.VariantInfo.PriceMax.Price)
+							{
+								price = product.VariantInfo.PriceMin.PriceFormatted + " - " + product.VariantInfo.PriceMax.PriceFormatted;
+							}
 						}
+						self.UpdateValue(priceContainers, price);
 					}
 
-					self.UpdateValue(container.querySelectorAll(self.selectors.price), price);
 					self.UpdateDataAttribute(container.querySelectorAll(self.selectors.priceFormatted), self.config.priceFormattedAttr, product.Price.PriceFormatted);
 					self.UpdateDataAttribute(container.querySelectorAll(self.selectors.priceProp), self.config.contentAttr, product.Price.Price);
+				}
 
-					if (product.Price.PriceWithVat != null) {
+				function setPriceWithVat(container, product) {
+					const pricesWithVatContainers = container.querySelectorAll(self.selectors.priceWithVat);
+					if (product.Price.PriceWithVat != null && pricesWithVatContainers) {
+
 						let priceWithVat = product.Price.PriceWithVatFormatted;
-
 						if(product.VariantInfo != null)
 						{
 							if(product.VariantInfo.PriceMin != null && product.VariantInfo.PriceMax != null && product.VariantInfo.PriceMin.PriceWithVat != product.VariantInfo.PriceMax.PriceWithVat)
@@ -143,16 +179,42 @@ const LiveProductInfo = function () {
 						}
 
 						priceWithVat = getDataSuffix(container, self.selectors.priceWithVat, priceWithVat);
-						self.UpdateValue(container.querySelectorAll(self.selectors.priceWithVat), priceWithVat, true);
-					}
-
-					if (product.PriceBeforeDiscount != null) {
-						self.UpdateValue(container.querySelectorAll(self.selectors.priceBeforeDiscount), product.PriceBeforeDiscount.PriceFormatted);
-						self.ShowConditionalElement(container.querySelectorAll(self.selectors.priceBeforeDiscount));
+						self.UpdateValue(pricesWithVatContainers, priceWithVat, true);
 					}
 				}
 
-				if (product.Prices != null && product.Prices.length > 0 && priceContainer.querySelectorAll(self.selectors.productPriceQuantity) && priceContainer.querySelectorAll(self.selectors.productPricePrice)) {
+				function setPriceBeforeDiscount(container, product) {
+					const priceBeforeDiscountContainers = container.querySelectorAll(self.selectors.priceBeforeDiscount);
+					if (product.PriceBeforeDiscount != null && priceBeforeDiscountContainers) {
+						self.UpdateValue(priceBeforeDiscountContainers, product.PriceBeforeDiscount.PriceFormatted);
+						self.ShowConditionalElement(priceBeforeDiscountContainers);
+					}
+				}
+
+				function getDataSuffix(container, selector, value) {
+					const subContainer = container.querySelector(selector);
+					if (!subContainer) return value;
+
+					const suffix = subContainer.getAttribute("data-suffix");
+					if (suffix === "") return value;
+
+					return value + " " + suffix;
+				}
+
+				function isPdpWithVariantId() {
+					let isPdpWithVariantId = false;
+					const linkElement = document.querySelector("link[itemprop='url']");
+					if (linkElement) {
+						const query = new URLSearchParams(linkElement.getAttribute("href"));
+						const variantId = self.GetValue(parseInt(query.get('VariantID')), "");
+						isPdpWithVariantId = variantId === "";
+					}
+					return isPdpWithVariantId;
+				}
+			}
+
+			function setPriceMatrix(container, product) {
+				if (product.Prices != null && product.Prices && container.querySelectorAll(self.selectors.productPriceQuantity) && container.querySelectorAll(self.selectors.productPricePrice)) {
 					let productPricesContainers = container.querySelectorAll(self.selectors.productPricesContainer);
 
 					productPricesContainers.forEach(function (productPricesTopContainer){
@@ -172,16 +234,14 @@ const LiveProductInfo = function () {
 
 					self.ShowConditionalElement(productPricesContainers);
 				}
+			}
 
-				if (product.StockLevel != null && container.querySelectorAll(self.selectors.stock)) {
+			function setStockLevel(container, product) {
+				const stockContainers = container.querySelectorAll(self.selectors.stock);
+				if (product.StockLevel != null && stockContainers) {
 					let stockLevel = product.StockLevel > 100 ? "100+" : product.StockLevel;
-					self.UpdateValue(container.querySelectorAll(self.selectors.stock), stockLevel);
+					self.UpdateValue(stockContainers, stockLevel);
 					self.ShowConditionalElement(container.querySelectorAll(self.selectors.stockMessages));
-				}
-
-				if (product.ExpectedDelivery != null && container.querySelectorAll(self.selectors.expectedDelivery)) {
-					self.UpdateValue(container.querySelectorAll(self.selectors.expectedDelivery), product.ExpectedDelivery);
-					self.ShowConditionalElement(container.querySelectorAll(self.selectors.expectedDelivery));
 				}
 
 				if (product.NeverOutOfstock || (product.StockLevel != null && product.StockLevel > 0)) {
@@ -190,29 +250,30 @@ const LiveProductInfo = function () {
 						addToCart.removeAttribute("disabled");
 					}
 				}
+			}
 
-				let variantSelector = container.querySelector(self.selectors.variantSelector);
+			function setExpectedDelivery(container, product) {
+				const expectedDeliveryContainers = container.querySelectorAll(self.selectors.expectedDelivery);
+				if (product.ExpectedDelivery != null && expectedDeliveryContainers) {
+					self.UpdateValue(expectedDeliveryContainers, product.ExpectedDelivery);
+					self.ShowConditionalElement(container.querySelectorAll(self.selectors.expectedDelivery));
+				}
+			}
+
+			function updateVariantSelector(container) {
+				const variantSelector = container.querySelector(self.selectors.variantSelector);
 				if(variantSelector != null){
 					variantSelector.removeAttribute("disabled");
 				}
-			});
-
-			function getDataSuffix(container, selector, value) {
-				const subContainer = container.querySelector(selector);
-				if (!subContainer) return value;
-
-				const suffix = subContainer.getAttribute("data-suffix");
-				if (suffix === "") return value;
-
-				return value + " " + suffix;
 			}
 		},
 
 		GetProductData: function (container, data) {
 			const self = this;
 			const productId = container.getAttribute(self.config.productIdAttr);
+    		const variantId = container.getAttribute(self.config.productVariantIdAttr);
 			return data.Products ? data.Products.filter(function (el) {
-				return el.Id === productId;
+        		return el.Id === productId && el.VariantId === variantId;
 			})[0] : data;
 		},
 
@@ -262,7 +323,11 @@ const LiveProductInfo = function () {
 					c.classList.remove("d-none");
 				}
 			})
-		}
+		},
+		
+		GetValue: function (value, fallbackValue) { return value ? value : fallbackValue },
+
+		SanitizeParameters: function (str) { return str.replace(/[\r\t\n]/gm, '') }
 	}
 }();
 
