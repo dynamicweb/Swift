@@ -31,7 +31,6 @@ const Places = function () {
 				});
 
 				input.addEventListener("keyup", function (e) {
-					console.log("HI");
 					document.querySelector(".pac-container").style.visibility = "visible";
 				});
 
