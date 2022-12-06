@@ -91,11 +91,26 @@
 	addToCartLabel += !Model.Item.GetBoolean("HideButtonText") ? Translate("Add to cart") : "";
 
 	if (product.VariantInfo.VariantInfo == null || whenVariantsExist == "disable") {
+		string unitId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("UnitId")) ? Dynamicweb.Context.Current.Request.Form.Get("UnitId") : product.DefaultUnitId;
+		if (string.IsNullOrEmpty(unitId) && product?.UnitOptions != null) {
+			if (product.UnitOptions.FirstOrDefault<UnitOptionViewModel>() != null) { 
+				unitId = product.UnitOptions.FirstOrDefault<UnitOptionViewModel>().Id;
+			}
+		}
+
 		string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
 		string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
 		string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
 		string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : "";
 		disableAddToCart = product.VariantInfo.VariantInfo != null && string.IsNullOrEmpty(product.VariantId) ? "disabled" : disableAddToCart;
+
+		if (unitsSelector && product.UnitOptions.Count > 0) {
+			<form method="post" action="/Default.aspx?ID=@(Pageview.Page.ID)&ProductId=@product.Id" id="UnitSelectorForm_@(product.Id)_@(product.VariantId)_@Model.ID">
+				<input type="hidden" name="redirect" value="false">
+				<input type="hidden" name="VariantID" value="@product.VariantId">
+				<input type="hidden" name="UnitID" class="js-unit-id" value="@unitId">
+			</form>
+		}
 
 		<div class="d-flex @horizontalAlign @fullWidth item_@Model.Item.SystemName.ToLower()">
 			<form method="post" action="@url" class="@fullWidth" style="z-index: 1">
@@ -108,11 +123,13 @@
 				<input type="hidden" name="ProductReferer" value="component_ProductAddToCart">
 				<input type="hidden" name="cartcmd" value="add">
 
-				@if (!string.IsNullOrEmpty(product.VariantId)) {
+				@if (!string.IsNullOrEmpty(product.VariantId))
+				{
 					<input type="hidden" name="VariantId" value="@product.VariantId">
 				}
 
-				@if (quantitySelector || (!anonymousUser && showFavoritesSelectorMasterProduct && product.VariantInfo.VariantInfo != null) || (!anonymousUser && favoritesSelector)) {
+				@if (quantitySelector || (!anonymousUser && showFavoritesSelectorMasterProduct && product.VariantInfo.VariantInfo != null) || (!anonymousUser && favoritesSelector))
+				{
 					<div class="d-flex flex-row w-100">
 						@if (!anonymousUser)
 						{
@@ -128,15 +145,55 @@
 
 						<div class="input-group input-primary-button-group flex-nowrap@(inputSize)">
 							<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control" style="min-width: 60px; max-width: 100px; z-index: 1" type="number" onkeydown="swift.Cart.UpdateOnEnterKey(event)" @disableAddToCart>
-							
-							@if (unitsSelector && product.UnitOptions.Count > 0) { 
-								<select name="UnitId" class="form-select" aria-label="@Translate("Select a unit")">
-									@foreach (var unitOption in product.UnitOptions) {
-										var selectedUnit = unitOption.Id == product.DefaultUnitId ? "selected" : "";
 
-										<option value="@unitOption.Id" @selectedUnit>@unitOption.Name</option>
+							@if (unitsSelector && product.UnitOptions.Count > 0)
+							{
+								string selectedUnitName = !string.IsNullOrEmpty(unitId) && product?.UnitOptions != null ? unitId : product.UnitOptions.FirstOrDefault<UnitOptionViewModel>().Name;
+
+								foreach (var unitOption in product.UnitOptions)
+								{
+									if (unitOption.Id == unitId) {
+										selectedUnitName = unitOption.Name;
 									}
-								</select>
+								}
+
+								<input type="hidden" id="Unit_@(product.Id)_@product.VariantId" name="UnitID" value="@unitId" />
+								<div class="dropdown">
+									<button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+										@selectedUnitName
+									</button>
+									<ul class="dropdown-menu">
+										@foreach (var unitOption in product.UnitOptions)
+										{
+											var selectedUnit = unitOption.Id == unitId ? "selected" : "";
+
+											<li>
+												<button type="button" class="btn dropdown-item" data-value="@unitOption.Id" onclick="document.querySelector('#UnitSelectorForm_@(product.Id)_@(product.VariantId)_@Model.ID').querySelector('.js-unit-id').value = this.getAttribute('data-value');
+																											document.querySelector('#Unit_@(product.Id)_@product.VariantId').value = this.getAttribute('data-value');
+																											swift.PageUpdater.Update(document.querySelector('#UnitSelectorForm_@(product.Id)_@(product.VariantId)_@Model.ID'))">
+													<span>@unitOption.Name</span> 
+													<span>
+														@if (unitOption.StockLevel > 0)
+														{
+															if (!Model.Item.GetBoolean("HideInventory"))
+															{
+																<span class="small text-success">@unitOption.StockLevel @Translate("In stock")</span>
+															}
+															else
+															{
+																<span class="small text-success">@Translate("In stock")</span>
+															}
+														}
+														else
+														{
+															<span class="small text-danger">@Translate("Out of Stock")</span>
+														}
+													</span>
+												</button>
+											</li>
+										}
+									</ul>
+								</div>
 							}
 
 							<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary @(buttonSize) @flexFill js-add-to-cart-button" style="white-space: nowrap" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)_@Pageview.CurrentParagraph.ID">
@@ -147,22 +204,25 @@
 									</span>
 								}
 								else
-								{ 
+								{
 									@addToCartLabel
 								}
 							</button>
-						
+
 						</div>
-						@if (stepQty != "1") {
+						@if (stepQty != "1")
+						{
 							<div class="invalid-feedback d-none">
 								@Translate("Please select a quantity that is dividable by") @stepQty
 							</div>
-						}			
+						}
 					</div>
-				} else {
+				}
+				else
+				{
 			<div class="d-flex flex-row w-100" style="z-index: 1;">
 				@if (!anonymousUser)
-				{ 
+				{
 					if (favoritesSelector && product.VariantInfo.VariantInfo == null)
 					{
 						@RenderPartial("Components/ToggleFavorite.cshtml", product)
@@ -176,14 +236,53 @@
 
 				@if (unitsSelector && product.UnitOptions.Count > 0)
 				{
-					<select name="UnitId" class="form-select" aria-label="@Translate("Select a unit")">
-						@foreach (var unitOption in product.UnitOptions)
-						{
-							var selectedUnit = unitOption.Id == product.DefaultUnitId ? "selected" : "";
+					string selectedUnitName = !string.IsNullOrEmpty(unitId) && product?.UnitOptions != null ? unitId : product.UnitOptions.FirstOrDefault<UnitOptionViewModel>().Name;
 
-							<option value="@unitOption.Id" @selectedUnit>@unitOption.Name</option>
+					foreach (var unitOption in product.UnitOptions)
+					{
+						if (unitOption.Id == unitId)
+						{
+							selectedUnitName = unitOption.Name;
 						}
-					</select>
+					}
+
+					<input type="hidden" id="Unit_@(product.Id)_@product.VariantId" name="UnitID" value="@unitId" />
+					<div class="dropdown">
+						<button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+							@selectedUnitName
+						</button>
+						<ul class="dropdown-menu">
+							@foreach (var unitOption in product.UnitOptions)
+							{
+								var selectedUnit = unitOption.Id == unitId ? "selected" : "";
+
+								<li>
+									<button type="button" class="btn dropdown-item" data-value="@unitOption.Id" onclick="document.querySelector('#UnitSelectorForm_@(product.Id)_@(product.VariantId)_@Model.ID').querySelector('.js-unit-id').value = this.getAttribute('data-value');
+																											document.querySelector('#Unit_@(product.Id)_@product.VariantId').value = this.getAttribute('data-value');
+																											swift.PageUpdater.Update(document.querySelector('#UnitSelectorForm_@(product.Id)_@(product.VariantId)_@Model.ID'))">
+										<span>@unitOption.Name</span>
+										<span>
+											@if (unitOption.StockLevel > 0)
+											{
+												if (!Model.Item.GetBoolean("HideInventory"))
+												{
+													<span class="small text-success">@unitOption.StockLevel @Translate("In stock")</span>
+												}
+												else
+												{
+													<span class="small text-success">@Translate("In stock")</span>
+												}
+											}
+											else
+											{
+												<span class="small text-danger">@Translate("Out of Stock")</span>
+											}
+										</span>
+									</button>
+								</li>
+							}
+						</ul>
+					</div>
 				}
 
 				<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary@(buttonSize) @flexFill js-add-to-cart-button" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)_@Pageview.CurrentParagraph.ID">
