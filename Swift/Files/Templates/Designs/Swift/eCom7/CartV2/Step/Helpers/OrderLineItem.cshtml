@@ -5,6 +5,9 @@
 	var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
 	bool allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
 
+	bool neverOutOfStock = orderline.GetBoolean("Ecom:Product.NeverOutOfStock");
+	int stockQuantity = neverOutOfStock ? 9999999 : orderline.GetInteger("Ecom:Product.Stock");
+
 	string name = orderline.GetString("Ecom:Order:OrderLine.ProductName");
 	string image = "/Admin/Public/GetImage.ashx?width=" + 180 + "&height=" + 180 + "&image=" + orderline.GetString("Ecom:Product.PrimaryImage") + "&Format=WebP&Quality=100";
 	string removeFromBasketLink = orderline.GetString("Ecom:Order:OrderLine.DeleteLink");
@@ -16,7 +19,7 @@
 	string discountTotal = orderline.GetString("Ecom:Order:OrderLine.TotalDiscount.PriceFormatted");
 	string variantText = orderline.GetString("Ecom:Order:OrderLine.ProductVariantText");
 	var orderlineId = orderline.GetValue("Ecom:Order:OrderLine.Id");
-	var quantity = orderline.GetDouble("Ecom:Order:OrderLine.Quantity");
+	var quantity = neverOutOfStock || stockQuantity >= orderline.GetDouble("Ecom:Order:OrderLine.Quantity") ? orderline.GetDouble("Ecom:Order:OrderLine.Quantity") : stockQuantity;
 	var unitName = orderline.GetString("Ecom:Order:OrderLine.UnitName");
 	string productId = orderline.GetString("Ecom:Order:OrderLine.ProductID");
 	string variantId = orderline.GetString("Ecom:Order:OrderLine.ProductVariantID");
@@ -83,10 +86,10 @@
 						</div>
 
 						<div class="g-col-7 g-col-md-2">
-							@* Quantity *@
+							@* Quantity *@ 
 							<div class="js-input-group">
 								<label for="QuantityOrderLine@(orderlineId)" class="visually-hidden">@Translate("Quantity"):</label>
-								<input type="number" id="QuantityOrderLine@(orderlineId)" step="@stepQty" @minQty class="form-control text-center" value="@quantity" name="QuantityOrderLine@(orderlineId)" onChange="UpdateQuantity()" @qtyValidCheck style="max-width: 4.5rem;">
+								<input type="number" id="QuantityOrderLine@(orderlineId)" step="@stepQty" max="@stockQuantity" @minQty class="form-control text-center" value="@quantity" name="QuantityOrderLine@(orderlineId)" onChange="UpdateQuantity(this, '@stockQuantity')" @qtyValidCheck style="max-width: 4.5rem;">
 								@if (stepQty != "1")
 								{
 									<div class="invalid-feedback d-none">
