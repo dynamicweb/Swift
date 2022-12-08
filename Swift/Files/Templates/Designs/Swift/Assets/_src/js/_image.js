@@ -3,7 +3,7 @@ const Image = function () {
 	return {
 		swapImage: function (e) {
 			const currentElement = e.currentTarget;
-			const currentImage = currentElement.classList.contains("stretched-link") ? currentElement.closest(".js-product").querySelector(".js-image") : currentElement;
+			const currentImage = currentElement.classList.contains("stretched-link") ? currentElement.closest(".js-product").querySelector("[data-alternative-image]") : currentElement;
 
 			if (currentImage) {
 				const currentDefaultImage = currentImage.getAttribute("srcset");
