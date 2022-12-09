@@ -18,7 +18,7 @@ const Cart = function () {
 			const productCurrency = formData.get("ProductCurrency");
 			const productReferer = formData.get("ProductReferer");
 			const productPrice = formData.get("ProductPrice");
-			const addQuantity = formData.get("Quantity");
+			const addQuantity = formData.get("Quantity") ? formData.get("Quantity") : 1;
 			const stockQuantity = formData.get("Stock") ? formData.get("Stock") : 9999999;
 
 			// Push data to Google Analytics
@@ -107,7 +107,9 @@ const Cart = function () {
 					const outOfStockMessage = form.querySelector("#OutOfStockNotice").innerHTML;
 					document.querySelector("#DynamicModalContent").innerHTML = outOfStockMessage;
 
-					form.querySelector('[name="Quantity"]').value = 1;
+					if (form.querySelector('[name="Quantity"]')) {
+						form.querySelector('[name="Quantity"]').value = 1;
+					}
 
 					var dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), {
 						backdrop: 'static'
@@ -154,13 +156,11 @@ const Cart = function () {
 				clickedButton.innerHTML = clickedButton.getAttribute("data-content");
 				clickedButton.setAttribute("data-content", "");
 
-				const stockLevelElement = clickedButton.closest(".js-product") ? clickedButton.closest(".js-product").querySelector(".js-stock-level") : clickedButton.closest("#content").querySelector(".js-stock-level");
+				const stockLevelElement = clickedButton.closest(".js-product") ? clickedButton.closest(".js-product").querySelector(".js-text-stock") : clickedButton.closest("#content").querySelector(".js-text-stock");
 
 				if (stockLevelElement) {
 					const stockQuantity = formData.get("Stock") ? formData.get("Stock") : 9999999;
 					const addQuantity = formData.get("Quantity");
-
-					console.log("Hurray");
 
 					if (stockQuantity != 9999999) {
 						stockLevelElement.innerHTML = (parseInt(stockQuantity) - parseInt(addQuantity) - parseInt(reservedAmount));
