@@ -12,6 +12,7 @@ const Cart = function () {
 			};
 
 			const productId = formData.get("ProductId");
+			const productVariantId = formData.get("VariantId");
 			const productName = formData.get("ProductName");
 			const productVariantName = formData.get("ProductVariantName");
 			const productCurrency = formData.get("ProductCurrency");
@@ -51,7 +52,36 @@ const Cart = function () {
 			var localDispatcher = clickedButton.dispatchEvent(event);
 
 			if (globalDispatcher != false && localDispatcher != false) {
-				if (parseInt(addQuantity) <= parseInt(stockQuantity)) {
+				let reservedAmount = 0;
+
+				if (stockQuantity != 9999999) {
+					const getReservedFormData = new FormData();
+					getReservedFormData.append("GetReservedAmount", true);
+					getReservedFormData.append("ProductId", productId);
+
+					if (productVariantId != null) {
+						getReservedFormData.append("VariantId", productVariantId);
+					}
+
+					const getReservedAmountfetchOptions = {
+						method: 'POST',
+						body: getReservedFormData
+					};
+
+					let response = await fetch(form.action, getReservedAmountfetchOptions);
+
+					if (response.ok) {
+						let amount = await response.text().then(function (text) {
+							return text;
+						});
+
+						reservedAmount = amount;
+					} else {
+						Cart.Error(response, clickedButton);
+					}
+				}
+
+				if ((parseInt(addQuantity) + parseInt(reservedAmount)) <= parseInt(stockQuantity)) {
 					//UI updates
 					var clickedButtonWidth = clickedButton.offsetWidth + "px";
 
@@ -69,7 +99,7 @@ const Cart = function () {
 					let response = await fetch(form.action, fetchOptions);
 
 					if (response.ok) {
-						Cart.Success(response, clickedButton, formData);
+						Cart.Success(response, clickedButton, formData, reservedAmount);
 					} else {
 						Cart.Error(response, clickedButton);
 					}
@@ -77,7 +107,7 @@ const Cart = function () {
 					const outOfStockMessage = form.querySelector("#OutOfStockNotice").innerHTML;
 					document.querySelector("#DynamicModalContent").innerHTML = outOfStockMessage;
 
-					form.querySelector('[name="Quantity"]').value = stockQuantity;
+					form.querySelector('[name="Quantity"]').value = 1;
 
 					var dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), {
 						backdrop: 'static'
@@ -100,7 +130,7 @@ const Cart = function () {
 			};
 		},
 
-		Success: async function (response, clickedButton, formData) {
+		Success: async function (response, clickedButton, formData, reservedAmount = 0) {
 			let html = await response.text().then(function (text) {
 				return text;
 			});
@@ -123,6 +153,19 @@ const Cart = function () {
 				clickedButton.disabled = false;
 				clickedButton.innerHTML = clickedButton.getAttribute("data-content");
 				clickedButton.setAttribute("data-content", "");
+
+				const stockLevelElement = clickedButton.closest(".js-product") ? clickedButton.closest(".js-product").querySelector(".js-stock-level") : clickedButton.closest("#content").querySelector(".js-stock-level");
+
+				if (stockLevelElement) {
+					const stockQuantity = formData.get("Stock") ? formData.get("Stock") : 9999999;
+					const addQuantity = formData.get("Quantity");
+
+					console.log("Hurray");
+
+					if (stockQuantity != 9999999) {
+						stockLevelElement.innerHTML = (parseInt(stockQuantity) - parseInt(addQuantity) - parseInt(reservedAmount));
+					}
+				}
 
 				var removeFocusCssClassTimer = setTimeout(function () {
 					Cart.GetMiniCarts(formData.get("minicartid")).forEach(function (el) {
