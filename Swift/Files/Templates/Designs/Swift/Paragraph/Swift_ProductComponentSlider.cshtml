@@ -1,0 +1,201 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Core
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	string layout = Model.Item.GetRawValueString("Layout") == "slider" ? "ProductSliderComponent" : "ProductGridComponent";
+	string lazyHeight = Model.Item.GetBoolean("SetMinHeightForLazyLoading") ?  "min-height: 360px" : "";
+
+	//Link generation
+	string pageId = Model.Item.GetLink("ProductSliderServicePage") != null ? Model.Item.GetLink("ProductSliderServicePage").PageId.ToString() : "";
+	string servicePageByNavigationTag = GetPageIdByNavigationTag("ProductSliderService") != 0 ? GetPageIdByNavigationTag("ProductSliderService").ToString() : "";
+	pageId = pageId == "" ? servicePageByNavigationTag : pageId;
+
+	string url = "/Default.aspx?ID=" + pageId;
+
+	if (Pageview.IsVisualEditorMode)
+	{
+		url += "&VisualEdit=True";
+	}
+
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
+	if (isLazyLoadingForProductInfoEnabled)
+	{
+		url += "&getproductinfo=true";
+	}
+
+	url += $"&ProductListPartial={layout}"; //Use this to render either a slider or a grid
+
+
+	bool productViewModelFound = false;
+	ProductViewModel product = new ProductViewModel();
+
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		productViewModelFound = true;
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	if (Pageview.IsVisualEditorMode && !productViewModelFound)
+	{
+		if (Pageview.Item["DummyProduct"] != null)
+		{
+			productViewModelFound = true;
+			string dummyProductId = "";
+			var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+			ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+			if (productList.Products != null)
+			{
+				foreach (var p in productList.Products) { dummyProductId = p.Id; }
+				ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+				product = dummyProduct;
+			}
+			else
+			{
+				product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+			}
+		}
+		else if (Pageview.Item["DummyProduct"] == null)
+		{
+			productViewModelFound = true;
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	}
+
+	//Source type
+	string sourceType = Model.Item.GetRawValueString("RelationType", "trending");
+	IList<string> relateFromProductIds = new List<string> { };
+	IList<string> relateFromGroupIds = new List<string> { };
+
+	ProductListViewModel relateToViewModel = Model.Item.GetValue<ProductListViewModel>("RelateTo");
+
+	//--- PRODUCTS ---
+	if (sourceType == "variants" || sourceType == "frequently" || sourceType == "selected")
+	{
+		if (relateToViewModel?.Products != null) {
+			foreach (var fromProduct in relateToViewModel.Products)
+			{
+				var productId = fromProduct.Id;
+				relateFromProductIds.Add(productId);
+			}
+		}
+	}
+
+	//--- GROUPS ---
+	if (sourceType == "most-sold" || sourceType == "trending" || sourceType == "latest" || sourceType == "custom")
+	{
+		var groupsToRelateTo = Model.Item.GetString("RelateTo").Split(',').ToList();
+
+		foreach (var fromGroup in groupsToRelateTo)
+		{
+			var groupId = fromGroup.Length > 2 ? fromGroup.Remove(0, 2) : fromGroup;
+
+			if (!fromGroup.Contains("p_")) {
+				relateFromGroupIds.Add(groupId);
+			}
+		}
+
+		if (relateToViewModel?.Products != null) {
+			foreach (var fromProduct in relateToViewModel.Products)
+			{
+				var groupId = fromProduct.PrimaryOrDefaultGroup.Id;
+				relateFromGroupIds.Add(groupId);
+			}
+		}
+	}
+
+
+	//Create group id collection and products id collection strings
+	string productIds = relateFromProductIds.Count > 0 ? string.Join(",", relateFromProductIds) : "";
+	string groupIds = relateFromGroupIds.Count > 0 ? string.Join(",", relateFromGroupIds) : "";
+
+	if (productViewModelFound)
+	{
+		if (string.IsNullOrEmpty(productIds) && (sourceType == "variants" || sourceType == "frequently" || sourceType == "selected" || sourceType == "custom"))
+		{
+			productIds = product.Id;
+		}
+
+		if (string.IsNullOrEmpty(groupIds) && (sourceType == "most-sold" || sourceType == "trending" || sourceType == "latest"))
+		{
+			groupIds = product.PrimaryOrDefaultGroup.Id;
+		}
+	}
+}
+
+
+@*Container element for the request*@
+@if (!string.IsNullOrEmpty(productIds) || !string.IsNullOrEmpty(groupIds) || (string.IsNullOrEmpty(productIds) && string.IsNullOrEmpty(groupIds) && productViewModelFound == false))
+{
+	<form method="post" action="@url" id="ComponentSliderProductsForm_@Model.ID" data-response-target-element="ComponentSliderProducts_@Model.ID" data-preloader="inline" data-update-url="false" class="item_@Model.Item.SystemName.ToLower()">
+		<input type="hidden" name="ParagraphId" value="@Model.ID" />
+		<input type="hidden" name="SortOrder" value="DESC">
+
+		@if (!string.IsNullOrEmpty(groupIds))
+		{
+			<input type="hidden" name="GroupId" value="@groupIds" />
+		}
+		@if (sourceType != "frequently" && !string.IsNullOrEmpty(productIds))
+		{
+			<input type="hidden" name="MainProductId" value="@productIds" />
+		}
+
+		@if (Model.Item.GetInt32("ProductsCount") != 0)
+		{
+			<input type="hidden" name="PageSize" value="@Model.Item.GetInt32("ProductsCount")">
+		}
+
+		@if (sourceType == "variants")
+		{
+			<input type="hidden" name="isVariant" value="true">
+		}
+		@if (sourceType == "most-sold")
+		{
+			<input type="hidden" name="SortBy" value="OrderCount">
+		}
+		@if (sourceType == "trending")
+		{
+			<input type="hidden" name="SortBy" value="OrderCountGrowth">
+		}
+		@if (sourceType == "frequently" && !string.IsNullOrEmpty(productIds))
+		{
+			<input type="hidden" name="BoughtWithProductIds" value="[@productIds]">
+		}
+		@if (sourceType == "latest")
+		{
+			<input type="hidden" name="SortBy" value="Created">
+		}
+	</form>
+
+	<script type="module" src="~/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
+	<script type="module">
+		swift.AssetLoader.Load('Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
+	</script>
+
+	<div class="w-100 h-100">
+		<div id="ComponentSliderProducts_@Model.ID" class="h-100" style="@lazyHeight"></div>
+	</div>
+
+	<script type="module">
+		const productSliderContainer = document.querySelector("#ComponentSliderProducts_@Model.ID");
+
+		swift.PageUpdater.Update(document.querySelector("#ComponentSliderProductsForm_@Model.ID")).then(function () {
+			if (productSliderContainer.innerHTML === "") {
+				productSliderContainer.closest("[data-col-size]").classList.add("d-none");
+			}
+		});
+	</script>
+}
+else if (Pageview.IsVisualEditorMode == true)
+{
+	<div class="alert alert-dark" role="alert">
+		<span>@Translate("Product component slider: The slider will be rendered here, if there is anything to show")</span>
+	</div>
+}
