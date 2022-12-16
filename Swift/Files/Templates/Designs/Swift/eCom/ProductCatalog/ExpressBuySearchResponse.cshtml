@@ -15,7 +15,7 @@
 	bool hidePrice = Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && isErpConnectionDown;
 	bool hideAddToCart = Pageview.AreaSettings.GetBoolean("ErpDownHideAddToCart") && isErpConnectionDown;
 
-	bool productsWereOutOfStock = false;
+	int productsOutOfStock = 0;
 
 	List<ProductViewModel> orderProducts = new List<ProductViewModel>();
 	Dictionary<string, double> productQuantityList = new Dictionary<string, double>();
@@ -154,7 +154,9 @@
 
 		productCounter += 1;
 
-		productsWereOutOfStock = product.StockLevel < 1 && quantity > 0 ? true : productsWereOutOfStock;
+		if ((product.StockLevel < 1) && !product.NeverOutOfstock) {
+			productsOutOfStock++;
+		}
 
 		<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center product @disableOrderline">
 
@@ -215,31 +217,33 @@
 	}
 
 	<div class="d-flex justify-content-between align-items-baseline py-3 g-col-12 theme position-sticky bottom-0" style="box-shadow: 0 -10px 10px -12px var(--bs-gray-300);">
-		@Translate("Total results") @products.Count()
+		@Translate("Total results") @products.Count() @productsOutOfStock
 		@if (!hideAddToCart)
 		{
-			if (!productsWereOutOfStock)
+			var buttonProps = string.Empty;
+			var buttonType = "button";
+
+			if (productsOutOfStock == 0)
 			{
-				<button type="submit" class="btn btn-primary" id="AddAllToCartButton">
-					<div class="d-flex gap-2 align-items-center lh-base">
-						<span>@Translate("Add all to cart")</span>
-						<span class="icon-2">
-							@ReadFile(iconPath + "shopping-cart.svg")
-						</span>
-					</div>
-				</button>
+				buttonProps = "id=\"AddAllToCartButton\"";
+				buttonType = "submit";
 			}
+			else if (productsOutOfStock == products.Count())
+			{
+				buttonProps = "disabled";
+			} 
 			else
 			{
-				<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#outOfStockProductsModal">
-					<div class="d-flex gap-2 align-items-center lh-base">
-						<span>@Translate("Add all to cart")</span>
-						<span class="icon-2">
-							@ReadFile(iconPath + "shopping-cart.svg")
-						</span>
-					</div>
-				</button>
+				buttonProps = "data-bs-toggle=\"modal\" data-bs-target=\"#outOfStockProductsModal\"";
 			}
+			<button type="@buttonType" class="btn btn-primary" @buttonProps>
+				<div class="d-flex gap-2 align-items-center lh-base">
+					<span>@Translate("Add all to cart")</span>
+					<span class="icon-2">
+						@ReadFile(iconPath + "shopping-cart.svg")
+					</span>
+				</div>
+			</button>
 		}
 	</div>
 
