@@ -13,6 +13,7 @@ const Cart = function () {
 
 			const productId = formData.get("ProductId");
 			const productVariantId = formData.get("VariantId");
+			const productUnitId = formData.get("UnitID");
 			const productName = formData.get("ProductName");
 			const productVariantName = formData.get("ProductVariantName");
 			const productCurrency = formData.get("ProductCurrency");
@@ -59,6 +60,10 @@ const Cart = function () {
 					getReservedFormData.append("GetReservedAmount", true);
 					getReservedFormData.append("ProductId", productId);
 
+					if (productUnitId != null) {
+						getReservedFormData.append("UnitId", productUnitId);
+					}
+
 					if (productVariantId != null) {
 						getReservedFormData.append("VariantId", productVariantId);
 					}
@@ -104,7 +109,7 @@ const Cart = function () {
 						Cart.Error(response, clickedButton);
 					}
 				} else {
-					const outOfStockMessage = form.querySelector("#OutOfStockNotice").innerHTML;
+					const outOfStockMessage = form.querySelector(".js-out-of-stock-notice").innerHTML;
 					document.querySelector("#DynamicModalContent").innerHTML = outOfStockMessage;
 
 					if (form.querySelector('[name="Quantity"]')) {
