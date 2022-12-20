@@ -84,12 +84,26 @@
 		}
 
 		favoriteParameters.Add("ListId", defaultFavoriteListId);
-	} 
-	
+	}
+
+	var selectedImageCategories = Model.Item.GetRawValueString("GetAlternativeImageFrom").Split(',').ToList();
+	List<MediaViewModel> allAssetsImages = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName)).SelectMany(x => x.Assets).ToList();
+	allAssetsImages.RemoveAll(x => x.Value == product.DefaultImage.Value);
+	MediaViewModel alternativeImage = allAssetsImages.FirstOrDefault();
+
+	string altImagePathXs = string.Empty;
+	string altImagePathS = string.Empty;
+
+	if (!string.IsNullOrEmpty(alternativeImage?.Value))
+	{
+		altImagePathXs = "/Admin/Public/GetImage.ashx?width=" + smallImageSize + "&image=" + Dynamicweb.Context.Current.Server.UrlEncode(alternativeImage.Value) + "&format=webp";
+		altImagePathS = "/Admin/Public/GetImage.ashx?width=" + largeImageSize + "&image=" + Dynamicweb.Context.Current.Server.UrlEncode(alternativeImage.Value) + "&format=webp";
+	}
+
 	@* Theme settings *@
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
-    string themeBorder = !string.IsNullOrWhiteSpace(theme) ? "border: 1px solid rgba(0,0,0,0)"  : "";
-	string themePadding = !string.IsNullOrWhiteSpace(theme) ? "p-2 p-lg-3"  : "";
+	string themeBorder = !string.IsNullOrWhiteSpace(theme) ? "border: 1px solid rgba(0,0,0,0)" : "";
+	string themePadding = !string.IsNullOrWhiteSpace(theme) ? "p-2 p-lg-3" : "";
 }
 
 @if (product.Id != null)
@@ -106,6 +120,7 @@
 	string fullWidth = width == "auto" ? "w-100" : "";
 	string customWidth = width != "auto" ? "style=\"width: " + width + "px\"" : "style=\"min-width: 60px\"";
 
+
 	if (!string.IsNullOrEmpty(imagePath))
 	{
 		<div class="h-100 @fullWidth @theme position-relative item_@Model.Item.SystemName.ToLower()" @customWidth>
@@ -117,6 +132,13 @@
 							@imagePathS  @(largeImageSize)w"
 						 sizes="(min-width: 992px) 33vw, 50vw"
 						 src="@imagePathFallBack"
+						 @if (!string.IsNullOrEmpty(alternativeImage?.Value)) { <text>
+						 data-alternative-image="
+								@altImagePathXs @(smallImageSize)w,
+								@altImagePathS  @(largeImageSize)w"
+						 onmouseover="swift.Image.swapImage(event)" 
+						 onmouseout="swift.Image.swapImage(event)"
+						 </text>  }
 						 loading="lazy"
 						 decoding="async"
 						 class="h-100 w-100 @themePadding"
@@ -135,13 +157,13 @@
 			@if (!anonymousUser)
 			{
 				if (showFavoritesSelector && product.VariantInfo.VariantInfo == null)
-				{ 
+				{
 					<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
 						@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
 					</div>
-					}
+				}
 				else if (showFavoritesSelectorMasterProduct)
-					{
+				{
 					<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
 						@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
 					</div>

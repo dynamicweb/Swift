@@ -156,6 +156,9 @@ const PageUpdater = function () {
 					document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
 				}
 
+				swift.Scroll.hideHeadersOnScroll();
+				swift.Scroll.handleAlternativeTheme();
+
 				//Replace content
 				if (responseTargetElement != null) {
 					responseTargetElement.innerHTML = html;
