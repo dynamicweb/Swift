@@ -5,7 +5,7 @@ const Cart = function () {
 
 			//Setup the form data
 			const form = clickedButton.closest("form");
-			const formData = new FormData(form);
+			let formData = new FormData(form);
 			const fetchOptions = {
 				method: 'POST',
 				body: formData
