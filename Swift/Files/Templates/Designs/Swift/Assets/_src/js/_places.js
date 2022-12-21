@@ -30,6 +30,10 @@ const Places = function () {
 					}
 				});
 
+				input.addEventListener("keyup", function (e) {
+					document.querySelector(".pac-container").style.visibility = "visible";
+				});
+
 				autocomplete = new google.maps.places.Autocomplete(input, options)
 				autocomplete.addListener("place_changed", swift.Places.fillInAddress);
 				input.setAttribute("autocomplete", "none");
@@ -132,6 +136,11 @@ const Places = function () {
 					regionField.value = region;
 				}
 
+				const stateField = document.querySelector("#" + fieldPrefix + "State");
+				if (stateField != null) {
+					stateField.value = region;
+				}
+
 				var countryField = document.querySelector("#" + fieldPrefix + "Country");
 				countryField = countryField == null ? document.querySelector("#" + fieldPrefix + "CountryCode") : countryField;
 				if (countryField != null) {
@@ -144,6 +153,7 @@ const Places = function () {
 				}
 
 				document.querySelector("#" + fieldPrefix + "Address").focus();
+				document.querySelector(".pac-container").style.visibility = "hidden";
 			}
 		}
 	}
