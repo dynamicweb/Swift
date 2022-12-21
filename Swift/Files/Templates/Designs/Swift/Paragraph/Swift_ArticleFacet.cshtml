@@ -11,15 +11,20 @@
 		return areaId;
 	}
 
-	private IEnumerable<Dynamicweb.Content.Items.Item> GetLists()
+	private List<Dynamicweb.Frontend.ItemViewModel> GetSelectedLists()
 	{
-		IEnumerable<Item> categories = null;
+		var selectedLists = Model.Item?.GetRawValueString("Lists");
+		var listsArray = selectedLists.Split(',');
+		var lists = new List<Dynamicweb.Frontend.ItemViewModel>();
 
-		using (Repository repo = ItemManager.Storage.Open("Swift_ArticleListPage"))
+		foreach (var item in listsArray)
 		{
-			categories = repo.SelectByAreaId(GetAreaId(), new Query() { Amount = 100 }, true, true, false);
+			var page = Dynamicweb.Services.Pages?.GetPage(Dynamicweb.Core.Converter.ToInt32(item));
+			var view = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page)?.Item;
+			lists.Add(view);
 		}
-		return categories;
+
+		return lists;
 	}
 
 	private IEnumerable<Dynamicweb.Content.Items.Item> GetTagGroups()
@@ -119,7 +124,7 @@
 
 				switch (type)
 				{
-					case "list":
+					case "list": // All following cases are "article list pages"
 
 						switch (style)
 						{
@@ -129,15 +134,12 @@
 
 									@RenderHeader()
 
-									@foreach (var list in GetLists())
+									@foreach (var list in GetSelectedLists())
 									{
-										if (Dynamicweb.Core.Converter.ToInt32(list["PageId"]) != Pageview.Page.ID)
-										{
-											<div class="form-check form-check-inline">
-												<label class="form-check-label" for="list_@list["PageId"]">@list["Title"]</label>
-												<input class="form-check-input" type="checkbox" id="list_@list["PageId"]" name="list" value="@list["PageId"]" @(!string.IsNullOrEmpty(query) && query.Contains($"{list["PageId"]}") ? "checked" : string.Empty) />
-											</div>
-										}
+										<div class="form-check form-check-inline">
+											<label class="form-check-label" for="list_@list.PageID">@list.GetString("Title")</label>
+											<input class="form-check-input" type="checkbox" id="list_@list.PageID" name="list" value="@list.PageID" @(!string.IsNullOrEmpty(query) && query.Contains($"{list.PageID}") ? "checked" : string.Empty) />
+										</div>
 									}
 
 								</div>
@@ -149,23 +151,21 @@
 								<div class="d-flex flex-wrap gap-2">
 
 									@RenderHeader()
-
-									@foreach (var list in GetLists())
-									{
-										var active = string.Empty;
-										var selected = string.Empty;
-										var checkbox = string.Empty;
-										if (!string.IsNullOrEmpty(query) && query.Contains($"{list["PageId"]}"))
+									
+									@{ 
+										foreach (var list in GetSelectedLists())
 										{
-											active = " active";
-											selected = "checked";
-											checkbox = GetCheckboxIcon();
-										}
-										if (Dynamicweb.Core.Converter.ToInt32(list["PageId"]) != Pageview.Page.ID)
-										{
-											<label class="btn @(buttonType) @(buttonSize)@(active)" for="list_@list["PageId"]"><span class="d-flex align-items-center gap-2">@list["Title"] @(checkbox)</span></label>
-											<input class="visually-hidden" type="checkbox" id="list_@list["PageId"]" name="list" value="@list["PageId"]" @(selected) />
-
+											var active = string.Empty;
+											var selected = string.Empty;
+											var checkbox = string.Empty;
+											if (!string.IsNullOrEmpty(query) && query.Contains($"{list.PageID}"))
+											{
+												active = " active";
+												selected = "checked";
+												checkbox = GetCheckboxIcon();
+											}
+											<label class="btn @(buttonType) @(buttonSize)@(active)" for="list_@list.PageID"><span class="d-flex align-items-center gap-2">@list.GetString("Title") @(checkbox)</span></label>
+											<input class="visually-hidden" type="checkbox" id="list_@list.PageID" name="list" value="@list.PageID" @(selected) />
 										}
 									}
 
@@ -176,14 +176,11 @@
 							case "dropdown":
 
 								<select name="list" class="form-select">
-									<option value="" label="All"></option>
+									<option value="" label="@Translate("All")"></option>
 									@{
-										foreach (var list in GetLists())
+										foreach (var list in GetSelectedLists())
 										{
-											if (Dynamicweb.Core.Converter.ToInt32(list["PageId"]) != Pageview.Page.ID)
-											{
-												<option value="@list["PageId"]" label="@list["Title"]" @(!string.IsNullOrEmpty(query) && query.Equals($"{list["PageId"]}") ? "selected" : string.Empty)></option>
-											}
+											<option value="@list.PageID" label="@list.GetString("Title")" @(!string.IsNullOrEmpty(query) && query.Equals($"{list.PageID}") ? "selected" : string.Empty)></option>
 										}
 									}
 								</select>
@@ -196,56 +193,48 @@
 									@RenderHeader()
 
 									<div class="form-check form-check-inline">
-										<label class="form-check-label" for="category_all">All</label>
+										<label class="form-check-label" for="category_all">@Translate("All")</label>
 										<input class="form-check-input" type="radio" id="category_all" name="list" value="" checked>
 									</div>
 
-									@foreach (var list in GetLists())
+									@foreach (var list in GetSelectedLists())
 									{
-										if (Dynamicweb.Core.Converter.ToInt32(list["PageId"]) != Pageview.Page.ID)
-										{
-											<div class="form-check form-check-inline">
-												<label class="form-check-label" for="list_@list["PageId"]">@list["Title"]</label>
-												<input class="form-check-input" type="radio" id="list_@list["PageId"]" name="list" value="@list["PageId"]" @(!string.IsNullOrEmpty(query) && query.Equals($"{list["PageId"]}") ? "checked" : string.Empty)>
-											</div>
-										}
+										<div class="form-check form-check-inline">
+											<label class="form-check-label" for="list_@list.PageID">@list.GetString("Title")</label>
+											<input class="form-check-input" type="radio" id="list_@list.PageID" name="list" value="@list.PageID" @(!string.IsNullOrEmpty(query) && query.Equals($"{list.PageID}") ? "checked" : string.Empty)>
+										</div>
 									}
 								</div>
 
 								break;
 
-							case "buttondropdown":
+							case "dropdownbutton":
 
 								@RenderHeader()
 
-								var lists = GetLists();
-								var facetTitle = !string.IsNullOrEmpty(query) ? lists.FirstOrDefault(x => x["PageId"].ToString() == query)["Title"] : "All";
+								var lists = GetSelectedLists();
+								var facetTitle = !string.IsNullOrEmpty(query) ? lists.FirstOrDefault(x => x.PageID.ToString() == query).GetString("Title") : Translate("All");
 
 								<div class="dropdown w-100">
 									<button class="btn @(buttonType) @(buttonSize) dropdown-toggle w-100" type="button" id="facet-dropdown-@(Model.ID)" data-bs-toggle="dropdown" aria-expanded="false">
 										@facetTitle
 									</button>
 									<div class="dropdown-menu w-100" aria-labelledby="facet-dropdown-@(Model.ID)">
-										<label class="dropdown-item" for="list_all">All</label>
+										<label class="dropdown-item" for="list_all">@Translate("All")</label>
 										<input class="visually-hidden" id="list_all" value name="list" type="radio">
 										@{
 											foreach (var list in lists)
 											{
 												var active = string.Empty;
 												var selected = string.Empty;
-												if (!string.IsNullOrEmpty(query) && query.Contains($"{list["PageId"]}"))
+												if (!string.IsNullOrEmpty(query) && query.Contains($"{list.PageID}"))
 												{
 													active = " active";
 													selected = "checked";
 												}
 
-												if (Dynamicweb.Core.Converter.ToInt32(list["PageId"]) != Pageview.Page.ID)
-												{
-
-													<label class="dropdown-item@(active)" for="list_@list["PageId"]">@list["Title"]</label>
-													<input class="visually-hidden" type="radio" id="list_@list["PageId"]" name="list" value="@list["PageId"]" @(selected)>
-
-												}
+												<label class="dropdown-item@(active)" for="list_@list.PageID">@list.GetString("Title")</label>
+												<input class="visually-hidden" type="radio" id="list_@list.PageID" name="list" value="@list.PageID" @(selected)>
 											}
 										}
 
@@ -257,7 +246,7 @@
 
 						break;
 
-					case "tag-group":
+					case "tag-group": // // All following cases are "article tag collection"
 
 						int groupId = !string.IsNullOrEmpty(Model.Item.GetRawValueString("TagGroup")) ? Model.Item.GetInt32("TagGroup") : 0;
 						var group = groupId > 0 ? Dynamicweb.Services.Pages?.GetPage(groupId) : null;
@@ -275,7 +264,7 @@
 								<label>@(groupName)</label>
 								<select class="form-select" name="Tags">
 
-									<option value="" label="All"></option>
+									<option value="" label="@Translate("All")"></option>
 
 									@{
 										foreach (var tag in tags)
@@ -286,7 +275,6 @@
 											{
 												selected = "selected";
 											}
-
 											<option value="@tag.ItemId" label="@tagItem.GetString("Title")" @(selected)></option>
 										}
 									}
@@ -305,7 +293,7 @@
 										@(facetTitle = !string.IsNullOrEmpty(facetTitle) ? facetTitle : groupName)
 									</button>
 									<div class="dropdown-menu w-100" aria-labelledby="facet-dropdown-@(Model.ID)">
-										<label class="dropdown-item" for="tag_@Model.ItemId">All</label>
+										<label class="dropdown-item" for="tag_@Model.ItemId">@Translate("All")</label>
 										<input class="visually-hidden" id="tag_@Model.ItemId" value name="Tags" type="radio">
 										@{
 											foreach (var tag in tags)
@@ -342,7 +330,7 @@
 
 				<div class="d-flex flex-wrap gap-2">
 					<input class="btn-check" type="radio" id="tag_all" checked name="Tags" value />
-					<label class="btn @(buttonType) @(buttonSize)" for="tag_all">All</label>
+					<label class="btn @(buttonType) @(buttonSize)" for="tag_all">@Translate("All")</label>
 					@foreach (var tag in GetTags())
 					{
 						var active = string.Empty;
