@@ -1,5 +1,52 @@
 # Changelog
 
+# v1.17.0
+## [v1.17.0] - 21-12-2022
+
+## BugFixes
+* Checkout: When using inline payment step missing information for breadcrumb, summary and orderline image
+* Checkout: Delivery date checkbox, moved to correct group to prevent hiding itself
+* Checkout: Google address causes errors in the console. Use Assets loader to load Google places
+* Customer center: Fix link on Dashboard the order page doesn't open on My orders page
+* Customer center: Address State field is not auto populated after selection. Remake support for both Region and State in Google autoplaces
+* Customer center: In Favorites lists, change the text to Products, when only 1. Get count from proper list
+* Express buy: The Add to cart button should be disabled if products are not in stock.
+* General: Null check - eCommerce badge
+* General: Custom fonts, fonts folder not created when it doesn't exist. Fix by including fonts folder
+* General: Custom fonts, change condition to not assume custom font field is present
+* General: Custom Sitemap Missing includeFolderAndHidden = True, update to not include debug info
+* General: In Page properties settings - there No difference between the 2 header position settings 
+* General: Validation error in Static variants. Correct auto-test hook implementation
+* Itemtypes: Poster, position absolute the anchor when there is no button label and stretched link is selected
+* Itemtypes: Feature, alignment if no icon is selected
+* Itemtypes: Slider, Ratio and fill - Undo prev changes. Issue with not enough room for both headline, subtitle and button on mobile
+* Itemtypes: Slider, image is set to position absolute when " fill " ratio is selected
+* Itemtypes: Navigation, when using a page of type “Shortcut” the template breaks - Add null check
+* Itemtypes: Navigation, a clickable 1st level navigation node will not redirects to #
+* Itemtypes: Search, Rounded edges are gone
+* Itemtypes: Search, Products with special characters break type ahead. Remove broken html encoding code
+* Itemtypes: Product component Add to cart, UI improvements on units selector
+* Itemtypes: Product component Add to cart, initialize Scroll on PageUpdater success
+* Itemtypes: Product component Add to cart, background color fallback for when using themes with transparent background
+* Itemtypes: Product component Price, normal price doesn't align
+* Itemtypes: Product component price alignment issue fix
+* Itemtypes: Product Facets, fixed modal overlay bug when screen size is below lg
+* Itemtypes: Product Specification, simplify the elements and correct the alignment
+* Itemtypes: Row markup still rendered and padding class
+* Itemtypes: Removed useCache="False" from item type xml, legacy xml code which shouldn't be there anymore
+
+## Changed
+* Itemtypes: Swift_Preferences, change to language selector, show page even if it is hidden in navigation
+* Itemtypes: Removed setting only showing favorites for master product, this should be a part of the existing setting ShowAddToFavoorites
+
+## Added
+* General: Template conversions, so it is compatible for both DW9 and DW10
+* General: TinyMCE support plugin dw link, in order to use internal links on the rich text editor
+* General: Updated Themes preview page, possible to show the accent color
+* Itemtypes: Product component slider, possible to design own product slider using product components
+* Itemtypes: On the Product Specification an accordion design layout applied as an extra option
+* Itemtypes: Product image component - possible to show alternative image on hover based on selection from the asset categories
+
 # v1.16.0
 ## [1.16.0] - 05-12-2022
 
