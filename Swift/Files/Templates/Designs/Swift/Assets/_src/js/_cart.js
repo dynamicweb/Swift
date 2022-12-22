@@ -21,6 +21,7 @@ const Cart = function () {
 			const productPrice = formData.get("ProductPrice");
 			const addQuantity = formData.get("Quantity") ? formData.get("Quantity") : 1;
 			const stockQuantity = formData.get("Stock") ? formData.get("Stock") : 9999999;
+			const getReservedAmount = formData.get("GetReservedAmount") ? formData.get("GetReservedAmount") : "false";
 
 			// Push data to Google Analytics
 			if (typeof gtag !== "undefined") {
@@ -55,10 +56,14 @@ const Cart = function () {
 			if (globalDispatcher != false && localDispatcher != false) {
 				let reservedAmount = 0;
 
-				if (stockQuantity != 9999999) {
+				if (getReservedAmount == "true" && stockQuantity != 9999999) {
 					const getReservedFormData = new FormData();
 					getReservedFormData.append("GetReservedAmount", true);
 					getReservedFormData.append("ProductId", productId);
+
+					if (addQuantity != null) {
+						getReservedFormData.append("Quantity", addQuantity);
+					}
 
 					if (productUnitId != null) {
 						getReservedFormData.append("UnitId", productUnitId);
@@ -86,7 +91,7 @@ const Cart = function () {
 					}
 				}
 
-				if ((parseInt(addQuantity) + parseInt(reservedAmount)) <= parseInt(stockQuantity)) {
+				if (getReservedAmount == "false" || ((parseInt(addQuantity) + parseInt(reservedAmount)) <= parseInt(stockQuantity))) {
 					//UI updates
 					var clickedButtonWidth = clickedButton.offsetWidth + "px";
 
@@ -161,16 +166,6 @@ const Cart = function () {
 				clickedButton.innerHTML = clickedButton.getAttribute("data-content");
 				clickedButton.setAttribute("data-content", "");
 
-				const stockLevelElement = clickedButton.closest(".js-product") ? clickedButton.closest(".js-product").querySelector(".js-text-stock") : clickedButton.closest("#content").querySelector(".js-text-stock");
-
-				if (stockLevelElement) {
-					const stockQuantity = formData.get("Stock") ? formData.get("Stock") : 9999999;
-					const addQuantity = formData.get("Quantity");
-
-					if (stockQuantity != 9999999) {
-						stockLevelElement.innerHTML = (parseInt(stockQuantity) - parseInt(addQuantity) - parseInt(reservedAmount));
-					}
-				}
 
 				var removeFocusCssClassTimer = setTimeout(function () {
 					Cart.GetMiniCarts(formData.get("minicartid")).forEach(function (el) {
@@ -184,6 +179,20 @@ const Cart = function () {
 				Cart.GetMiniCarts(formData.get("minicartid")).forEach(function (el) {
 					el.innerHTML = "(" + totalQuantity.trim() + ")";
 				});
+
+				//Update stock
+				if (formData.get("GetReservedAmount") == "true") {
+					const stockLevelElement = clickedButton.closest(".js-product") ? clickedButton.closest(".js-product").querySelector(".js-text-stock") : clickedButton.closest("#content").querySelector(".js-text-stock");
+
+					if (stockLevelElement) {
+						const stockQuantity = formData.get("Stock") ? formData.get("Stock") : 9999999;
+						const addQuantity = formData.get("Quantity");
+
+						if (stockQuantity != 9999999) {
+							stockLevelElement.innerHTML = (parseInt(stockQuantity) - parseInt(addQuantity) - parseInt(reservedAmount));
+						}
+					}
+				}
 			}
 		},
 
