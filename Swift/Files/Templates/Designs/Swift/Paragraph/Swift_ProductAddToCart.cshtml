@@ -92,7 +92,7 @@
 	if (product.VariantInfo.VariantInfo == null || whenVariantsExist == "disable") {
 		string unitId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("UnitId")) ? Dynamicweb.Context.Current.Request.Form.Get("UnitId") : product.DefaultUnitId;
 		if (string.IsNullOrEmpty(unitId) && product?.UnitOptions != null) {
-			if (product.UnitOptions.FirstOrDefault<UnitOptionViewModel>() != null) { 
+			if (product.UnitOptions.FirstOrDefault<UnitOptionViewModel>() != null) {
 				unitId = product.UnitOptions.FirstOrDefault<UnitOptionViewModel>().Id;
 			}
 		}
@@ -102,6 +102,8 @@
 		string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
 		string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : "";
 		disableAddToCart = product.VariantInfo.VariantInfo != null && string.IsNullOrEmpty(product.VariantId) ? "disabled" : disableAddToCart;
+
+		var reserveMode = Dynamicweb.Ecommerce.Frontend.Cart.ProductReserve.Mode;
 
 		if (unitsSelector && product.UnitOptions.Count > 0) {
 			<form method="post" action="/Default.aspx?ID=@(Pageview.Page.ID)&ProductId=@product.Id" id="UnitSelectorForm_@(product.Id)_@(product.VariantId)_@Model.ID">
@@ -122,12 +124,31 @@
 				<input type="hidden" name="ProductReferer" value="component_ProductAddToCart">
 				<input type="hidden" name="cartcmd" value="add">
 
+				@if (reserveMode == Dynamicweb.Ecommerce.Frontend.Cart.ProductReserveMode.AddToCart) { 
+					<input type="hidden" name="GetReservedAmount" value="true">
+				}
+
 				@if (!string.IsNullOrEmpty(product.VariantId))
 				{
 					<input type="hidden" name="VariantId" value="@product.VariantId">
 				}
 
-				@if (unitsSelector && product.UnitOptions.Count > 0)
+				@if (!product.NeverOutOfstock)
+				{
+					<input type="hidden" name="Stock" value="@product.StockLevel">
+
+					<template class="js-out-of-stock-notice">
+						<div class="modal-header">
+							<h1 class="modal-title fs-5">@Translate("Stock limit")</h1>
+							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						</div>
+						<div class="modal-body">
+							@Translate("There are not enough products in stock. The product might be sold out or discontinued. Please adjust the quantity.") 
+						</div>
+					</template>
+				}
+
+				@if (quantitySelector || (!anonymousUser && showFavoritesSelectorMasterProduct && product.VariantInfo.VariantInfo != null) || (!anonymousUser && favoritesSelector))
 				{
 					<input type="hidden" id="Unit_@(product.Id)_@product.VariantId" name="UnitID" value="@unitId" />
 				}
@@ -211,14 +232,14 @@
 							}
 						</button>
 
-					</div>
-					@if (stepQty != "1")
-					{
-						<div class="invalid-feedback d-none">
-							@Translate("Please select a quantity that is dividable by") @stepQty
 						</div>
-					}
-				</div>
+						@if (stepQty != "1")
+						{
+							<div class="invalid-feedback d-none">
+								@Translate("Please select a quantity that is dividable by") @stepQty
+							</div>
+						}
+					</div>
 			</form>
 		</div>
 	} else if (whenVariantsExist == "modal") {
