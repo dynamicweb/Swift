@@ -94,24 +94,46 @@ const VariantSelector = function () {
 		}, 
 
 		ToggleActiveState: function (clickedButton) {
-			var inactiveClicked = clickedButton.classList.contains("in-active");
-			var isAlreadyActive = clickedButton.classList.contains("active");
-
-			//Allow clicking in-active options
-			if (inactiveClicked) {
-				clickedButton.closest(".js-variant-selector").querySelectorAll(".js-variant-option").forEach(function (option) {
+			const isButton = clickedButton.localName === "button";
+			let inactiveClicked;
+			let isAlreadyActive;
+			
+			if (isButton) {
+				inactiveClicked = clickedButton.classList.contains("in-active");
+				isAlreadyActive = clickedButton.classList.contains("active");
+	
+				//Allow clicking in-active options
+				if (inactiveClicked) {
+					clickedButton.closest(".js-variant-selector").querySelectorAll(".js-variant-option").forEach(function (option) {
+						option.classList.remove("active");
+					});
+				}
+	
+				//Remove all active options in the current group
+				clickedButton.closest(".js-variant-group").querySelectorAll(".js-variant-option").forEach(function (option) {
 					option.classList.remove("active");
 				});
+	
+				//Add active to the selected options
+				if (!isAlreadyActive) {
+					clickedButton.classList.add("active");
+				}
 			}
+			else {
+				inactiveClicked = clickedButton.selectedOptions[0].classList.contains("text-muted");
+				isAlreadyActive = clickedButton.value === clickedButton.selectedOptions[0];
 
-			//Remove all active options in the current group
-			clickedButton.closest(".js-variant-group").querySelectorAll(".js-variant-option").forEach(function (option) {
-				option.classList.remove("active");
-			});
+				//Allow clicking in-active options
+				if (inactiveClicked) {
+					clickedButton.options.forEach(function (option) {
+						option.classList.remove("text-muted");
+					});
+				}
 
-			//Add active to the selected options
-			if (!isAlreadyActive) {
-				clickedButton.classList.add("active");
+				//Remove all active options in the current group
+				clickedButton.closest(".js-variant-group").querySelectorAll(".js-variant-option").forEach(function (option) {
+					option.classList.remove("active");
+				});
 			}
 		},
 
