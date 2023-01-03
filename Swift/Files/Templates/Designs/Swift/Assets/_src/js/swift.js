@@ -55,10 +55,12 @@ window.addEventListener('DOMContentLoaded', () => {
 
 		if (dropdownToggle) {
 			dropdown.addEventListener('mouseover', () => {
-				new bootstrap.Dropdown(dropdownToggle).toggle();
+				new bootstrap.Dropdown(dropdownToggle).show();
 				dropdownToggle.style.outline = "none";
 			});
-			dropdown.addEventListener('mouseout', () => new bootstrap.Dropdown(dropdownToggle).toggle());
+			dropdown.addEventListener('mouseout', () => {
+				new bootstrap.Dropdown(dropdownToggle).hide();
+			});
 		}
 	});
 });
