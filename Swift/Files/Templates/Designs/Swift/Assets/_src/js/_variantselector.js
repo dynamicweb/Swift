@@ -40,13 +40,20 @@ const VariantSelector = function () {
 			variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
 				var groupId = option.closest(".js-variant-group").getAttribute("data-group-id");
 				var variantId = option.getAttribute("data-variant-id");
+				var isButton = option.localName === "button";
 
 				option.classList.add("in-active");
+				if (!isButton) {
+					option.classList.add("text-muted");
+				}
 
 				var show = VariantSelector.IsOptionAvailable(variantSelectorElement, variantId, groupId, combinations);
 
 				if (show == true) {
 					option.classList.remove("in-active");
+					if (!isButton) {
+						option.classList.remove("text-muted");
+					}
 				}
 			});
 		},
@@ -94,46 +101,24 @@ const VariantSelector = function () {
 		}, 
 
 		ToggleActiveState: function (clickedButton) {
-			const isButton = clickedButton.localName === "button";
-			let inactiveClicked;
-			let isAlreadyActive;
+			var inactiveClicked = clickedButton.classList.contains("in-active");
+			var isAlreadyActive = clickedButton.classList.contains("active");
 			
-			if (isButton) {
-				inactiveClicked = clickedButton.classList.contains("in-active");
-				isAlreadyActive = clickedButton.classList.contains("active");
-	
-				//Allow clicking in-active options
-				if (inactiveClicked) {
-					clickedButton.closest(".js-variant-selector").querySelectorAll(".js-variant-option").forEach(function (option) {
-						option.classList.remove("active");
-					});
-				}
-	
-				//Remove all active options in the current group
-				clickedButton.closest(".js-variant-group").querySelectorAll(".js-variant-option").forEach(function (option) {
+			//Allow clicking in-active options
+			if (inactiveClicked) {
+				clickedButton.closest(".js-variant-selector").querySelectorAll(".js-variant-option").forEach(function (option) {
 					option.classList.remove("active");
 				});
-	
-				//Add active to the selected options
-				if (!isAlreadyActive) {
-					clickedButton.classList.add("active");
-				}
 			}
-			else {
-				inactiveClicked = clickedButton.selectedOptions[0].classList.contains("text-muted");
-				isAlreadyActive = clickedButton.value === clickedButton.selectedOptions[0];
+			
+			//Remove all active options in the current group
+			clickedButton.closest(".js-variant-group").querySelectorAll(".js-variant-option").forEach(function (option) {
+				option.classList.remove("active");
+			});
 
-				//Allow clicking in-active options
-				if (inactiveClicked) {
-					clickedButton.options.forEach(function (option) {
-						option.classList.remove("text-muted");
-					});
-				}
-
-				//Remove all active options in the current group
-				clickedButton.closest(".js-variant-group").querySelectorAll(".js-variant-option").forEach(function (option) {
-					option.classList.remove("active");
-				});
+			//Add active to the selected options
+			if (!isAlreadyActive) {
+				clickedButton.classList.add("active");
 			}
 		},
 
