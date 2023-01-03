@@ -184,13 +184,6 @@ const VariantSelector = function () {
 					});
 				}
 			}
-		},
-
-		SelectVariantOption: function(dropdown) {
-			var button = document.getElementById(dropdown.value);
-			if (button){
-				button.click();
-			}
 		}
 	}
 }();
