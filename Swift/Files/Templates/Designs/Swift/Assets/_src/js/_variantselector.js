@@ -101,8 +101,9 @@ const VariantSelector = function () {
 		}, 
 
 		ToggleActiveState: function (clickedButton) {
-			var inactiveClicked = clickedButton.classList.contains("in-active");
-			var isAlreadyActive = clickedButton.classList.contains("active");
+			var isButton = clickedButton.localName === "button";
+			var inactiveClicked = isButton ? clickedButton.classList.contains("in-active") : clickedButton.selectedOptions[0].classList.contains("in-active");
+			var isAlreadyActive = isButton ? clickedButton.classList.contains("active") : clickedButton.selectedOptions[0].classList.contains("active");
 			
 			//Allow clicking in-active options
 			if (inactiveClicked) {
@@ -118,7 +119,12 @@ const VariantSelector = function () {
 
 			//Add active to the selected options
 			if (!isAlreadyActive) {
-				clickedButton.classList.add("active");
+				if (isButton) {
+					clickedButton.classList.add("active");
+				}
+				else {
+					clickedButton.selectedOptions[0].classList.add("active");
+				}
 			}
 		},
 
