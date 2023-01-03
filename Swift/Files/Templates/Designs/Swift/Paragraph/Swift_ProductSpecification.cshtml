@@ -235,6 +235,7 @@ else if (Pageview.IsVisualEditorMode)
 	string size = Model.Item.GetRawValueString("Size", "full");
 	string gaps = size != "full" ? " gap-1" : string.Empty;
 	bool hideFieldLabels = Model.Item.GetBoolean("HideFieldLabels");
+	bool hideFieldsWithZeroValue = Model.Item.GetBoolean("HideFieldsWithZeroValue");
 
 	if (layout == "columns") {
 		<div class="g-col-12 grid@(gaps)">
@@ -297,9 +298,14 @@ else if (Pageview.IsVisualEditorMode)
 								string colorSpan = "<span class=\"colorbox-sm\" style=\"background-color: " + option.Value + "\"></span>";
 								options.Add(colorSpan);
 							}
-							else if (!string.IsNullOrEmpty(option.Value) && option.Value != "0" && option.Value != "0.0")
+							else if (!string.IsNullOrEmpty(option.Value))
 							{
-								options.Add(option.Name);
+								if (!hideFieldsWithZeroValue)
+								{
+									options.Add(option.Name);
+								} else if (option.Value != "0" && option.Value != "0.0") { 
+									options.Add(option.Name);
+								}
 							}
 						}
 					}
@@ -367,6 +373,7 @@ else if (Pageview.IsVisualEditorMode)
 	bool hideFieldLabels = Model.Item.GetBoolean("HideFieldLabels");
 	bool noValues = false;
 	string firstListItemValue = string.Empty; //Hack to support field type providers with a single value
+	bool hideFieldsWithZeroValue = Model.Item.GetBoolean("HideFieldsWithZeroValue");
 
 	if (!string.IsNullOrEmpty(fieldValue))
 	{
@@ -383,54 +390,57 @@ else if (Pageview.IsVisualEditorMode)
 		}
 	}
 
-	if (!string.IsNullOrEmpty(fieldValue) && noValues == false && field.Value.ToString() != "0" && firstListItemValue != "0" && field.Value.ToString() != "0.0" && firstListItemValue != "0.0")
+	if (!string.IsNullOrEmpty(fieldValue) && noValues == false)
 	{
-		if (layout == "columns")
+		if (!hideFieldsWithZeroValue || (firstListItemValue != "0" && firstListItemValue != "0.0" && field.Value.ToString() != "0" && field.Value.ToString() != "0.0"))
 		{
+			if (layout == "columns")
+			{
 
-			<div class="grid g-col-6 g-col-lg-4 gap-1">
-				@if (!hideFieldLabels)
+				<div class="grid g-col-6 g-col-lg-4 gap-1">
+					@if (!hideFieldLabels)
+					{
+						<dt class="g-col-12 g-col-lg-4">@field.Name</dt>
+					}
+					<dd class="g-col-12 g-col-lg-8 mb-0 text-break">
+						@{ @RenderFieldValue(field) }
+					</dd>
+				</div>
+			}
+			if (layout == "list")
+			{
+				if (!hideFieldLabels)
 				{
-					<dt class="g-col-12 g-col-lg-4">@field.Name</dt>
+					<dt class="g-col-4">@field.Name</dt>
 				}
-				<dd class="g-col-12 g-col-lg-8 mb-0 text-break">
+				<dd class="g-col-8 mb-0 text-break">
 					@{ @RenderFieldValue(field) }
 				</dd>
-			</div>
-		}
-		if (layout == "list")
-		{
-			if (!hideFieldLabels)
-			{
-				<dt class="g-col-4">@field.Name</dt>
 			}
-			<dd class="g-col-8 mb-0 text-break">
-				@{ @RenderFieldValue(field) }
-			</dd>
-		}
-		if (layout == "table")
-		{
-			<tr>
-				@if (!hideFieldLabels)
-				{
-					<th class="w-25 w-lg-50" scope="row">@field.Name</th>
-				}
-				<td class="text-break">
-					@{ @RenderFieldValue(field) }
-				</td>
-			</tr>
-		}
-		if (layout == "bullets")
-		{
-			<li>
-				@if (!hideFieldLabels)
-				{
-					<strong>@field.Name</strong>
-				}
-				<span>
-					@{ @RenderFieldValue(field) }
-				</span>
-			</li>
+			if (layout == "table")
+			{
+				<tr>
+					@if (!hideFieldLabels)
+					{
+						<th class="w-25 w-lg-50" scope="row">@field.Name</th>
+					}
+					<td class="text-break">
+						@{ @RenderFieldValue(field) }
+					</td>
+				</tr>
+			}
+			if (layout == "bullets")
+			{
+				<li>
+					@if (!hideFieldLabels)
+					{
+						<strong>@field.Name</strong>
+					}
+					<span>
+						@{ @RenderFieldValue(field) }
+					</span>
+				</li>
+			}
 		}
 	}
 }
