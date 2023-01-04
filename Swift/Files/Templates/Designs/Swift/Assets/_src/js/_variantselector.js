@@ -40,20 +40,12 @@ const VariantSelector = function () {
 			variantSelectorElement.querySelectorAll(".js-variant-option").forEach(function (option) {
 				var groupId = option.closest(".js-variant-group").getAttribute("data-group-id");
 				var variantId = option.getAttribute("data-variant-id");
-				var isButton = option.localName === "button";
 
 				option.classList.add("in-active");
-				if (!isButton) {
-					option.classList.add("text-muted");
-				}
 
 				var show = VariantSelector.IsOptionAvailable(variantSelectorElement, variantId, groupId, combinations);
-
 				if (show == true) {
 					option.classList.remove("in-active");
-					if (!isButton) {
-						option.classList.remove("text-muted");
-					}
 				}
 			});
 		},
