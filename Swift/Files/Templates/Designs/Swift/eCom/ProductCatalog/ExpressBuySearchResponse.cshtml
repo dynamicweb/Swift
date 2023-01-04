@@ -3,34 +3,145 @@
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
+	string orderId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("OrderID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("OrderID") : "";
+	var order = !string.IsNullOrEmpty(orderId) ? Dynamicweb.Ecommerce.Orders.Order.GetOrderById(orderId) : null;
+
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 	bool defaultQuantityAsZero = Convert.ToBoolean(Dynamicweb.Context.Current.Request["defaultQuantityAsZero"]);
 
 	var productCounter = 0;
-	
+
 	bool isErpConnectionDown = !Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsWebServiceConnectionAvailable();
 	bool hidePrice = Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && isErpConnectionDown;
 	bool hideAddToCart = Pageview.AreaSettings.GetBoolean("ErpDownHideAddToCart") && isErpConnectionDown;
+
+	int productsOutOfStock = 0;
+
+	List<ProductViewModel> orderProducts = new List<ProductViewModel>();
+	Dictionary<string, double> productQuantityList = new Dictionary<string, double>();
+
+	if (order != null)
+	{
+		ProductViewModelSettings productSetting = new ProductViewModelSettings
+		{
+			LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+			CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+			CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+			ShopId = Pageview.Area.EcomShopId
+		};
+
+		int orderlineCounter = 0;
+
+		foreach (var orderline in order.OrderLines)
+		{
+			if (!string.IsNullOrEmpty(orderline.ProductId))
+			{
+				orderProducts.Add(ViewModelFactory.CreateView(productSetting, orderline.ProductId, orderline.ProductVariantId));
+
+				productQuantityList.Add($"{orderline.ProductId}_{orderlineCounter}", orderline.Quantity);
+				orderlineCounter++;
+			}
+		}
+	}
+
+	var products = order == null ? Model.Products : orderProducts;
 }
 
-@if (Model.Products.Count() > 0)
+@if (products.Count() > 0)
 {
+	<div class="modal fade" id="outOfStockProductsModal" tabindex="-1" aria-labelledby="outOfStockProductsModal" aria-hidden="true">
+		<div class="modal-dialog modal-xl modal-dialog-centered">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h1 class="modal-title fs-5" id="exampleModalLabel">@Translate("Some products can not be ordered")</h1>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<table class="table">
+						<thead>
+							<tr>
+								<td></td>
+								<td>@Translate("Number")</td>
+								<td>@Translate("Product")</td>
+								<td>@Translate("Variant")</td>
+								<td>@Translate("Stock state")</td>
+								<td class="text-end">@Translate("Price")</td>
+							</tr>
+						</thead>
+						<tbody>
+							@foreach (var product in products)
+							{
+								if (product.StockLevel < 1 && !product.NeverOutOfstock)
+								{
+									<tr>
+										<td class="align-middle">
+											<img class="img-fluid" src="/Admin/public/getimage.ashx?image=@Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value)&width=60&height=60&format=webp&Crop=5&fillcanvas=true" height="60" width="60" alt="@product.Name">
+										</td>
+										<td class="align-middle">
+											<span class="fs-8 fs-lg-6">@product.Number</span>
+										</td>
+										<td class="align-middle">
+											<span class="fs-8 fs-lg-6">@product.Name</span>
+										</td>
+										<td class="align-middle">
+											<span class="fs-8 fs-lg-6">@product.VariantName</span>
+										</td>
+										<td class="align-middle">
+											<span class="fs-8 fs-lg-6 text-end text-lg-start text-danger">@Translate("Out of Stock")</span>
+										</td>
+										@if (!hidePrice)
+										{
+											<td class="align-middle text-end">
+												<span class="text-price fs-8 fs-lg-6">@product.Price.PriceFormatted</span>
+											</td>
+										}
+									</tr>
+								}
+							}
+						</tbody>
+					</table>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+					<button type="submit" class="btn btn-primary" data-bs-dismiss="modal" id="OutOfStockAddRestToCartButton">
+						<div class="d-flex gap-2 align-items-center lh-base">
+							<span>@Translate("Confirm")</span>
+							<span class="icon-2">
+								@ReadFile(iconPath + "shopping-cart.svg")
+							</span>
+						</div>
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
 	<header class="g-col-12 py-2 d-none d-lg-block">
 		<div class="grid gap-2 lh-1">
 			<div class="g-col-1"></div>
 			<div class="g-col-1">@Translate("Number")</div>
 			<div class="g-col-4">@Translate("Product")</div>
-			<div class="g-col-2">@Translate("Variant")</div>
+			<div class="g-col-1">@Translate("Variant")</div>
+			<div class="g-col-1">@Translate("Stock state")</div>
 			<div class="g-col-2 text-end">@Translate("Price")</div>
 			<div class="g-col-2 text-end">@Translate("Qty")</div>
 		</div>
 	</header>
 
-	foreach (var product in Model.Products)
+	foreach (var product in products)
 	{
 		string minQty = product.PurchaseMinimumQuantity != 1 ? product.PurchaseMinimumQuantity.ToString() : "1";
 		string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
-		string quantity = !defaultQuantityAsZero ? minQty : "0";
+		double quantity = 0;
+
+		double value = 0.0;
+		if (productQuantityList.TryGetValue($"{product.Id}_{productCounter}", out value))
+		{
+			quantity = value;
+		}
+
+		string disableQuantityField = product.StockLevel < 1 && !product.NeverOutOfstock ? "disabled" : "";
+		string disableOrderline = product.StockLevel < 1 && !product.NeverOutOfstock ? "pe-none user-select-none opacity-50" : "";
 
 		string variantIdForLink = !string.IsNullOrEmpty(product.VariantId) ? $"&VariantID={product.VariantId}" : "";
 		variantIdForLink = string.IsNullOrEmpty(variantIdForLink) && !string.IsNullOrEmpty(product.DefaultVariantId) ? $"&VariantID={product.DefaultVariantId}" : variantIdForLink;
@@ -43,32 +154,50 @@
 
 		productCounter += 1;
 
-		<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center product">
+		if ((product.StockLevel < 1) && !product.NeverOutOfstock) {
+			productsOutOfStock++;
+		}
+
+		<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center product @disableOrderline">
 
 			<div class="d-none d-lg-block g-col-12 border-top"></div>
 
 			<input type="hidden" name="ProductLoopCounter@(productCounter)" value="@(productCounter)">
 			<input type="hidden" name="ProductId@(productCounter)" value="@product.Id">
 			<input type="hidden" name="VariantId@(productCounter)" value="@product.VariantId">
-			
+
 			<div class="g-col-1">
 				<a href="@link" tabindex="-1">
 					<img class="img-fluid" src="/Admin/public/getimage.ashx?image=@Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value)&width=60&height=60&format=webp&Crop=5&fillcanvas=true" height="60" width="60" alt="@product.Name">
 				</a>
 			</div>
 
-			<div class="g-col-7 g-col-lg-9 grid grid-9 gap-0 gap-lg-3 lh-1">
+			<div class="g-col-7 g-col-lg-9 grid grid-9 gap-0 gap-lg-2 lh-1">
 
 				<div class="g-col-5 g-col-lg-1 order-1">
-					<span class="fs-8 fs-lg-6"><a href="@link"  tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.Number</a></span>
+					<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.Number</a></span>
 				</div>
 
 				<div class="g-col-5 g-col-lg-4 order-3 lh-1">
-					<span class="fs-8 fs-lg-6"><a href="@link"  tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.Name</a></span>
+					<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.Name</a></span>
 				</div>
 
-				<div class="g-col-4 g-col-lg-2 order-4">
-					<span class="fs-8 fs-lg-6"><a href="@link"  tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.VariantName</a></span>
+				<div class="g-col-2 g-col-lg-1 order-4">
+					<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.VariantName</a></span>
+				</div>
+
+				<div class="g-col-2 g-col-lg-1 order-4">
+					@if (product.NeverOutOfstock)
+					{
+						<div class="fs-8 fs-lg-6 text-end text-lg-start text-success">@Translate("In stock")</div>
+					} else if (product.StockLevel > 0)
+					{
+						<div class="fs-8 fs-lg-6 text-end text-lg-start text-success">@product.StockLevel @Translate("In stock")</div>
+					}
+					else
+					{
+						<div class="fs-8 fs-lg-6 text-end text-lg-start text-danger">@Translate("Out of Stock")</div>
+					}
 				</div>
 
 				<div class="g-col-4 g-col-lg-2 text-end order-2 order-lg-last">
@@ -81,17 +210,33 @@
 
 			<div class="g-col-2 g-col-lg-2">
 				<label for="Quantity" class="visually-hidden">@Translate("Quantity")</label>
-				<input type="number" step="@stepQty" min="@minQty" class="form-control text-center ms-auto" value="@quantity" name="Quantity@(productCounter)" style="max-width: 85px;">
+				<input type="number" step="@stepQty" min="@minQty" class="form-control text-center ms-auto" value="@quantity" name="Quantity@(productCounter)" @disableQuantityField style="max-width: 85px;">
 			</div>
 
 		</article>
 	}
 
 	<div class="d-flex justify-content-between align-items-baseline py-3 g-col-12 theme position-sticky bottom-0" style="box-shadow: 0 -10px 10px -12px var(--bs-gray-300);">
-		@Translate("Total results") @Model.Products.Count()
+		@Translate("Total results") @products.Count() @productsOutOfStock
 		@if (!hideAddToCart)
 		{
-			<button type="submit" class="btn btn-primary" id="AddAllToCartButton">
+			var buttonProps = string.Empty;
+			var buttonType = "button";
+
+			if (productsOutOfStock == 0)
+			{
+				buttonProps = "id=\"AddAllToCartButton\"";
+				buttonType = "submit";
+			}
+			else if (productsOutOfStock == products.Count())
+			{
+				buttonProps = "disabled";
+			} 
+			else
+			{
+				buttonProps = "data-bs-toggle=\"modal\" data-bs-target=\"#outOfStockProductsModal\"";
+			}
+			<button type="@buttonType" class="btn btn-primary" @buttonProps>
 				<div class="d-flex gap-2 align-items-center lh-base">
 					<span>@Translate("Add all to cart")</span>
 					<span class="icon-2">

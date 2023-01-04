@@ -112,18 +112,16 @@ const Typeahead = function() {
 		},
 
 		displaySuggestions: function (listElements, searchField) {
-			if (listElements.length > 5) {
-				var closestDropdown = searchField.closest(".js-type-ahead-dropdown");
-				var dropdownMenu = closestDropdown.querySelector(".js-type-ahead-menu");
+			var closestDropdown = searchField.closest(".js-type-ahead-dropdown");
+			var dropdownMenu = closestDropdown.querySelector(".js-type-ahead-menu");
 
-				dropdownMenu.innerHTML = "";
+			dropdownMenu.innerHTML = "";
 
-				listElements.forEach(function (element) {
-					dropdownMenu.appendChild(element)
-				});
+			listElements.forEach(function (element) {
+				dropdownMenu.appendChild(element)
+			});
 
-				Typeahead.showSearchResults(searchField);
-			}
+			Typeahead.showSearchResults(searchField);
 		},
 
 		selectSuggestion_: function(inputValue) {

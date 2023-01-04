@@ -3,7 +3,6 @@
 @using Dynamicweb.Frontend.Navigation
 @using Dynamicweb.Environment
 @using Dynamicweb.Core.Encoders
-@using System.Web
 
 @{
 	ProductListViewModel productList = new ProductListViewModel();
@@ -75,7 +74,9 @@
 	//Desktop
 	if (layout == "vertical") {
 		<form method="post" action="@url" data-response-target-element="content" id="FacetsForm_Desktop_@Model.ID" class="d-none d-lg-block h-100 @theme item_@Model.Item.SystemName.ToLower()">
-			@RenderForm(productList, "desktop", enableSorting, layout)
+			@{
+				@RenderForm(productList, "desktop", enableSorting, layout)
+			}
 		</form>
     }
 	if (layout == "horizontal") {
@@ -84,7 +85,9 @@
 
 		<div class="@theme @contentPadding h-100">
 			<form method="post" action="@url" data-response-target-element="content" id="FacetsForm_Desktop_@Model.ID" class="d-none d-lg-flex gap-3 flex-row flex-wrap item_@Model.Item.SystemName.ToLower()">
-				@RenderForm(productList, "desktop", enableSorting, layout)
+				@{
+					@RenderForm(productList, "desktop", enableSorting, layout)
+				}
 
 				@if (selectedFacetsCount > 0) {
 					<button type="button" class="btn btn-sm me-sm-1 me-lg-2" onclick="swift.ProductList.ResetFacets(event)"><span class="icon-2">@ReadFile(iconPath + "rotate-ccw.svg")</span> @Translate("Clear filters")</button>
@@ -114,7 +117,9 @@
 						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="document.querySelector('body').style = ''"></button>
 					</div>
 					<div class="modal-body@(modalTheme)">
-						@RenderForm(productList, "mobile", enableSorting)
+						@{
+							@RenderForm(productList, "mobile", enableSorting)
+						}
 					</div>
 					<div class="modal-footer d-flex@(modalTheme)">
 						@if (selectedFacetsCount != 0)
@@ -206,7 +211,9 @@ else
 			<div class="border-bottom@(contentPadding)@(groupsTheme)">
 				<h2 class="opacity-85 m-0 my-2 flex-fill h6">@Translate("Sort by")</h2>
 				<div class="d-flex flex-column gap-2" id="SortBy_@(deviceType)_@Model.ID">
-					@RenderSorting(deviceType)
+					@{
+						@RenderSorting(deviceType)
+					}
 				</div>
 			</div>
         }
@@ -216,7 +223,9 @@ else
 			</button>
 			<div class="dropdown-menu p-3 @(groupsTheme)" aria-labelledby="SortBy_@(deviceType)_@Model.ID" style="min-width: 280px">
 				<div class="d-flex flex-column gap-2">
-					@RenderSorting(deviceType)
+					@{
+						@RenderSorting(deviceType)
+					}
 				</div>
 			</div>
         }
@@ -230,18 +239,33 @@ else
 		foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
 		{
 			string border = groupCount != totalGroups ? "border-bottom" : "";
-
+			
 			foreach (FacetViewModel facet in facetGroup.Facets)
 			{
+				string collapseClass = string.Empty;
+				string showClass = " show";
+				string ariaExpanded = "true";
+				var expandedFacetGroups = Model.Item.GetRawValueString("ExpandFacetGroups", "all"); 
+
+				if (expandedFacetGroups != "all" && System.Text.RegularExpressions.Regex.IsMatch(expandedFacetGroups, "([0-9])"))
+				{
+					if (groupCount >= Dynamicweb.Core.Converter.ToInt32(expandedFacetGroups))
+					{
+						collapseClass = " collapsed";
+						showClass = string.Empty;
+						ariaExpanded = "false";
+					}
+				}
+
 				if (facet.Options.Count() > 0)
 				{
 					if (layout == "vertical") {
 						<div class="@border@(contentPadding)@(@groupsTheme)">
-							<div class="d-flex" data-bs-toggle="collapse" data-bs-target="#FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID" role="button" aria-expanded="true" aria-controls="FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID">
+							<div class="d-flex@(collapseClass)" data-bs-toggle="collapse" data-bs-target="#FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID" role="button" aria-expanded="@ariaExpanded" aria-controls="FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID">
 								<h2 class="opacity-85 m-0 flex-fill h6 my-2">@Translate(facet.Name)</h2>
 								<div class="my-auto collapse-chevron-icon"></div>
 							</div>
-							<div class="collapse show" id="FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID">
+							<div class="collapse@(showClass)" id="FacetGroup_@facet.Name.Replace(" ", "")_@(deviceType)_@Model.ID">
 								@foreach (FacetOptionViewModel facetOption in facet.Options.OrderByDescending(facetOption => facetOption.Name))
 								{
 									string renderType = facet.RenderType;

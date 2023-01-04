@@ -209,7 +209,6 @@
 	string indicatorsHighlightActive = (Model.Item.GetBoolean("IndicatorsHighlightActive")) ? "slider-indicators-highlight" : string.Empty;
 	string indicatorsInvertColors = (Model.Item.GetBoolean("IndicatorsInvertedColors")) ? "slider-indicators-dark" : string.Empty;
 	string indicatorsVisibleOnSmallDevices = (Model.Item.GetBoolean("IndicatorsVisibleOnSmallDevices")) ? "slider-indicators-sm" : string.Empty;
-	bool showFavoritesSelectorMasterProduct = Model.Item.GetBoolean("ShowFavoritesSelectorMasterProduct");
 
 	bool productsFound = true;
 	if (string.IsNullOrEmpty(groupIds) && string.IsNullOrEmpty(productIds))
@@ -248,7 +247,6 @@
 		<input type="hidden" name="IndicatorsHighlightActive" value="@(indicatorsHighlightActive)">
 		<input type="hidden" name="IndicatorsInvertColors" value="@(indicatorsInvertColors)">
 		<input type="hidden" name="IndicatorsVisibleOnSmallDevices" value="@(indicatorsVisibleOnSmallDevices)">
-		<input type="hidden" name="ShowFavoritesSelectorMasterProduct" value="@(showFavoritesSelectorMasterProduct.ToString())">
 
 		@*--- VARIANTS ---*@
 		@if (sourceType == "variants")
@@ -374,13 +372,20 @@
 
 	<script type="module" src="~/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
 	<script type="module">
-		swift.AssetLoader.Load('Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
+		swift.AssetLoader.Load('/Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
 	</script>
 
+	if (Pageview.IsVisualEditorMode)
+	{
+		<div class="alert alert-info" role="alert">
+			<span>@Translate("Product slider: Edit this column to configure")</span>
+		</div>
+	}
+	
 	if (sourceType != "related-products")
 	{
 		<div class="w-100 h-100">
-			<div id="RelatedProducts_@Model.ID" class="h-100" style="min-height: 345px"></div>
+			<div id="RelatedProducts_@Model.ID" class="h-100 swift_product_slider_container"></div>
 		</div>
 	}
 	else if (product?.RelatedGroups != null)
@@ -389,7 +394,7 @@
 		<div class="grid w-100 h-100@(generalTheme)" style="grid-row-gap: 4rem">
 			@foreach (var group in product.RelatedGroups)
 			{
-				<div id="RelatedProducts_@(Model.ID)_@group.Id" class="g-col-12 h-100" style="min-height: 345px"></div>
+				<div id="RelatedProducts_@(Model.ID)_@group.Id" class="g-col-12 h-100 swift_product_slider_container"></div>
 			}
 		</div>
 	}
@@ -401,7 +406,19 @@
 			if (document.querySelector("#RelatedProducts_@Model.ID").closest("[data-col-size]")) {
 				document.querySelector("#ParentColumnSize_@Model.ID").value = document.querySelector("#RelatedProducts_@Model.ID").closest("[data-col-size]").getAttribute("data-col-size");
 			}
-			swift.PageUpdater.Update(document.querySelector("#RelatedProductsForm_@Model.ID"));
+			swift.PageUpdater.Update(document.querySelector("#RelatedProductsForm_@Model.ID")).then(function () {
+				setTimeout(function() {
+					const isVisualEditor = @(Converter.ToString(Pageview.IsVisualEditorMode).ToLowerInvariant());
+					const productSliderContainer = document.querySelector(".swift_product_slider_container"); 
+					
+					if (productSliderContainer && productSliderContainer.innerHTML !== "") {
+						productSliderContainer.classList.remove("d-none");
+					}
+					else if (!isVisualEditor) {
+						productSliderContainer.closest("[class*=column]").classList.add("d-none");
+					}
+				}, 150);
+			});
 		</script>
 	}
 	else if (product?.RelatedGroups != null)

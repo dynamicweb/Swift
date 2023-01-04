@@ -10,6 +10,7 @@ import { ProductExport } from './_productexport';
 import { StaticVariants } from './_staticvariants';
 import { VariantSelector } from './_variantselector';
 import { Video } from './_video';
+import { Image } from './_image';
 import { Typeahead } from './_typeahead';
 import { AssetLoader } from './_assetLoader';
 import { LiveProductInfo } from './_live-product-info';
@@ -32,6 +33,7 @@ const swift = function () {
 		VariantSelector: VariantSelector,
 		Typeahead: Typeahead,
 		Video: Video,
+		Image: Image,
 		AssetLoader: AssetLoader,
 		LiveProductInfo: LiveProductInfo
 	}
