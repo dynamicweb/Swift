@@ -11,9 +11,7 @@ const LiveProductInfo = function () {
 			productVariantIdAttr: "data-variant-id",
 			showIfAttr: "data-show-if",
 			innerSliderId: "tns1-iw",
-			loaderClass: "spinner-border",
-			repositoryName: "Products",
-			queryName: "Products"
+			loaderClass: "spinner-border"
 		},
 
 		selectors: {
@@ -90,23 +88,30 @@ const LiveProductInfo = function () {
 				if (uniqueFeeds.includes(feedUrl)) return;
 				uniqueFeeds.push(feedUrl);
 				
-				const query = new URLSearchParams(self.SanitizeParameters(feedUrl.split('?')[1]));
+				const feedUrlArray = feedUrl.split('?');
+				const query = new URLSearchParams(self.SanitizeParameters(feedUrlArray[1]));
 				const pageSize = self.GetValue(parseInt(query.get('PageSize')), 100);
 				const productIds = self.GetValue(query.getAll('ProductIds').join(','), el.getAttribute(self.config.productIdAttr));
+				const isPostMethod = query.has('RepositoryName');
 				query.delete('ProductIds');
 				query.delete('PageSize');
 		
-				const path = '/dwapi/ecommerce/products?RepositoryName=' + swift.LiveProductInfo.config.repositoryName + '&QueryName=' + swift.LiveProductInfo.config.queryName;
-				const url = path + '&' + query.toString();
-		
-				fetch(url, {
+				const path = feedUrlArray[0];
+				const url = path + '?' + query.toString();
+				let fetchInit = {
 					headers: {
 						'Accept': 'application/json',
 						'Content-Type': 'application/json'
 					},
-					method: 'POST',
-					body: JSON.stringify({ PageSize: pageSize, Parameters : { MainProductID : productIds } })
-				})
+					method: 'GET'
+				};
+				
+				if (isPostMethod) {
+					fetchInit.method = 'POST';
+					fetchInit.body = JSON.stringify({ PageSize: pageSize, Parameters : { MainProductID : productIds } });
+				}
+		
+				fetch(url, fetchInit)
 					.then(function (response) {
 						return response.json()
 					})

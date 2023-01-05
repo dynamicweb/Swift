@@ -3,6 +3,34 @@
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Core
 
+@functions {
+	public string GetRepositoryName()
+	{
+		return GetIndexValue();
+	}
+
+	public string GetQueryName()
+	{
+		return GetIndexValue(true);
+	}
+
+	public string GetIndexValue(bool isQuery = false, string defaultValue = "Products")
+	{
+		int pageId = GetPageIdByNavigationTag("Shop");
+		if (pageId == 0) return defaultValue;
+
+		var productCatalogParagraph = Dynamicweb.Services.Paragraphs.GetParagraphsByPageId(pageId).OrderBy(p => p.Sort).FirstOrDefault(p => p.ModuleSystemName == "eCom_ProductCatalog" && Dynamicweb.Services.Grids.GetGridRowById(p.GridRowId).Active);
+		if (productCatalogParagraph == null) return defaultValue;
+
+		var indexQuery = productCatalogParagraph.ModuleProperties["IndexQuery"].Split(new[] {'/'}, StringSplitOptions.RemoveEmptyEntries);
+		if (indexQuery.Length <= 1) return defaultValue;
+			
+		var result = isQuery ? indexQuery[indexQuery.Length - 1].Replace(".query", "") : indexQuery[indexQuery.Length - 2];
+		
+		return string.IsNullOrEmpty(result) ? defaultValue : result;
+	}
+}
+
 @{
 	bool isFeed = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("feed")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("feed")) : false;
 
@@ -30,8 +58,12 @@ else
 		bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 		string productIds = string.Join("&ProductIds=", Model.Products.Select(p => p.Id));
 		string priceFilledProperties = $"Price,PriceFormatted{(showPricesWithVat == "false" && !neverShowVat ? ",PriceWithVat,PriceWithVatFormatted" : "")}";
-		string productInfoFeed = $@"/dwapi/ecommerce/products/search?ProductIds={productIds}&PageSize={Model.PageSize}
-					&UserId={Converter.ToString(Pageview.User?.ID)}
+		string productInfoFeed = $@"/dwapi/ecommerce/products/
+					?RepositoryName={GetRepositoryName()}
+                    &QueryName={GetQueryName()}
+					&ProductIds={productIds}
+					&PageSize={Model.PageSize}
+                    &UserId={Converter.ToString(Pageview.User?.ID)}
 					&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
 					&ProductSettings.FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel,VariantInfo,NeverOutOfstock
 					&ProductSettings.PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
