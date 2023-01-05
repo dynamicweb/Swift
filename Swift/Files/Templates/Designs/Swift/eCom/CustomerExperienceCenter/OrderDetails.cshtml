@@ -31,7 +31,7 @@
 	<header class="p-3 border-bottom">
 		<div class="d-flex flex-row align-items-center gap-3">
 			<h1 class="h6 m-0 flex-fill text-muted">@Translate("Your order")</h1>
-			<button onclick="javascript:print()" class="btn btn-link p-0">Print</button>
+			<button onclick="javascript:print()" class="btn btn-link p-0">@Translate("Print")</button>
 		</div>
 	</header>
 
@@ -274,7 +274,7 @@
 		{
 			string productName = orderline.ProductName + " " + orderline.ProductVariantId;
 			string productImage = "/Admin/Public/GetImage.ashx?image=" + orderline.ProductImage + "&width=210&height=210&Format=WebP&Quality=100";
-			string productPriceTotalWithDiscounts = orderline.Price.PriceFormatted;
+			string productPriceTotalWithDiscounts = orderline.TotalPriceWithProductDiscounts.PriceFormatted;
 
 			var orderlineQuantity = orderline.Quantity;
 			var orderlineUnit = orderline.UnitName;
@@ -322,13 +322,13 @@
 									}
 									<li>
 										<span>@Translate("Price"):</span>
-										@if (orderline.UnitPrice.Price != orderline.UnitPriceBeforeDiscount.Price && orderline.UnitPriceBeforeDiscount.Price != 0.0)
+										<span class="text-price">@orderline.UnitPriceWithProductDiscount.PriceFormatted</span>
+										@if (orderline.UnitPriceWithProductDiscount.Price != orderline.UnitPrice.Price && orderline.UnitPrice.Price != 0.0)
 										{
-											<span class="text-decoration-line-through text-muted">
-												<span>@orderline.UnitPriceBeforeDiscount.PriceFormatted</span>
+											<span class="text-decoration-line-through fs-7">
+												<span class="text-price">@orderline.UnitPrice.PriceFormatted</span>
 											</span>
 										}
-										<span>@orderline.UnitPrice.PriceFormatted</span>
 
 									</li>
 									<li>
@@ -357,20 +357,6 @@
 		}
 
 		@{
-			double totalTaxes = Model.OrderLines.Where(o => o.OrderLineType == OrderLineType.Tax).Sum(o => o.Price.Price);
-			double priceBeforeFeesDiscountAndTaxes = Model.PriceBeforeFees.Price - Model.TotalDiscount.Price - totalTaxes;
-			string priceBeforeFeesDiscountAndTaxesFormatted = Dynamicweb.Ecommerce.Services.Currencies.Format(Dynamicweb.Ecommerce.Common.Context.Currency, priceBeforeFeesDiscountAndTaxes, true);
-			string orderSubtotal = totalTaxes != 0 || Model.TotalDiscount.Price != 0 ? priceBeforeFeesDiscountAndTaxesFormatted : Model.PriceBeforeFees.PriceFormatted;
-			string shippingFee = Model.ShippingFee.PriceFormatted;
-			string orderTotalDiscount = Model.TotalDiscount.PriceFormatted;
-
-			// Discounts
-			bool orderHasDiscounts = false;
-			if (!string.IsNullOrEmpty(orderTotalDiscount))
-			{
-				orderHasDiscounts = true;
-			}
-
 			<div class="cart-total grid mt-3">
 				<div class="g-col-12">
 					<dl class="m-0">
@@ -378,7 +364,11 @@
 						<div class="d-flex my-1 pt-4 border-dark border-top">
 						<dt class="flex-fill fw-bold">@Translate("Subtotal")</dt>
 						<dd class="flex-fill mb-0 text-end">
-							<span class="text-price fw-bold">@orderSubtotal</span>
+							@if (Model.TotalPriceWithoutDiscountsFeesAndTaxes.Price != Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.Price)
+							{
+								<span class="text-price text-decoration-line-through">@(Model.TotalPriceWithoutDiscountsFeesAndTaxes.PriceFormatted)</span>
+							}
+                            <span class="textPrice">@(Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.PriceFormatted)</span>
 							@if (!neverShowVat && showPricesWithVat == "false")
 							{
 								<span class="fs-7 fw-normal d-block">@Translate("Excl. VAT")</span>
@@ -407,12 +397,12 @@
 				}
 
 				@* Delivery *@
-				@if (!string.IsNullOrEmpty(shippingFee) && Model.ShippingFee.Price != 0.0) 
+				@if (Model.ShippingFee.Price != 0.0) 
 				{
 					<div class="d-flex my-1">
 						<dt class="flex-fill fw-normal">@Translate("Delivery")</dt>
 						<dd class="flex-fill mb-0 text-end">
-							<span>@shippingFee</span>
+							<span>@Model.ShippingFee.PriceFormatted</span>
 						</dd>
 					</div>
 				}
@@ -429,12 +419,12 @@
 				}
 				
 				@* Taxes *@
-				@if (totalTaxes != 0.0)
+				@if (Model.TotalTaxes.Price != 0.0)
                 {
                     <div class="d-flex my-1">
                         <dt class="flex-fill fw-normal">@Translate("Sales tax")</dt>
                         <dd class="flex-fill mb-0 text-end">
-                            <span>@Dynamicweb.Ecommerce.Services.Currencies.Format(Dynamicweb.Ecommerce.Common.Context.Currency, totalTaxes, true)</span>
+                            <span>@Model.TotalTaxes.PriceFormatted</span>
                         </dd>
                     </div>
                 }
@@ -482,12 +472,12 @@
 					}
 				}
 
-				@if (orderHasDiscounts && Model.TotalDiscount.Price != 0.0)
+				@if (Model.TotalDiscount.Price != 0.0)
 				{
 					<div class="d-flex my-1">
 						<dt class="flex-fill fw-normal">@Translate("Discount")</dt>
 						<dd class="flex-fill mb-0 text-end">
-							<span>@orderTotalDiscount</span>
+							<span>@Model.TotalDiscount.PriceFormatted</span>
 						</dd>
 					</div>
 				}
