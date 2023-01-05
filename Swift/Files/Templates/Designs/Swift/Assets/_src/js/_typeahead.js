@@ -84,29 +84,31 @@ const Typeahead = function() {
 		},
 
 		getSuggestions: async function (searchField) {
-			var resultsPageId = searchField.closest(".js-suggest-form").getAttribute("data-search-results-page");
-			var defaultDetailsPageId = searchField.closest(".js-suggest-form").getAttribute("data-product-details-page-id");
-			var searchUrl = "/Default.aspx?ID=" + resultsPageId + "&defaultpdpId=" + defaultDetailsPageId + "&redirect=false&eq=" + encodeURIComponent(searchField.value.toLowerCase());
+			if (searchField.value.trim() != "") {
+				var resultsPageId = searchField.closest(".js-suggest-form").getAttribute("data-search-results-page");
+				var defaultDetailsPageId = searchField.closest(".js-suggest-form").getAttribute("data-product-details-page-id");
+				var searchUrl = "/Default.aspx?ID=" + resultsPageId + "&defaultpdpId=" + defaultDetailsPageId + "&redirect=false&eq=" + encodeURIComponent(searchField.value.toLowerCase());
 
-			const signal = controller.signal;
-			let abortError = false;
-			let response = await fetch(searchUrl, { signal }).catch(function (error) {
-				abortError = true;
-			});
+				const signal = controller.signal;
+				let abortError = false;
+				let response = await fetch(searchUrl, { signal }).catch(function (error) {
+					abortError = true;
+				});
 
-			if (!abortError) {
-				if (!response.ok) {
-					throw new Error(`HTTP error! status: ${response.status}`);
-				} else {
-					let html = await response.text().then(function (text) {
-						return text;
-					});
+				if (!abortError) {
+					if (!response.ok) {
+						throw new Error(`HTTP error! status: ${response.status}`);
+					} else {
+						let html = await response.text().then(function (text) {
+							return text;
+						});
 
-					var parser = new DOMParser();
-					var doc = parser.parseFromString(html, 'text/html');
-					var listElements = doc.querySelectorAll("li");
+						var parser = new DOMParser();
+						var doc = parser.parseFromString(html, 'text/html');
+						var listElements = doc.querySelectorAll("li");
 
-					Typeahead.displaySuggestions(listElements, searchField);
+						Typeahead.displaySuggestions(listElements, searchField);
+					}
 				}
 			}
 		},
