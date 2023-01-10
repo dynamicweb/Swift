@@ -48,17 +48,19 @@ window.onpopstate = function (event) {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
-	const dropdowns = document.querySelectorAll('.js-dropdown');
+	const dropdowns = document.querySelectorAll('.dropdown');
 
 	dropdowns.forEach(dropdown => {
-		const dropdownToggle = dropdown.querySelector('.js-dropdown-toggle');
+		const dropdownToggle = dropdown.querySelector('[data-bs-toggle="dropdown"]');
 
 		if (dropdownToggle) {
 			dropdown.addEventListener('mouseover', () => {
-				new bootstrap.Dropdown(dropdownToggle).toggle();
+				new bootstrap.Dropdown(dropdownToggle).show();
 				dropdownToggle.style.outline = "none";
 			});
-			dropdown.addEventListener('mouseout', () => new bootstrap.Dropdown(dropdownToggle).toggle());
+			dropdown.addEventListener('mouseout', () => {
+				new bootstrap.Dropdown(dropdownToggle).hide();
+			});
 		}
 	});
 });
