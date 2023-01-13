@@ -11,16 +11,13 @@ const PageUpdater = function () {
 				var responseTargetElement = form.getAttribute("data-response-target-element") ? "#" + form.getAttribute("data-response-target-element") : "#content";
 				responseTargetElement = document.querySelector(responseTargetElement);
 				var layoutTemplate = form.getAttribute("data-layout-template") ? form.getAttribute("data-layout-template") : "Swift_PageClean.cshtml";
-				let formData = new FormData(form);
-				let formObj = this.CleanUpFormData(formData);
-				let newFormData = new FormData();
-				Object.keys(formObj).forEach(key => newFormData.append(key, formObj[key]));
 
-				newFormData.set("LayoutTemplate", layoutTemplate);
+				let formData = new FormData(form);
+				formData.set("LayoutTemplate", layoutTemplate);
 				const signal = controller.signal;
 				var fetchOptions = {
 					method: 'POST',
-					body: newFormData,
+					body: formData,
 					signal: signal
 				};
 
@@ -28,7 +25,7 @@ const PageUpdater = function () {
 				let event = new CustomEvent("update.swift.pageupdater", {
 					cancelable: true,
 					detail: {
-						formData: newFormData,
+						formData: formData,
 						parentEvent: e
 					}
 				});
@@ -46,38 +43,12 @@ const PageUpdater = function () {
 					let abortError = false;
 					let response;
 
-					const newParams = new URLSearchParams(newFormData); //Get parameters from the form
-					var url = new URL(form.action);	//Get the url from the form
-					var pageId = url.searchParams.get("ID");
-
-					if (pageId) {
-						newParams.set("ID", pageId);
-					}
-					newParams.set("LayoutTemplate", "Swift_PageClean.cshtml"); //Set template to not include header and footer
-
-					let newUrl = form.action;
-
-					if (form.getAttribute("data-update-url") != undefined ) {
-						newUrl = url.origin + url.pathname + "?" + newParams.toString(); //Create url with the new parameters
-					}
-
-					response = await fetch(newUrl, fetchOptions).catch(function (error) {
+					response = await fetch(form.action, fetchOptions).catch(function (error) {
 						abortError = true;
 					});
 
 					if (!abortError) {
 						if (response.ok) {
-
-							//Update URL
-							let updateUrl = form.getAttribute("data-update-url") != undefined ? form.getAttribute('data-update-url').toLowerCase() : 'false';
-							
-							if (updateUrl == 'true') {
-								newParams.delete("LayoutTemplate");
-
-								var updatedUrl = window.location.origin + window.location.pathname + "?" + newParams;
-								window.history.replaceState({}, '', decodeURI(updatedUrl));
-							}
-
 							PageUpdater.Success(response, addPreloaderTimer, formData, responseTargetElement, clickedButton);
 						} else {
 							PageUpdater.Error(response, addPreloaderTimer);
@@ -87,25 +58,6 @@ const PageUpdater = function () {
 			} else {
 				PageUpdater.Debounce(() => PageUpdater.Update(e, false), 300)()
 			}
-		},
-
-		CleanUpFormData: function (data) {
-			let obj = {};
-			for (let [key, value] of data) {
-				if (obj[key] !== undefined) {
-					if (!Array.isArray(obj[key])) {
-						obj[key] = [obj[key]];
-					}
-					if (value !== '') {
-						obj[key].push(value)
-					};
-				} else {
-					if (value !== '') {
-						obj[key] = value;
-					}
-				}
-			}
-			return obj;
 		},
 
 		UpdateFromUrl: async function (e, url) {
