@@ -181,6 +181,13 @@ const VariantSelector = function () {
 						VariantSelector.init();
 					});
 				}
+			} else if (selectionCount != totalGroups && updatePage) {
+				const closestProduct = variantSelectorElement.closest(".js-product") !== null ? variantSelectorElement.closest(".js-product") : variantSelectorElement.closest("#content");
+				const closestCartButton = closestProduct.querySelector(".js-add-to-cart-button");
+
+				if (closestCartButton) {
+					closestCartButton.setAttribute("disabled", true);
+				}
 			}
 		}
 	}
