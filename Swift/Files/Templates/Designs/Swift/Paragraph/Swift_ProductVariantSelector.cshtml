@@ -15,6 +15,23 @@
 		string foreColor = (255 - bgDelta < nThreshold) ? "#333" : "#fff";
 		return foreColor;
 	}
+
+	//Collect all variant images
+	public static Dictionary<string, string> GetVariantImages(List<VariantInfoViewModel> variantInfo, Dictionary<string, string> list)
+	{
+		foreach (var variantGroup in variantInfo)
+		{
+			if (variantGroup.Image?.Value != null && !list.ContainsKey(variantGroup.OptionID)) { 
+				list.Add(variantGroup.OptionID, variantGroup.Image.Value);
+			}
+
+			if (variantGroup.VariantInfo != null) {
+				GetVariantImages(variantGroup.VariantInfo, list);
+			}
+		}
+
+		return list;
+	}
 }
 
 @{
@@ -83,6 +100,9 @@
 			variantUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl($"Default.aspx?ID={GetPageIdByNavigationTag("Shop")}&GroupID={product.PrimaryOrDefaultGroup.Id}&ProductID={product.Id}&VariantID={product.VariantId}");
 		}
 
+		Dictionary<string, string> variantImages = new Dictionary<string, string>();
+		variantImages = GetVariantImages(product.VariantInfo.VariantInfo, variantImages);
+
 		<form class="d-flex flex-column @horizontalAlign gap-2 js-variant-selector item_@Model.Item.SystemName.ToLower()" data-combinations="@string.Join(",", product.VariantCombinations())" data-base-url="@baseUrl" data-friendly-url="@variantUrl" >
 			@foreach (var variantGroup in product.VariantGroups())
 			{
@@ -109,9 +129,18 @@
 									</button>
 									break;
 								case VariantGroupDisplayType.VariantImage:
-									<button type="button" class="btn p-0 d-inline-block @optionLayout variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
-										<img src="/Admin/Public/GetImage.ashx?image=@(option.Image.Value)&width=42&Format=WebP&Quality=70">
-									</button>
+									string variantImage = string.Empty;
+									if (variantImages.TryGetValue(option.Id, out variantImage))
+									{	 
+										<button type="button" class="btn p-0 d-inline-block @optionLayout variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
+											<img src="/Admin/Public/GetImage.ashx?image=@(variantImage)&width=42&Format=WebP&Quality=70">
+										</button>
+									} else { 
+										<button type="button" class="btn btn-secondary d-inline-block variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
+											@option.Name
+										</button>
+									}
+
 									break;
 								case VariantGroupDisplayType.VariantName:
 									<button type="button" class="btn btn-secondary d-inline-block variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
