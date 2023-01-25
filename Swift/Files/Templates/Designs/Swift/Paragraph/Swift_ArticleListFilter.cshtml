@@ -1,0 +1,214 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Content.Items
+@using Dynamicweb.Content.Items.Queries
+
+@functions {
+
+	private List<Dynamicweb.Frontend.ItemViewModel> GetSelectedLists()
+	{
+		var selectedLists = Model.Item?.GetRawValueString("Lists");
+		var listsArray = selectedLists?.Split(',');
+		var lists = new List<Dynamicweb.Frontend.ItemViewModel>();
+
+		if (listsArray.Any())
+		{
+			foreach (var list in listsArray)
+			{
+				var page = !string.IsNullOrEmpty(list) ? Dynamicweb.Services.Pages.GetPage(Dynamicweb.Core.Converter.ToInt32(list)) : null;
+				var viewModel = page != null ? Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page)?.Item : null;
+
+				if (viewModel != null)
+				{
+					lists.Add(viewModel);
+				}
+			}
+		}
+
+		return lists;
+	}
+
+	private string GetCheckboxIcon()
+	{
+		string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+		var icon = $"<span class=\"icon-2\">{@ReadFile(iconPath + "check.svg")}</span>";
+
+		return icon;
+	}
+
+	private string RenderHeader()
+	{
+		var header = string.Empty;
+
+		if(!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
+		{
+			string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "h3");
+			string headingLevel = Model.Item.GetString("HeadingLevel", "h2");
+			string headingLevelStart = $"<{headingLevel} class=\"{titleFontSize} mb-3\">";
+			string headingLevelStop = $"</{headingLevel}>";
+
+			header += @headingLevelStart;
+			header += Model.Item.GetString("Title");
+			header += @headingLevelStop;
+		}
+
+		return header;
+	}
+
+}
+
+@{
+	var query = Dynamicweb.Context.Current.Request.QueryString?.Get("list");
+	var style = Model.Item?.GetRawValueString("Style", "dropdown");
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? $"theme {Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower()} " : string.Empty;
+	var alignment = Model.Item?.GetRawValueString("Alignment", "left");
+	var buttonStyle = Model.Item?.GetRawValueString("ButtonStyle", "btn-primary");
+	var buttonSize = Model.Item?.GetRawValueString("ButtonSize", "btn-md");
+
+	switch (alignment)
+	{
+		case "left":
+			alignment = "align-items-start";
+			break;
+		case "center":
+			alignment = "align-items-center";
+			break;
+		case "right":
+			alignment = "align-items-end";
+			break;
+	}
+	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "none");
+	switch (contentPadding)
+	{
+		case "none":
+			contentPadding = "p-0";
+			break;
+		case "small":
+			contentPadding = "p-3 p-md-3";
+			break;
+		case "large":
+			contentPadding = "p-5 p-md-5";
+			break;
+	}
+}
+
+<div class="d-flex flex-column @(theme)@(contentPadding) @(alignment)">
+
+	@if (GetSelectedLists().Any())
+	{
+		switch (style)
+		{
+			case "checkboxes":
+
+				<div>
+
+					@RenderHeader()
+
+					@foreach (var list in GetSelectedLists())
+					{
+						<div class="form-check form-check-inline">
+							<label class="form-check-label" for="list_@list.PageID">@list.GetString("Title")</label>
+							<input class="form-check-input" type="checkbox" id="list_@list.PageID" name="list" value="@list.PageID" @(!string.IsNullOrEmpty(query) && query.Contains($"{list.PageID}") ? "checked" : string.Empty) />
+						</div>
+					}
+
+				</div>
+
+				break;
+
+			case "checkboxbuttons":
+
+				<div class="d-flex flex-wrap gap-2">
+
+					@RenderHeader()
+
+					@foreach (var list in GetSelectedLists())
+					{
+						var active = string.Empty;
+						var selected = string.Empty;
+						var checkbox = string.Empty;
+						if (!string.IsNullOrEmpty(query) && query.Contains($"{list.PageID}"))
+						{
+							active = " active";
+							selected = "checked";
+							checkbox = GetCheckboxIcon();
+						}
+						<label class="btn @(buttonStyle) @(buttonSize)@(active)" for="list_@list.PageID"><span class="d-flex align-items-center gap-2">@list.GetString("Title") @(checkbox)</span></label>
+						<input class="visually-hidden" type="checkbox" id="list_@list.PageID" name="list" value="@list.PageID" @(selected) />
+					}
+
+				</div>
+
+				break;
+
+			case "dropdown":
+
+				<select name="list" class="form-select">
+					<option value="" label="@Translate("All")"></option>
+					
+					@foreach (var list in GetSelectedLists())
+					{
+						<option value="@list.PageID" label="@list.GetString("Title")" @(!string.IsNullOrEmpty(query) && query.Equals($"{list.PageID}") ? "selected" : string.Empty)></option>
+					}
+
+				</select>
+
+				break;
+
+			case "radiobuttons":
+
+				<div>
+					@RenderHeader()
+
+					<div class="form-check form-check-inline">
+						<label class="form-check-label" for="category_all">@Translate("All")</label>
+						<input class="form-check-input" type="radio" id="category_all" name="list" value="" checked>
+					</div>
+
+					@foreach (var list in GetSelectedLists())
+					{
+					<div class="form-check form-check-inline">
+						<label class="form-check-label" for="list_@list.PageID">@list.GetString("Title")</label>
+						<input class="form-check-input" type="radio" id="list_@list.PageID" name="list" value="@list.PageID" @(!string.IsNullOrEmpty(query) && query.Equals($"{list.PageID}") ? "checked" : string.Empty)>
+					</div>
+					}
+				</div>
+
+				break;
+
+			case "dropdownbutton":
+
+				@RenderHeader()
+
+				var facetTitle = !string.IsNullOrEmpty(query) && GetSelectedLists().Any() ? GetSelectedLists().FirstOrDefault(x => x.PageID.ToString() == query).GetString("Title") : Translate("All");
+
+				<div class="dropdown w-100">
+					<button class="btn @(buttonStyle) @(buttonSize) dropdown-toggle w-100" type="button" id="facet-dropdown-@(Model.ID)" data-bs-toggle="dropdown" aria-expanded="false">
+						@facetTitle
+					</button>
+					<div class="dropdown-menu w-100" aria-labelledby="facet-dropdown-@(Model.ID)">
+						<label class="dropdown-item" for="list_@(Model.ID)">@Translate("All")</label>
+						<input class="visually-hidden" id="list_@(Model.ID)" value name="list" type="radio">
+						
+						@foreach (var list in GetSelectedLists())
+						{
+							var active = string.Empty;
+							var selected = string.Empty;
+							if (!string.IsNullOrEmpty(query) && query.Contains($"{list.PageID}"))
+							{
+								active = " active";
+								selected = "checked";
+							}
+
+							<label class="dropdown-item@(active)" for="list_@list.PageID">@list.GetString("Title")</label>
+							<input class="visually-hidden" type="radio" id="list_@list.PageID" name="list" value="@list.PageID" @(selected)>
+						}
+
+					</div>
+				</div>
+
+				break;
+		}
+	}
+</div>
+
+<script type="module" src="/Files/Templates/Designs/Swift/Assets/js/htmx.js"></script>

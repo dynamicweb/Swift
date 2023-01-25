@@ -1,7 +1,8 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 
-@{ 
+@{
 	string listSource = !string.IsNullOrEmpty(Model.Item.GetString("ListSource")) ? Model.Item.GetString("ListSource") : Model.PageID.ToString();
+	var listBehaviour = Model.Item.GetRawValueString("ListBehaviour", "all");
 	string articleListSortOrder = !string.IsNullOrEmpty(Model.Item.GetString("ArticleListSortOrder")) ? Model.Item.GetString("ArticleListSortOrder") : "Descending";
 	int maxItemsInList = !string.IsNullOrEmpty(Model.Item.GetInt32("MaxItemsInList").ToString()) ? Model.Item.GetInt32("MaxItemsInList") : 10;
 	string articleListLayout = !string.IsNullOrEmpty(Model.Item.GetString("ArticleListLayout")) ? Model.Item.GetString("ArticleListLayout") : "grid";
@@ -48,52 +49,66 @@
 	switch (articleListLayout)
 	{
 		case "grid":
-			<div class="grid gap-md-4 grid-1@(settingsClassGrid)@(columnThemeClass) item_@Model.Item.SystemName.ToLower()">
-            @{
-				@RenderArticleList("Swift_Article", listSource, maxItemsInList, articleListSortOrder)
-				@RenderArticleList("Swift_ArticleListPage", listSource, maxItemsInList, articleListSortOrder)
-                }
+			
+			<div class="h-100@(columnThemeClass)">
+				<div class="grid gap-4 grid-1@(settingsClassGrid) item_@Model.Item.SystemName.ToLower()">
+					@{
+						if (listBehaviour != "lists") { @RenderArticleList("Swift_Article", listSource, maxItemsInList, articleListSortOrder) }
+						if (listBehaviour != "articles") { @RenderArticleList("Swift_ArticleListPage", listSource, maxItemsInList, articleListSortOrder) }
+					}
+				</div>
 			</div>
+			
 			break;
 
 		case "carousel":
-			<div class="swiffy-slider slider-item-reveal slider-nav-round slider-item-nosnap swiffy-gap-lg-4@(settingsClassCarousel)@(columnThemeClass) item_@Model.Item.SystemName.ToLower()">
-				<div class="slider-container pb-3 py-lg-3 mt-lg-n3@(scrollbarClass)">
-                @{
-					@RenderArticleList("Swift_Article", listSource, maxItemsInList, articleListSortOrder)
-					@RenderArticleList("Swift_ArticleListPage", listSource, maxItemsInList, articleListSortOrder)
-                    }
+			
+			<div class="h-100@(columnThemeClass)">
+				<div class="swiffy-slider slider-item-reveal slider-nav-round slider-item-nosnap swiffy-gap-lg-4@(settingsClassCarousel)@(columnThemeClass) item_@Model.Item.SystemName.ToLower()">
+					<div class="slider-container pb-3 py-lg-3 mt-lg-n3@(scrollbarClass)">
+						@{
+							@RenderArticleList("Swift_Article", listSource, maxItemsInList, articleListSortOrder)
+							if (listBehaviour != "articles"){ @RenderArticleList("Swift_ArticleListPage", listSource, maxItemsInList, articleListSortOrder) }
+
+						}
+					</div>
+
+					<button type="button" title="@Translate("Slider navigation button - Previous slider")" class="slider-nav"></button>
+					<button type="button" title="@Translate("Slider navigation button - Next slider")" class="slider-nav slider-nav-next"></button>
+
+					<script type="module" src="/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
+					<script type="module">
+						swift.AssetLoader.Load('Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
+						document.addEventListener('load.swift.assetloader', function () {
+							swiffyslider.init()
+						});
+					</script>
 				</div>
-
-				<button type="button" title="@Translate("Slider navigation button - Previous slider")" class="slider-nav"></button>
-				<button type="button" title="@Translate("Slider navigation button - Next slider")" class="slider-nav slider-nav-next"></button>
-
-				<script type="module" src="/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
-				<script type="module">
-					swift.AssetLoader.Load('/Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
-					document.addEventListener('load.swift.assetloader', function () {
-						swiffyslider.init()
-					});
-				</script>
 			</div>
-			break;
 
+			break;
 	}
 }
 
 @helper RenderArticleList(string itemType, string listSource, int maxItemsInList, string articleListSortOrder)
 {
+	var parent = Dynamicweb.Context.Current.Request.QueryString.Get("list");
+	var query = string.IsNullOrEmpty(parent) ? listSource : parent;
+	var includeAllChildren = Model.Item.GetRawValueString("ListDepth", "all") == "all" ? true : false;
+	
+
 	@RenderItemList(new
 	{
 		ItemType = itemType,
 		ListTemplate = "ItemPublisher/List/List.cshtml",
 		ItemFieldsList = "*",
 		ListSourceType = "Page",
-		ListSourcePage = listSource,
+		ListSourcePage = query,
 		ListPageSize = maxItemsInList,
 		IncludeParagraphItems = true,
 		ListOrderBy = "PublishedDate",
 		ListSecondOrderBy = "Updated",
-		ListOrderByDirection = articleListSortOrder
+		ListOrderByDirection = articleListSortOrder,
+		IncludeAllChildItems = includeAllChildren
 	})
 }
