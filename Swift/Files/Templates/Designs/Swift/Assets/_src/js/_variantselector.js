@@ -44,7 +44,6 @@ const VariantSelector = function () {
 				option.classList.add("in-active");
 
 				var show = VariantSelector.IsOptionAvailable(variantSelectorElement, variantId, groupId, combinations);
-
 				if (show == true) {
 					option.classList.remove("in-active");
 				}
@@ -94,16 +93,17 @@ const VariantSelector = function () {
 		}, 
 
 		ToggleActiveState: function (clickedButton) {
-			var inactiveClicked = clickedButton.classList.contains("in-active");
-			var isAlreadyActive = clickedButton.classList.contains("active");
-
+			var isButton = clickedButton.localName === "button";
+			var inactiveClicked = isButton ? clickedButton.classList.contains("in-active") : clickedButton.selectedOptions[0].classList.contains("in-active");
+			var isAlreadyActive = isButton ? clickedButton.classList.contains("active") : clickedButton.selectedOptions[0].classList.contains("active");
+			
 			//Allow clicking in-active options
 			if (inactiveClicked) {
 				clickedButton.closest(".js-variant-selector").querySelectorAll(".js-variant-option").forEach(function (option) {
 					option.classList.remove("active");
 				});
 			}
-
+			
 			//Remove all active options in the current group
 			clickedButton.closest(".js-variant-group").querySelectorAll(".js-variant-option").forEach(function (option) {
 				option.classList.remove("active");
@@ -111,7 +111,12 @@ const VariantSelector = function () {
 
 			//Add active to the selected options
 			if (!isAlreadyActive) {
-				clickedButton.classList.add("active");
+				if (isButton) {
+					clickedButton.classList.add("active");
+				}
+				else {
+					clickedButton.selectedOptions[0].classList.add("active");
+				}
 			}
 		},
 
@@ -175,6 +180,13 @@ const VariantSelector = function () {
 
 						VariantSelector.init();
 					});
+				}
+			} else if (selectionCount != totalGroups && updatePage) {
+				const closestProduct = variantSelectorElement.closest(".js-product") !== null ? variantSelectorElement.closest(".js-product") : variantSelectorElement.closest("#content");
+				const closestCartButton = closestProduct.querySelector(".js-add-to-cart-button");
+
+				if (closestCartButton) {
+					closestCartButton.setAttribute("disabled", true);
 				}
 			}
 		}

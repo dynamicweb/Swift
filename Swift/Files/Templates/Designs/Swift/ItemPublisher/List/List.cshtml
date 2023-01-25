@@ -1,12 +1,131 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 @using System.IO
 
+@functions{
+
+	private List<string> GetTags(LoopItem item)
+	{
+		var tags = new List<string>();
+
+		foreach (var tag in item.GetLoop("ItemPublisher:Item.Tags.Options"))
+		{
+			if(tag.GetBoolean("ItemPublisher:Item.Tags.Option.IsSelected"))
+			{
+				tags.Add(tag.GetString("ItemPublisher:Item.Tags.Option.Label"));
+			}
+		}
+
+		return tags;
+	}
+
+	private string CreateCategory(string label, string theme)
+	{
+		var border = string.IsNullOrEmpty(theme) ? "--swift-border-color: rgba(var(--swift-foreground-color-rgb), .2);" : null;
+		var sticker = $"<span class=\"badge {theme}\" style=\"color: var(--swift-foreground-color); background-color: rgba(var(--swift-background-color-rgb), 1); {border} \">{label}</span>";
+		return sticker;
+	}
+
+	private string CreateSticker(string label)
+	{
+		string shape = Pageview.CurrentParagraph.Item["ArticleItemShape"] != null ? Pageview.CurrentParagraph.Item["ArticleItemShape"].ToString() : "boxed";
+		var sticker = $"<span class=\"badge fw-normal shadow-none\" style=\"border: 1px solid rgba(var(--swift-foreground-color-rgb), 0.2);\">{label}</span>";
+		return sticker;
+	}
+
+	private string GetTagStickers(LoopItem item)
+	{
+		var stickers = string.Empty;
+
+		if (item.GetString("ItemPublisher:Item.SystemName") == "Swift_Article")
+		{
+			var showTags = Pageview.CurrentParagraph.Item["ShowTags"] != null ? (Boolean)Pageview.CurrentParagraph.Item["ShowTags"] : false;
+
+			if (showTags && GetTags(item).Count >= 1)
+			{
+				stickers += "<div class=\"d-inline-flex flex-wrap gap-1\">";
+				foreach(var tag in GetTags(item))
+				{
+					stickers += CreateSticker(tag);
+				}
+				stickers += "</div>";
+			}
+		}
+
+		return stickers;
+	}
+
+	private string GetCategorySticker(LoopItem item)
+	{
+		var sticker = string.Empty;
+
+		if (item.GetString("ItemPublisher:Item.SystemName") == "Swift_Article")
+		{
+			var showListCategory = Pageview.CurrentParagraph.Item["ShowListCategory"] != null ? (Boolean)Pageview.CurrentParagraph.Item["ShowListCategory"] : false;
+
+			if (showListCategory)
+			{
+				sticker += "<div class=\"d-inline-flex flex-wrap gap-1\">";
+				sticker += CreateCategorySticker(GetCategory(Dynamicweb.Services.Pages.GetPage(item.GetInteger("ItemPublisher:Item.Field.PageId")).ParentPageId), GetCategoryTheme(GetCategory(Dynamicweb.Services.Pages.GetPage(item.GetInteger("ItemPublisher:Item.Field.PageId")).ParentPageId)));
+				sticker += "</div>";
+			}
+		}
+
+		return sticker;
+	}
+
+	private Dynamicweb.Frontend.PageInfoViewModel GetCategory(int categoryId)
+	{
+		var categoryParagraph = categoryId != 0 ? Dynamicweb.Services.Pages.GetPage(categoryId) : null;
+		var category = categoryParagraph != null ? Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(categoryParagraph) : null;
+
+		return category;
+	}
+
+	private string CreateCategorySticker(Dynamicweb.Frontend.PageInfoViewModel category, string theme)
+	{
+		var sticker = category != null ? CreateCategory(category.Item?.GetString("Title"), theme) : null;
+		return sticker;
+	}
+
+	private string GetCategoryTheme(Dynamicweb.Frontend.PageInfoViewModel category)
+	{
+		var theme = category != null ? category.Item?.GetRawValueString("CoverTheme") : null;
+		return theme;
+	}
+
+	private string LiftOnHover()
+	{
+		bool liftOnHover = Pageview.CurrentParagraph.Item["LiftOnHover"] != null ? (Boolean)Pageview.CurrentParagraph.Item["LiftOnHover"] : false;
+		var lift = liftOnHover ? "lift" : null;
+		return lift;
+	}
+
+	private string ShadowOnHover()
+	{
+		bool shadowOnHover = Pageview.CurrentParagraph.Item["ShadowOnHover"] != null ? (Boolean)Pageview.CurrentParagraph.Item["ShadowOnHover"] : false;
+		var shadow = shadowOnHover ? "shadow-hover" : null;
+		return shadow;
+	}
+
+	private string GetPadding(string theme)
+	{
+		var padding = !string.IsNullOrEmpty(theme) ? "p-3" : null;
+		return padding;
+	}
+
+	private string GetGap(string theme)
+	{
+		var padding = string.IsNullOrEmpty(theme) ? "gap-3" : null;
+		return padding;
+	}
+
+}
+
 @foreach (LoopItem item in GetLoop("ItemPublisher:Items.List"))
 {
 	string title = !string.IsNullOrEmpty(item.GetString("ItemPublisher:Item.Title")) && !item.GetBoolean("ItemPublisher:Item.HideTitle") ? item.GetString("ItemPublisher:Item.Title") : string.Empty;
 	string coverTitle = !string.IsNullOrEmpty(item.GetString("ItemPublisher:Item.CoverTitle")) ? item.GetString("ItemPublisher:Item.CoverTitle") : string.Empty;
 	string coverImagePath = !string.IsNullOrEmpty(item.GetString("ItemPublisher:Item.CoverImage")) ? item.GetString("ItemPublisher:Item.CoverImage") : string.Empty;
-	string coverImage = !string.IsNullOrEmpty(coverImagePath) ? $"/Admin/Public/GetImage.ashx?image={coverImagePath}&Width=960&Quality=75&format=webp" : string.Empty;
 	bool hasFocalPoint = item.GetBoolean("ItemPublisher:Item.CoverImage.ImageHasFocalPoint");
 	int focalX = hasFocalPoint ? item.GetInteger("ItemPublisher:Item.CoverImage.FocalX") : 0;
 	int focalY = hasFocalPoint ? item.GetInteger("ItemPublisher:Item.CoverImage.FocalY") : 0;
@@ -39,16 +158,13 @@
 
 	switch (articleItemLayout)
 	{
-		case "image-top":
-			articleItemLayoutClass = "d-flex flex-column";
-			break;
 		case "image-left":
 		case "image-right":
-			articleItemLayoutClass = !string.IsNullOrEmpty(coverImage) && renderContentWrapper ? "d-flex flex-column flex-lg-row" : "d-flex flex-column";
+			articleItemLayoutClass = !string.IsNullOrEmpty(coverImagePath) && renderContentWrapper ? "flex-lg-row" : articleItemLayoutClass;
 			break;
 	}
 
-	string orderReverseClass = articleItemLayout == "image-right" ? "order-first order-lg-last" : string.Empty;
+	string orderReverseClass = articleItemLayout == "image-right" ? " order-first order-lg-last" : string.Empty;
 
 	string ratio = Pageview.CurrentParagraph.Item["ImageAspectRatio"] != null ? Pageview.CurrentParagraph.Item["ImageAspectRatio"].ToString() : string.Empty;
 	ratio = ratio != "0" ? ratio : string.Empty;
@@ -58,11 +174,9 @@
 
 	string articleItemTheme = Pageview.CurrentParagraph.Item["ArticleItemTheme"] != null ? Pageview.CurrentParagraph.Item["ArticleItemTheme"].ToString() : string.Empty;
 	string coverTheme = !string.IsNullOrEmpty(item.GetString("ItemPublisher:Item.CoverTheme")) ? item.GetString("ItemPublisher:Item.CoverTheme") : string.Empty;
-	string themePadding = string.Empty;
 	string themeClass = string.Empty;
-	string gapClass = " gap-3 gap-md-4";
 	string articleItemShape = Pageview.CurrentParagraph.Item["ArticleItemShape"] != null ? Pageview.CurrentParagraph.Item["ArticleItemShape"].ToString() : "boxed";
-	string shapeClass = string.Empty;
+	string shapeClass = " rounded-0";
 	string coverImageWrapperClass = string.Empty;
 
 	if (!string.IsNullOrEmpty(coverTheme))
@@ -72,154 +186,169 @@
 
 	if (articleItemTheme != string.Empty)
 	{
-		themePadding = " p-3 p-md-4";
-		themeClass = " theme " + articleItemTheme + " shadow-hover";
-		gapClass = " gap-0";
+		themeClass = " theme " + articleItemTheme;
 	}
 
 	if (articleItemShape == "rounded")
 	{
-		shapeClass = " rounded-4 rounded-lg-5";
+		shapeClass = " rounded-4";
 	}
 
-	<article class="@articleItemLayoutClass@(gapClass)@(themeClass)@(shapeClass) overflow-hidden lift" itemscope itemtype="https://schema.org/CreativeWork">
+	<article class="card border-0 @(string.IsNullOrEmpty(themeClass) ? "gap-3" : null) @articleItemLayoutClass@(themeClass)@(shapeClass) overflow-hidden @LiftOnHover() @ShadowOnHover()" itemscope itemtype="https://schema.org/CreativeWork" style="background-color: var(--swift-background-color)">
 
-		@if (Path.GetExtension(coverImagePath).ToLower() == ".svg")
+		@if (!string.IsNullOrEmpty(coverImagePath))
 		{
-			if (!renderContentWrapper)
+			if (Path.GetExtension(coverImagePath).ToLower() == ".svg")
 			{
-				coverImageWrapperClass = "d-flex justify-content-center align-items-center h-100 w-100 ";
-			}
-			else
-			{
-				coverImageWrapperClass = "pt-3 pt-md-4 w-100 ";
-			}
-
-			<a class="@(coverImageWrapperClass)@(orderReverseClass)" title="@title" href="@link" tabindex="-1">
-				<div class="d-flex justify-content-center align-items-center overflow-hidden@(ratioCssClass)" @ratioVariable>
-					@ReadFile(coverImagePath)
-				</div>
-			</a> 
-		}
-		else
-		{
-			if (articleItemLayout == "image-top")
-			{
-				<a class="@(orderReverseClass)" title="@title" href="@link" tabindex="-1">
-					<figure class="overflow-hidden m-0 mx-auto@(ratioCssClass)" @ratioVariable>
-						@RenderImage(coverImagePath, title, cssPosition, articleItemLayout, imageObjectFit, gridSettings, carouselSettings)
-					</figure>
-				</a>
-			}
-			else
-			{
-				if (renderContentWrapper)
+				if (!renderContentWrapper)
+				{
+					coverImageWrapperClass = "d-flex justify-content-center align-items-center h-100 w-100 ";
+				}
+				else
 				{
 					coverImageWrapperClass = "w-100 ";
 				}
 
 				<a class="@(coverImageWrapperClass)@(orderReverseClass)" title="@title" href="@link" tabindex="-1">
-
-					<figure class="h-lg-100 overflow-hidden m-0 mx-auto ratio ratio-16x9">
-						@RenderImage(coverImagePath, title, cssPosition, articleItemLayout, imageObjectFit, gridSettings, carouselSettings)
-					</figure>
+					<div class="d-flex justify-content-center align-items-center overflow-hidden@(ratioCssClass)" @ratioVariable>
+						@ReadFile(coverImagePath)
+					</div>
 				</a>
+			}
+			else
+			{
+				if (articleItemLayout == "image-top")
+				{
+					<a class="position-relative" title="@title" href="@link" tabindex="-1">
+						<figure class="overflow-hidden m-0 mx-auto@(ratioCssClass)" @ratioVariable>
+							@RenderImage(coverImagePath, title, cssPosition, articleItemLayout, imageObjectFit, gridSettings, carouselSettings)
+						</figure>
+					</a>
+				}
+				else
+				{
+					if (renderContentWrapper)
+					{
+						coverImageWrapperClass = "col-lg-5";
+					}
+
+					<a class="col @(coverImageWrapperClass)@(orderReverseClass)" title="@title" href="@link" tabindex="-1">
+						<figure class="h-lg-100 overflow-hidden m-0 mx-auto ratio ratio-16x9">
+							@RenderImage(coverImagePath, title, cssPosition, articleItemLayout, imageObjectFit, gridSettings, carouselSettings)
+						</figure>
+					</a>
+				}
 			}
 		}
 
 		@if (renderContentWrapper)
 		{
-			<div class="d-flex flex-column flex-grow-1 gap-3 w-100@(themePadding)">
-				
+			<div class="col d-flex flex-column @GetPadding(themeClass)">
+				<div class="card-body p-0 d-flex flex-column gap-2">
+					@*Show tag stickers*@
+					@GetCategorySticker(item)
+
+					@if (!string.IsNullOrEmpty(title))
+					{
+						<a class="text-decoration-none text-decoration-underline-hover" href="@link">
+							<h3 class="@titleFontSize mb-0" itemprop="headline">@title</h3>
+						</a>
+					}
+					@if (!string.IsNullOrEmpty(summary))
+					{
+						<p class="m-0 opacity-75">@summary</p>
+					}
+
+					@*Show tag stickers*@
+					@GetTagStickers(item)
+
+					@if (showButton)
+					{
+						<div class="mt-auto">
+
+							@if (!string.IsNullOrEmpty(buttonLabel))
+							{
+								<a href="@link" class="text-start btn btn-link p-0">
+									@buttonLabel
+									<span class="icon-auto">
+										@ReadFile(iconPath + "arrow-right.svg")
+									</span>
+								</a>
+							}
+							else
+							{
+								<a href="@link" class="btn btn-link p-0 lh-1 text-start">
+									<span class="icon-auto">
+										@ReadFile(iconPath + "arrow-right.svg")
+									</span>
+								</a>
+							}
+						</div>
+					}
+
+				</div>
+
 				@if (renderArticleInfoWrapper)
 				{
-					<div class="d-flex align-items-center justify-content-between gap-3">
-						@if (item.GetInteger("ItemPublisher:Item.Author") != 0)
-						{
-							int authorID = item.GetInteger("ItemPublisher:Item.Author");
-							var author = Dynamicweb.Security.UserManagement.User.GetUserByID(authorID);
-							string authorImage = !string.IsNullOrEmpty(author.Image) ? author.Image : string.Empty;
-							string authorImagePath = !string.IsNullOrEmpty(author.Image) ? $"/Admin/Public/GetImage.ashx?image={author.Image}&width=48&height=48&Crop=0&Quality=100&format=webp" : string.Empty;
-							string authorName = !string.IsNullOrEmpty(author.Name) ? authorName = author.Name : string.Empty;
-							string authorJobTitle = !string.IsNullOrEmpty(author.JobTitle) ? authorJobTitle = author.JobTitle : string.Empty;
+					<div class="card-footer p-0 pt-3 border-top-0">
+						<div class="d-flex align-items-center justify-content-between gap-3">
+							@if (item.GetInteger("ItemPublisher:Item.Author") != 0)
+							{
+								int authorID = item.GetInteger("ItemPublisher:Item.Author");
+								var author = Dynamicweb.Security.UserManagement.User.GetUserByID(authorID);
+								string authorImage = !string.IsNullOrEmpty(author.Image) ? author.Image : string.Empty;
+								string authorImagePath = !string.IsNullOrEmpty(author.Image) ? $"/Admin/Public/GetImage.ashx?image={author.Image}&width=24&height=24&Crop=0&Quality=100&format=webp" : string.Empty;
+								string authorName = !string.IsNullOrEmpty(author.Name) ? authorName = author.Name : string.Empty;
+								string authorJobTitle = !string.IsNullOrEmpty(author.JobTitle) ? authorJobTitle = author.JobTitle : string.Empty;
 
-							<div class="d-flex align-items-center gap-2 fs-8 opacity-75">
+								<div class="d-flex align-items-center gap-2 fs-8 opacity-75">
 
-								@if (!string.IsNullOrEmpty(authorImage))
-								{
-									<img class="img-fluid rounded-circle" src="@authorImagePath" loading="lazy" alt="@authorName" width="32" height="32">
-								}
-								else
-								{
-									<div class="d-flex align-items-center justify-content-center rounded-circle" style="background-color: rgba(var(--swift-foreground-color-rgb),.25)">
-										<div class="icon-2 p-2">
-											@ReadFile(iconPath + "user.svg")
+									@if (!string.IsNullOrEmpty(authorImage))
+									{
+										<img class="img-fluid rounded-circle" src="@authorImagePath" loading="lazy" alt="@authorName" width="24" height="24">
+									}
+									else
+									{
+										<div class="d-flex align-items-center justify-content-center rounded-circle" style="background-color: rgba(var(--swift-foreground-color-rgb),.25)">
+											<div class="icon-2 p-1">
+												@ReadFile(iconPath + "user.svg")
+											</div>
 										</div>
+									}
+
+									<div class="d-flex flex-column lh-1">
+										@if (!string.IsNullOrEmpty(authorName))
+										{
+											<span itemprop="author">@authorName</span>
+										}
+										@if (!string.IsNullOrEmpty(authorJobTitle))
+										{
+											<span class="opacity-75">@authorJobTitle</span>
+										}
 									</div>
-								}
-
-								<div class="d-flex flex-column lh-1 gap-1">
-									@if (!string.IsNullOrEmpty(authorName))
-									{
-										<span itemprop="author">@authorName</span>
-									}
-									@if (!string.IsNullOrEmpty(authorJobTitle))
-									{
-										<span class="opacity-75">@authorJobTitle</span>
-									}
 								</div>
-							</div>
-						}
-						@if (!string.IsNullOrEmpty(publishedDate))
-						{
-							
-							string articleDateTime = item.GetDate("ItemPublisher:Item.PublishedDate").Year + "-" + item.GetDate("ItemPublisher:Item.PublishedDate").Month + "-" + item.GetDate("ItemPublisher:Item.PublishedDate").Day;
+							}
 
-							<div class="d-flex align-items-center gap-1 fs-8 opacity-75">
-								<div class="icon-1">
-									@ReadFile(iconPath + "calendar.svg")
+							@if (!string.IsNullOrEmpty(publishedDate))
+							{
+
+								string articleDateTime = item.GetDate("ItemPublisher:Item.PublishedDate").Year + "-" + item.GetDate("ItemPublisher:Item.PublishedDate").Month + "-" + item.GetDate("ItemPublisher:Item.PublishedDate").Day;
+
+								<div class="d-flex align-items-center gap-1 fs-8 opacity-75">
+									<div class="icon-1">
+										@ReadFile(iconPath + "calendar.svg")
+									</div>
+									<time datetime="@articleDateTime" itemprop="datePublished">@publishedDate</time>
 								</div>
-								<time datetime="@articleDateTime" itemprop="datePublished">@publishedDate</time>
-							</div>
-						}
+							}
 
+
+						</div>
 					</div>
-				}
-
-				@if (!string.IsNullOrEmpty(title))
-				{
-					<a class="text-decoration-none text-decoration-underline-hover" href="@link">
-						<h3 class="@titleFontSize mb-0" itemprop="headline">@title</h3>
-					</a>
-				}
-				@if (!string.IsNullOrEmpty(summary))
-				{
-					<p class="m-0 opacity-75">@summary</p>
-				}
-
-
-				@if (showButton)
-				{
-					if (!string.IsNullOrEmpty(buttonLabel))
-					{
-						<a href="@link" class="text-start btn btn-link p-0 mt-auto">
-							@buttonLabel
-							<span class="icon-2">
-								@ReadFile(iconPath + "arrow-right.svg")
-							</span>
-						</a>
-					}
-					else
-					{
-						<a href="@link" class="btn btn-link p-0 lh-1 text-start mt-auto">
-							<span class="icon-3">
-								@ReadFile(iconPath + "arrow-right.svg")
-							</span>
-						</a>
-					}
 				}
 			</div>
 		}
+
 	</article>
 }
 
@@ -257,15 +386,11 @@
 
 	string coverImagePathM = $"/Admin/Public/GetImage.ashx?image={coverImagePath}&width=640&quality=85&format=webp";
 	string coverImagePathL = $"/Admin/Public/GetImage.ashx?image={coverImagePath}&width=960&quality=85&format=webp";
-	string coverImagePathXL = $"/Admin/Public/GetImage.ashx?image={coverImagePath}&width=1280&quality=85&format=webp";
-	string coverImagePathXXL = $"/Admin/Public/GetImage.ashx?image={coverImagePath}&width=1920&quality=85&format=webp";
 	string imagePathFallBack = coverImagePathM;
 
 	<img srcset="
 			@coverImagePathM   640w,
-			@coverImagePathL   960w,
-			@coverImagePathXL  1280w,
-			@coverImagePathXXL 1920w"
+			@coverImagePathL   960w"
 		 src="@imagePathFallBack"
 		 sizes="(min-width: 992px) @imgSizeSelector, 100vw"
 		 loading="lazy"

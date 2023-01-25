@@ -36,9 +36,23 @@
 		{
 			if (!string.IsNullOrEmpty(orderline.ProductId))
 			{
-				orderProducts.Add(ViewModelFactory.CreateView(productSetting, orderline.ProductId, orderline.ProductVariantId));
+				var productViewModel = ViewModelFactory.CreateView(productSetting, orderline.ProductId, orderline.ProductVariantId);
 
-				productQuantityList.Add($"{orderline.ProductId}_{orderlineCounter}", orderline.Quantity);
+				if (productViewModel != null && productViewModel?.PrimaryOrDefaultGroup?.Id != null) {
+					orderProducts.Add(productViewModel);
+
+					productQuantityList.Add($"{orderline.ProductId}_{orderlineCounter}", orderline.Quantity);
+				} else {
+					var simpelModel = new ProductViewModel()
+					{
+						Id = orderline.Id,
+						Name = orderline.ProductName,
+						Number = orderline.ProductNumber,
+						VariantName = orderline.ProductVariantText
+					};
+
+					orderProducts.Add(simpelModel);
+				}
 				orderlineCounter++;
 			}
 		}
@@ -130,94 +144,103 @@
 
 	foreach (var product in products)
 	{
-		string minQty = product.PurchaseMinimumQuantity != 1 ? product.PurchaseMinimumQuantity.ToString() : "1";
-		string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
-		double quantity = 0;
+		if (product != null && product?.PrimaryOrDefaultGroup?.Id != null) { 
+			string minQty = product.PurchaseMinimumQuantity != 1 ? product.PurchaseMinimumQuantity.ToString() : "1";
+			string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
+			double quantity = 0;
 
-		double value = 0.0;
-		if (productQuantityList.TryGetValue($"{product.Id}_{productCounter}", out value))
-		{
-			quantity = value;
+			double value = 0.0;
+			if (productQuantityList.TryGetValue($"{product.Id}_{productCounter}", out value))
+			{
+				quantity = value;
+			}
+
+			string disableQuantityField = product.StockLevel < 1 && !product.NeverOutOfstock ? "disabled" : "";
+			string disableOrderline = product.StockLevel < 1 && !product.NeverOutOfstock ? "pe-none user-select-none opacity-50" : "";
+
+			string variantIdForLink = !string.IsNullOrEmpty(product.VariantId) ? $"&VariantID={product.VariantId}" : "";
+			variantIdForLink = string.IsNullOrEmpty(variantIdForLink) && !string.IsNullOrEmpty(product.DefaultVariantId) ? $"&VariantID={product.DefaultVariantId}" : variantIdForLink;
+
+			string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
+			link += $"&GroupID={product.PrimaryOrDefaultGroup.Id}";
+			link += $"&ProductID={product.Id}";
+			link += variantIdForLink;
+			link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link);
+
+			productCounter += 1;
+
+			if ((product.StockLevel < 1) && !product.NeverOutOfstock) {
+				productsOutOfStock++;
+			}
+
+			<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center product @disableOrderline">
+
+				<div class="d-none d-lg-block g-col-12 border-top"></div>
+
+				<input type="hidden" name="ProductLoopCounter@(productCounter)" value="@(productCounter)">
+				<input type="hidden" name="ProductId@(productCounter)" value="@product.Id">
+				<input type="hidden" name="VariantId@(productCounter)" value="@product.VariantId">
+
+				<div class="g-col-1">
+					<a href="@link" tabindex="-1">
+						<img class="img-fluid" src="/Admin/public/getimage.ashx?image=@Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value)&width=60&height=60&format=webp&Crop=5&fillcanvas=true" height="60" width="60" alt="@product.Name">
+					</a>
+				</div>
+
+				<div class="g-col-7 g-col-lg-9 grid grid-9 gap-0 gap-lg-2 lh-1">
+
+					<div class="g-col-5 g-col-lg-1 order-1">
+						<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.Number</a></span>
+					</div>
+
+					<div class="g-col-5 g-col-lg-4 order-3 lh-1">
+						<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.Name</a></span>
+					</div>
+
+					<div class="g-col-2 g-col-lg-1 order-4">
+						<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.VariantName</a></span>
+					</div>
+
+					<div class="g-col-2 g-col-lg-1 order-4">
+						@if (product.NeverOutOfstock)
+						{
+							<div class="fs-8 fs-lg-6 text-end text-lg-start text-success">@Translate("In stock")</div>
+						} else if (product.StockLevel > 0)
+						{
+							<div class="fs-8 fs-lg-6 text-end text-lg-start text-success">@product.StockLevel @Translate("In stock")</div>
+						}
+						else
+						{
+							<div class="fs-8 fs-lg-6 text-end text-lg-start text-danger">@Translate("Out of Stock")</div>
+						}
+					</div>
+
+					<div class="g-col-4 g-col-lg-2 text-end order-2 order-lg-last">
+						@if (!hidePrice)
+						{
+							<span class="text-price fs-8 fs-lg-6">@product.Price.PriceFormatted</span>
+						}
+					</div>
+				</div>
+
+				<div class="g-col-2 g-col-lg-2">
+					<label for="Quantity" class="visually-hidden">@Translate("Quantity")</label>
+					<input type="number" step="@stepQty" min="@minQty" class="form-control text-center ms-auto" value="@quantity" name="Quantity@(productCounter)" @disableQuantityField style="max-width: 85px;">
+				</div>
+
+			</article>
+		} else { 
+			<article class="g-col-12">
+				<div class="alert alert-danger">
+					@Translate("The product") "@product.Name @product.VariantName" (@product.Number), @Translate("that was a part of this order, seems to have been removed. Contact the shop for further information.")
+				</div>
+			</article>
 		}
-
-		string disableQuantityField = product.StockLevel < 1 && !product.NeverOutOfstock ? "disabled" : "";
-		string disableOrderline = product.StockLevel < 1 && !product.NeverOutOfstock ? "pe-none user-select-none opacity-50" : "";
-
-		string variantIdForLink = !string.IsNullOrEmpty(product.VariantId) ? $"&VariantID={product.VariantId}" : "";
-		variantIdForLink = string.IsNullOrEmpty(variantIdForLink) && !string.IsNullOrEmpty(product.DefaultVariantId) ? $"&VariantID={product.DefaultVariantId}" : variantIdForLink;
-
-		string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
-		link += $"&GroupID={product.PrimaryOrDefaultGroup.Id}";
-		link += $"&ProductID={product.Id}";
-		link += variantIdForLink;
-		link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link);
-
-		productCounter += 1;
-
-		if ((product.StockLevel < 1) && !product.NeverOutOfstock) {
-			productsOutOfStock++;
-		}
-
-		<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center product @disableOrderline">
-
-			<div class="d-none d-lg-block g-col-12 border-top"></div>
-
-			<input type="hidden" name="ProductLoopCounter@(productCounter)" value="@(productCounter)">
-			<input type="hidden" name="ProductId@(productCounter)" value="@product.Id">
-			<input type="hidden" name="VariantId@(productCounter)" value="@product.VariantId">
-
-			<div class="g-col-1">
-				<a href="@link" tabindex="-1">
-					<img class="img-fluid" src="/Admin/public/getimage.ashx?image=@Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value)&width=60&height=60&format=webp&Crop=5&fillcanvas=true" height="60" width="60" alt="@product.Name">
-				</a>
-			</div>
-
-			<div class="g-col-7 g-col-lg-9 grid grid-9 gap-0 gap-lg-2 lh-1">
-
-				<div class="g-col-5 g-col-lg-1 order-1">
-					<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.Number</a></span>
-				</div>
-
-				<div class="g-col-5 g-col-lg-4 order-3 lh-1">
-					<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.Name</a></span>
-				</div>
-
-				<div class="g-col-2 g-col-lg-1 order-4">
-					<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.VariantName</a></span>
-				</div>
-
-				<div class="g-col-2 g-col-lg-1 order-4">
-					@if (product.NeverOutOfstock)
-					{
-						<div class="fs-8 fs-lg-6 text-end text-lg-start text-success">@Translate("In stock")</div>
-					} else if (product.StockLevel > 0)
-					{
-						<div class="fs-8 fs-lg-6 text-end text-lg-start text-success">@product.StockLevel @Translate("In stock")</div>
-					}
-					else
-					{
-						<div class="fs-8 fs-lg-6 text-end text-lg-start text-danger">@Translate("Out of Stock")</div>
-					}
-				</div>
-
-				<div class="g-col-4 g-col-lg-2 text-end order-2 order-lg-last">
-					@if (!hidePrice)
-					{
-						<span class="text-price fs-8 fs-lg-6">@product.Price.PriceFormatted</span>
-					}
-				</div>
-			</div>
-
-			<div class="g-col-2 g-col-lg-2">
-				<label for="Quantity" class="visually-hidden">@Translate("Quantity")</label>
-				<input type="number" step="@stepQty" min="@minQty" class="form-control text-center ms-auto" value="@quantity" name="Quantity@(productCounter)" @disableQuantityField style="max-width: 85px;">
-			</div>
-
-		</article>
 	}
 
 	<div class="d-flex justify-content-between align-items-baseline py-3 g-col-12 theme position-sticky bottom-0" style="box-shadow: 0 -10px 10px -12px var(--bs-gray-300);">
-		@Translate("Total results") @products.Count() @productsOutOfStock
+		@Translate("Total results") @products.Count()
+
 		@if (!hideAddToCart)
 		{
 			var buttonProps = string.Empty;

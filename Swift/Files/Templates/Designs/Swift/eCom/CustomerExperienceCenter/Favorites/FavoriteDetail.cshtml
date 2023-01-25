@@ -5,21 +5,6 @@
 @using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
 @using Dynamicweb.Environment
 
-@functions {
-	private string GetTrackingId()
-	{
-		return Pageview.AreaSettings.GetString("GoogleAnalyticsTrackingID");
-	}
-	private string GetMeasurementId()
-	{
-		return Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
-	}
-	private bool AllowCookies()
-	{
-		return CookieManager.GetCookieOptInLevel() == CookieOptInLevel.All || (CookieManager.GetCookieOptInLevel() == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
-	}
-}
-
 @functions
 {
 	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Ecommerce.DynamicwebLiveIntegration.TemplatesHelper.IsLazyLoadingForProductInfoEnabled;
@@ -27,9 +12,18 @@
 	string productInfoFeed = "";
 	string showPricesWithVat = "";
 	bool neverShowVat = false;
+
+	string googleTagManagerID = ""; 
+	string googleAnalyticsMeasurementID = "";
+	bool allowTracking = false;
 }
 
 @{
+	googleTagManagerID = Pageview.AreaSettings.GetString("GoogleTagManagerID");
+	googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
+	var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
+	allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
+
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
 	string theme = !string.IsNullOrEmpty(themeRaw) ? " h-100 theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
 	
@@ -115,7 +109,7 @@
 	if (Model?.ProductList != null)
 	{
 		<div class="grid grid-2 grid-lg-3 grid-xxl-4 p-3">
-			@if (!string.IsNullOrWhiteSpace(GetMeasurementId()) && AllowCookies())
+			@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
 			{
 			<script>
 				gtag("event", "view_item_list", {
@@ -170,34 +164,34 @@
 							@if (product.DefaultImage.Value != "")
 							{
 								string clickProductLink = string.Empty;
-								if(!string.IsNullOrWhiteSpace(GetMeasurementId()) && AllowCookies())
+								if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
 								{
 									clickProductLink = "onclick=\"return clickProductLink('" + @product.Id + "', '" + @product.Name + "', '" + @product.VariantName + "', '" + @product.Price.CurrencyCode + "', '" + @product.Price.Price + "')\"";
 								}
 								<a href="@link" class="d-flex justify-content-center align-items-center" @clickProductLink>
-									@if (!string.IsNullOrWhiteSpace(GetMeasurementId()) && AllowCookies())
+									@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
 									{
-									<script>
-										function clickProductLink(productId, productName, productVariant, productCurrency, productPrice) {
-											if (typeof gtag !== "undefined") {
-												gtag("event", "select_item", {
-													item_list_id: "favourite_detail",
-													item_list_name: "Favourite List",
-													items: [
-														{
-															item_id: productId,
-															item_name: productName,
-															currency: productCurrency,
-															item_list_id: "favourite_detail",
-															item_list_name: "Favourite List",
-															item_variant: productVariant,
-															price: productPrice
-														}
-													]
-												});
+										<script>
+											function clickProductLink(productId, productName, productVariant, productCurrency, productPrice) {
+												if (typeof gtag !== "undefined") {
+													gtag("event", "select_item", {
+														item_list_id: "favourite_detail",
+														item_list_name: "Favourite List",
+														items: [
+															{
+																item_id: productId,
+																item_name: productName,
+																currency: productCurrency,
+																item_list_id: "favourite_detail",
+																item_list_name: "Favourite List",
+																item_variant: productVariant,
+																price: productPrice
+															}
+														]
+													});
+												}
 											}
-										}
-									</script>
+										</script>
 									}
 									<img src="@productImage"
 										 loading="lazy"
