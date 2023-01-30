@@ -1,5 +1,62 @@
 # Changelog
 
+# v1.18.0
+## [v1.18.0] - 01-02-2023
+
+**Swift v.1.18.0 release requires a Dynamicweb version 9.15.1**
+The quarterly release Q4-2022 with a new database, is postpone until the parcelshop implementation supporting Shipmondo is finish.
+
+## Disclaimer 
+* Swift v.1.18.0 has updated all packages that has a new locations 
+
+##  Bugfixes
+* Cart: Pressing Enter key on product list submit and return the Cart Count. Better way to preventDefault on _cart.js
+* Customer center: Check if logged in while in the visual editor, fixing template error in VE.
+* Express buy: Warning message on orderlines that contains a deleted product
+* General: JS encode product name and variant name for javascript, so sepecial characters is accepted when using g-tag
+* General: Set default country if user country is empty for AdressÚser, EditProfile and ViewProfile
+* General. Fix date format at 00:00 on RmaCreateNewRequest, RmaHistory, RmaInfo, CustomerOrderDetails, CustomerOrderViewSearchList, CustomerQuotesList, OrderDetails, OrderListWidget, OrderViewSearchList and QuoteDetails
+* General: Fix csproj file
+* General: Fix prices in OrderDetails, Orders, OrderLineItem, orderSummary and OrderSummaryOrderLineItem
+* General: Search phrase lost after clicking Load more, Product repeater search term. fix on ProductListCompactView and ProductListItemRepeater
+* Integration Customer Center: Preview does not work at Invoice and Credit page
+* Integration Customer center: Make pagination items wrap correctly
+* Itemtypes: TextAdvanced, Button aligned with content 
+* Itemtypes: Product list, load more button, re-initialize the scroll methods at the correct time
+* Itemtypes: Specification, Reintroduce good typo to show theme selector
+* Itemtypes: Specification, fix group headers for Missing padding
+* Itemtypes: Animation On Scroll use default offset + mirror = false
+* Itemtypes: Product components, variantselector js update, to disable add to cart when selection not completed on _variantselector.js
+* Itemtypes: Group slider, images are no longer hidden if group don't have group image
+* Itemtypes: Feature, fixed bad alignment when no subtitle
+* Itemtypes: Navigation and mega menu - Dropdown offset 0 to fix flickering
+* Itemtypes: Navigation and Mega menu, Dropdown item no longer chopped and mega menu stays no more open after page loads
+* Itemtypes: Page settings, Remove irrelevant title field in Page item type
+* Itemtypes: Navigation on mobile - Fixed minor alignment error
+* Itemtypes: Navigation Off-canvas, now clickable if device rendering is set to responsive and configured for both for desktop and mobile
+* Itemtypes: Search, Make sure that we do not request nothing
+* Itemtypes: Fix add to cart component error, ProductSliderStandard and ProductAddToCart
+* Itemtypes: Navigation Off-canvas menu, remove extra scrollbar
+
+## Changed
+* Genral: Make Swift compatible with DW9 and DW10. Update all packages that got new locations 
+* Itemtypes: Article list design layout
+* Itemtypes: Product group header, remove the node-Active check for the Group header titles
+
+## Added
+* General: Add demo article recipes images to git
+* General: Support for autotests, ids on navigation
+* General: Support Google Tag Manager, GTM-id can be added in website settings
+* General: Default template for forms for editors, Support grid columns
+* General stock validation on OrderLineItem, Cart, ProductAddToCart, ProductStock and miniCart
+* Itemtypes: Support verify command for system email on Swift_EmailButton
+* Itemtypes: On articles possible to use create article tag collections and use Article tag filters and  category filters
+* Itemtypes: Specifications: Possible to hide fields with 0 and 0.0 values
+
+## Removed
+* General: Removed paragraph preset images for  the group called 2 column
+* Itemtypes: Removed title fields from row item types
+
 # v1.17.0
 ## [v1.17.0] - 21-12-2022
 
