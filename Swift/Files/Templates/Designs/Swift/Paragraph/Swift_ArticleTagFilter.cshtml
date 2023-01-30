@@ -4,14 +4,26 @@
 
 @functions {
 
-	private IEnumerable<Dynamicweb.Content.Items.Item> GetTags()
+	private List<Dynamicweb.Frontend.ItemViewModel> GetSelectedTags()
 	{
-		IEnumerable<Item> tags = null;
+		var selectedTags = Model.Item?.GetRawValueString("Tags");
+		var tagsArray = selectedTags?.Split(',');
+		var tags = new List<Dynamicweb.Frontend.ItemViewModel>();
 
-		using (Repository repo = ItemManager.Storage.Open("Swift_ArticleTag"))
+		if (tagsArray.Any())
 		{
-			tags = repo.SelectByAreaId(Pageview.AreaID, new Query() { Amount = 100 }, true, true, false);
+			foreach (var tag in tagsArray)
+			{
+				var paragraph = !string.IsNullOrEmpty(tag) ? Dynamicweb.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(tag)) : null;
+				var viewModel = paragraph != null ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(paragraph)?.Item : null;
+
+				if (viewModel != null)
+				{
+					tags.Add(viewModel);
+				}
+			}
 		}
+
 		return tags;
 	}
 
@@ -84,18 +96,20 @@
 		<div class="d-flex flex-wrap gap-2">
 			<input class="btn-check" type="radio" id="tag_all" checked name="Tags" value />
 			<label class="btn @(buttonType) @(buttonSize)" for="tag_all">@Translate("All")</label>
-			@foreach (var tag in GetTags())
+			
+			@foreach (var tag in GetSelectedTags())
 			{
 				var active = string.Empty;
 				var selected = string.Empty;
-				if (tagQuery.Any() && tagQuery.Contains($"{tag["Id"]}"))
+				if (tagQuery.Any() && tagQuery.Contains($"{tag.Id}"))
 				{
 					active = " active";
 					selected = "checked";
 				}
-				<input class="btn-check" type="radio" id="tag_@tag["Id"]" name="Tags" value="@tag["Id"]" @(selected)>
-				<label class="btn @(buttonType) @(buttonSize)" for="tag_@tag["Id"]">@tag["Title"]</label>
+				<input class="btn-check" type="radio" id="tag_@tag.Id" name="Tags" value="@tag.Id" @(selected)>
+				<label class="btn @(buttonType) @(buttonSize)" for="tag_@tag.Id">@tag.GetString("Title")</label>
 			}
+
 		</div>
 	}
 </div>
