@@ -132,13 +132,12 @@ const Cart = function () {
 
 		UpdateOnEnterKey: async function (e) {
 			var input = e.currentTarget != undefined ? e.currentTarget : e;
+			e.preventDefault();
 
 			input.onkeydown = (e) => {
 				if (e.keyCode === 13) {
-					e.preventDefault()
 					Cart.Update(e);
-					input.value = 0;
-
+					input.value = 1;
 				}
 			};
 
