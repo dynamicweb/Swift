@@ -231,30 +231,19 @@ const Cart = function () {
 			return miniCarts;
 		},
 
-		QuantityValidate: function (event) { 
-			var quantityField = event.target;
+		QuantityValidate: function (event) {
+			var quantityField = event.currentTarget;
 			const form = quantityField.closest("form");
 			const stepQuantityWarning = form.querySelector(".js-step-quantity-warning");
 			const minQuantityWarning = form.querySelector(".js-min-quantity-warning");
 			var cartButton = quantityField.querySelector(".js-add-to-cart-button");
 			var isValid = quantityField.checkValidity();
 
-			var quantity = quantityField.value;
-			var minQuantity = quantityField.getAttribute("min");
+			var quantity = parseInt(quantityField.value);
+			var minQuantity = parseInt(quantityField.min);
 
 			if (quantity < minQuantity) {
 				isValid = false;
-			}
-
-			if (!quantityField.checkValidity() && stepQuantityWarning) {
-				const message = stepQuantityWarning.innerHTML;
-				document.querySelector("#DynamicModalContent").innerHTML = message;
-
-				var dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), { });
-
-				if (!document.querySelector('#DynamicModal').classList.contains("show")) {
-					dynamicModal.show();
-				}
 			}
 
 			if (quantity < minQuantity && minQuantityWarning) {
@@ -269,6 +258,17 @@ const Cart = function () {
 
 				if (form.querySelector('[name="Quantity"]')) {
 					form.querySelector('[name="Quantity"]').value = minQuantity;
+				}
+			}
+
+			if (!quantityField.checkValidity() && stepQuantityWarning) {
+				const message = stepQuantityWarning.innerHTML;
+				document.querySelector("#DynamicModalContent").innerHTML = message;
+
+				var dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), { });
+
+				if (!document.querySelector('#DynamicModal').classList.contains("show")) {
+					dynamicModal.show();
 				}
 			}
 
