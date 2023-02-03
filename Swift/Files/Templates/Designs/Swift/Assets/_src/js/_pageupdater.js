@@ -156,12 +156,12 @@ const PageUpdater = function () {
 					document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
 				}
 
-				swift.Scroll.hideHeadersOnScroll();
-				swift.Scroll.handleAlternativeTheme();
-
 				//Replace content
 				if (responseTargetElement != null) {
 					responseTargetElement.innerHTML = html;
+
+					swift.Scroll.hideHeadersOnScroll();
+					swift.Scroll.handleAlternativeTheme();
 
 					//Run scripts from the loaded html
 					var scripts = Array.prototype.slice.call(responseTargetElement.getElementsByTagName("script"));
