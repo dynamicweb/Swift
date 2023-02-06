@@ -140,6 +140,8 @@ const Cart = function () {
 					input.value = 1;
 				}
 			};
+
+			swift.Cart.QuantityValidate(e);
 		},
 
 		Success: async function (response, clickedButton, formData, reservedAmount = 0) {
@@ -229,16 +231,58 @@ const Cart = function () {
 		},
 
 		QuantityValidate: function (event) {
-			var quantityField = event.target;
-			var feedbackElement = quantityField.closest(".js-input-group").querySelector(".invalid-feedback");
+			var quantityField = event.currentTarget;
+			const form = quantityField.closest("form");
+			const stepQuantityWarning = form.querySelector(".js-step-quantity-warning");
+			const minQuantityWarning = form.querySelector(".js-min-quantity-warning");
+			var cartButton = quantityField.querySelector(".js-add-to-cart-button");
 			var isValid = quantityField.checkValidity();
+
+			var quantity = parseInt(quantityField.value);
+			var minQuantity = parseInt(quantityField.min);
+
+			if (quantity < minQuantity) {
+				isValid = false;
+			}
+
+			if (quantity < minQuantity && minQuantityWarning) {
+				const message = minQuantityWarning.innerHTML;
+				document.querySelector("#DynamicModalContent").innerHTML = message;
+
+				var dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), { });
+
+				if (!document.querySelector('#DynamicModal').classList.contains("show")) {
+					dynamicModal.show();
+				}
+
+				if (form.querySelector('[name="Quantity"]')) {
+					form.querySelector('[name="Quantity"]').value = minQuantity;
+				}
+			}
+
+			if (!quantityField.checkValidity() && stepQuantityWarning) {
+				const message = stepQuantityWarning.innerHTML;
+				document.querySelector("#DynamicModalContent").innerHTML = message;
+
+				var dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), { });
+
+				if (!document.querySelector('#DynamicModal').classList.contains("show")) {
+					dynamicModal.show();
+				}
+			}
 
 			if (!isValid) {
 				quantityField.classList.add("is-invalid");
-				feedbackElement.classList.remove("d-none");
+
+				if (cartButton) {
+					cartButton.disabled = true;
+				}
 			} else {
 				quantityField.classList.remove("is-invalid");
-				feedbackElement.classList.add("d-none");
+
+				if (cartButton) {
+					cartButton.disabled = false;
+				}
 			}
 		}
 	}
