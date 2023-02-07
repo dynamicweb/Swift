@@ -116,6 +116,7 @@ const Favorites = function () {
 						if (productButton) {
 							var found = false;
 							var inAnyList = false;
+
 							clickedButton.closest('form').querySelectorAll('[data-in-this-list]').forEach(function (favoriteListButton) {
 								if (favoriteListButton.getAttribute('data-in-this-list') == "True") {
 									inAnyList = true;
@@ -147,6 +148,8 @@ const Favorites = function () {
 								}
 							}
 						}
+
+						productButton.blur();
 					}
 				}
 

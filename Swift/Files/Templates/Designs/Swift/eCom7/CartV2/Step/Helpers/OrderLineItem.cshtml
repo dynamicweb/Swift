@@ -1,24 +1,30 @@
 @helper RenderOrderLineItem(LoopItem orderline) {
 
-	string googleAnalyticsTrackingID = Pageview.AreaSettings.GetString("GoogleAnalyticsTrackingID");
+	string googleTagManagerID = Pageview.AreaSettings.GetString("GoogleTagManagerID");
 	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
 	var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
 	bool allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
+
+	bool neverOutOfStock = orderline.GetBoolean("Ecom:Product.NeverOutOfStock");
+	int stockQuantity = neverOutOfStock ? 9999999 : orderline.GetInteger("Ecom:Product.Stock");
 
 	string name = orderline.GetString("Ecom:Order:OrderLine.ProductName");
 	string image = "/Admin/Public/GetImage.ashx?width=" + 180 + "&height=" + 180 + "&image=" + orderline.GetString("Ecom:Product.PrimaryImage") + "&Format=WebP&Quality=100";
 	string removeFromBasketLink = orderline.GetString("Ecom:Order:OrderLine.DeleteLink");
 	string priceTotalWithDiscounts = orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.PriceFormatted");
+	string priceTotalWithDiscountsClean = orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.Price");
 	string unitPrice = orderline.GetString("Ecom:Order:OrderLine.UnitPrice.PriceFormatted");
 	string unitPriceClean = orderline.GetString("Ecom:Order:OrderLine.UnitPrice.Price");
 	string unitPriceCurrency = orderline.GetString("Ecom:Order:OrderLine.Price.CurrencyCode");
-	string discountPrice = orderline.GetString("Ecom:Product.Discount.Price.PriceFormatted");
+	string discountPrice = orderline.GetString("Ecom:Order:OrderLine.UnitPriceWithProductDiscount.PriceFormatted");
 	string discountTotal = orderline.GetString("Ecom:Order:OrderLine.TotalDiscount.PriceFormatted");
 	string variantText = orderline.GetString("Ecom:Order:OrderLine.ProductVariantText");
 	var orderlineId = orderline.GetValue("Ecom:Order:OrderLine.Id");
-	var quantity = orderline.GetDouble("Ecom:Order:OrderLine.Quantity");
+	var quantity = neverOutOfStock || stockQuantity >= orderline.GetDouble("Ecom:Order:OrderLine.Quantity") ? orderline.GetDouble("Ecom:Order:OrderLine.Quantity") : stockQuantity;
+	var unitName = orderline.GetString("Ecom:Order:OrderLine.UnitName");
 	string productId = orderline.GetString("Ecom:Order:OrderLine.ProductID");
 	string variantId = orderline.GetString("Ecom:Order:OrderLine.ProductVariantID");
+	string unitId = orderline.GetString("Ecom:Order:OrderLine.UnitID");
 
 	string minQty = orderline.GetDouble("Ecom:Product.PurchaseMinimumQuantity") != 1 ? "min=\"" + orderline.GetDouble("Ecom:Product.PurchaseMinimumQuantity").ToString() + "\"" : "min=\"1\"";
 	string stepQty = orderline.GetDouble("Ecom:Product.PurchaseQuantityStep") > 1 ? orderline.GetDouble("Ecom:Product.PurchaseQuantityStep").ToString() : "1";
@@ -34,10 +40,10 @@
 	link += "&productid=" + productId;
 	link += !string.IsNullOrEmpty(variantId) ? "&variantid=" + variantId : "";
 
-	bool isProduct = orderline.GetBoolean("Ecom:Order:OrderLine.IsProduct");
+	bool isProduct = orderline.GetBoolean("Ecom:Order:OrderLine.IsProduct") || orderline.GetInteger("Ecom:Order:OrderLine.Type") == 3;
 
 	if (isProduct) {
-		<article class="grid pt-3" style="row-gap: 0;">
+		<article class="grid pt-3" style="row-gap: 0;" data-product-id="@productId" data-variant-id="@variantId" data-unit-id="@unitId" data-orderline-total-price="@priceTotalWithDiscountsClean" data-orderline-unit-price="@unitPriceClean">
 			<div class="g-col-3 g-col-lg-2">
 				<a href="@link" class="ratio ratio-1x1 d-block" title="@name">
 					<img class="cart-item-img" src="@image" style="object-fit: contain;" alt="@name">
@@ -56,39 +62,63 @@
 							</h3>
 
 							@* Variants *@
-							@if(!string.IsNullOrEmpty(variantText)) {
+							@if (!string.IsNullOrEmpty(variantText))
+							{
 								<p class="mt-2 mb-0 fs-7 fs-md-6">@variantText</p>
 							}
 
-							@* Unit price *@
-							<p class="fs-7 fs-md-6 mt-2 mb-0">
-								@if(discountPrice == unitPrice) {
-									<span class="d-block">
+
+							@if (orderline.GetInteger("Ecom:Order:OrderLine.Type") == 3)
+							{
+								@* Free product notice *@
+								<p class="mt-2 mb-0 fs-7 fs-md-6 opacity-75">@Translate("Free product")</p>
+							}
+							else
+							{
+								@* Unit price *@
+								<p class="fs-7 fs-md-6 mt-2 mb-0">
+									@if (!string.IsNullOrEmpty(unitName))
+									{
+										<span>@unitName: </span>
+									}
+									@if (discountPrice == unitPrice)
+									{
 										<span class="text-price">@unitPrice</span>
-									</span>
-								}
-								else
-								{
-									<span class="text-price">@discountPrice</span>
-									<span class="text-decoration-line-through fs-7">
-										<span class="text-price">@unitPrice</span>
-									</span>
-								}
-							</p>
+									}
+									else
+									{
+										<span class="text-price">@discountPrice</span>
+										<span class="text-decoration-line-through fs-7">
+											<span class="text-price">@unitPrice</span>
+										</span>
+									}
+								</p>
+							}
 						</div>
 
 						<div class="g-col-7 g-col-md-2">
-							@* Quantity *@
-							<div class="js-input-group">
-								<label for="QuantityOrderLine@(orderlineId)" class="visually-hidden">@Translate("Quantity"):</label>
-								<input type="number" id="QuantityOrderLine@(orderlineId)" step="@stepQty" @minQty class="form-control text-center" value="@quantity" name="QuantityOrderLine@(orderlineId)" onChange="UpdateQuantity()" @qtyValidCheck style="max-width: 4.5rem;">
-								@if (stepQty != "1")
-								{
-									<div class="invalid-feedback d-none">
-										@Translate("Please select a quantity that is dividable by") @stepQty
+							@if (orderline.GetInteger("Ecom:Order:OrderLine.Type") != 3)
+							{
+								@* Quantity *@
+								<div class="js-input-group">
+									<label for="QuantityOrderLine@(orderlineId)" class="visually-hidden">@Translate("Quantity"):</label>
+								<input type="number" id="QuantityOrderLine@(orderlineId)" step="@stepQty" @minQty class="form-control text-center swift_quantity-field" value="@quantity" name="QuantityOrderLine@(orderlineId)" onChange="UpdateQuantity(this, '@stockQuantity')" @qtyValidCheck style="max-width: 5.5rem;">
+									@if (stepQty != "1")
+									{
+										<div class="invalid-feedback d-none">
+											@Translate("Please select a quantity that is dividable by") @stepQty
+										</div>
+									}
+
+									<div class="invalid-feedback js-not-enough-stock d-none">
+										@Translate("We do not have enough products in stock")
 									</div>
-								}
-							</div>
+								</div>
+							}
+							else
+							{
+								<span>@quantity</span>
+							}
 						</div>
 					</div>
 
@@ -110,12 +140,12 @@
 							string clickProductLink = string.Empty;
 							if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowTracking)
 							{
-								clickProductLink = "onclick=\"return removeProductLink('" + @productId + "', '" + @name + "', '" + @variantId + "', '" + @unitPriceCurrency + "', '" + @unitPriceClean + "', '" + @quantity + "')\"";
+								clickProductLink = "onclick=\"return removeProductLink('" + @productId + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(name) + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(variantText) + "', '" + @unitPriceCurrency + "', '" + @unitPriceClean + "', '" + @quantity + "')\"";
 							}
 						}
 						<a href="@removeFromBasketLink" class="btn btn-link btn-sm p-0 m-0 fs-8" title="@Translate("Remove")" @clickProductLink>@Translate("Remove")</a>
 
-						@if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowTracking)
+						@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
 						{
 							<script>
 								function removeProductLink(productId, productName, productVariant, productCurrency, productPrice, productQuantity) {
@@ -129,10 +159,10 @@
 													item_name: productName,
 													item_variant: productVariant,
 													currency: productCurrency,
-													price: productPrice,
+													price: productPrice,	
 													item_list_id: "cart",
 													item_list_name: "Cart",
-													quantity: @quantity
+													quantity: productQuantity
 												}
 											]
 										});
@@ -150,5 +180,5 @@
 				<span class="d-none d-lg-block border-bottom"></span>
 			</span>
 		</article>
-	}  
+	} 
 }

@@ -3,24 +3,87 @@
 @using System.Text.RegularExpressions
 @MasterPageFile("Swift_MasterNoLayout.cshtml")
 
+@functions {
+
+	private GoogleFontViewModel GetViewModelValue(object value)
+	{
+		Dynamicweb.Content.Items.Editors.GoogleFont font = default;
+
+		if (value is object)
+		{
+			font = Dynamicweb.Core.Converter.Deserialize<Dynamicweb.Content.Items.Editors.GoogleFont>(value.ToString());
+
+			if (string.IsNullOrWhiteSpace(font.Family))
+			{
+				font = default;
+			}
+		}
+
+		return CreateGoogleFontViewModel(font);
+	}
+
+	private GoogleFontViewModel CreateGoogleFontViewModel(Dynamicweb.Content.Items.Editors.GoogleFont font)
+	{
+		GoogleFontViewModel model = null;
+		if (font is object)
+		{
+			model = new GoogleFontViewModel
+			{
+				Family = font.Family,
+				Version = font.Version,
+				Weight = font.SelectedVariant,
+				File = font.Files[font.SelectedVariant]
+			};
+		}
+
+		return model;
+	}
+
+	private ItemViewModel GetCustomFont(string fieldName)
+	{ 
+		var id = Dynamicweb.Core.Converter.ToInt32(Model.Item.GetRawValueString(fieldName));
+		var font = id > 0 ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(Dynamicweb.Services.Paragraphs.GetParagraph(id))?.Item : null;
+		return font;
+	}
+	
+	private string GetFontType(string fieldName) 
+	{ 
+		var fontType = Model.Item.GetRawValueString(fieldName);
+		return fontType;
+	}
+
+	private string GetFontValue(string regex, string value)
+	{ 
+		var fontValue = string.Empty;
+		fontValue = System.Text.RegularExpressions.Regex.Replace(value, regex, string.Empty);
+		return fontValue;
+	}
+}
+
 @{
 	List<string> fontList = new List<string>();
 
 	GoogleFontViewModel headerFont = null;
+	ItemViewModel headerFontCustom = null;
 	string headerFontFamily = "Roboto";
-	string headerFontWeight = "300";
+	string headerFontWeight = "normal";
+	string headerFontStyle = "normal";
 	string headerCasing = "inherit";
 	string headerLineHeight = "1.2";
 	string headerLetterSpacing = "0";
 	GoogleFontViewModel displayFont = null;
+	ItemViewModel displayFontCustom = null;
 	string displayFontFamily = "Roboto";
-	string displayFontWeight = "bold";
+	string displayFontWeight = "normal";
+	string displayFontStyle = "normal";
 	string displayCasing = "inherit";
 	string displayLineHeight = "1.2";
 	string displayLetterSpacing = "0";
 	GoogleFontViewModel bodyFont = null;
+	ItemViewModel bodyFontCustom = null;
 	string bodyFontFamily = "Roboto";
-	string bodyFontWeight = "regular";
+	string bodyFontWeight = "normal";
+	string bodyFontStyle = "normal";
 	string bodyLineHeight = "1.5";
 	string bodyLetterSpacing = "0";
 
@@ -43,34 +106,67 @@
 	{
 		@* HEADER font*@
 		headerFont = Model.Item.GetGoogleFont("HeaderFont");
-		if (headerFont != null)
+		headerFont = GetViewModelValue(Model.Item.GetRawValueString("HeaderFont"));
+		headerFontCustom = GetCustomFont("HeaderFontCustom");
+		if (GetFontType("HeaderFontType") == "custom" && headerFontCustom is object)
+        {
+			headerFontFamily = headerFontCustom.GetString("FontFamilyName");
+			headerFontWeight = headerFontCustom.GetRawValueString("FontWeight");
+			headerFontStyle = headerFontCustom.GetRawValueString("FontStyle");
+        }
+
+		if (GetFontType("HeaderFontType") != "custom" && headerFont != null)
 		{
 			headerFontFamily = headerFont.Family;
-			headerFontWeight = headerFont.Weight;
+			headerFontWeight = !string.IsNullOrEmpty(GetFontValue("([^0-9])", headerFont.Weight)) ? GetFontValue("([^0-9])", headerFont.Weight) : headerFontWeight;
+			headerFontStyle = !string.IsNullOrEmpty(GetFontValue("([0-9])", headerFont.Weight)) ? GetFontValue("([0-9])", headerFont.Weight) : headerFontStyle;
+			
 			fontList.Add(System.Net.WebUtility.UrlEncode(headerFontFamily) + ":ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900");
 		}
+
 		headerCasing = Model.Item.GetRawValueString("HeaderCasing");
 		headerLineHeight = Model.Item.GetDouble("HeaderLineHeight").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 		headerLetterSpacing = Model.Item.GetDouble("HeaderLetterSpacing").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 
 		@* DISPLAY font*@
 		displayFont = Model.Item.GetGoogleFont("DisplayFont");
-		if (displayFont != null)
+		displayFont = GetViewModelValue(Model.Item.GetRawValueString("DisplayFont"));
+		displayFontCustom = GetCustomFont("DisplayFontCustom");
+		if (GetFontType("DisplayFontType") == "custom" && displayFontCustom is object)
+        {
+			displayFontFamily = displayFontCustom.GetString("FontFamilyName");
+			displayFontWeight = displayFontCustom.GetRawValueString("FontWeight");
+			displayFontStyle = displayFontCustom.GetRawValueString("FontStyle");
+        }
+
+		if (GetFontType("DisplayFontType") != "custom" && displayFont != null)
 		{
 			displayFontFamily = displayFont.Family;
-			displayFontWeight = displayFont.Weight;
+			displayFontWeight = !string.IsNullOrEmpty(GetFontValue("([^0-9])", displayFont.Weight)) ? GetFontValue("([^0-9])", displayFont.Weight) : displayFontWeight;
+			displayFontStyle = !string.IsNullOrEmpty(GetFontValue("([0-9])", displayFont.Weight)) ? GetFontValue("([0-9])", displayFont.Weight) : displayFontStyle;
 			fontList.Add(System.Net.WebUtility.UrlEncode(displayFontFamily) + ":ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900");
 		}
+
 		displayCasing = Model.Item.GetRawValueString("DisplayCasing");
 		displayLineHeight = Model.Item.GetDouble("DisplayLineHeight").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 		displayLetterSpacing = Model.Item.GetDouble("DisplayLetterSpacing").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 
 		@* BODY font*@
 		bodyFont = Model.Item.GetGoogleFont("BodyFont");
-		if (bodyFont != null)
+		bodyFont = GetViewModelValue(Model.Item.GetRawValueString("BodyFont"));
+		bodyFontCustom = GetCustomFont("BodyFontCustom");
+		if (GetFontType("BodyFontType") == "custom" && bodyFontCustom is object)
+        {
+			bodyFontFamily = bodyFontCustom.GetString("FontFamilyName");
+			bodyFontWeight = bodyFontCustom.GetRawValueString("FontWeight");
+			bodyFontStyle = bodyFontCustom.GetRawValueString("FontStyle");
+        }
+
+		if (GetFontType("BodyFontType") != "custom" && bodyFont != null)
 		{
 			bodyFontFamily = bodyFont.Family;
-			bodyFontWeight = bodyFont.Weight;
+			bodyFontWeight = !string.IsNullOrEmpty(GetFontValue("([^0-9])", bodyFont.Weight)) ? GetFontValue("([^0-9])", bodyFont.Weight) : bodyFontWeight;
+			bodyFontStyle = !string.IsNullOrEmpty(GetFontValue("([0-9])", bodyFont.Weight)) ? GetFontValue("([0-9])", bodyFont.Weight) : bodyFontStyle;
 			fontList.Add(System.Net.WebUtility.UrlEncode(bodyFontFamily) + ":ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900");
 		}
 		bodyLineHeight = Model.Item.GetDouble("BodyLineHeight").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
@@ -84,11 +180,11 @@
 		primaryButtonShape = primaryButtonShape == "rounded" ? ".25rem" : primaryButtonShape;
 		primaryButtonShape = primaryButtonShape == "pill" ? "12.5rem" : primaryButtonShape;
 		
-		if(Model.Item.GetDouble("ButtonPrimaryXPadding") != 0.0)
+		if (Model.Item.GetDouble("ButtonPrimaryXPadding") != 0.0)
         {
 			primaryButtonXpadding = Model.Item.GetDouble("ButtonPrimaryXPadding").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
         }
-		if(Model.Item.GetDouble("ButtonPrimaryYPadding") != 0.0)
+		if (Model.Item.GetDouble("ButtonPrimaryYPadding") != 0.0)
         {
 			primaryButtonYpadding = Model.Item.GetDouble("ButtonPrimaryYPadding").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 		}
@@ -100,41 +196,67 @@
 		secondaryButtonShape = Model.Item.GetRawValueString("SecondaryButtonShape", "0");
 		secondaryButtonShape = secondaryButtonShape == "rounded" ? ".25rem" : secondaryButtonShape;
 		secondaryButtonShape = secondaryButtonShape == "pill" ? "12.5rem" : secondaryButtonShape;
-	
 
-		if(Model.Item.GetDouble("ButtonSecondaryXPadding") != 0.0)
-		{
+
+		if (Model.Item.GetDouble("ButtonSecondaryXPadding") != 0.0)
+        {
 			secondaryButtonXpadding = Model.Item.GetDouble("ButtonSecondaryXPadding").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 		}
 
-		if(Model.Item.GetDouble("ButtonSecondaryYPadding") != 0.0)
-		{
+		if (Model.Item.GetDouble("ButtonSecondaryYPadding") != 0.0)
+        {
 			secondaryButtonYpadding = Model.Item.GetDouble("ButtonSecondaryYPadding").ToString(System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 		}
-	
+		
 		@* Link *@
 		linkButtonFontWeight = Model.Item.GetRawValueString("LinkFontWeight", "normal");
 		linkButtonCasing = Model.Item.GetRawValueString("LinkCasing", "initial");
 	}
 
-var fontsToLink = string.Join("&", fontList.Where(x => !string.IsNullOrEmpty(x)).Distinct().Select(x => string.Format("family={0}", x)));
+	var fontsToLink = string.Join("&", fontList.Where(x => !string.IsNullOrEmpty(x)).Distinct().Select(x => string.Format("family={0}", x)));
+	var fontLink = $"https://fonts.googleapis.com/css2?{fontsToLink}&display=swap";
+	var sb = new System.Text.StringBuilder();
 
-var sb = new System.Text.StringBuilder();
-
-
-string googleCss = string.Empty;
-try
-{
-	using (var client = new System.Net.WebClient())
+	async System.Threading.Tasks.Task<string> GetGoogleCss(string fonturl)
 	{
+		var client = new System.Net.Http.HttpClient();
+		client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("*/*"));
+		client.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("font/woff2"));
+		client.DefaultRequestHeaders.Add("User-Agent", Dynamicweb.Context.Current.Request.UserAgent);
 
-		client.Headers.Add("user-agent", Dynamicweb.Context.Current.Request.UserAgent);
-		googleCss = client.DownloadString($"https://fonts.googleapis.com/css2?{fontsToLink}&display=swap");
-		//googleCss = System.Text.RegularExpressions.Regex.Replace(googleCss, @"\s+", ""); //minify the css.
+		System.Net.Http.HttpResponseMessage response = await client.GetAsync(fonturl);
+		response.EnsureSuccessStatusCode();
+		if (response.StatusCode == System.Net.HttpStatusCode.OK)
+		{
+			return await response.Content.ReadAsStringAsync();
+		}
+		return string.Empty;
+	}
+
+	async System.Threading.Tasks.Task DownloadAndSavefont(string fontUrl, string localPath)
+	{
+		var fullPath = Dynamicweb.Core.SystemInformation.MapPath(localPath);
+		var fileinfo = new System.IO.FileInfo(fullPath);
+		var client = new System.Net.Http.HttpClient();
+		System.Net.Http.HttpResponseMessage dataResponse = await client.GetAsync(fontUrl);
+		dataResponse.EnsureSuccessStatusCode();
+		if (dataResponse.StatusCode == System.Net.HttpStatusCode.OK)
+		{
+			var data = await dataResponse.Content.ReadAsByteArrayAsync();
+			System.IO.Directory.CreateDirectory(fileinfo.DirectoryName);
+			System.IO.File.WriteAllBytes(fullPath, data);
+		}
+	}
+
+	string googleCss = string.Empty;
+	
+	try
+	{
+		googleCss = GetGoogleCss(fontLink).GetAwaiter().GetResult();
 
 		Dictionary<string, string> googleFontUrls = new Dictionary<string, string>();
 		Regex cssUrlGoogleFontsRegEx = new Regex(@"url\((?<googleFontUrl>.+?)\)", RegexOptions.Compiled | RegexOptions.CultureInvariant);
-		string firstPartOfCss = googleCss.Substring(googleCss.LastIndexOf("{"), googleCss.LastIndexOf("}")- googleCss.LastIndexOf("{"));
+		string firstPartOfCss = googleCss.Substring(googleCss.LastIndexOf("{"), googleCss.LastIndexOf("}") - googleCss.LastIndexOf("{"));
 
 		MatchCollection matches = cssUrlGoogleFontsRegEx.Matches(googleCss);//We will only take the first URL as that is what is primarily used. If the remaining woff fonts needs loading, the browser will take care of that.
 
@@ -146,7 +268,6 @@ try
 			{
 				googleFontUrls.Add(url, url);
 			}
-			//break;//We will only take the first URL as that is what is primarily used. If the remaining woff fonts needs loading, the browser will take care of that.
 		}
 
 		if (googleFontUrls.Count > 0)
@@ -155,13 +276,9 @@ try
 			foreach (string url in googleFontUrls.Values)
 			{
 				var fontPathAndFilename = url.Replace("https://fonts.gstatic.com/s/", "");
-				var localUrl = $"/Files/Templates/Designs/Swift/Assets/css/Fonts/{fontPathAndFilename}";
-				var fullPath = Dynamicweb.Core.SystemInformation.MapPath(localUrl);
-				var fileinfo = new System.IO.FileInfo(fullPath);
+				var localUrl = $"/Files/Templates/Designs/Swift/Assets/fonts/{fontPathAndFilename}";
 
-				var data = client.DownloadData(new Uri(url));
-				System.IO.Directory.CreateDirectory(fileinfo.DirectoryName);
-				System.IO.File.WriteAllBytes(fullPath, data);
+				DownloadAndSavefont(url, localUrl).GetAwaiter().GetResult();
 
 				googleCss = googleCss.Replace(url, localUrl);
 
@@ -173,32 +290,30 @@ try
 
 		sb.AppendLine(googleCss);
 	}
-}
-catch (Exception ex)
-{
-	//Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(Dynamicweb.Context.Current.Server.MapPath($"~/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_error.txt"), ex.ToString(), false);
-	@ex.ToString()
-		sb.AppendLine($"@import url('https://fonts.googleapis.com/css2?{fontsToLink}&display=swap');");
+	catch (Exception ex)
+	{
+		@*@ex.ToString()*@
 	}
 
-
 	sb.AppendLine("");
-
 
 	sb.AppendLine(".brand {");
 
 	sb.AppendLine($"--swift-header-font: '{headerFontFamily}';");
 	sb.AppendLine($"--swift-header-font-weight: {headerFontWeight};");
+	sb.AppendLine($"--swift-header-font-style: {headerFontStyle};");
 	sb.AppendLine($"--swift-header-casing: {headerCasing};");
 	sb.AppendLine($"--swift-header-line-height: {headerLineHeight};");
 	sb.AppendLine($"--swift-header-letter-spacing: {headerLetterSpacing}em;");
 	sb.AppendLine($"--swift-display-font: '{displayFontFamily}';");
 	sb.AppendLine($"--swift-display-font-weight: {displayFontWeight};");
+	sb.AppendLine($"--swift-display-font-style: {displayFontStyle};");
 	sb.AppendLine($"--swift-display-casing: {displayCasing};");
 	sb.AppendLine($"--swift-display-line-height: {displayLineHeight};");
 	sb.AppendLine($"--swift-display-letter-spacing: {displayLetterSpacing}em;");
 	sb.AppendLine($"--swift-body-font: '{bodyFontFamily}';");
 	sb.AppendLine($"--swift-body-font-weight: {bodyFontWeight};");
+	sb.AppendLine($"--swift-body-font-style: {bodyFontStyle};");
 	sb.AppendLine($"--swift-body-line-height: {bodyLineHeight};");
 	sb.AppendLine($"--swift-body-letter-spacing: {bodyLetterSpacing}em;");
 
@@ -224,6 +339,7 @@ catch (Exception ex)
 
 	string cssPathEcommerceBadges = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_ecommerce_badge_styles_{Model.Area.ID}.css");
 	string cssPathTheme = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_theme_styles_{Model.Area.ID}.css");
+	string cssPathFont = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_font_styles_{Model.Area.ID}.css");
 	string cssPathBranding = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_branding_styles_{Model.Area.ID}.css");
 	string cssPathCombined = Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_{Model.Area.ID}.min.css");
 
@@ -231,8 +347,9 @@ catch (Exception ex)
 
 	string combinedCss = Dynamicweb.Core.Helpers.TextFileHelper.ReadTextFile(cssPathBranding);
 	combinedCss += Dynamicweb.Core.Helpers.TextFileHelper.ReadTextFile(cssPathTheme);
+	combinedCss += Dynamicweb.Core.Helpers.TextFileHelper.ReadTextFile(cssPathFont);
 	combinedCss += Dynamicweb.Core.Helpers.TextFileHelper.ReadTextFile(cssPathEcommerceBadges);
-	combinedCss = System.Text.RegularExpressions.Regex.Replace(combinedCss, @"\s+", ""); //minify the css.
+	combinedCss = System.Text.RegularExpressions.Regex.Replace(combinedCss, @"\s+(?=([^']*'[^']*')*[^']*$)", ""); //minify the css.
 	combinedCss = combinedCss.Replace("\00a0", " "); //Re-insert spaces for content text
 	Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(combinedCss, cssPathCombined, false);
 }
@@ -251,17 +368,17 @@ catch (Exception ex)
 		</div>
 		<div class="g-col-12 g-col-lg-7">
 			<div class="fs-7 text-muted">H1</div>
-			<h1 class="h1 mb-3">@Translate("The whole beauty appeared before them in a swift")</h1>
+			<h1 class="h1 mb-3">@Translate("The quick, brown fox jumps over the lazy dog")</h1>
 			<div class="fs-7 text-muted">H2</div>
-			<h2 class="h2 mb-3">@Translate("The whole beauty appeared before them in a swift")</h2>
+			<h2 class="h2 mb-3">@Translate("The quick, brown fox jumps over the lazy dog")</h2>
 			<div class="fs-7 text-muted">H3</div>
-			<h3 class="h3 mb-3">@Translate("The whole beauty appeared before them in a swift")</h3>
+			<h3 class="h3 mb-3">@Translate("The quick, brown fox jumps over the lazy dog")</h3>
 			<div class="fs-7 text-muted">H4</div>
-			<h4 class="h4 mb-3">@Translate("The whole beauty appeared before them in a swift")</h4>
+			<h4 class="h4 mb-3">@Translate("The quick, brown fox jumps over the lazy dog")</h4>
 			<div class="fs-7 text-muted">H5</div>
-			<h5 class="h5 mb-3">@Translate("The whole beauty appeared before them in a swift")</h5>
+			<h5 class="h5 mb-3">@Translate("The quick, brown fox jumps over the lazy dog")</h5>
 			<div class="fs-7 text-muted">H6</div>
-			<h6 class="h6 mb-3">@Translate("The whole beauty appeared before them in a swift")</h6>
+			<h6 class="h6 mb-3">@Translate("The quick, brown fox jumps over the lazy dog")</h6>
 		</div>
 		<div class="g-col-12 g-col-lg-5">
 			<div class="grid fs-7">
@@ -275,8 +392,12 @@ catch (Exception ex)
 							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@headerFontFamily');">@headerFontFamily</a></td>
 						</tr>
 						<tr>
-							<td>@Translate("Font weigth")</td>
+							<td>@Translate("Font weight")</td>
 							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@headerFontWeight');">@headerFontWeight</a></td>
+						</tr>		
+						<tr>
+							<td>@Translate("Font style")</td>
+							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@headerFontStyle');">@headerFontStyle</a></td>
 						</tr>
 						<tr>
 							<td>@Translate("Casing")</td>
@@ -312,17 +433,17 @@ catch (Exception ex)
 		</div>
 		<div class="g-col-12 g-col-lg-7">
 			<div class="fs-7 text-muted">Display 1</div>
-			<h1 class="display-1 mb-4">@Translate("Just in a swift")</h1>
+			<h1 class="display-1 mb-4">@Translate("The quick, brown fox jumps over the lazy dog")</h1>
 			<div class="fs-7 text-muted">Display 2</div>
-			<h2 class="display-2 mb-4">@Translate("Just in a swift")</h2>
+			<h2 class="display-2 mb-4">@Translate("The quick, brown fox jumps over the lazy dog")</h2>
 			<div class="fs-7 text-muted">Display 3</div>
-			<h3 class="display-3 mb-4">@Translate("Just in a swift")</h3>
+			<h3 class="display-3 mb-4">@Translate("The quick, brown fox jumps over the lazy dog")</h3>
 			<div class="fs-7 text-muted">Display 4</div>
-			<h4 class="display-4 mb-4">@Translate("Just in a swift")</h4>
+			<h4 class="display-4 mb-4">@Translate("The quick, brown fox jumps over the lazy dog")</h4>
 			<div class="fs-7 text-muted">Display 5</div>
-			<h5 class="display-5 mb-4">@Translate("Just in a swift")</h5>
+			<h5 class="display-5 mb-4">@Translate("The quick, brown fox jumps over the lazy dog")</h5>
 			<div class="fs-7 text-muted">Display 6</div>
-			<h6 class="display-6 mb-4">@Translate("Just in a swift")</h6>
+			<h6 class="display-6 mb-4">@Translate("The quick, brown fox jumps over the lazy dog")</h6>
 		</div>
 		<div class="g-col-12 g-col-lg-5">
 			<div class="grid fs-7">
@@ -336,8 +457,12 @@ catch (Exception ex)
 							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@displayFontFamily');">@displayFontFamily</a></td>
 						</tr>
 						<tr>
-							<td>@Translate("Font weigth")</td>
+							<td>@Translate("Font weight")</td>
 							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@displayFontWeight');">@displayFontWeight</a></td>
+						</tr>
+						<tr>
+							<td>@Translate("Font style")</td>
+							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@displayFontStyle');">@displayFontStyle</a></td>
 						</tr>
 						<tr>
 							<td>@Translate("Casing")</td>
@@ -372,7 +497,7 @@ catch (Exception ex)
 			<div class="lead text-muted text-uppercase mt-3 pb-2 border-bottom">@Translate("Body font")</div>
 		</div>
 		<div class="g-col-12 g-col-lg-7">
-			<p class="mb-3">@Translate("The whole beauty appeared before them in a swift")</p>
+			<p class="mb-3">@Translate("The quick, brown fox jumps over the lazy dog")</p>
 		</div>
 		<div class="g-col-12 g-col-lg-5">
 			<div class="grid fs-7">
@@ -386,8 +511,12 @@ catch (Exception ex)
 							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@bodyFontFamily');">@bodyFontFamily</a></td>
 						</tr>
 						<tr>
-							<td>@Translate("Font weigth")</td>
+							<td>@Translate("Font weight")</td>
 							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@bodyFontWeight');">@bodyFontWeight</a></td>
+						</tr>
+						<tr>
+							<td>@Translate("Font style")</td>
+							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@bodyFontStyle');">@bodyFontStyle</a></td>
 						</tr>
 						<tr>
 							<td>@Translate("Line height")</td>
@@ -429,7 +558,7 @@ catch (Exception ex)
 							<td colspan="2" class="fw-bold">@Translate("Parameters")</td>
 						</tr>
 						<tr>
-							<td>@Translate("Font weigth")</td>
+							<td>@Translate("Font weight")</td>
 							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@primaryButtonFontWeight');">@primaryButtonFontWeight</a></td>
 						</tr>
 						<tr>
@@ -487,7 +616,7 @@ catch (Exception ex)
 							<td colspan="2" class="fw-bold">@Translate("Parameters")</td>
 						</tr>
 						<tr>
-							<td>@Translate("Font weigth")</td>
+							<td>@Translate("Font weight")</td>
 							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@secondaryButtonFontWeight');">@secondaryButtonFontWeight</a></td>
 						</tr>
 						<tr>
@@ -545,7 +674,7 @@ catch (Exception ex)
 							<td colspan="2" class="fw-bold">@Translate("Parameters")</td>
 						</tr>
 						<tr>
-							<td>@Translate("Font weigth")</td>
+							<td>@Translate("Font weight")</td>
 							<td><a role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@linkButtonFontWeight');">@linkButtonFontWeight</a></td>
 						</tr>
 						<tr>

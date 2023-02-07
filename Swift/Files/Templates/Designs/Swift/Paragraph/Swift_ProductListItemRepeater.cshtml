@@ -47,7 +47,7 @@
 
 	ProductListViewModel productList = new ProductListViewModel();
 
-	string googleAnalyticsTrackingID = Pageview.AreaSettings.GetString("GoogleAnalyticsTrackingID");
+	string googleTagManagerID = Pageview.AreaSettings.GetString("GoogleTagManagerID");
 	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
 	var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
 	bool allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
@@ -119,6 +119,7 @@
 
 		int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
 		string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
+		string searchLayout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout") : "";
 
 		int listItemSourcePageId = Model.Item.GetInt32("ListComponentSource");
 		var page = Dynamicweb.Services.Pages.GetPage(listItemSourcePageId);
@@ -158,25 +159,25 @@
 			}
 
 			<div class="grid">
-				@if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowTracking)
+				@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
 				{
-				<script>
-					gtag("event", "view_item_list", {
-						item_list_id: "product_list_item_repeater",
-						item_list_name: "Product list (Item Repeater)",
-						items: [
-							@foreach (ProductViewModel product in productList.Products)
-							{
-								<text>{
-									item_id: "@product.Number",
-									item_name: "@product.Name",
-									currency: "@product.Price.CurrencyCode",
-									price: @product.Price.Price
-								},</text>
-							}
-						]
-					});
-				</script>
+					<script>
+						gtag("event", "view_item_list", {
+							item_list_id: "product_list_item_repeater",
+							item_list_name: "Product list (Item Repeater)",
+							items: [
+								@foreach (ProductViewModel product in productList.Products)
+								{
+									<text>{
+										item_id: "@product.Number",
+										item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.Name)",
+										currency: "@product.Price.CurrencyCode",
+										price: @product.Price.Price
+									},</text>
+								}
+							]
+						});
+					</script>
 				}
 
 				@foreach (ProductViewModel product in productList.Products)
@@ -208,15 +209,17 @@
 
 						if (Model.Item.GetString("ListComponentSource") != null) {
 							<article class="@gridColumnMobileSize @gridColumnSize @listItemTheme @listItemPaddingClass d-flex flex-column position-relative product js-product @liveInfoClass" data-product-id="@product.Id" itemscope itemtype="https://schema.org/Product">
-							@{
-								string clickProductLink = string.Empty;
-								if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowTracking)
-								{
-									clickProductLink = "onclick=\"return clickProductLink('" + @product.Id + "', '" + @product.Name + "', '" + @product.VariantName + "', '" + @product.Price.CurrencyCode + "', '" + @product.Price.Price + "')\"";
+								@{
+									string clickProductLink = string.Empty;
+									if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
+									{
+										clickProductLink = "onclick=\"return clickProductLink('" + @product.Id + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.Name) + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.VariantName) + "', '" + @product.Price.CurrencyCode + "', '" + @product.Price.Price + "')\"";
+									}
 								}
-							}
-								<a href="@link" class="text-decoration-none stretched-link" @clickProductLink></a>
-								@if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowTracking)
+								<a href="@link" class="stretched-link" onmouseover="swift.Image.swapImage(event)" onmouseout="swift.Image.swapImage(event)" @clickProductLink>
+									<span class="visually-hidden">@product.Name</span>
+								</a>
+								@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
 								{
 									<script>
 										function clickProductLink(productId, productName, productVariant, productCurrency, productPrice) {
@@ -240,9 +243,6 @@
 										}
 									</script>
 								}
-								<a href="@link" class="text-decoration-none stretched-link">
-									<span class="visually-hidden">@product.Name</span>
-								</a>
 								@RenderGrid(listItemSourcePageId)
 							</article>
 						}
@@ -256,7 +256,7 @@
 				<div class="text-center">
 					<div class="opacity-85 mb-3">@loadedProducts @Translate("out of") @productList.TotalProductsCount @Translate("products")</div>
 					@if (productList.PageCount != 1 && maxProductsCounter == 0) {
-						string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "Relevance";
+						string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "";
 						sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
 
 						<form method="get" action="@url" data-response-target-element="content" class="w-100">
@@ -269,20 +269,25 @@
 										{
 											if (facetOption.Selected)
 											{
-												<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]" />
+												<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]">
 											}
 										}
 									}
 								}
 							}
 
-							@if (productList?.Group?.Id != null) {
-								<input type="hidden" name="GroupId" value="@productList.Group.Id" />
+							@if (!string.IsNullOrEmpty(searchQuery)) {
+								<input type="hidden" name="q" value="@searchQuery">
+								<input type="hidden" name="SearchLayout" value="@searchLayout">
 							}
 
-							<input type="hidden" name="PageSize" value="@pageSize" />
-							<input type="hidden" name="SortBy" value="@sortBySelection" />
-							<input type="hidden" name="RequestType" value="UpdateList" />
+							@if (productList?.Group?.Id != null) {
+								<input type="hidden" name="GroupId" value="@productList.Group.Id">
+							}
+
+							<input type="hidden" name="PageSize" value="@pageSize">
+							<input type="hidden" name="SortBy" value="@sortBySelection">
+							<input type="hidden" name="RequestType" value="UpdateList">
 
 							@{ 
 								string nextPageLink = "/Default.aspx?ID=" + Pageview.Page.ID + "&PageSize=" + pageSize + "&SortBy=" + sortBySelection;

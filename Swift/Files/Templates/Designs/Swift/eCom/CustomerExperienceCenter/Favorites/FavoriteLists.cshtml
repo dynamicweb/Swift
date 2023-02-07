@@ -1,21 +1,36 @@
 @inherits ViewModelTemplate<FavoriteListListViewModel>
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.Frontend
+@using Dynamicweb
 
 @{
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
 	string theme = !string.IsNullOrEmpty(themeRaw) ? " h-100 theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
+	int userId = Pageview?.User?.ID != null ? Pageview.User.ID : 0;
 }
 
-@if (theme != "") { 
-	<div class="@(theme)">
+@if (Pageview?.User?.ID != null)
+{
+	if (theme != "")
+	{
+		<div class="@(theme)">
+			@RenderContent()
+		</div>
+	}
+	else
+	{
 		@RenderContent()
+	}
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark" role="alert">
+		@Translate("To work on this page, you must be signed in, in the frontend")
 	</div>
-} else { 
-	@RenderContent()
 }
 
-@helper RenderContent() { 
+@helper RenderContent()
+{
 	string listPageLink = Pageview.CurrentParagraph.Item["ProductListPage"] != null ? Pageview.CurrentParagraph.Item["ProductListPage"].ToString() : "";
 	string currentPageUrl = "/Default.aspx?ID=" + Pageview.Page.ID;
 	int listsCount = Model.TotalFavoriteListsCount;
@@ -25,8 +40,9 @@
 		<h1 class="h6 m-0 flex-fill">@Translate("Favorite lists")</h1>
 		@if (Model.FavoriteLists != null)
 		{
-			if(Model.FavoriteLists.Count > 0) {
-				<button type="button" class="btn btn-link p-0 border-0" data-bs-toggle="modal" data-bs-target="#createFavoriteListModal">+ @Translate("Add new favorite list")</button>
+			if (Model.FavoriteLists.Count > 0)
+			{
+				<button type="button" class="btn btn-link p-0 border-0" data-bs-toggle="modal" data-bs-target="#createFavoriteListModal" id="AddNewFavoriteList">+ @Translate("Add new favorite list")</button>
 			}
 		}
 	</header>
@@ -39,22 +55,23 @@
 				<p class="m-0">@Translate("Save and arrange the best things here until you are ready for them")</p>
 
 				<div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
-					@if (!string.IsNullOrEmpty(listPageLink)) {
+					@if (!string.IsNullOrEmpty(listPageLink))
+					{
 						<a href="@listPageLink" class="btn btn-secondary">@Translate("Go exploring")</a>
 					}
-					<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createFavoriteListModal">@Translate("Create favorite list")</button>
+					<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createFavoriteListModal" id="CreateNewFavoriteList">@Translate("Create favorite list")</button>
 				</div>
 			</div>
 		</div>
 	}
 	else
 	{
-		string productCountLabel = Model.FavoriteLists.Count > 1 ? Translate("products") : Translate("product");
-
 		foreach (var theList in Model.FavoriteLists)
 		{
+			int listItemsCount = theList.ProductList.Products.Count;
+			string productCountLabel = listItemsCount > 1 ? Translate("products") : Translate("product");
 			string favoriteListLink = currentPageUrl + "&amp;FavoriteListId=" + theList.Id;
-			string listName = !string.IsNullOrEmpty(theList.Name) ? theList.Name : Translate("Favorites");		
+			string listName = !string.IsNullOrEmpty(theList.Name) ? theList.Name : Translate("Favorites");
 
 			<article class="d-flex flex-column gap-3 p-3 border-bottom">
 
@@ -62,11 +79,11 @@
 					<h3 class="flex-fill h6 m-0">
 						<a href="@favoriteListLink" class="text-decoration-none opacity-75">@listName</a>
 					</h3>
-					<span class="small text-end">@theList.ProductList.Products.Count @productCountLabel <span class="d-none d-sm-inline">@Translate("in this list")</span></span>
+					<span class="small text-end">@listItemsCount @productCountLabel <span class="d-none d-sm-inline">@Translate("in this list")</span></span>
 				</header>
 
 				<div class="d-md-none grid grid-2">
-					@if(theList.ProductList.Products.Count > 0)
+					@if (listItemsCount > 0)
 					{
 						foreach (var item in theList.ProductList.Products.Take(2))
 						{
@@ -74,12 +91,11 @@
 
 							<div class="ratio ratio-1x1">
 								<a href="@favoriteListLink" class="d-flex justify-content-center align-items-center">
-									<img
-										src="@productImage"
-										loading="lazy"
-										decoding="async"
-										class="mw-100 mh-100"
-										alt="@item.Name" />
+									<img src="@productImage"
+										 loading="lazy"
+										 decoding="async"
+										 class="mw-100 mh-100"
+										 alt="@item.Name">
 								</a>
 							</div>
 						}
@@ -93,7 +109,7 @@
 				</div>
 
 				<div class="d-none d-md-grid d-print-grid grid grid-2 grid-md-5">
-					@if(theList.ProductList.Products.Count > 0)
+					@if (listItemsCount > 0)
 					{
 						foreach (var item in theList.ProductList.Products.Take(5))
 						{
@@ -101,12 +117,11 @@
 
 							<div class="ratio ratio-1x1">
 								<a href="@favoriteListLink" class="d-flex justify-content-center align-items-center">
-									<img
-										src="@productImage"
-										loading="lazy"
-										decoding="async"
-										class="mw-100 mh-100"
-										alt="@item.Name" />
+									<img src="@productImage"
+										 loading="lazy"
+										 decoding="async"
+										 class="mw-100 mh-100"
+										 alt="@item.Name">
 								</a>
 							</div>
 						}
@@ -120,32 +135,35 @@
 				</div>
 
 				<footer class="d-flex flex-row gap-3 align-items-center justify-content-end">
-					<button 
-						type="button" 
-						class="btn btn-link p-0 renameFavoriteListModal" 
-						data-bs-toggle="modal" 
-						data-bs-target="#renameFavoriteListModal" 
-						data-list-id="@theList.Id" 
-						data-list-name="@listName">@Translate("Rename")
-					</button>
-					<button 
-						type="button" 
-						class="btn btn-link p-0 deleteFavoriteNameButton"
-						data-bs-toggle="modal"
-						data-bs-target="#deleteFavoriteListModal"
-						data-list-id="@theList.Id"
-						data-list-name="@listName">@Translate("Delete")</button>
-				</footer>
-			</article>
-		}
-	}
+					<button type="button"
+							class="btn btn-link p-0 renameFavoriteListModal"
+						id="RenameFavoriteList" 
+							data-bs-toggle="modal"
+							data-bs-target="#renameFavoriteListModal"
+							data-list-id="@theList.Id"
+							data-list-name="@listName">
+						@Translate("Rename")
+						</button>
+						<button type="button"
+								class="btn btn-link p-0 deleteFavoriteNameButton"
+						id="DeleteFavoriteList" 
+								data-bs-toggle="modal"
+								data-bs-target="#deleteFavoriteListModal"
+								data-list-id="@theList.Id"
+								data-list-name="@listName">
+							@Translate("Delete")
+							</button>
+						</footer>
+					</article>
+				}
+			}
 
-	if (listsCount > pageSize)
-	{
-		<div class="p-3">
-			@RenderPagination(currentPageUrl, Model.PageCount, Model.CurrentPage, Model.PageSize)	
-		</div>
-	}
+			if (listsCount > pageSize)
+			{
+				<div class="p-3">
+					@RenderPagination(currentPageUrl, Model.PageCount, Model.CurrentPage, Model.PageSize)
+				</div>
+			}
 }
 
 <div class="modal fade" tabindex="-1" id="createFavoriteListModal">
@@ -211,7 +229,7 @@
 </div>
 
 <script>
-	let userId = @Pageview.User.ID;
+	let userId = @userId;
 	let renameFavoriteListModal = document.querySelector("#renameFavoriteListModal")
 	let deleteFavoriteListModal = document.querySelector("#deleteFavoriteListModal")
 
@@ -252,7 +270,7 @@
 
 		let response = await fetch(url);
 		if (response.ok) {
-			document.location.href = "/Default.aspx?ID=@(Pageview.Page.ID)";
+			document.location.href = "/Default.aspx?ID=@(userId)";
 		}
 	}
 

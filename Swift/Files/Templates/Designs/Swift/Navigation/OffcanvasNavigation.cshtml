@@ -6,17 +6,19 @@
 
 @{
 	string navType = Model?.Parameters["NavType"] != null ? Model.Parameters["NavType"].ToString() : "first-nav";
+	string menuId = Model.Parameters.ContainsKey("menu-id") ? $"menu_{Model.Parameters["menu-id"].ToString().ToLower()}" : string.Empty;
 }
 
-<div class="nav @navType flex-column h-auto w-100 left-0 top-0 offcanvas-navigation">
-	@RenderNodes(Model.Nodes)
+<div class="nav @navType flex-column h-auto w-100 left-0 top-0 offcanvas-navigation @menuId">
+	@{@RenderNodes(Model.Nodes)}
 </div>
 
 @helper RenderNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
 {
-	string groupId = Dynamicweb.Context.Current.Request["GroupID"] != null ? Dynamicweb.Context.Current.Request["GroupID"].ToString() : "";
-	string productId = Dynamicweb.Context.Current.Request["ProductID"] != null ? Dynamicweb.Context.Current.Request["ProductID"].ToString() : "";
-	string variantId = Dynamicweb.Context.Current.Request["VariantID"] != null ? Dynamicweb.Context.Current.Request["VariantID"].ToString() : "";
+	var paragraphId = Pageview.CurrentParagraph.ID;
+	string groupId = Dynamicweb.Context.Current.Request["GroupID"] != null ? Dynamicweb.Context.Current.Request["GroupID"].ToString() : string.Empty;
+	string productId = Dynamicweb.Context.Current.Request["ProductID"] != null ? Dynamicweb.Context.Current.Request["ProductID"].ToString() : string.Empty;
+	string variantId = Dynamicweb.Context.Current.Request["VariantID"] != null ? Dynamicweb.Context.Current.Request["VariantID"].ToString() : string.Empty;
 	Regex reg = new Regex(@"\(([^\)]+)\)");
 
 	foreach (var node in nodes)
@@ -26,66 +28,76 @@
 
 		var hasChildren = node.Nodes.Count() > 0;
 		var nodeId = !string.IsNullOrEmpty(node.GroupId) ? node.GroupId : node.PageId.ToString();
-		var inPathChecked = node.InPath ? "checked" : "";
-		var inPathClass = node.InPath ? "in-path" : "";
-		var activeClass = node.IsActive ? "active fw-bold" : "";
+		var inPathChecked = node.InPath ? "checked" : string.Empty;
+		var inPathClass = node.InPath ? " in-path" : string.Empty;
+		var activeClass = node.IsActive ? " active fw-bold" : string.Empty;
 
 		<div class="nav-item d-flex align-items-center w-100 py-1">
 			@if (pageType != "Swift_Preferences")
 			{
 				if (node.IsClickable)
 				{
-					<a class="nav-link position-relative flex-fill @activeClass @inPathClass" @(node.IsActive ? "aria-current='page'" : "") href="@node.Link" id="@nodeId">
+					<a class="nav-link position-relative d-flex align-items-center gap-2 flex-grow-1@(activeClass)@(inPathClass)" @(node.IsActive ? "aria-current='page'" : "") href="@node.Link" id="@nodeId">
 						@if (!string.IsNullOrEmpty(node.GroupId))
 						{
-							@RenderGroupImage(node.GetProductGroup())
+							{@RenderGroupImage(node.GetProductGroup())}
 						}
-						@node.Name
+						<span class="flex-grow-1">
+							@node.Name
+						</span>
 					</a>
+					if (hasChildren)
+					{ 
+						<label class="nav-link position-relative" role="button" aria-label="Unfold @node.Name" for="nav_@(paragraphId)_@(nodeId)">
+							@{@RenderStaticIcon("arrow-right")}
+						</label>					
+					}
 				}
 				else
 				{
-					<span class="nav-link position-relative flex-fill @activeClass @inPathClass" @(node.IsActive ? "aria-current='page'" : "") id="@nodeId">
+					<label class="nav-link position-relative d-flex align-items-center gap-2 flex-grow-1@(activeClass)@(inPathClass)" @(node.IsActive ? "aria-current='page'" : "") role="button" aria-label="Unfold @node.Name" for="nav_@(paragraphId)_@(nodeId)">
 						@if (!string.IsNullOrEmpty(node.GroupId))
 						{
-							@RenderGroupImage(node.GetProductGroup())
+							{@RenderGroupImage(node.GetProductGroup())}
 						}
-						@node.Name
-					</span>
+						<span class="flex-grow-1">
+							@node.Name
+						</span>
+						@if(hasChildren)
+						{
+							{@RenderStaticIcon("arrow-right")}
+						}
+					</label>
 				}
 
 				if (hasChildren)
 				{
-					<label class="nav-link position-relative" for="nav_@nodeId">
-						@RenderStaticIcon("arrow-right")
-					</label>
-					<input type="checkbox" class="visually-hidden sub-nav-check" id="nav_@nodeId" @inPathChecked>
+					<input type="checkbox" class="visually-hidden sub-nav-check" id="nav_@(paragraphId)_@(nodeId)" @inPathChecked>
 					<div class="nav sub-nav position-absolute h-100 opacity-0 pe-none invisible w-100 left-0 top-0">
 						<div class="h-100 w-100 overflow-y-auto overflow-x-hidden">
-							<div class="nav-header position-relative d-flex align-items-center py-1">
-								<label class="nav-link position-relative" for="nav_@nodeId">
-									@RenderStaticIcon("arrow-left")
+							<div class="nav-header position-relative py-1">
+								<label class="nav-link position-relative d-flex align-items-center gap-2 flex-grow-1" role="button" aria-label="Go back to @node.Name" for="nav_@(paragraphId)_@(nodeId)">
+									@{@RenderStaticIcon("arrow-left")}
+									<span class="flex-grow-1">@node.Name</span>
 								</label>
-								<div class="nav-link position-relative ps-0 flex-fill"><span>@node.Name</span></div>
 							</div>
-
-							@RenderNodes(node.Nodes)
-							@RenderProductGroupPromotionImage(node.GetProductGroup(), node.Link)
+							@{@RenderNodes(node.Nodes)}
+							@{@RenderProductGroupPromotionImage(node.GetProductGroup(), node.Link)}
 						</div>
 					</div>
 				}
 			}
 			else
 			{
-				bool countrySelector = page.Item["CountrySelector"] != null ? Convert.ToBoolean(page.Item["CountrySelector"].ToString()) : false;
-				bool languageSelector = page.Item["LanguageSelector"] != null ? Convert.ToBoolean(page.Item["LanguageSelector"].ToString()) : false;
-				bool currencySelector = page.Item["CurrencySelector"] != null ? Convert.ToBoolean(page.Item["CurrencySelector"].ToString()) : false;
+				bool countrySelector = page.Item?["CountrySelector"] != null ? Convert.ToBoolean(page.Item["CountrySelector"].ToString()) : false;
+				bool languageSelector = page.Item?["LanguageSelector"] != null ? Convert.ToBoolean(page.Item["LanguageSelector"].ToString()) : false;
+				bool currencySelector = page.Item?["CurrencySelector"] != null ? Convert.ToBoolean(page.Item["CurrencySelector"].ToString()) : false;
 				string name = Translate("Preferences");
 				string icon = "";
 
 				if (languageSelector)
 				{
-					bool hideIcon = page.Item["HideIcon"] != null ? Convert.ToBoolean(page.Item["HideIcon"].ToString()) : false;
+					bool hideIcon = page.Item?["HideIcon"] != null ? Convert.ToBoolean(page.Item["HideIcon"].ToString()) : false;
 
 					if (!hideIcon)
 					{
@@ -97,12 +109,12 @@
 				}
 
 				<form action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline" class="w-100">
-					<input type="hidden" name="Layout" value="modal" />
-					<input type="hidden" name="CurrentPageID" value="@Pageview.ID" />
-					<input type="hidden" name="GroupID" value="@groupId" />
-					<input type="hidden" name="ProductID" value="@productId" />
-					<input type="hidden" name="VariantID" value="@variantId" />
-					<a href="#" role="button" onclick="swift.PageUpdater.Update(event)" class="nav-link position-relative flex-fill @activeClass @inPathClass" @(node.IsActive ? "aria-current='page'" : "") data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+					<input type="hidden" name="Layout" value="modal">
+					<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+					<input type="hidden" name="GroupID" value="@groupId">
+					<input type="hidden" name="ProductID" value="@productId">
+					<input type="hidden" name="VariantID" value="@variantId">
+					<a href="#" role="button" onclick="swift.PageUpdater.Update(event)" class="nav-link position-relative flex-fill swift_open-preferences-modal @activeClass @inPathClass" @(node.IsActive ? "aria-current='page'" : "") data-bs-toggle="modal" data-bs-target="#PreferencesModal">
 						@if (icon != "")
 						{
 							if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none"))
@@ -127,11 +139,11 @@
 {
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/" + icon + ".svg";
 
-	if (!iconPath.ToLower().Contains("none") && iconPath != "")
+	if (!iconPath.ToLower().Contains("none") && iconPath != string.Empty)
 	{
 		iconPath = Dynamicweb.Context.Current.Server.MapPath(iconPath);
 
-		<span class="pe-none">
+		<span class="icon-3">
 			@ReadFile(iconPath)
 		</span>
 	}
@@ -181,7 +193,7 @@
 		}
 		if (showProductGroupPromotionImage)
 		{
-			<div class="grid grid-1 mx-3 @gridGap@(productGroupPromotionImageTheme)">
+			<div class="grid grid-1 mt-3 mx-3 @gridGap@(productGroupPromotionImageTheme)">
 				@if (productGroupPromotionImage != string.Empty)
 				{
 					productGroupPromotionLink = !string.IsNullOrEmpty(productGroupPromotionLink) ? productGroupPromotionLink : link;
@@ -238,13 +250,13 @@
 
 						if (Path.GetExtension(groupImage).ToLower() == ".svg")
 						{
-							<div class="icon-auto me-2 @productGroupImageShape" style="height: @(productGroupImageSize)px; width: @(productGroupImageSize)px;">
+							<div class="icon-auto @productGroupImageShape" style="height: @(productGroupImageSize)px; width: @(productGroupImageSize)px;">
 								@ReadFile("/Files/Images/" + groupImage)
 							</div>
 						}
 						else
 						{
-							<img loading="lazy" class="me-2 @productGroupImageShape" alt="@groupName" width="@productGroupImageSize" height="@productGroupImageSize" src="@imagePath">
+							<img loading="lazy" class="@productGroupImageShape" alt="@groupName" width="@productGroupImageSize" height="@productGroupImageSize" src="@imagePath">
 						}
 					}
 

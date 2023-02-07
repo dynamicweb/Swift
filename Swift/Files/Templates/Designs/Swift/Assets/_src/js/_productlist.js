@@ -131,6 +131,9 @@ const ProductList = function () {
 				//Replace the markup
 				responseTargetElement.innerHTML = html;
 
+				swift.Scroll.hideHeadersOnScroll();
+				swift.Scroll.handleAlternativeTheme();
+
 				//Run scripts from the loaded html
 				var scripts = Array.prototype.slice.call(responseTargetElement.getElementsByTagName("script"));
 				for (var i = 0; i < scripts.length; i++) {
@@ -144,13 +147,10 @@ const ProductList = function () {
 					}
 				}
 
-				//Initialize all the sliders
-				swift.Sliders.init();
-
 				//Modal
 				var requestType = formData.get("RequestType");
 
-				if (screen.width < 768 && document.querySelector('#FacetsModal') && requestType != "UpdateList") {
+				if (screen.width < 992 && document.querySelector('#FacetsModal') && requestType != "UpdateList") {
 					var facetsModal = new bootstrap.Modal(document.querySelector('#FacetsModal'), { backdrop: false });
 					facetsModal.show();
 

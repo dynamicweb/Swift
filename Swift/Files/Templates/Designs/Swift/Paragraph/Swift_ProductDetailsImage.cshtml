@@ -84,7 +84,14 @@
 	@* Needed image data collection to support both DefaultImage, ImagePatterns and Image Assets *@
 	string defaultImage = product.DefaultImage != null ? product.DefaultImage.Value : "";
 	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedAssetCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
-	assetsImages = assetsImages.OrderByDescending(x => x.Value.Equals(defaultImage));
+	if (!assetsImages.Any(x => x.Value == product.DefaultImage.Value))
+	{
+		assetsImages = assetsImages.Prepend(product.DefaultImage);
+	}
+	else
+	{
+		assetsImages.OrderByDescending(x => x.Value.Equals(defaultImage));
+	}
 	IEnumerable<MediaViewModel> assetsList = new MediaViewModel[]{};
 
 	assetsList = assetsList.Union(assetsImages);
@@ -142,11 +149,11 @@
 				@foreach (MediaViewModel asset in assetsList) {
 					var assetValue = asset.Value.ToLower();
 					foreach (string format in allSupportedFormats) {
-						if (assetValue.Contains(format) ) {
+						if (assetValue.Contains(format)) {
 							string activeSlide = assetNumber == 0 ? "active" : "";
 
 								<div class="carousel-item @activeSlide" data-bs-interval="99999">
-									@RenderAsset(asset, assetNumber, "mobile")
+									@{@RenderAsset(asset, assetNumber, "mobile")}
 								</div>
 								assetNumber++;
 							}
@@ -235,7 +242,7 @@
 						<div class="carousel-inner h-100">
 							@foreach (MediaViewModel asset in assetsList) {
 								var assetValue = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
-								foreach (string format in allSupportedFormats) {
+								foreach (string format in supportedImageFormats.Concat(supportedVideoFormats).ToArray()) {
 									if (assetValue.Contains(format) ) {
 										string imagePath = assetValue;
 										string activeSlide = modalAssetNumber == 0 ? "active" : "";
@@ -254,7 +261,7 @@
 
 												@foreach (string videoFormat in supportedVideoFormats) { //Videos
 													if (assetValue.Contains(videoFormat)) {
-														@RenderVideoPlayer(asset, "modal")
+														{@RenderVideoPlayer(asset, "modal")}
 													}
 												}
 											</div>
@@ -282,7 +289,7 @@
 
 		<div class="h-100 @theme">
 			<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
-				<img src="~/Files/Images/missing_image.jpg" loading="lazy" decoding="async" class="mh-100 mw-100" style="object-fit: cover;" />
+				<img src="/Files/Images/missing_image.jpg" loading="lazy" decoding="async" class="mh-100 mw-100" style="object-fit: cover;">
 			</div>
 		</div>
 	}
@@ -297,21 +304,21 @@
 	<div class="h-100 @(theme)">
 		@foreach (string format in supportedImageFormats) { //Images
 			if (assetValue.Contains(format)) {
-				@RenderImage(asset, assetNumber, size)
+				{@RenderImage(asset, assetNumber, size)}
 			}
 		}
 		@foreach (string format in supportedVideoFormats) { //Videos
 			if (assetValue.Contains(format)) {
 				if (Model.Item.GetString("OpenVideoInModal") == "true") {
-					@RenderVideoScreendump(asset, assetNumber, size)
+					{@RenderVideoScreendump(asset, assetNumber, size)}
 				} else {
-					@RenderVideoPlayer(asset, size)
+					{@RenderVideoPlayer(asset, size)}
 				}
 			}
 		}
 		@foreach (string format in supportedDocumentFormats) { //Documents
 			if (assetValue.Contains(format)) {
-				@RenderDocument(asset, assetNumber, size)
+				{@RenderDocument(asset, assetNumber, size)}
 			}
 		}
 	</div>
@@ -365,7 +372,7 @@
 	<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable); cursor: pointer" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID">
 		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide-to="@number">
 			<div class="icon-5 position-absolute" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
-			<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;" />
+			<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
 		</div>
 	</div>
 }
@@ -395,7 +402,7 @@
 				style="--plyr-color-main: var(--swift-foreground-color); height: 100%">
 			</div>
 
-			<script type="module" src="~/Files/Templates/Designs/Swift/Assets/js/plyr.js"></script>
+			<script type="module" src="/Files/Templates/Designs/Swift/Assets/js/plyr.js"></script>
 
 			<script type="module">
 				var player = new Plyr('#player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size', {

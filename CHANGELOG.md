@@ -1,5 +1,209 @@
 # Changelog
 
+# v1.17.0
+## [v1.17.0] - 21-12-2022
+
+## BugFixes
+* Checkout: When using inline payment step missing information for breadcrumb, summary and orderline image
+* Checkout: Delivery date checkbox, moved to correct group to prevent hiding itself
+* Checkout: Google address causes errors in the console. Use Assets loader to load Google places
+* Customer center: Fix link on Dashboard the order page doesn't open on My orders page
+* Customer center: Address State field is not auto populated after selection. Remake support for both Region and State in Google autoplaces
+* Customer center: In Favorites lists, change the text to Products, when only 1. Get count from proper list
+* Express buy: The Add to cart button should be disabled if products are not in stock.
+* General: Null check - eCommerce badge
+* General: Custom fonts, fonts folder not created when it doesn't exist. Fix by including fonts folder
+* General: Custom fonts, change condition to not assume custom font field is present
+* General: Custom Sitemap Missing includeFolderAndHidden = True, update to not include debug info
+* General: In Page properties settings - there No difference between the 2 header position settings 
+* General: Validation error in Static variants. Correct auto-test hook implementation
+* Itemtypes: Poster, position absolute the anchor when there is no button label and stretched link is selected
+* Itemtypes: Feature, alignment if no icon is selected
+* Itemtypes: Slider, Ratio and fill - Undo prev changes. Issue with not enough room for both headline, subtitle and button on mobile
+* Itemtypes: Slider, image is set to position absolute when " fill " ratio is selected
+* Itemtypes: Navigation, when using a page of type “Shortcut” the template breaks - Add null check
+* Itemtypes: Navigation, a clickable 1st level navigation node will not redirects to #
+* Itemtypes: Search, Rounded edges are gone
+* Itemtypes: Search, Products with special characters break type ahead. Remove broken html encoding code
+* Itemtypes: Product component Add to cart, UI improvements on units selector
+* Itemtypes: Product component Add to cart, initialize Scroll on PageUpdater success
+* Itemtypes: Product component Add to cart, background color fallback for when using themes with transparent background
+* Itemtypes: Product component Price, normal price doesn't align
+* Itemtypes: Product component price alignment issue fix
+* Itemtypes: Product Facets, fixed modal overlay bug when screen size is below lg
+* Itemtypes: Product Specification, simplify the elements and correct the alignment
+* Itemtypes: Row markup still rendered and padding class
+* Itemtypes: Removed useCache="False" from item type xml, legacy xml code which shouldn't be there anymore
+
+## Changed
+* Itemtypes: Swift_Preferences, change to language selector, show page even if it is hidden in navigation
+* Itemtypes: Removed setting only showing favorites for master product, this should be a part of the existing setting ShowAddToFavoorites
+
+## Added
+* General: Template conversions, so it is compatible for both DW9 and DW10
+* General: TinyMCE support plugin dw link, in order to use internal links on the rich text editor
+* General: Updated Themes preview page, possible to show the accent color
+* Itemtypes: Product component slider, possible to design own product slider using product components
+* Itemtypes: On the Product Specification an accordion design layout applied as an extra option
+* Itemtypes: Product image component - possible to show alternative image on hover based on selection from the asset categories
+
+# v1.16.0
+## [1.16.0] - 05-12-2022
+
+## Bugfixes
+* Customer center: Fix RMA null check and image alt and path
+* General: Under Swift tool/Design Possible to select Branding page again, missing restrictions
+* General: Show the image format clearly on the panel for Assets.cshtml for Digital Assets Portal
+* Itemtypes: Fix App layout setting
+* Itemtypes: AddFavourite buttons does not have discernible text, Added text to buttons + Added aria-hidden to icons
+* Itemtypes: Search, Fix markup in search result in ProductSearchDropdownResponse and  Swift_SearchField
+* Itemtypes: variant component, more flexible static variant sizes, so images does not exceeds column
+* Itemtypes: Check if variantid element exists, since the VariantSelector breaks if the element is not found in VariantSelectorand Swift_ProductVariantSelector
+* Itemtypes: Use PageUpdater when changing units, so the price with be reflected for Swift_ProductAddToCart and Swift_ProductPrice
+* Itemtypes: Make Rows themes visible again
+* Itemtypes: Added labels for color facets
+* Itemtypes: EcommerceBadge, use Math.Round instead of Math.Floor for badge percentage rounding, to avoid rounding error
+* Itemtypes: Manage empty product slider with advanced service page on ProductSlider
+* Itemtypes: Use linkType2 instead of linkType for Swift_TextAndImage
+* Itemtypes: Row height - added missing "medium" in value name
+* Itemtypes: Facets, relevance sorting should be empty string for Swift_ProductListCompactView, Swift_ProductListGridView, Swift_ProductListItemRepeater, Swift_ProductListListView, Swift_ProductListSelectedFacets
+* Itemtypes: Blockquote, fixed quotation mark wrong position, for Swift_Blockquote
+* Itemtypes: Input group - Input field rounded if button is set to rounded for VariantSelector, VoucherForm, DownloadCart, Swift_ProductAddToQuoteCart, Swift_ProductDetailsInfo, Swift_ProductDownloadData, Swift_ProductListCompactView and Swift_ProductListListView
+* Itemtypes: Swift_ProductDetailsImage, ensure primary image is loaded if variant image pattern is different than main product
+* Product list: Better alignment for Swift_ProductListCompactView and ProductListListView
+
+## Changed
+* Itemtypes: Theme selector accent color in Swift_ThemeSelectorMini
+* Customer center: My orders, reorder adding extra step with express buy, improving user flow
+
+## Added
+* Customer center: Support for Saved Cards e.g. for  payment providers EbizCharge
+* General: Support open graph for pages using meta data in Page properties, Title, description and image
+* Itemtypes: Add to cart component, Support stock state on uniit selector
+* Itemtypes: Add the possibility to use Accent color for content item types Text, Text and image, Feature, Section header, content slider and poster (Accent color was only available in TextAdvanced beforehand)
+* Itemtypes: facets, define how many groups should be open from the start
+* Itemtypes: Support informative prices on price component
+* Itemtypes: Row component - Medium row height
+
+## Removed
+* Itemtypes: Remove ProductInfo itemtype + template. Since we will focus on product component instead. ProductInfo itemtype will no longer be supported
+
+# v1.15.0
+## [1.15.0] - 27-10-2022
+
+## Bugfixes
+* Checkout: Hide sign in button is sign in page field is empty
+* Checkout: Fix date format when using flatpickr - remove value from input settings it with js
+* Customer center: Updated OrderDetails.cshtml for correct Order Id tag name on OrderDetails.cshtml
+* General: W3C validation error, Remove self closing tags 
+* General: Open graph, fix wrong meta tags and remove deprecated twitter:image:alt 
+* General: Add disabled property to quantity selectors if AddToCart buttons have on RelatedProductList, VariantSelector, Swift_ProductAddToCart, Swift_PtroductDetailsInfo, Swift_ProductListCompactView and Swift_productListListView
+* General: Outlined item type icons 
+* General: Fixed validation errors, Element div not allowed as child of element button in this context
+* General: add method attribute to login form
+* Itemtypes: Mega menu, remove duplicate ids
+* Itemtypes: Swift_Slider.cshtml, fixed possible merge error leaking code to the view
+* Itemtypes: Preferences, Butten not translated correct
+* Itemtypes: Product specification, added null check in comma list
+* Itemtypes: Article list publish date is not rendered + added missing Schema.org microdata
+* Itemtypes: Product List Facets and Product List Selected Facets: Fixed missing translation
+* Itemtypes: Article header, fixed broken default user icon when there is no user image
+* Itemtypes: Product Group List, Swap icons to horizontal alignment icons on the settings
+* Itemtypes: Changed name from GENERAL to Item type name + settings.
+* Itemtypes: Related product list, Quantity input field is broken in list, set the width of the column based on the width of the button
+* Itemtypes: Media, remove documents from the slideshow loop in modals
+* Itemtypes: Slider, ratio icon: Switch original to fill
+* Itemtypes: Enable Static Variants on ProductDetail and ProductComponents
+* Itemtypes: typeahead, adjusted delay in typeahead dropdown + removed disabling of input fields
+* Itemtypes: Product components - Product list item repeater - Removed double links
+* Customer center: Null check on RMA's default group id
+* Itemtypes: Product component, Product Add To Cart - Buttons now have same sizes
+* Itemtypes: ProductComponentEdit and ProductComponentParagraph - No theme is set to default theme
+* Itemtypes: Fixed links in footer with subpages
+* Itemtypes: Ecommerce badges, Optimize performance
+* Itemtypes: Slider - Removed padding from slider when theme is selected, and removed padding for every slider item
+* Itemtypes: Search icon is now back to its usual size, it was suddenly 14x14  instead of 21x21
+* Itemtypes: Navigation and mega menu, fixed dropdown not rendering when full-width row is selected
+
+## Changes
+* Repository: Reorganize repository settings
+
+## Added
+* Generel: Possible to select own custom fonts in Swift Branding. [Read the set up guide](https://doc.dynamicweb.com/swift/setup-project/design/branding#sideNavTitle1-3)
+* General: Added option to disable wide breakpoints in website settings. Define if you want to have entire website to be wide width or narrow width
+* General: Add Authorize.Net payment provider templates
+* General: Correct settings for user and group types in User area
+* Itemtypes: Product group slider, added option for current group id + hide output if ! count > 0
+* Itemtypes: Units selector added on the add to cart component - Part 1
+* Itemtypes: Product component, Header - added heading levels to product components
+* Itemtypes: Article header, Added space around setting
+* Itemtypes: Allow main product to be added to the favorite list on Product List Grid View, Product Slider, Default Product Image, Product Details Info, Product List Compact View, Product List List View, Product Add To Cart, Product Add to Favorites
+
+## Remove 
+* Itemtypes: Remove Carousel from Articles
+
+# v1.14.1
+## [1.14.1] - 28-09-2022
+
+## Disclaimer
+* Tiny Slider is deprecated and has been removed from Swift code base (_slides.js, _slider.scss, tiny-slider.js and all occurrences has been removed) 
+* Itemtype Swift_Carousel has been removed (replaced by itemtype Swift_Slider that uses SwiffySlider) 
+
+## Bugfixes
+* General:  Hide cookie notice while in Visual editor
+* General: Unfocused addtofavorites button after click
+* General: Error in frontend if unit fields type is emptied, Extra null-check before using Substring
+* General: Clean up images used for demo, move images to Swift Content demo folder
+* General: Add /Fonts to .gitignore, move font files outside css folder
+* General: Add correct alternate page for PDP and group pages
+* Cart: Missing focus on Checkout buttons (accessability). Fixed outline issue on buttons
+* Checkout: Calendar for select delivery date not working if selected and then other changes/selections are made. assetloader missing custom event if assetFound
+* Customer center: My customers, Safari issue managing customers. Fix linked table rows
+* Itemtypes: Removed unused code from logo
+* Itemtypes: Logo, it should not be possible to set the width to -1px
+* Itemtypes: Slider, empty rows should not output any code to the page. Wrap initialize within empty products if statement
+* Itemtypes: Product group slider, borders removed from Product group slider
+* Itemtypes: Video, Buttons do not have an accessible name (Lighthouse: Accessability). Added label to video player button
+* Itemtypes: HTML validation: Duplicate ID in MegaMenu, fixed duplicate links in mega menu
+* Itemtypes: Slider, missing focus on slider elements. Removed no-outline class
+* Itemtypes: Row height, fix spacing for 1Column row
+* Itemtypes: Off-Canvas, fixed menu icon misalignment
+* Itemtypes: Off-Canvas, Added missing pointer for arrows
+* Itemtypes: Off canvas, more distance between navigation menu and promotion image
+* Itemtypes: Video, performance when using video (Lighthouse Performance) added preload property to video tags
+* Itemtypes: Impersonation bar, preview when in Visual Editor Mode, in order to edit it
+* Itemtypes: Product components, Product long description - Padding bottom is shown if there is no title
+* Itemtypes: Blockquote, left border layout design is not visible if no theme is selected
+* Itemtypes: Product components, Price, Better help description for themes field on pricing
+* Itemtypes: Product list group poster, The poster height is the same for "Small" and "Medium" on mobile fixed min-height for mobile and aligned mobile/desktop min-height
+* Itemtypes: Product list selected facets - Facets breaks into multiple lines and squished if to may facets are selected .Cleaned up facets list, added no wrap to labels
+* Itemtypes: Product components, Add to cart. Possible to theme icon inside btn for favorite icon and default image
+* Itemtypes: Product components, Add to favorites. Preview for visual editor mode is missing 
+* Itemtypes: Product components - Buttons size alignment when there is no button label
+* Itemtypes: Product Group List - Removed additional padding from pill-button layout
+* Itemtypes: Product list group poster, the poster height is the same for " Small " and " Medium " on mobile .added min-vh-25 for small size + adjusted medium/large to min-vh-50/min-vh-75 + wrapped Title/Description in a condition
+* Itemtypes: Product Download Data - Form field - Label disappeared when dark themed
+* Itemtypes: Product components, Add to cart fix Border radius issue
+* Itemtypes: mega menu, Image handler doesn't htmlencode space in image path, urlencode image path for Promotion Images 
+* Itemtypes: Related product slider - theme is not applied to the row between the columns
+* Itemtypes: Facets, mobile view button theming issue
+* Itemtypes: Related product list headline is wrapped, fix grid issue
+* Itemtypes: Mega menu, fixed missing group images and nav link not hoverble if set not clickable
+* Product detail: product variant sector, Improve the in-active variant css
+* Product detail: Related products list view and Specification. clean up and improve Tables so it is mobile friendly
+* Product list: ProductlistCompactView and ProductListListView remove " product " class from product list items
+* Product list: Product list view and compact view - Space around setting "none" works
+* Product list: Compact view has error in modal when product has variant, Fix copy-paste code error
+
+## Added
+* General: Change template helper calls for DW10 compatibility 
+* General: Remove ~ from master in links and change branding to work with httpclient that works on .net 4 and .net core for DW10 compatibility 
+* Itemtypes: Breadcrumb doesn't work with content pages. Add folders and hidden pages and add link to breadcrumb markup
+* Itemtypes: Off-canvas, Nav link clickable if the page is set to not clickable
+
+## Removed
+* Itemtypes: Swift_Carousel is removed
+
 # v1.14.0
 ## [1.14.0] - 01-09-2022
 

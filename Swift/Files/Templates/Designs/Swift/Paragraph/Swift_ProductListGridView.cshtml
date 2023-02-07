@@ -49,13 +49,13 @@
 	if (!string.IsNullOrEmpty(theme))
 	{
 		<div class="h-100@(theme) @themePadding item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
-			@RenderProductList()
+			@{@RenderProductList()}
 		</div>
 	}
 	else
 	{
 		<div class="pt-3 item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
-			@RenderProductList()
+			@{@RenderProductList()}
 		</div>
 	}
 }
@@ -85,7 +85,7 @@
 	bool saleBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("SaleBadgeDesign")) && Model.Item.GetRawValueString("SaleBadgeDesign") != "none" ? true : false;
 	bool newBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("NewBadgeDesign")) && Model.Item.GetRawValueString("NewBadgeDesign") != "none" ? true : false;
 
-	string googleAnalyticsTrackingID = Pageview.AreaSettings.GetString("GoogleAnalyticsTrackingID");
+	string googleTagManagerID = Pageview.AreaSettings.GetString("GoogleTagManagerID");
 	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
 	var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
 	bool allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
@@ -115,25 +115,25 @@
 
 		<div class="grid grid-2 grid-lg-3">
 
-			@if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowTracking)
+			@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
 			{
-			<script>
-				gtag("event", "view_item_list", {
-					item_list_id: "product_list_gridview",
-					item_list_name: "Product list (Gridview)",
-					items: [
-						@foreach (ProductViewModel product in productList.Products)
-						{
-							<text>{
-								item_id: "@product.Number",
-								item_name: "@product.Name",
-								currency: "@product.Price.CurrencyCode",
-								price: @product.Price.Price
-							},</text>
-						}
-					]
-				});
-			</script>
+				<script>
+					gtag("event", "view_item_list", {
+						item_list_id: "product_list_gridview",
+						item_list_name: "Product list (Gridview)",
+						items: [
+							@foreach (ProductViewModel product in productList.Products)
+							{
+								<text>{
+									item_id: "@product.Number",
+									item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.Name)",
+									currency: "@product.Price.CurrencyCode",
+									price: @product.Price.Price
+								},</text>
+							}
+						]
+					});
+				</script>
 			}
 
 			@foreach (ProductViewModel product in productList.Products)
@@ -204,11 +204,14 @@
 					}
 				}
 
-				<article class="position-relative@(productTheme) product-list-item product js-product @liveInfoClass" data-product-id="@product.Id" itemscope itemtype="https://schema.org/Product">
-					@if (!anonymousUser && !hideFavoritesSelector && product.VariantInfo.VariantInfo == null) {
-						<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
-							@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
-						</div>
+				<article class="position-relative@(productTheme) product-list-item js-product @liveInfoClass" data-product-id="@product.Id" itemscope itemtype="https://schema.org/Product">
+					@if (!anonymousUser) {
+						if (!hideFavoritesSelector)
+						{ 
+							<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
+								@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+							</div>
+						}
 					}
 
 					@if (showBadges) { 
@@ -220,13 +223,13 @@
 					<div class="d-flex flex-column d-block h-100">
 						@{
 							string clickProductLink = string.Empty;
-							if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowTracking)
+							if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
 							{
-								clickProductLink = "onclick=\"return clickProductLink('" + @product.Id + "', '" + @product.Name + "', '" + @product.VariantName + "', '" + @product.Price.CurrencyCode + "', '" + @product.Price.Price + "')\"";
+								clickProductLink = "onclick=\"return clickProductLink('" + @product.Id + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.Name) + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.VariantName) + "', '" + @product.Price.CurrencyCode + "', '" + @product.Price.Price + "')\"";
 							}
 						}
 						<a href="@link" class="text-decoration-none d-flex flex-column" @clickProductLink>
-							@if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowTracking)
+							@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
 							{
 								<script>
 									function clickProductLink(productId, productName, productVariant, productCurrency, productPrice) {
@@ -262,9 +265,38 @@
 										<ul class="p-0 lh-sm opacity-75" style="list-style-position: inside">
 											@foreach (CategoryFieldViewModel mainFeatureGroup in mainFeatures)
 											{
-												foreach (var field in mainFeatureGroup.Fields)
+												foreach (var fieldViewModel in mainFeatureGroup.Fields)
 												{
-													@RenderField(field.Value)
+													var field = fieldViewModel.Value;
+													string fieldValue = field?.Value is object ? field.Value.ToString() : "";
+
+													if (fieldValue != "") {
+														fieldValue = fieldValue == "False" ? Translate("No") : fieldValue;
+														fieldValue = fieldValue == "True" ? Translate("Yes") : fieldValue;
+
+														if (field.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
+															fieldValue = "";
+
+															foreach (FieldOptionValueViewModel option in field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>) {
+																fieldValue = option.Name;
+															}
+														}
+
+														bool isColor = false;
+														if (fieldValue.Contains("#") && (Translate(field.Name) == Translate("Color") || Translate(field.Name) == Translate("Colour"))) {
+															isColor = true;   
+														}
+
+														if (!string.IsNullOrEmpty(fieldValue)) {
+															if (!isColor) {
+																<li>@(field.Name): @fieldValue</li>
+															} else {
+																<li class="position-relative">
+																	<span class="colorbox-sm" style="background-color: @fieldValue"></span>
+																</li>
+															}
+														} 
+													}
 												}
 											}
 										</ul>
@@ -315,7 +347,7 @@
 											@if (showPricesWithVat == "false" && !neverShowVat) {
 											if (isLazyLoadingForProductInfoEnabled)
 											{
-												<span class="text-price js-text-price"><div class="spinner-border" role="status"></div></span>
+												<span class="text-price js-text-price"><span class="spinner-border" role="status"></span></span>
 											}
 											else
 											{
@@ -332,7 +364,7 @@
 										} else {
 											if (isLazyLoadingForProductInfoEnabled)
 											{
-												<span class="text-price js-text-price"><div class="spinner-border" role="status"></div></span>
+												<span class="text-price js-text-price"><span class="spinner-border" role="status"></span></span>
 											}
 											else
 											{
@@ -517,7 +549,7 @@
 			<div class="text-center d-flex flex-column gap-3">
 				<div class="opacity-85">@loadedProducts @Translate("out of") @productList.TotalProductsCount @Translate("products")</div>
 				@if (productList.PageCount != 1) {
-					string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "Relevance";
+					string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "";
 					sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
 
 					string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
@@ -532,19 +564,19 @@
 								{
 									if (facetOption.Selected)
 									{
-										<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]" />
+										<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]">
 									}
 								}
 							}
 						}
 
-						<input type="hidden" name="PageSize" value="@pageSize" />
-						<input type="hidden" name="SortBy" value="@sortBySelection" />
-						<input type="hidden" name="RequestType" value="UpdateList" />
+						<input type="hidden" name="PageSize" value="@pageSize">
+						<input type="hidden" name="SortBy" value="@sortBySelection">
+						<input type="hidden" name="RequestType" value="UpdateList">
 
 						@if (!string.IsNullOrEmpty(searchQuery)) { 
-							<input type="hidden" name="q" value="@searchQuery" />
-							<input type="hidden" name="SearchLayout" value="@searchLayout" />
+							<input type="hidden" name="q" value="@searchQuery">
+							<input type="hidden" name="SearchLayout" value="@searchLayout">
 						}
 
 						@{ 
@@ -582,37 +614,5 @@
 				<span>@Translate("Product list: The list will be shown here, if any")</span>
 			</div>
 		}
-	}
-}
-
-@helper RenderField(FieldValueViewModel field) { 
-	string fieldValue = field?.Value != null ? field.Value.ToString() : "";
-
-	if (fieldValue != "") {
-		fieldValue = fieldValue == "False" ? Translate("No") : fieldValue;
-		fieldValue = fieldValue == "True" ? Translate("Yes") : fieldValue;
-
-		if (field.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>)) {
-			fieldValue = "";
-
-			foreach (FieldOptionValueViewModel option in field.Value as System.Collections.Generic.List<FieldOptionValueViewModel>) {
-				fieldValue = option.Name;
-			}
-		}
-
-		bool isColor = false;
-		if (fieldValue.Contains("#") && (Translate(field.Name) == Translate("Color") || Translate(field.Name) == Translate("Colour"))) {
-			isColor = true;   
-		}
-
-		if (!string.IsNullOrEmpty(fieldValue)) {
-			if (!isColor) {
-				<li>@(field.Name): @fieldValue</li>
-			} else {
-				<li class="position-relative">
-					<span class="colorbox-sm" style="background-color: @fieldValue"></span>
-				</li>
-			}
-		} 
 	}
 }

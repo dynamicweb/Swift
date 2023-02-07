@@ -16,7 +16,7 @@
 				{
 					var subGroups = Dynamicweb.Ecommerce.Services.ProductGroups.GetSubgroups(Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(group.Id));
 
-					foreach(var subGroup in subGroups)
+					foreach (var subGroup in subGroups)
 					{
 						var subGroupViewModel = Dynamicweb.Ecommerce.ProductCatalog.ViewModelFactory.CreateView(new ProductGroupViewModelSettings(), subGroup);
 						groupList.Add(subGroupViewModel);
@@ -26,7 +26,7 @@
 			}
 		}
 
-		if(type == "selected-groups")
+		if (type == "selected-groups")
 		{
 			IList<ProductGroupViewModel> groups = Model.Item.GetValue<IList<ProductGroupViewModel>>("SelectedGroups");
 			if (groups != null)
@@ -34,6 +34,21 @@
 				foreach (var group in groups)
 				{
 					groupList.Add(group);
+				}
+			}
+		}
+
+		if (type == "subgroups-current")
+		{
+			var currentGroupId = Dynamicweb.Context.Current.Request.QueryString.Get("GroupID");
+			var currentGroup = currentGroupId != null ? Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(currentGroupId) : null;
+			var groups = currentGroup != null ? Dynamicweb.Ecommerce.Services.ProductGroups.GetSubgroups(currentGroup) : null;
+			if (groups != null)
+			{
+				foreach (var group in groups)
+				{
+					var groupViewModel = Dynamicweb.Ecommerce.ProductCatalog.ViewModelFactory.CreateView(new ProductGroupViewModelSettings(), group);
+					groupList.Add(groupViewModel);
 				}
 			}
 		}
@@ -66,7 +81,7 @@
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? $"theme {Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower()}" : string.Empty;
 	string alignment = Model.Item.GetRawValueString("Alignment", "align-bottom-center-text-center");
 	switch (alignment)
-		{
+	{
 		case "align-top-left-text-left":
 			alignment = "text-start justify-content-start align-items-start";
 			break;
@@ -94,7 +109,7 @@
 		case "align-bottom-right-text-right":
 			alignment = "text-end justify-content-end align-items-end";
 			break;
-		}
+	}
 
 	// Slider settings (documentation: swiffyslider.com/configuration)
 	string slidesPerPage = $"slider-item-show{Model.Item.GetRawValueString("SlidesPerPage", "5")}";
@@ -119,71 +134,92 @@
 	string animation = Model.Item.GetRawValueString("Animation", string.Empty) != string.Empty ? $"slider-nav-animation {Model.Item.GetRawValueString("Animation")}" : string.Empty;
 	string autoplay = (Model.Item.GetBoolean("Autoplay")) ? "slider-nav-autoplay" : string.Empty;
 	string autoplayInterval = Model.Item.GetRawValueString("AutoplayInterval", string.Empty);
+	bool hideSliderNavigation = false;
+
+	if(navigationStyle == "slider-nav-none")
+	{
+		hideSliderNavigation = true;
+	}
 }
 
-<div class="h-100 grid gap-0 @(generalTheme)">
+@if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark" role="alert">
+		<span>@Translate("Group slider"): @Translate("Edit this column to configure")</span>
+	</div>
+}
 
-	@if ((!string.IsNullOrEmpty(title) || !string.IsNullOrEmpty(subtitle)) && !hideTitle)
-	{
-		<div class="g-col-12 pb-2 pb-lg-4">
-			<div class="mb-0-last-child">
-				@RenderHeader(title, subtitle)
+@if (groups is object && groups.Count != 0)
+{
+	<div class="h-100 grid gap-0 @(generalTheme)">
+
+		@if ((!string.IsNullOrEmpty(title) || !string.IsNullOrEmpty(subtitle)) && !hideTitle)
+		{
+			<div class="g-col-12 pb-2 pb-lg-4">
+				<div class="mb-0-last-child">
+					@RenderHeader(title, subtitle)
+				</div>
 			</div>
-		</div>
-	}
+		}
 
+		<div class="g-col-12 item_@(Model.Item.SystemName.ToLower())">
+			<div id="ProductGroupSlider_@Model.ID" class="swiffy-slider @(sliderRatio) @(slidesPerPage) @(navigationStyle) @(revealSlides) @(navigationPlacement) @(navigationAlwaysVisible) @(navigationVisibleOnTouch) @(sliderItemsGap) @(indicatorStyle) @(navigationShowScrollbar) @(navigationSmall) @(navigationInvertColors) @(indicatorsOutsideSlider) @(navigationNoLoop) @(indicatorsHighlightActive) @(indicatorsInvertColors) @(indicatorsVisibleOnSmallDevices) @(navigationSlideEntirePage) @(animation) @(autoplay)" style="--swiffy-slider-nav-light:var(--swift-foreground-color);--swiffy-slider-nav-dark:var(--swift-background-color);opacity:0;visibility:hidden;@(scrollBarForceMobile)" data-slider-nav-autoplay-interval="@(autoplayInterval)">
 
-	<div class="g-col-12 item_@(Model.Item.SystemName.ToLower())">
-		<div id="ProductGroupSlider_@Model.ID" class="swiffy-slider @(sliderRatio) @(slidesPerPage) @(navigationStyle) @(revealSlides) @(navigationPlacement) @(navigationAlwaysVisible) @(navigationVisibleOnTouch) @(sliderItemsGap) @(indicatorStyle) @(navigationShowScrollbar) @(navigationSmall) @(navigationInvertColors) @(indicatorsOutsideSlider) @(navigationNoLoop) @(indicatorsHighlightActive) @(indicatorsInvertColors) @(indicatorsVisibleOnSmallDevices) @(navigationSlideEntirePage) @(animation) @(autoplay)" style="--swiffy-slider-nav-light:var(--swift-foreground-color);--swiffy-slider-nav-dark:var(--swift-background-color);opacity:0;visibility:hidden;@(scrollBarForceMobile)" data-slider-nav-autoplay-interval="@(autoplayInterval)">
-
-			<ul class="slider-container">
-				@foreach (var group in groups)
-				{
-					var groupImage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(group.Id)?.LargeImage;
-					groupImage = !string.IsNullOrEmpty(groupImage) ? $"/Admin/Public/GetImage.ashx?width=640&crop=0&image=/Files{groupImage}&Format=WebP&Quality=70" : string.Empty;
-
-					<li data-group="@group.Id">
-						<div class="card h-100 border-0 rounded-0 @(theme)">
-							@if (!string.IsNullOrEmpty(groupImage))
-							{								
-								<img class="card-img rounded-0 h-100" loading="lazy" src="@groupImage" style="object-fit: cover;" alt="@group.Name" />
-							}
-							<div class="card-img-overlay rounded-0 d-grid p-xl-4 @alignment">
-								@RenderButton(group)
-							</div>
-						</div>
-					</li>
-				}
-			</ul>
-
-			<button type="button" title="@Translate("Previous slide")" class="slider-nav" style="z-index:2;"></button>
-			<button type="button" title="@Translate("Next slide")" class="slider-nav slider-nav-next" style="z-index:2;"></button>
-
-			@if (indicatorStyle != "slider-indicators-hidden")
-			{
-				<div class="slider-indicators" style="z-index:2;">
-					@{
-						bool isActive = true;
-						int slideCount = 1;
-					}
-
+				<ul class="slider-container">
 					@foreach (var group in groups)
 					{
-						<button @(isActive ? "class=\"active\"" : string.Empty) type="button" title='@Translate("Go to slide") @slideCount'>
-							<span class="visually-hidden">@Translate("Go to slide") @slideCount</span>
-						</button>
-						
-						slideCount++;
-						isActive = false;
+						var groupImage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(group.Id)?.LargeImage;
+						groupImage = !string.IsNullOrEmpty(groupImage) ? $"/Admin/Public/GetImage.ashx?width=640&crop=0&image=/Files{groupImage}&Format=WebP&Quality=70" : string.Empty;
+
+						<li data-group="@group.Id">
+							<div class="card h-100 border-0 rounded-0 @(theme)">
+								@if (!string.IsNullOrEmpty(groupImage))
+								{
+									<img class="card-img rounded-0 h-100" loading="lazy" src="@groupImage" style="object-fit: cover;" alt="@group.Name">
+								}
+								<div class="@(!string.IsNullOrEmpty(sliderRatio) ? "card-img-overlay " : string.Empty)@(string.IsNullOrEmpty(sliderRatio) && string.IsNullOrEmpty(groupImage) ? "h-100 " : string.Empty)rounded-0 d-grid p-xl-4 @alignment">
+									@RenderButton(group)
+								</div>
+							</div>
+						</li>
 					}
-				</div>
+				</ul>
+
+			@if(!hideSliderNavigation)
+			{
+				<button type="button" title="@Translate("Previous slide")" class="slider-nav" style="z-index:2;">
+					<span class="visually-hidden">@Translate("Previous slide")</span>
+				</button>
+				<button type="button" title="@Translate("Next slide")" class="slider-nav slider-nav-next" style="z-index:2;">
+					<span class="visually-hidden">@Translate("Next slide")</span>
+				</button>
 			}
 
-		</div>
+				@if (indicatorStyle != "slider-indicators-hidden")
+				{
+					<div class="slider-indicators" style="z-index:2;">
+						@{
+							bool isActive = true;
+							int slideCount = 1;
+						}
 
-		<script type="module" src="~/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
+						@foreach (var group in groups)
+						{
+							<button @(isActive ? "class=\"active\"" : string.Empty) type="button" title='@Translate("Go to slide") @slideCount'>
+								<span class="visually-hidden">@Translate("Go to slide") @slideCount</span>
+							</button>
+
+							slideCount++;
+							isActive = false;
+						}
+					</div>
+				}
+
+			</div>
+
+		<script type="module" src="/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
 		<script type="module">
-			swift.AssetLoader.Load('Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
+			swift.AssetLoader.Load('/Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
 			document.addEventListener('load.swift.assetloader', () => {
 				swiffyslider.initSlider(document.querySelector('#ProductGroupSlider_@Model.ID'));
 				document.querySelector('#ProductGroupSlider_@Model.ID').style.opacity = 1;
@@ -191,8 +227,10 @@
 			});
 		</script>
 
+		</div>
 	</div>
-</div>
+}
+
 
 @helper RenderButton(ProductGroupViewModel group)
 {
@@ -211,7 +249,7 @@
 	if (GetLink(group) != null)
 	{
 		string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal ? "target=\"_blank\"" : "";
-		string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") &&  GetLink(group).IsExternal ? "rel=\"noopener\"" : "";
+		string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal ? "rel=\"noopener\"" : "";
 
 		<div class="m-0">
 			<a href="@GetLink(group)" class="btn @(buttonSize) @buttonStyle @(stretchedLink)" @target @rel>@group.Name</a>

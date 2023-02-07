@@ -10,7 +10,7 @@ const Typeahead = function() {
 				// handle dropdown navigation if present
 				document.querySelectorAll(".js-type-ahead-menu").forEach(function (menu) {
 					if (menu.classList.contains("show")) {
-						Typeahead.debounce(() => Typeahead.handleArrowNavigation(e.key, menu), 300)();
+						Typeahead.debounce(() => Typeahead.handleArrowNavigation(e.key, menu), 50)();
 						return;
 					}
 				});
@@ -84,46 +84,46 @@ const Typeahead = function() {
 		},
 
 		getSuggestions: async function (searchField) {
-			var resultsPageId = searchField.closest(".js-suggest-form").getAttribute("data-search-results-page");
-			var defaultDetailsPageId = searchField.closest(".js-suggest-form").getAttribute("data-product-details-page-id");
-			var searchUrl = "/Default.aspx?ID=" + resultsPageId + "&defaultpdpId=" + defaultDetailsPageId + "&redirect=false&eq=" + encodeURIComponent(searchField.value.toLowerCase());
+			if (searchField.value.trim() != "") {
+				var resultsPageId = searchField.closest(".js-suggest-form").getAttribute("data-search-results-page");
+				var defaultDetailsPageId = searchField.closest(".js-suggest-form").getAttribute("data-product-details-page-id");
+				var searchUrl = "/Default.aspx?ID=" + resultsPageId + "&defaultpdpId=" + defaultDetailsPageId + "&redirect=false&eq=" + encodeURIComponent(searchField.value.toLowerCase());
 
-			const signal = controller.signal;
-			let abortError = false;
-			let response = await fetch(searchUrl, { signal }).catch(function (error) {
-				abortError = true;
-			});
+				const signal = controller.signal;
+				let abortError = false;
+				let response = await fetch(searchUrl, { signal }).catch(function (error) {
+					abortError = true;
+				});
 
-			if (!abortError) {
-				if (!response.ok) {
-					throw new Error(`HTTP error! status: ${response.status}`);
-				} else {
-					let html = await response.text().then(function (text) {
-						return text;
-					});
+				if (!abortError) {
+					if (!response.ok) {
+						throw new Error(`HTTP error! status: ${response.status}`);
+					} else {
+						let html = await response.text().then(function (text) {
+							return text;
+						});
 
-					var parser = new DOMParser();
-					var doc = parser.parseFromString(html, 'text/html');
-					var listElements = doc.querySelectorAll("li");
+						var parser = new DOMParser();
+						var doc = parser.parseFromString(html, 'text/html');
+						var listElements = doc.querySelectorAll("li");
 
-					Typeahead.displaySuggestions(listElements, searchField);
+						Typeahead.displaySuggestions(listElements, searchField);
+					}
 				}
 			}
 		},
 
 		displaySuggestions: function (listElements, searchField) {
-			if (listElements.length > 5) {
-				var closestDropdown = searchField.closest(".js-type-ahead-dropdown");
-				var dropdownMenu = closestDropdown.querySelector(".js-type-ahead-menu");
+			var closestDropdown = searchField.closest(".js-type-ahead-dropdown");
+			var dropdownMenu = closestDropdown.querySelector(".js-type-ahead-menu");
 
-				dropdownMenu.innerHTML = "";
+			dropdownMenu.innerHTML = "";
 
-				listElements.forEach(function (element) {
-					dropdownMenu.appendChild(element)
-				});
+			listElements.forEach(function (element) {
+				dropdownMenu.appendChild(element)
+			});
 
-				Typeahead.showSearchResults(searchField);
-			}
+			Typeahead.showSearchResults(searchField);
 		},
 
 		selectSuggestion_: function(inputValue) {
@@ -147,14 +147,10 @@ const Typeahead = function() {
 				var parm = formElm.querySelector(".js-type-ahead-parameter");
 
 				if (elm.getAttribute("data-param") && elm.getAttribute("data-paramvalue")) {
-					
+
 					if (elm.getAttribute("data-param").includes("ProductId") || elm.getAttribute("data-param").includes("ID")) {
 						var productDetailPage = formElm.getAttribute("data-product-details-page");
 						productDetailPage = elm.getAttribute("data-selected-details-page") != null ? elm.getAttribute("data-selected-details-page") : productDetailPage;
-
-						formElm.querySelector("input[name='SearchLayout']").disabled = true;
-						formElm.querySelector("input[name='q']").disabled = true;
-						formElm.querySelector(".js-type-ahead-parameter").disabled = true;
 
 						formElm.method = "post";
 						formElm.setAttribute("action", productDetailPage);

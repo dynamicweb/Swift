@@ -1,5 +1,4 @@
 import * as bootstrap from 'bootstrap';
-import { Sliders } from './_sliders';
 import { Favorites } from './_favorites';
 import { Cart } from './_cart';
 import { Scroll } from './_scroll';
@@ -11,6 +10,7 @@ import { ProductExport } from './_productexport';
 import { StaticVariants } from './_staticvariants';
 import { VariantSelector } from './_variantselector';
 import { Video } from './_video';
+import { Image } from './_image';
 import { Typeahead } from './_typeahead';
 import { AssetLoader } from './_assetLoader';
 import { LiveProductInfo } from './_live-product-info';
@@ -22,7 +22,6 @@ window.bootstrap = bootstrap;
 const swift = function () {
 	return {
 		Cart: Cart,
-		Sliders: Sliders,
 		Favorites: Favorites,
 		Scroll: Scroll,
 		ProductList: ProductList,
@@ -34,6 +33,7 @@ const swift = function () {
 		VariantSelector: VariantSelector,
 		Typeahead: Typeahead,
 		Video: Video,
+		Image: Image,
 		AssetLoader: AssetLoader,
 		LiveProductInfo: LiveProductInfo
 	}
@@ -48,17 +48,19 @@ window.onpopstate = function (event) {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
-	const dropdowns = document.querySelectorAll('.js-dropdown');
+	const dropdowns = document.querySelectorAll('.dropdown');
 
 	dropdowns.forEach(dropdown => {
-		const dropdownToggle = dropdown.querySelector('.js-dropdown-toggle');
+		const dropdownToggle = dropdown.querySelector('[data-bs-toggle="dropdown"]');
 
 		if (dropdownToggle) {
 			dropdown.addEventListener('mouseover', () => {
-				new bootstrap.Dropdown(dropdownToggle).toggle();
+				new bootstrap.Dropdown(dropdownToggle).show();
 				dropdownToggle.style.outline = "none";
 			});
-			dropdown.addEventListener('mouseout', () => new bootstrap.Dropdown(dropdownToggle).toggle());
+			dropdown.addEventListener('mouseout', () => {
+				new bootstrap.Dropdown(dropdownToggle).hide();
+			});
 		}
 	});
 });
