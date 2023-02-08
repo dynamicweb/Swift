@@ -1,16 +1,13 @@
 # Changelog
 
 # v1.18.0
-## [v1.18.0] - 01-02-2023
-
-**Swift v.1.18.0 release requires a Dynamicweb version 9.15.1**
-The quarterly release Q4-2022 with a new database, is postpone until the parcelshop implementation supporting Shipmondo is finish.
-
-## Disclaimer 
-* Swift v.1.18.0 has updated all packages that has a new locations 
+## [v1.18.0] - 08-02-2023
+**Swift version 1.18.0 release requires a Dynamicweb version 9.15.1**
+The quarterly release Q4-2022/Q1-2023 with a new database, is postponed. We are fixing the last issues on DW10 template support, parcelshop and System emails.
 
 ##  Bugfixes
 * Cart: Pressing Enter key on product list submit and return the Cart Count. Better way to preventDefault on _cart.js
+* Cart: On devlivery step, add default disabled state to date field
 * Customer center: Check if logged in while in the visual editor, fixing template error in VE.
 * Express buy: Warning message on orderlines that contains a deleted product
 * General: JS encode product name and variant name for javascript, so sepecial characters is accepted when using g-tag
@@ -19,6 +16,7 @@ The quarterly release Q4-2022 with a new database, is postpone until the parcels
 * General: Fix csproj file
 * General: Fix prices in OrderDetails, Orders, OrderLineItem, orderSummary and OrderSummaryOrderLineItem
 * General: Search phrase lost after clicking Load more, Product repeater search term. fix on ProductListCompactView and ProductListItemRepeater
+* General: In Cart and Customer Center fix stretched product images
 * Integration Customer Center: Preview does not work at Invoice and Credit page
 * Integration Customer center: Make pagination items wrap correctly
 * Itemtypes: TextAdvanced, Button aligned with content 
@@ -37,9 +35,15 @@ The quarterly release Q4-2022 with a new database, is postpone until the parcels
 * Itemtypes: Search, Make sure that we do not request nothing
 * Itemtypes: Fix add to cart component error, ProductSliderStandard and ProductAddToCart
 * Itemtypes: Navigation Off-canvas menu, remove extra scrollbar
+* Itemtypes: Pass the VariantID in addition to ProductVariantId, Fixing that variant is not flagged/removed as favorite
+* Itemtypes: Product Specification, increase field limit on field display groups
+* Itemtypes: Product components, slider fix wrong area settings reference, giving a template error
+* Itemtypes: Related product list, set Field display group limit to 250 instead of 25
+* Itemtypes: Preferences, on language selector show both language display name and native name
+* Itemtypes: On EmailBase remove svg icon, which give a 504 validation error 
+* Itemtypes: Product component, VariantSelector fix broken variant modal selector
 
 ## Changed
-* Genral: Make Swift compatible with DW9 and DW10. Update all packages that got new locations 
 * Itemtypes: Article list design layout
 * Itemtypes: Product group header, remove the node-Active check for the Group header titles
 
@@ -48,14 +52,18 @@ The quarterly release Q4-2022 with a new database, is postpone until the parcels
 * General: Support for autotests, ids on navigation
 * General: Support Google Tag Manager, GTM-id can be added in website settings
 * General: Default template for forms for editors, Support grid columns
-* General stock validation on OrderLineItem, Cart, ProductAddToCart, ProductStock and miniCart
+* General: Stock validation on OrderLineItem, Cart, ProductAddToCart, ProductStock and miniCart
 * Itemtypes: Support verify command for system email on Swift_EmailButton
 * Itemtypes: On articles possible to use create article tag collections and use Article tag filters and  category filters
 * Itemtypes: Specifications: Possible to hide fields with 0 and 0.0 values
+* Itemtypes: Add vertical alignment for ProductComponentParagraph
+* Itemtypes: Article list, support empty states and clear filtering
+* Itemtypes: Product component, ProductVariantSelector support display types
 
 ## Removed
 * General: Removed paragraph preset images for  the group called 2 column
 * Itemtypes: Removed title fields from row item types
+
 
 # v1.17.0
 ## [v1.17.0] - 21-12-2022
