@@ -101,7 +101,7 @@ const PageUpdater = function () {
 				overlayElement.className = "preloader-overlay";
 				overlayElement.setAttribute('id', "overlay");
 				var overlayElementIcon = document.createElement('div');
-				overlayElementIcon.className = "preloader-overlay-icon";
+				overlayElementIcon.className = "spinner-border";
 				overlayElementIcon.style.top = window.pageYOffset + "px";
 				overlayElement.appendChild(overlayElementIcon);
 
