@@ -1,0 +1,100 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb
+@using System.IO
+@using Dynamicweb.Environment
+
+@{
+	string googleTagManagerID = Pageview.AreaSettings.GetString("GoogleTagManagerID");
+	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
+	var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
+	bool allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
+
+	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
+
+	var order = Dynamicweb.Ecommerce.Services.Orders.GetById(GetString("Ecom:Order.ID"));
+
+	order.ShippingProviderValues.TryGetValue("ServiceSelectedDataCarrierName", out object serviceSelectedDataCarrierName);
+	order.ShippingProviderValues.TryGetValue("ServiceSelectedDataDescription", out object serviceSelectedDataDescription);
+	order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCompanyName", out object servicePointSelectedDataCompanyName);
+	order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataAddress", out object servicePointSelectedDataAddress);
+	order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataAddress2", out object servicePointSelectedDataAddress2);
+	order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataZipcode", out object servicePointSelectedDataZipcode);
+	order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCity", out object servicePointSelectedDataCity);
+	order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCountry", out object servicePointSelectedDataCountry);
+}
+
+<div class="grid gap-0 h-100" id="DeliveryAnonymous">
+	<div class="g-col-12 g-col-lg-8 p-3 p-lg-4 pe-xl-5 ps-xl-6 ps-xxl-8 order-last order-lg-first@(theme)">
+		<form name="ordersubmit" id="ordersubmit" method="post" autocomplete="off" style="max-width: 65rem; margin-left: auto;">
+
+			@{
+				@RenderLogo()
+
+				@RenderStepsBreadcrumbs()
+
+				@RenderErrors()
+
+				@RenderStepSummary()
+
+				@RenderShippingMethods()
+
+				@RenderOrderDeliveryDate()
+
+				@RenderStepsNavigation()
+			}
+
+			<input type="hidden" name="EcomOrderDeliveryCompany" value="@(serviceSelectedDataCarrierName is object && serviceSelectedDataDescription is object ? Dynamicweb.Core.Converter.ToString(serviceSelectedDataCarrierName) + " " + Dynamicweb.Core.Converter.ToString(serviceSelectedDataDescription) : string.Empty)">
+			<input type="hidden" name="EcomOrderDeliveryName" value="@(servicePointSelectedDataCompanyName is object ? Dynamicweb.Core.Converter.ToString(servicePointSelectedDataCompanyName) : string.Empty)">
+			<input type="hidden" name="EcomOrderDeliveryAddress" value="@(servicePointSelectedDataAddress is object ? Dynamicweb.Core.Converter.ToString(servicePointSelectedDataAddress) : string.Empty)">
+			<input type="hidden" name="EcomOrderDeliveryAddress2" value="@(servicePointSelectedDataAddress2 is object ? Dynamicweb.Core.Converter.ToString(servicePointSelectedDataAddress2) : string.Empty)">
+			<input type="hidden" name="EcomOrderDeliveryZip" value="@(servicePointSelectedDataZipcode is object ? Dynamicweb.Core.Converter.ToString(servicePointSelectedDataZipcode) : string.Empty)">
+			<input type="hidden" name="EcomOrderDeliveryCity" value="@(servicePointSelectedDataCity is object ? Dynamicweb.Core.Converter.ToString(servicePointSelectedDataCity) : string.Empty)">
+			<input type="hidden" name="EcomOrderDeliveryCountry" value="@(servicePointSelectedDataCountry is object ? Dynamicweb.Core.Converter.ToString(servicePointSelectedDataCountry) : string.Empty)">
+
+			<input type="hidden" id="CurrentStep">
+		</form>
+	</div>
+
+	@{@RenderSummarySidebar()}
+
+</div>
+
+<script>
+	function submitForm() {
+		document.querySelector("#CurrentStep").name = "@GetString("CartV2.CurrentStepButtonName")";
+		swift.PageUpdater.Update(document.querySelector("#ordersubmit"));
+	}
+</script>
+
+@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
+{
+	<script>
+		gtag("event", "add_shipping_info", {
+			currency: "@GetString("Ecom:Order.CurrencyCode")",
+			value: @GetString("Ecom:Order.Price.Price.Value"),
+			items: [
+				@foreach (LoopItem orderline in GetLoop("OrderLines")) {
+					<text>
+					{
+						item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
+						item_name: "@orderline.GetString("Ecom:Order:OrderLine.ProductName")",
+						currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
+						price: @orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.Price.Value"),
+						quantity: @orderline.GetString("Ecom:Order:OrderLine.Quantity")
+					},
+					</text>
+				}
+			]
+		});
+	</script>
+}
+
+@Include("Helpers/Logo.cshtml")
+@Include("Helpers/StepsBreadcrumbs.cshtml")
+@Include("Helpers/Errors.cshtml")
+@Include("Helpers/StepSummary.cshtml")
+@Include("Shared/Helpers/ShippingMethods_v2.cshtml")
+@Include("Helpers/SummarySidebar.cshtml")
+@Include("Helpers/StepsNavigation.cshtml")
+@Include("Helpers/OrderDeliveryDate.cshtml")
