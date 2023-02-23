@@ -1,4 +1,5 @@
 const Scroll = function () {
+	let observer;
 
 	return {
 
@@ -70,7 +71,7 @@ const Scroll = function () {
 
 			if (typeof (intersectElement) != 'undefined' && intersectElement != null) {
 
-				const options = {
+				const options = { 
 					root: null,
 					threshold: 1,
 					rootMargin: '20%'
@@ -84,10 +85,14 @@ const Scroll = function () {
 					}
 				};
 
-				let observer = new IntersectionObserver(callback, options);
+				observer = new IntersectionObserver(callback, options);
 
 				observer.observe(intersectElement);
 			};
+		},
+
+		stopIntersectionObserver() {
+			observer.disconnect();
 		}
 	}
 }();
