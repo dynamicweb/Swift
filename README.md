@@ -76,7 +76,7 @@ After following these guides you will have a freshly installed Dynamicweb soluti
 
 | Download |      |
 | ------ | ------ |
-| Database | [Swift database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.19.0/Swift_20220901_Database.zip "Download Swift database")|
+| Database | [Swift database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.19.0/Swift_20230224_Database.zip "Download Swift database")|
 | Image folder | [Swift Product Image](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.19.0/Swift_20230224_DemoProductImages.zip "Download Swift Product Image folder") |
 
 
