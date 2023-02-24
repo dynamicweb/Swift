@@ -1,5 +1,135 @@
 # Changelog
 
+## [v1.19.0] - 24-02-2023
+
+DynamicWeb proudly presents **Swift 1.19.0 (Q4-2022/Q1-2023)**, which runs on **DW version 9.15.2**. This introduce Article tags and filter options, Parcelshop in checkout supporting the Shipmondo provider, Template conversion to run on DW10 platform. The main headlines for this release are:
+
+## Engage visitors with articles
+Create your articles through Visual editor when creating news, blogs, campaigns etc. This is a way to **engage your visitors** with updates on the company, relatable stories and it is a **free marketing platform to promote products on the websites**.
+As an addition to the articles we introduce Tags and Filtering, which can help **organise** the articles.  The **visitors can find the proper article they are looking for** through filters.
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Articles-tags-filtering.png)
+
+* Use article tag collection to create groups collection with tags. The tags can be added to one or multiple articles that can be displayed on the article list as a badge.
+* Use filtering based on the tags collections or article list categories
+* Possible to Enable the load more button together with page size to showcase a small chunk of articles at a time to give better overview and control over the page
+* The article tag collection filter works for only 1 article list. Having multiple article lists on the pages is possible but the filter will effect on all of them.
+
+### Changes on the article list
+* The article list layout is changed in order to have the right placement for the tag badge
+* The article list shows the article list as default. If you need to set it back to only show the Article category this is still possible
+
+## Content & marketing
+
+### Open Graph
+Open graph was available on products and the general website. On  this release it is now possible to control the Open graph information on a specific content page. By deciding which image, title and description you want to display when sharing a link of your content page on social media e.g. LinkedIn, facebook etc. **Highlighting specific articles, events or campaigns on social media.**
+* Open graph makes the links more visual, eye-catching and rich on the social media feeds
+* People are more likely to click on the shared links
+* Fill in the page meta data: image, title and description to enrich the Open graph information
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Open-Graph.png)
+
+### Custom fonts
+Swift supports Google fonts. However, some branding websites want to use custom font on their websites that can define the brand and impression that the company wants to give. This allows you to have consistency across the different media and platforms
+
+* Align the branding and design through the custom fonts throughout the website
+* File extensions that are supported .tff, .woff, and .woff2 
+* This is the *[Custom font setup guide](http:/doc.dynamicweb.com/swift/setup-project/design/branding#sideNavTitle1-2-1)*
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Custom-font.png)
+
+### Google Tag Manager
+Swift support Google Analytics 4, where the ecommerce events are supported. That will enable you to see e.g. Monetisation on E-commerce purchases, Engagement events & conversions. If you do not want to use Google Analytics 4 directly. You are now able to connect with Google Tag Manager that gives the ability to install different types of tags. Google Analytics 4 is the tracking tool, while Google Tag manager is the mediator between your website and the tracking tool.
+* Possible to add, change update own tags as needed for conversion tracking, site analytics
+* Tags help social marketers group and categorise posts for flexible reporting on content and campaigns
+* The GTM id can be added in Website settings
+
+## Visitors ask for flexibility
+
+### Parcelshop - Shipmondo provider
+In the checkout delivery step, it is now possible to offer Parcelshop delivery using Shipmondo.
+Parcelshop offers customers to select a specific parcelshop store near them, where their package can be delivered to. **This benefit customers who are not at home for home delivery**. Shipment is quick and simple and it also benefit the extended opening hours, offered by the collection point.
+
+* Expand your range of services in your ecommerce webshop by offering customers shipping to a parcelshop
+* Parcelshop can increase customer frequency and increase sales due flexible delivery hours
+* In the Shipmondo account it is possible to set up carriers e.g. GLS, Postnord, Dao, Bring and UPS
+* Use DynamicWeb shipping fee matrix to set up prices
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Shipmondo-deliverystep.png)
+
+### Updated checkout flow
+* In order to include parcel shop, we needed to change the cart flow. 
+* New checkout templates are created marked as v2, since we needed to use customer info fields, instead of deliver info fields for e.g. anonymous users.
+* The old templates still exist so it is still compatibility if you are upgrading your Swift.
+* But if you need to you Parcelshop in your solution this needs to be setup
+* The new released database has already the setup for the new checkout flow
+
+## Decrease implementation time 
+Product component gives the flexibility to build own product list and product detail page through Visual editor, which can decrease the implementation time, since you can configure it yourself using the components. You can also create your own custom components using your own template together with the Swift product components.
+
+### Additional elements for Product Component
+
+* **Product name** - Possible to define h-tags. e.g. < h1 >, < h2 > 
+* **Product image** - Possible to show alternative image on hover based on the assets category groups. this give a more dynamic look and feel when hovering over the product list
+* **Product slider** - Possible to create own custom product slider through components. Deciding which information it should contain.
+* **Product variant selector** - Define the layout of the variant selector. If you want to use buttons or dropdown selector for the specific category groups. It also support the new functionality in DW called **variant group display type** to define if the image should look on Product variant image, variant option hex code, variant option image, 
+*  **Add to cart** - An additional dropdown selector will appear  Unit selector and stock information.  Stock validation on add to cart component
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Product-VariantGroupOptionsDisplayType.png)
+
+## System emails in visual editor
+Build your email set up in Visual editor, when creating emails for your website when e.g. building emails for  create account and order receipt. This allows you edit your emails in an easy and visual manner and implement your own custom email elements.
+
+### Mails created
+
+* **Create account** and **verify mails** through extranet app
+* **Invite users** send an invite user email trough the user area
+* **Forgot password** - possible to send a reset a password mail, when a user has forgotten their code
+* **Welcome email** - send through marketing email flow, so user can set a password on the new website
+* **Order confirmation mail receipt**, set on cart app (still under developement)
+
+The system emails are created and setup, but not selected on the different app module, we still run with the regular email setup.
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/System-emails.png)
+
+## Reorder products
+In customer center my order page, it is possible for customers reorder products from an earlier purchase. This is an easy way to let customer get the product they need, without any hassle and enhanced the customer experience. An addition to this reorder functionality, an extra step is added where users can get an overview over the order list for what is in stock, or if they want to add or edit the quantity before adding it to their cart.
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/CC-Myorders-Reorder.png)
+
+## Improvements & Maintenance
+
+### Content 
+* TinyMCE richtext editor possible to support internal links
+* Accent color - support on Poster, image  slider, features, text and image, header, text
+* Row settings - medium height padding options 
+* Additional breakpoints for the entire website
+* Support grid css classes to define field layout
+
+### Ecommerce
+* Possible to add both Master product  and product variant to favorite list
+* Price informative, support price informative from the price matrix for example showing Recommended Retail Price information
+* Facets - Decide how many should stay open vs. collapsed
+* Specification itemtype - support new layout accordion
+* Group list - possible to take sub groups of current group id
+
+## DW10 Conversion
+Swift has rewritten the razor templates so it is suitable to run both DW9 and DW10. This gives the opportunity to keep working on Swift projects in the future. Going from DW9 (.NET 4) to DW10 (.NET 7) gives some issues on the templates, since some elements are deprecated. The focus has been on the code that is not easily converted true the DW10 template converter. 
+
+**Focus areas on Swift**
+* Rewritten helpers are deprecated in Razor​
+* System.web and HttpContext is deprecated in .NET 7
+* Any use of .NET 4 framework only APIs is deprecated​
+* New razor parser in .NET 7 with minor changes to execution
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Swift-dw10.png)
+
+
+## Removed
+
+* Product info itemtype is removed
+* Tiny slider is deprecated, we are using Swiffy slider instead  - Product detail image, Product media gallery, product slider
+
 # v1.18.0
 ## [v1.18.0] - 08-02-2023
 **Swift version 1.18.0 release requires a Dynamicweb version 9.15.1**
