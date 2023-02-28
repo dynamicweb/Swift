@@ -88,7 +88,9 @@
 	//Source type
 	string sourceType = Model.Item.GetRawValueString("RelationType", "trending");
 	IList<string> relateFromGroupIds = new List<string> { };
+	IList<string> relateFromProductVariantIds = new List<string> { };
 	IList<string> relateFromProductIds = new List<string> { };
+	bool hasVariants = false;
 
 	//--- VARIANTS ---
 	ProductListViewModel productsToRelateToVariants = Model.Item.GetValue<ProductListViewModel>("ProductsToRelateToVariants");
@@ -144,9 +146,21 @@
 	ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("Products");
 	if (products != null && sourceType == "selected")
 	{
+		hasVariants = products.Products.Any(p => !string.IsNullOrEmpty(p.VariantId));
 		foreach (var productSelection in products.Products)
 		{
-			relateFromProductIds.Add(productSelection.Id);
+			if (hasVariants)
+			{
+				if (!string.IsNullOrEmpty(productSelection.VariantId))
+				{
+					relateFromProductVariantIds.Add($"{productSelection.Id} {productSelection.VariantId}");
+				}
+				else
+				{
+					relateFromProductVariantIds.Add($"{productSelection.Id}");
+				}
+			}
+			relateFromProductIds.Add($"{productSelection.Id}");
 		}
 	}
 
@@ -184,6 +198,7 @@
 
 	//Create group id collection and products id collection strings
 	string groupIds = productViewModelFound ? product.PrimaryOrDefaultGroup.Id : string.Join(",", relateFromGroupIds);
+	string productVariantIds = relateFromProductVariantIds.Count > 0 ? string.Join(",", relateFromProductVariantIds) : "";
 	string productIds = productViewModelFound && relateFromProductIds.Count == 0 ? product.Id : string.Join(",", relateFromProductIds);
 
 	//Set the parameters to the url
@@ -290,9 +305,13 @@
 		}
 
 		@*--- SELECTED PRODUCTS ---*@
-		@if (sourceType == "selected")
+		@if (sourceType == "selected" && !string.IsNullOrEmpty(productIds) && !hasVariants)
 		{
-			<input type="hidden" name="MainProductID" id="MainProductID_@Model.ID" value="@productIds">
+			<input type="hidden" name="MainProductId" id="MainProductID_@Model.ID" value="@productIds" />
+		}
+		@if (sourceType == "selected" && hasVariants)
+		{
+			<input type="hidden" name="ProductVariantId" value="@productVariantIds" />
 		}
 
 		@*--- RELATED PRODUCTS ---*@

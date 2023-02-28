@@ -4,7 +4,7 @@
 
 @{
 	string layout = Model.Item.GetRawValueString("Layout") == "slider" ? "ProductSliderComponent" : "ProductGridComponent";
-	string lazyHeight = Model.Item.GetBoolean("SetMinHeightForLazyLoading") ?  "min-height: 360px" : "";
+	string lazyHeight = Model.Item.GetBoolean("SetMinHeightForLazyLoading") ? "min-height: 360px" : "";
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 
 	//Link generation
@@ -73,18 +73,32 @@
 	//Source type
 	string sourceType = Model.Item.GetRawValueString("RelationType", "trending");
 	IList<string> relateFromProductIds = new List<string> { };
+	IList<string> relateFromProductVariantIds = new List<string> { };
 	IList<string> relateFromGroupIds = new List<string> { };
+	bool hasVariants = false;
 
 	ProductListViewModel relateToViewModel = Model.Item.GetValue<ProductListViewModel>("RelateTo");
 
 	//--- PRODUCTS ---
 	if (sourceType == "variants" || sourceType == "frequently" || sourceType == "selected")
 	{
-		if (relateToViewModel?.Products != null) {
+		if (relateToViewModel?.Products != null)
+		{
+			hasVariants = relateToViewModel.Products.Any(p => !string.IsNullOrEmpty(p.VariantId));
 			foreach (var fromProduct in relateToViewModel.Products)
 			{
-				var productId = fromProduct.Id;
-				relateFromProductIds.Add(productId);
+				if (hasVariants)
+				{
+					if (!string.IsNullOrEmpty(fromProduct.VariantId))
+					{
+						relateFromProductVariantIds.Add($"{fromProduct.Id} {fromProduct.VariantId}");
+					}
+					else
+					{
+						relateFromProductVariantIds.Add($"{fromProduct.Id}");
+					}
+				}
+				relateFromProductIds.Add($"{fromProduct.Id}");
 			}
 		}
 	}
@@ -98,12 +112,14 @@
 		{
 			var groupId = fromGroup.Length > 2 ? fromGroup.Remove(0, 2) : fromGroup;
 
-			if (!fromGroup.Contains("p_")) {
+			if (!fromGroup.Contains("p_"))
+			{
 				relateFromGroupIds.Add(groupId);
 			}
 		}
 
-		if (relateToViewModel?.Products != null) {
+		if (relateToViewModel?.Products != null)
+		{
 			foreach (var fromProduct in relateToViewModel.Products)
 			{
 				var groupId = fromProduct.PrimaryOrDefaultGroup.Id;
@@ -115,6 +131,7 @@
 
 	//Create group id collection and products id collection strings
 	string productIds = relateFromProductIds.Count > 0 ? string.Join(",", relateFromProductIds) : "";
+	string productVariantIds = relateFromProductVariantIds.Count > 0 ? string.Join(",", relateFromProductVariantIds) : "";
 	string groupIds = relateFromGroupIds.Count > 0 ? string.Join(",", relateFromGroupIds) : "";
 
 	if (productViewModelFound)
@@ -131,7 +148,6 @@
 	}
 }
 
-
 @*Container element for the request*@
 @if (!string.IsNullOrEmpty(productIds) || !string.IsNullOrEmpty(groupIds) || (string.IsNullOrEmpty(productIds) && string.IsNullOrEmpty(groupIds) && productViewModelFound == false))
 {
@@ -143,9 +159,13 @@
 		{
 			<input type="hidden" name="GroupId" value="@groupIds" />
 		}
-		@if (sourceType != "frequently" && !string.IsNullOrEmpty(productIds))
+		@if (sourceType != "frequently" && !string.IsNullOrEmpty(productIds) && !hasVariants)
 		{
 			<input type="hidden" name="MainProductId" value="@productIds" />
+		}
+		@if (sourceType != "frequently" && hasVariants)
+		{
+			<input type="hidden" name="ProductVariantId" value="@productVariantIds" />
 		}
 
 		@if (Model.Item.GetInt32("ProductsCount") != 0)
