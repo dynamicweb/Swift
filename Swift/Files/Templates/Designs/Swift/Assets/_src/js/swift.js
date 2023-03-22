@@ -61,6 +61,12 @@ window.addEventListener('DOMContentLoaded', () => {
 			dropdown.addEventListener('mouseleave', () => {
 				new bootstrap.Dropdown(dropdownToggle).hide();
 			});
+
+			dropdownToggle.addEventListener('click', () => {
+				if (dropdownToggle.hasAttribute('href')) {
+					window.location = dropdownToggle.getAttribute('href');
+				}
+			});
 		}
 	});
 });
