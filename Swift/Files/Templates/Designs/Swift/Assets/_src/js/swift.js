@@ -54,12 +54,18 @@ window.addEventListener('DOMContentLoaded', () => {
 		const dropdownToggle = dropdown.querySelector('[data-bs-toggle="dropdown"]');
 
 		if (dropdownToggle) {
-			dropdown.addEventListener('mouseover', () => {
+			dropdown.addEventListener('mouseenter', () => {
 				new bootstrap.Dropdown(dropdownToggle).show();
 				dropdownToggle.style.outline = "none";
 			});
-			dropdown.addEventListener('mouseout', () => {
+			dropdown.addEventListener('mouseleave', () => {
 				new bootstrap.Dropdown(dropdownToggle).hide();
+			});
+
+			dropdownToggle.addEventListener('click', () => {
+				if (dropdownToggle.hasAttribute('href')) {
+					window.location = dropdownToggle.getAttribute('href');
+				}
 			});
 		}
 	});
