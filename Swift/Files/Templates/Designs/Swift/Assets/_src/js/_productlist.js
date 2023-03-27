@@ -75,6 +75,7 @@ const ProductList = function () {
 				if (pageId) {
 					newParams.set("ID", pageId);
 				}
+
 				newParams.set("LayoutTemplate", "Swift_PageClean.cshtml"); //Set template to not include header and footer
 
 				var newUrl = url.origin + url.pathname + "?" + newParams.toString(); //Create url with the new parameters 
@@ -90,7 +91,8 @@ const ProductList = function () {
 					if (updateUrl != "false") {
 						newParams.delete("LayoutTemplate");
 
-						var updatedUrl = window.location.origin + window.location.pathname + "?" + newParams;
+						var updatedUrl = window.location.origin + url.pathname + "?" + newParams;
+
 						window.history.replaceState({}, '', decodeURI(updatedUrl));
 					}
 
