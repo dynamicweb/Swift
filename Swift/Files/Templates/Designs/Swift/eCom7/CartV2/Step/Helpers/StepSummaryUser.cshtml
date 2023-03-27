@@ -6,47 +6,59 @@
 	Dynamicweb.Security.UserManagement.User user = Pageview.User;
 
 	int fieldCount = 0; //Helps us render addresses that contains more than just the auto set country
-	List<string> address = new List<string>();
-	if (!string.IsNullOrEmpty(user.Company)) {
-		address.Add(user.Company);
-		fieldCount++;
-	}
-	if (!string.IsNullOrEmpty(user.Name)) {
-		address.Add(user.Name);
-		fieldCount++;
-	}
-	if (!string.IsNullOrEmpty(user.Address)) {
-		address.Add(user.Address);
-		fieldCount++;
-	}
-	if (!string.IsNullOrEmpty(user.Address2)) {
-		address.Add(user.Address2);
-		fieldCount++;
-	}
-	if (!string.IsNullOrEmpty(user.Zip)) {
-		address.Add(user.Zip);
-		fieldCount++;
-	}
-	if (!string.IsNullOrEmpty(user.City)) {
-		address.Add(user.City);
-		fieldCount++;
-	}
-	if (!string.IsNullOrEmpty(user.State)) {
-		var countryCode = user.CountryCode;
+	bool isStandardSwiftTemplates = Pageview.AreaSettings.GetString("AddressFieldsBasedOn", "swiftStandardTemplates") == "swiftStandardTemplates";
+
+	string addressString = "";
+	if (isStandardSwiftTemplates)
+	{
+		Dynamicweb.Security.UserManagement.User user = Pageview.User;
+		List<string> address = new List<string>();
+		if (!string.IsNullOrEmpty(user.Company)) {
+			address.Add(user.Company);
+			fieldCount++;
+		}
+		if (!string.IsNullOrEmpty(user.Name)) {
+			address.Add(user.Name);
+			fieldCount++;
+		}
+		if (!string.IsNullOrEmpty(user.Address)) {
+			address.Add(user.Address);
+			fieldCount++;
+		}
+		if (!string.IsNullOrEmpty(user.Address2)) {
+			address.Add(user.Address2);
+			fieldCount++;
+		}
+		if (!string.IsNullOrEmpty(user.Zip)) {
+			address.Add(user.Zip);
+			fieldCount++;
+		}
+		if (!string.IsNullOrEmpty(user.City)) {
+			address.Add(user.City);
+			fieldCount++;
+		}
+		if (!string.IsNullOrEmpty(user.State)) {
+			var countryCode = user.CountryCode;
 		string stateName = Dynamicweb.Ecommerce.Services.Countries.GetRegion(countryCode, user.State)?.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID) ?? string.Empty;
 
-		address.Add(stateName);
-		fieldCount++;
+			address.Add(stateName);
+			fieldCount++;
+		}
+		if (!string.IsNullOrEmpty(user.CountryCode)) {
+			string country = user.Region.DisplayName;
+			address.Add(country);
+			fieldCount++;
+		}
+		addressString = (string.Join(",", address.Select(x => x.ToString()).ToArray())).Replace(",", ", ");
 	}
-	if (!string.IsNullOrEmpty(user.CountryCode)) {
-		string country = user.Region.DisplayName;
-		address.Add(country);
-		fieldCount++;
+	else
+	{
+		addressString = GetUserAddressString();
 	}
-	string addressString = (string.Join(",", address.Select(x => x.ToString()).ToArray())).Replace(",", ", ");
+	
 	string editStep = Pageview.CurrentParagraph.Item["UserAccountPageLink"] != null ? Pageview.CurrentParagraph.Item["UserAccountPageLink"].ToString() + "&GoBackToPage=" + Pageview.Page.ID : "";
 
-	if (!string.IsNullOrEmpty(addressString) && fieldCount > 1) {
+	if (!string.IsNullOrEmpty(addressString) && ((isStandardSwiftTemplates && fieldCount > 1) || !isStandardSwiftTemplates)) {
 		<div class="list-group-item py-2 fs-7" style="background-color: rgba(var(--swift-foreground-color-rgb), 0.05)">
 			<dl class="grid gap-1 gap-sm-3 mb-0">
 				<dt class="g-col-8 g-col-sm-4 fw-normal">@Translate("Billing address")</dt>
