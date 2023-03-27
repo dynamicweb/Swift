@@ -1,0 +1,145 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.Products
+@using Dynamicweb.Ecommerce.Stocks
+
+@functions
+{
+	private static bool BackInStockRegisteredForUser(ProductViewModel product, string unitId = "", long stocklocationId = 0)
+	{
+		if (!Dynamicweb.Security.UserManagement.User.IsExtranetUserLoggedIn()) return false;
+		
+		Product productObject = Services.Products.GetProductById(product.Id, product.VariantId, product.LanguageId);
+		StockLocation stockLocation = Services.StockService.GetStockLocation(stocklocationId);
+		double unitStock = productObject.GetUnitStock(stockLocation, unitId);
+		return unitStock <= 0d && ProductBackInStockNotification.BackInStockNotificationExists(productObject, unitId);
+	}
+}
+
+@{
+	ProductViewModel product = new ProductViewModel();
+
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Item["DummyProduct"] != null)
+	{
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		} else {
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+		}
+	} else if (Pageview.Item["DummyProduct"] == null) {
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+	}
+
+	bool productInStock = product.StockLevel > 0 || product.NeverOutOfstock;
+
+	bool notificationRegisteredForUser = BackInStockRegisteredForUser(product);
+}
+
+@if (product.Id != null && !productInStock)
+{
+	string notifiedMessage = Model.Item.GetString("NotifiedMessage");
+	string notifiedMessageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("NotifiedMessageTheme")) ? " theme " + Model.Item.GetRawValueString("NotifiedMessageTheme").Replace(" ", "").Trim().ToLower() : "";
+	string notifiedMessageId = $"NotifiedMessage_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
+	
+	
+	<div class="@notifiedMessageTheme @(notificationRegisteredForUser ? "" : "d-none")" id="@notifiedMessageId">
+		@notifiedMessage
+	</div>
+
+	if (!notificationRegisteredForUser)
+	{
+		string buttonLabel = Model.Item.GetString("Label");
+		string buttonIcon = Model.Item.GetString("Icon");
+		string buttonIconPosition = Model.Item.GetString("IconPosition", "right");
+		string buttonStyle = Model.Item.GetString("Style");
+		
+		string modalTitle = Model.Item.GetString("ModalTitle");
+		string modalIntroductionText = Model.Item.GetString("IntroductionText");
+		string modalTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ModalTheme")) ? " theme " + Model.Item.GetRawValueString("ModalTheme").Replace(" ", "").Trim().ToLower() : "";
+
+		string modalId = $"modal_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
+		string formId = $"NotificationForm_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
+		string notificationButtonId = $"NotificationButton_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
+		
+		string productPage = $"Default.aspx?ID={GetPageIdByNavigationTag("ProductDetailPage")}";
+		
+		<button type="button" class="@buttonStyle" id="@notificationButtonId" data-bs-toggle="modal" data-bs-target="#@modalId">
+			<span class="d-flex align-items-center gap-1 @buttonIconPosition">
+				@buttonLabel
+				@{ @RenderIcon(buttonIcon) }
+			</span>
+		</button>
+		
+		<div class="modal fade @modalTheme" id="@modalId" tabindex="-1" aria-labelledby="label_@modalId" aria-hidden="true">
+			<div class="modal-dialog">
+				<div class="modal-content">
+					<div class="modal-header">
+						@if (!string.IsNullOrEmpty(modalTitle))
+						{
+							<h5 class="modal-title" id="label_@modalId">@modalTitle</h5>
+						}
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
+					</div>
+					<div class="modal-body">
+						<form name="@product.Id" id="@formId" method="post" action="@productPage">
+							<input type="hidden" name="ProductID" value="@product.Id"/>
+							<input type="hidden" name="VariantID" value="@product.VariantId"/>
+							<input type="hidden" name="LanguageID" value="@product.LanguageId"/>
+							<input type="hidden" name="CartCmd" value="createnotificationforthisproduct"/>
+							@if (!string.IsNullOrEmpty(modalIntroductionText))
+							{
+								<div class="m-2">
+									@modalIntroductionText
+								</div>
+							}
+							<div class="form-floating m-2">
+								<input class="form-control" type="text" id="NotificationEmail" value="@(Pageview.User != null ? Pageview.User.Email : "")" name="NotificationEmail" placeholder="@Translate("Email")" required="required" aria-required="aria-required" />
+								<label for="NotificationEmail" class="form-label">@Translate("Email")</label>
+							</div>
+						</form>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">@Translate("Close")</button>
+						<button type="button" class="btn btn-primary" onclick="BackInStockNotification.SubmitNotification('@formId', '@modalId', '@notifiedMessageId', '@notificationButtonId')">@Translate("Submit")</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+
+}else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0">@Translate("Back in stock notifications will be rendered here")</div>
+}
+
+@helper RenderIcon(string icon)
+{
+	if (System.IO.Path.GetExtension(icon).ToLower() == ".svg")
+	{
+		if (!icon.ToLower().Contains("none") && icon != string.Empty)
+		{
+			<span class="icon-auto">
+				@ReadFile(icon)
+			</span>
+		}
+	}
+}
