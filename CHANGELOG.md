@@ -21,7 +21,7 @@
 * Itemtypes: Product slider / Grid view, wrong list of products when Load more is clicked
 * Itemtypes: Product slider / Grid view. Support MainProductId in load more request. Wrong list of products when Load more is clicked
 * Itemtypes: Product slider / Grid view. Empty list of products when load more is clicked, fixed by not adding  groupid, when linking to a productlist with selected products
-* Itemtypes: RelatedProducts, better "View all" link generation
+* Itemtypes: Product slider / Grid view, better "View all" link generation
 * Itemtypes: ProductListItemRepeater, remove bad " Button " html property. Fix validation error at product list
 * Itemtypes: ThemeSelectorMini, handle multiple themes with same class name, avoid throwing an error
 * Itemtypes: ProductDetailsImage, secure that the default image thumbnail is only rendered once
@@ -33,6 +33,7 @@
 * Itemtypes: ProductListItemRepeater, Favorites and Variant selector, fix Variant selector modal error
 * Itemtypes: Navigation/ Mega menu, dropdown toggle with link respect clickable
 * Itemtypes: Impersonation, Use correct impersonation name
+* Itemtypes: Mega menu naviation, clickable/unclickable menu items, fix when submenu type is auto
 
 ## Changed
 * Itemtypes: Product slider/grid, improve the "Selected products" setting, Possible to show both master and variants
@@ -44,6 +45,7 @@
 * General: alternate hreflang update
 * Itemtypes: Article list,  Possible to added context (tags) option e.g. when using article list as related article in article page
 * Itemtype: PoductStockLocation. possible to show which location the product is in stock (Part 1). We will work further with this implementation
+
 
 ## [v1.19.0] - 24-02-2023
 
