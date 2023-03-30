@@ -1,5 +1,52 @@
 # Changelog
 
+## [v1.20.0] - 30-03-2023
+
+## Bugfixes
+* Cart: Use parseInt in js numbers to secure correct calculation of stock state, avoid quantity suddenly changes to a different number 
+* Cart: Country not submitted when address is changed
+* Customer center: Quotes, use OrderType.Quote for the quote state filter, so it is possible to filter
+* Customer Center: Favorites detail: Use ToStringInvariant the correct way
+* General: Express buy, improve the check for when a product is out of stock (Filter out products with 0 quantity)
+* General: Express buy, validate quote checkout page id to be bigger than 0
+* General: Missing translations in cart
+* General: Fix spinners on pageupdater
+* General: Google Tag Manager,  Replace " , " with " . " on all prices for GTM
+* General: Content search typo fix
+* General: Support for pretty urls while changing facets on tablet/mobile
+* General: Add ProductvariantId to query parameter, Added due to the fixes with Product slider / Grid view in order to show both Master and selected variants. (Requires also a correction in Content/Services/Related products slidergrid//Product catalog for View model - set default parameter isVariant to value empty. And go to Content/Product/Product catalog for View model set default parameter isVariant to value False)
+* Itemtypes: Product slider / Grid, show slider settings, when set to slider layout
+* Itemtypes: Product slider / Grid, improve description for the button label
+* Itemtypes: Product slider / Grid, support MainProductId in load more request
+* Itemtypes: Product slider / Grid view, wrong list of products when Load more is clicked
+* Itemtypes: Product slider / Grid view. Support MainProductId in load more request. Wrong list of products when Load more is clicked
+* Itemtypes: Product slider / Grid view. Empty list of products when load more is clicked, fixed by not adding  groupid, when linking to a productlist with selected products
+* Itemtypes: Product slider / Grid view, better "View all" link generation
+* Itemtypes: ProductListItemRepeater, remove bad " Button " html property. Fix validation error at product list
+* Itemtypes: ThemeSelectorMini, handle multiple themes with same class name, avoid throwing an error
+* Itemtypes: ProductDetailsImage, secure that the default image thumbnail is only rendered once
+* Itemtypes: Favorites, Fix deleted favorite list redirects to 404 page
+* Itemtypes: Product component slider, fix sorting for selected products
+* Itemtypes: Product component favorite, hide favorites icon correctly, when variant modal
+* Itemtypes: Megamenu viewport max-height w/ scroll
+* Itemtypes: Navigation, Dropdown eventlistener changed to mouseenter / leave. Fix flickering dropdown
+* Itemtypes: ProductListItemRepeater, Favorites and Variant selector, fix Variant selector modal error
+* Itemtypes: Navigation/ Mega menu, dropdown toggle with link respect clickable
+* Itemtypes: Impersonation, Use correct impersonation name
+* Itemtypes: Mega menu naviation, clickable/unclickable menu items, fix when submenu type is auto
+
+## Changed
+* Itemtypes: Product slider/grid, improve the "Selected products" setting, Possible to show both master and variants
+* Itemtypes: Product Variant selector,  Add "Nothing selected" option if a master product with no variant selection is shown
+* Itemtypes: Slider, Switch grid to flex row on Swift_slider items
+
+## Added
+* Itemtypes: Related/variants list add to cart validation
+* General: alternate hreflang update
+* Itemtypes: Article list,  Possible to added context (tags) option e.g. when using article list as related article in article page
+* Itemtype: PoductStockLocation. possible to show which location the product is in stock (Part 1). We will work further with this implementation
+
+
 ## [v1.19.0] - 24-02-2023
 
 DynamicWeb proudly presents **Swift 1.19.0 (Q4-2022/Q1-2023)**, which runs on **DW version 9.15.2**. This introduce Article tags and filter options, Parcelshop in checkout supporting the Shipmondo provider, Template conversion to run on DW10 platform. The main headlines for this release are:
@@ -34,7 +81,7 @@ Swift supports Google fonts. However, some branding websites want to use custom 
 
 * Align the branding and design through the custom fonts throughout the website
 * File extensions that are supported .tff, .woff, and .woff2 
-* This is the *[Custom font setup guide](http:/doc.dynamicweb.com/swift/setup-project/design/branding#sideNavTitle1-2-1)*
+* This is the *[Custom font setup guide](http://doc.dynamicweb.com/swift/setup-project/design/branding#sideNavTitle1-2-1)*
 
 ![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Custom-font.png)
 
@@ -60,8 +107,8 @@ Parcelshop offers customers to select a specific parcelshop store near them, whe
 ### Updated checkout flow
 * In order to include parcel shop, we needed to change the cart flow. 
 * New checkout templates are created marked as v2, since we needed to use customer info fields, instead of deliver info fields for e.g. anonymous users.
-* The old templates still exist so it is still compatibility if you are upgrading your Swift.
-* But if you need to you Parcelshop in your solution this needs to be setup
+* The old templates still exist so it is still compatible if you are upgrading your Swift.
+* But if you need to use Parcelshop in your solution this needs to be setup
 * The new released database has already the setup for the new checkout flow
 
 ## Decrease implementation time 
@@ -73,7 +120,7 @@ Product component gives the flexibility to build own product list and product de
 * **Product image** - Possible to show alternative image on hover based on the assets category groups. this give a more dynamic look and feel when hovering over the product list
 * **Product slider** - Possible to create own custom product slider through components. Deciding which information it should contain.
 * **Product variant selector** - Define the layout of the variant selector. If you want to use buttons or dropdown selector for the specific category groups. It also support the new functionality in DW called **variant group display type** to define if the image should look on Product variant image, variant option hex code, variant option image, 
-*  **Add to cart** - An additional dropdown selector will appear  Unit selector and stock information.  Stock validation on add to cart component
+*  **Add to cart** - On the Unit selector the stock information is shown in the dropdown.  Furthermore, stock validation and minimum quantity step validation are also added to the component.
 
 ![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Product-VariantGroupOptionsDisplayType.png)
 
@@ -114,7 +161,7 @@ In customer center my order page, it is possible for customers reorder products 
 * Group list - possible to take sub groups of current group id
 
 ## DW10 Conversion
-Swift has rewritten the razor templates so it is suitable to run both DW9 and DW10. This gives the opportunity to keep working on Swift projects in the future. Going from DW9 (.NET 4) to DW10 (.NET 7) gives some issues on the templates, since some elements are deprecated. The focus has been on the code that is not easily converted true the DW10 template converter. 
+Swift has rewritten the razor templates so it is suitable to run both DW9 and DW10. This gives the opportunity to keep working on Swift projects in the future. Going from DW9 (.NET 4) to DW10 (.NET 7) gives some issues on the templates, since some elements are deprecated. The focus has been on the code that is not easily converted trough the DW10 template converter. 
 
 **Focus areas on Swift**
 * Rewritten helpers are deprecated in Razor​
@@ -123,7 +170,6 @@ Swift has rewritten the razor templates so it is suitable to run both DW9 and DW
 * New razor parser in .NET 7 with minor changes to execution
 
 ![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Swift-dw10.png)
-
 
 ## Removed
 
