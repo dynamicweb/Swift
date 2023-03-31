@@ -90,14 +90,6 @@ const LiveProductInfo = function () {
 				
 				const feedUrlArray = feedUrl.split('?');
 				const query = new URLSearchParams(self.SanitizeParameters(feedUrlArray[1]));
-				const pageSize = self.GetValue(parseInt(query.get('PageSize')), 100);
-				const productIds = self.GetValue(query.getAll('ProductIds').join(','), el.getAttribute(self.config.productIdAttr));
-				const isPostMethod = query.has('RepositoryName');
-				query.delete('ProductIds');
-				query.delete('PageSize');
-		
-				const path = feedUrlArray[0];
-				const url = path + '?' + query.toString();
 				let fetchInit = {
 					headers: {
 						'Accept': 'application/json',
@@ -106,10 +98,21 @@ const LiveProductInfo = function () {
 					method: 'GET'
 				};
 				
+				const isPostMethod = query.has('RepositoryName');
 				if (isPostMethod) {
+					const productIds = self.GetValue(query.getAll('ProductIds').join(','), el.getAttribute(self.config.productIdAttr));
+					const pageSize = getValueAndUpdateQuery(query, 'PageSize', parseInt(query.get('PageSize')), 100);
+					const currencyCode = getValueAndUpdateQuery(query, 'CurrencyCode', query.get('CurrencyCode'), '');
+					const countryCode = getValueAndUpdateQuery(query, 'CountryCode', query.get('CountryCode'), '');
+					const shopId = getValueAndUpdateQuery(query, 'ShopId', query.get('ShopId'), '');
+					const languageId = getValueAndUpdateQuery(query, 'LanguageId', query.get('LanguageId'), '');
+					
 					fetchInit.method = 'POST';
-					fetchInit.body = JSON.stringify({ PageSize: pageSize, Parameters : { MainProductID : productIds } });
+					fetchInit.body = JSON.stringify({ PageSize: pageSize, Parameters : { MainProductID : productIds }, CurrencyCode : currencyCode, CountryCode : countryCode, ShopId : shopId, LanguageId : languageId });
 				}
+				
+				const path = feedUrlArray[0];
+				const url = path + '?' + query.toString();
 		
 				fetch(url, fetchInit)
 					.then(function (response) {
@@ -122,6 +125,11 @@ const LiveProductInfo = function () {
 						console.error(error)
 					})
 			})
+			
+			function getValueAndUpdateQuery(query, parameter, value, fallbackValue) {
+				query.delete(parameter);
+				return self.GetValue(value, fallbackValue);
+			}
 		},
 
 		UpdateValues: function (data, liveInfoContainers) {
