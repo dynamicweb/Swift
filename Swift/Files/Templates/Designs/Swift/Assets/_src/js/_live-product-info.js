@@ -100,7 +100,7 @@ const LiveProductInfo = function () {
 				
 				const isPostMethod = query.has('RepositoryName');
 				if (isPostMethod) {
-					const productIds = self.GetValue(query.getAll('ProductIds').join(','), el.getAttribute(self.config.productIdAttr));
+					const productIds = getValueAndUpdateQuery(query, 'ProductIds', query.getAll('ProductIds').join(','), el.getAttribute(self.config.productIdAttr));
 					const pageSize = getValueAndUpdateQuery(query, 'PageSize', parseInt(query.get('PageSize')), 100);
 					const currencyCode = getValueAndUpdateQuery(query, 'CurrencyCode', query.get('CurrencyCode'), '');
 					const countryCode = getValueAndUpdateQuery(query, 'CountryCode', query.get('CountryCode'), '');
