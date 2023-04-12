@@ -30,6 +30,7 @@ const LiveProductInfo = function () {
 			productPrices: ".product-prices",
 			productPriceTemplate: ".product-prices-template",
 			productPriceQuantity: ".js-text-price-quantity",
+			productPriceQuantityBox: "[id^='Quantity_']",
 			productPricePrice: ".js-text-price-price",
 			stock: ".js-text-stock",
 			expectedDelivery: ".js-text-expected-delivery",
@@ -145,6 +146,7 @@ const LiveProductInfo = function () {
 				setStockLevel(container, product);
 				setExpectedDelivery(container, product);
 				updateVariantSelector(container);
+				enableQuantityBoxesOnLegacyProductLists(container, product);
 			});
 
 			function removeLoaders(container) {
@@ -281,6 +283,15 @@ const LiveProductInfo = function () {
 				const variantSelector = container.querySelector(self.selectors.variantSelector);
 				if(variantSelector != null){
 					variantSelector.removeAttribute("disabled");
+				}
+			}
+			
+			function enableQuantityBoxesOnLegacyProductLists(container, product) {
+				if (product.StockLevel && product.StockLevel > 0)
+				{
+					container.querySelectorAll(self.selectors.productPriceQuantityBox).forEach(function (el){
+						el.disabled = false;
+					});
 				}
 			}
 		},
