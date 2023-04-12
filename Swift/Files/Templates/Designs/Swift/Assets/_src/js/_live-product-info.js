@@ -162,7 +162,7 @@ const LiveProductInfo = function () {
 
 				function setPrice(container, product) {
 					const priceContainers = container.querySelectorAll(self.selectors.price);
-					if (priceContainers) {
+					if (priceContainers.length > 0) {
 						let price = product.Price.PriceFormatted;
 						if(product.VariantInfo != null && isPdpWithVariantId())
 						{
@@ -180,9 +180,13 @@ const LiveProductInfo = function () {
 
 				function setPriceWithVat(container, product) {
 					const pricesWithVatContainers = container.querySelectorAll(self.selectors.priceWithVat);
-					if (product.Price.PriceWithVat != null && pricesWithVatContainers) {
+					const isMasterProduct = product.VariantInfo.Price != null
+					const productPriceWithVat = isMasterProduct ? product.VariantInfo.Price.PriceWithVat : product.Price.PriceWithVat;
+					const productPriceWithVatFormatted = isMasterProduct ? product.VariantInfo.Price.PriceWithVatFormatted : product.Price.PriceWithVatFormatted;
+					
+					if (productPriceWithVat != null && pricesWithVatContainers.length > 0) {
 
-						let priceWithVat = product.Price.PriceWithVatFormatted;
+						let priceWithVat = productPriceWithVatFormatted;
 						if(product.VariantInfo != null)
 						{
 							if(product.VariantInfo.PriceMin != null && product.VariantInfo.PriceMax != null && product.VariantInfo.PriceMin.PriceWithVat != product.VariantInfo.PriceMax.PriceWithVat)
@@ -198,7 +202,7 @@ const LiveProductInfo = function () {
 
 				function setPriceBeforeDiscount(container, product) {
 					const priceBeforeDiscountContainers = container.querySelectorAll(self.selectors.priceBeforeDiscount);
-					if (product.PriceBeforeDiscount != null && priceBeforeDiscountContainers) {
+					if (product.PriceBeforeDiscount != null && priceBeforeDiscountContainers.length > 0) {
 						self.UpdateValue(priceBeforeDiscountContainers, product.PriceBeforeDiscount.PriceFormatted);
 						self.ShowConditionalElement(priceBeforeDiscountContainers);
 					}
@@ -251,7 +255,7 @@ const LiveProductInfo = function () {
 
 			function setStockLevel(container, product) {
 				const stockContainers = container.querySelectorAll(self.selectors.stock);
-				if (product.StockLevel != null && stockContainers) {
+				if (product.StockLevel != null && stockContainers.length > 0) {
 					let stockLevel = product.StockLevel > 100 ? "100+" : product.StockLevel;
 					self.UpdateValue(stockContainers, stockLevel);
 					self.ShowConditionalElement(container.querySelectorAll(self.selectors.stockMessages));
@@ -267,7 +271,7 @@ const LiveProductInfo = function () {
 
 			function setExpectedDelivery(container, product) {
 				const expectedDeliveryContainers = container.querySelectorAll(self.selectors.expectedDelivery);
-				if (product.ExpectedDelivery != null && expectedDeliveryContainers) {
+				if (product.ExpectedDelivery != null && expectedDeliveryContainers.length > 0) {
 					self.UpdateValue(expectedDeliveryContainers, product.ExpectedDelivery);
 					self.ShowConditionalElement(container.querySelectorAll(self.selectors.expectedDelivery));
 				}
