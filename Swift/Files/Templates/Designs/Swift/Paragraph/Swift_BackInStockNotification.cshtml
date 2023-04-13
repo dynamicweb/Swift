@@ -52,82 +52,99 @@
 
 	bool productInStock = product.StockLevel > 0 || product.NeverOutOfstock;
 
-	bool notificationRegisteredForUser = BackInStockRegisteredForUser(product);
 }
 
-@if (product.Id != null && !productInStock)
+@if ((product.Id != null && !productInStock) || Pageview.IsVisualEditorMode)
 {
 	string notifiedMessage = Model.Item.GetString("NotifiedMessage");
 	string notifiedMessageId = $"NotifiedMessage_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
 	
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
+	horizontalAlign = horizontalAlign == "center" ? "justify-content-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "end" ? "justify-content-end" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "full" ? "" : horizontalAlign;
 	
-	<div class="@(notificationRegisteredForUser ? "" : "d-none")" id="@notifiedMessageId">
-		@notifiedMessage
-	</div>
+	string flexFill = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "flex-fill" : "";
+	string fullWidth = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "w-100" : "";
+		
+	bool notificationRegisteredForUser = BackInStockRegisteredForUser(product);
+	
+	<div class="d-flex flex-row w-100 @horizontalAlign @fullWidth item_@Model.Item.SystemName.ToLower()">
+		<div class="@horizontalAlign @fullWidth @(notificationRegisteredForUser ? "" : "d-none")" id="@notifiedMessageId">
+			@notifiedMessage
+		</div>
 
-	if (!notificationRegisteredForUser)
-	{
-		string buttonIcon = Model.Item.GetString("Icon");
-		string buttonIconPosition = Model.Item.GetString("IconPosition", "right");
-		string buttonStyle = Model.Item.GetString("Style");
+		@if (!notificationRegisteredForUser)
+		{
+			
+			string notifyIcon = Model.Item.GetString("Icon");
+			string notifyLabel = !notifyIcon.Contains("_none") ? "<span class=\"icon-2\">" + ReadFile(notifyIcon) + "</span>" : "";
+			notifyLabel += " " + Translate("Notify me when available");
 		
-		string modalId = $"modal_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
-		string formId = $"NotificationForm_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
-		string notificationButtonId = $"NotificationButton_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
+			string buttonSize = Model.Item.GetRawValueString("ButtonSize", "regular");
+			string inputSize = string.Empty;
+
+			switch (buttonSize)
+			{
+				case "small":
+					inputSize = " input-group-sm";
+					buttonSize = " btn-sm";
+					break;
+				case "regular":
+					buttonSize = string.Empty;
+					break;
+				case "large":
+					inputSize = " input-group-lg";
+					buttonSize = " btn-lg";
+					break;
+			}
 		
-		string productPage = $"Default.aspx?ID={GetPageIdByNavigationTag("ProductDetailPage")}";
+			string modalId = $"modal_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
+			string formId = $"NotificationForm_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
+			string notificationButtonId = $"NotificationButton_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
+			string notificationOnClick = !Pageview.IsVisualEditorMode ? $"BackInStockNotification.SubmitNotification('{formId}', '{modalId}', '{notifiedMessageId}', '{notificationButtonId}')" : "";
 		
-		<button type="button" class="@buttonStyle" id="@notificationButtonId" data-bs-toggle="modal" data-bs-target="#@modalId">
-			<span class="d-flex align-items-center gap-1 @buttonIconPosition">
-				@Translate("Notify me when available")
-				@{ @RenderIcon(buttonIcon) }
-			</span>
-		</button>
+			string productPage = $"Default.aspx?ID={GetPageIdByNavigationTag("ProductDetailPage")}";
 		
-		<div class="modal fade" id="@modalId" tabindex="-1" aria-labelledby="label_@modalId" aria-hidden="true">
-			<div class="modal-dialog">
-				<div class="modal-content">
-					<div class="modal-header">
-						<h5 class="modal-title" id="label_@modalId">@Translate("Back in Stock")</h5>
-						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
-					</div>
-					<div class="modal-body">
-						<form name="@product.Id" id="@formId" method="post" action="@productPage">
-							<input type="hidden" name="ProductID" value="@product.Id"/>
-							<input type="hidden" name="VariantID" value="@product.VariantId"/>
-							<input type="hidden" name="LanguageID" value="@product.LanguageId"/>
-							<input type="hidden" name="CartCmd" value="createnotificationforthisproduct"/>
-							<div class="m-2">
-								@Translate("Send me an email when the product is in stock.")
-							</div>
-							<div class="form-floating m-2">
-								<input class="form-control" type="text" id="NotificationEmail" value="@(Pageview.User != null ? Pageview.User.Email : "")" name="NotificationEmail" placeholder="@Translate("Email")" required="required" aria-required="aria-required" />
-								<label for="NotificationEmail" class="form-label">@Translate("Email")</label>
-							</div>
-						</form>
-					</div>
-					<div class="modal-footer">
-						<button type="button" class="btn btn-primary" onclick="BackInStockNotification.SubmitNotification('@formId', '@modalId', '@notifiedMessageId', '@notificationButtonId')">@Translate("Submit")</button>
+			<div class="d-flex @horizontalAlign @fullWidth js-input-group">
+				<div class="input-group input-primary-button-group flex-nowrap@(inputSize)">
+					<button type="button" class="btn btn-primary @(buttonSize) @flexFill" id="@notificationButtonId" data-bs-toggle="modal" data-bs-target="#@modalId">
+						<span class="text-nowrap d-flex align-items-center justify-content-center gap-2">
+							@notifyLabel
+						</span>
+					</button>
+				</div>
+			</div>
+		
+			<div class="modal fade" id="@modalId" tabindex="-1" aria-labelledby="label_@modalId" aria-hidden="true">
+				<div class="modal-dialog">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h5 class="modal-title" id="label_@modalId">@Translate("Back in Stock")</h5>
+							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
+						</div>
+						<div class="modal-body">
+							<form name="@product.Id" id="@formId" method="post" action="@productPage">
+								<input type="hidden" name="ProductID" value="@product.Id"/>
+								<input type="hidden" name="VariantID" value="@product.VariantId"/>
+								<input type="hidden" name="LanguageID" value="@product.LanguageId"/>
+								<input type="hidden" name="CartCmd" value="createnotificationforthisproduct"/>
+								<div class="m-2">
+									@Translate("Send me an email when the product is in stock.")
+								</div>
+								<div class="form-floating m-2">
+									<input class="form-control" type="text" id="NotificationEmail" value="@(Pageview.User != null ? Pageview.User.Email : "")" name="NotificationEmail" placeholder="@Translate("Email")" required="required" aria-required="aria-required" />
+									<label for="NotificationEmail" class="form-label">@Translate("Email")</label>
+								</div>
+							</form>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-primary" onclick="@notificationOnClick">@Translate("Submit")</button>
+						</div>
 					</div>
 				</div>
 			</div>
-		</div>
-	}
-
-}else if (Pageview.IsVisualEditorMode)
-{
-	<div class="alert alert-dark m-0">@Translate("Back in stock notifications will be rendered here")</div>
-}
-
-@helper RenderIcon(string icon)
-{
-	if (System.IO.Path.GetExtension(icon).ToLower() == ".svg")
-	{
-		if (!icon.ToLower().Contains("none") && icon != string.Empty)
-		{
-			<span class="icon-auto">
-				@ReadFile(icon)
-			</span>
 		}
-	}
+	</div>
+
 }
