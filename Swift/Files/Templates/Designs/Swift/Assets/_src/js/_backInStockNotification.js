@@ -2,6 +2,8 @@ const BackInStockNotification = function (){
 	return{
 		SubmitNotification(formId, modalId, notifiedMessageId, notificationButtonId){
 			const form = document.getElementById(formId);
+			if(!form.reportValidity()) return;
+
 			const formData = new FormData(form);
 			const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
 			const notifiedMessage = document.getElementById(notifiedMessageId);
