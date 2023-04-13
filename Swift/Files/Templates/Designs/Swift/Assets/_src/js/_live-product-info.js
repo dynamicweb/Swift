@@ -30,7 +30,7 @@ const LiveProductInfo = function () {
 			productPrices: ".product-prices",
 			productPriceTemplate: ".product-prices-template",
 			productPriceQuantity: ".js-text-price-quantity",
-			productPriceQuantityBox: "[id^='Quantity_']",
+			productPriceQuantityFieldForLists: ".item_swift_productlistcompactview .swift_quantity-field, .item_swift_productlistlistview .swift_quantity-field",
 			productPricePrice: ".js-text-price-price",
 			stock: ".js-text-stock",
 			expectedDelivery: ".js-text-expected-delivery",
@@ -289,7 +289,7 @@ const LiveProductInfo = function () {
 			function enableQuantityBoxesOnLegacyProductLists(container, product) {
 				if (product.StockLevel && product.StockLevel > 0)
 				{
-					container.querySelectorAll(self.selectors.productPriceQuantityBox).forEach(function (el){
+					container.querySelectorAll(self.selectors.productPriceQuantityFieldForLists).forEach(function (el){
 						el.disabled = false;
 					});
 				}
