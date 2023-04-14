@@ -14,6 +14,7 @@ import { Image } from './_image';
 import { Typeahead } from './_typeahead';
 import { AssetLoader } from './_assetLoader';
 import { LiveProductInfo } from './_live-product-info';
+import { BackInStockNotification } from './_backInStockNotification';
 
 //Bootstrap
 window.bootstrap = bootstrap;
@@ -35,7 +36,8 @@ const swift = function () {
 		Video: Video,
 		Image: Image,
 		AssetLoader: AssetLoader,
-		LiveProductInfo: LiveProductInfo
+		LiveProductInfo: LiveProductInfo,
+		BackInStockNotification: BackInStockNotification
 	}
 }();
 export { swift };

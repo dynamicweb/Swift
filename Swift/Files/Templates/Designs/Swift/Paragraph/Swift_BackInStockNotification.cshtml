@@ -1,0 +1,150 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using System.Linq
+@using Dynamicweb.Ecommerce
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.Products
+@using Dynamicweb.Ecommerce.Stocks
+
+@functions
+{
+	private static bool BackInStockRegisteredForUser(ProductViewModel product, string unitId = "", long stocklocationId = 0)
+	{
+		if (!Dynamicweb.Security.UserManagement.User.IsExtranetUserLoggedIn()) return false;
+		
+		Product productObject = Services.Products.GetProductById(product.Id, product.VariantId, product.LanguageId);
+		StockLocation stockLocation = Services.StockService.GetStockLocation(stocklocationId);
+		double unitStock = productObject.GetUnitStock(stockLocation, unitId);
+		return unitStock <= 0d && ProductBackInStockNotification.BackInStockNotificationExists(productObject, unitId);
+	}
+}
+
+@{
+	ProductViewModel product = new ProductViewModel();
+
+	ProductViewModelSettings productSetting = new ProductViewModelSettings
+	{
+		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
+		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
+		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
+		ShopId = Pageview.Area.EcomShopId
+	};
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Item["DummyProduct"] != null)
+	{
+		string dummyProductId = "";
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+		if (productList != null && productList.Products != null)
+		{
+			foreach (var p in productList.Products) { dummyProductId = p.Id; }
+			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
+			product = dummyProduct;
+		} else {
+			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault()?.Id);
+		}
+	} else if (Pageview.Item["DummyProduct"] == null) {
+		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault()?.Id);
+	}
+
+	bool productInStock = product.StockLevel > 0 || product.NeverOutOfstock;
+
+}
+
+@if ((product.Id != null && !productInStock) || Pageview.IsVisualEditorMode)
+{
+	string notifiedMessage = Model.Item.GetString("NotifiedMessage");
+	string notifiedMessageId = $"NotifiedMessage_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
+	
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
+	horizontalAlign = horizontalAlign == "center" ? "justify-content-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "end" ? "justify-content-end" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "full" ? "" : horizontalAlign;
+	
+	string flexFill = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "flex-fill" : "";
+	string fullWidth = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "w-100" : "";
+		
+	bool notificationRegisteredForUser = BackInStockRegisteredForUser(product);
+	
+	<div class="d-flex flex-row w-100 @horizontalAlign @fullWidth item_@Model.Item.SystemName.ToLower()">
+		<div class="@horizontalAlign @fullWidth @(notificationRegisteredForUser ? "" : "d-none")" id="@notifiedMessageId">
+			@notifiedMessage
+		</div>
+
+		@if (!notificationRegisteredForUser)
+		{
+			
+			string notifyIcon = Model.Item.GetString("Icon");
+			string notifyLabel = !notifyIcon.Contains("_none") ? "<span class=\"icon-2\">" + ReadFile(notifyIcon) + "</span>" : "";
+			notifyLabel += " " + Translate("Notify me when available");
+		
+			string buttonSize = Model.Item.GetRawValueString("ButtonSize", "regular");
+			string inputSize = string.Empty;
+
+			switch (buttonSize)
+			{
+				case "small":
+					inputSize = " input-group-sm";
+					buttonSize = " btn-sm";
+					break;
+				case "regular":
+					buttonSize = string.Empty;
+					break;
+				case "large":
+					inputSize = " input-group-lg";
+					buttonSize = " btn-lg";
+					break;
+			}
+		
+			string modalId = $"modal_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
+			string formId = $"NotificationForm_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
+			string notificationButtonId = $"NotificationButton_item_{Model.Item.SystemName.ToLower()}_{product.Id}_{product.VariantId}";
+			string notificationOnClick = !Pageview.IsVisualEditorMode ? $"swift.BackInStockNotification.SubmitNotification('{formId}', '{modalId}', '{notifiedMessageId}', '{notificationButtonId}')" : "";
+		
+			string productPage = $"Default.aspx?ID={GetPageIdByNavigationTag("ProductDetailPage")}";
+		
+			<div class="d-flex @horizontalAlign @fullWidth js-input-group">
+				<div class="input-group input-primary-button-group flex-nowrap@(inputSize)">
+					<button type="button" class="btn btn-primary @(buttonSize) @flexFill" id="@notificationButtonId" data-bs-toggle="modal" data-bs-target="#@modalId">
+						<span class="text-nowrap d-flex align-items-center justify-content-center gap-2">
+							@notifyLabel
+						</span>
+					</button>
+				</div>
+			</div>
+		
+			<div class="modal fade" id="@modalId" tabindex="-1" aria-labelledby="label_@modalId" aria-hidden="true">
+				<div class="modal-dialog modal-dialog-centered">
+					<div class="modal-content">
+						<div class="modal-header">
+							<h5 class="modal-title" id="label_@modalId">@Translate("Back in Stock")</h5>
+							<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
+						</div>
+						<div class="modal-body">
+							<form name="@product.Id" id="@formId" method="post" action="@productPage">
+								<input type="hidden" name="ProductID" value="@product.Id"/>
+								<input type="hidden" name="VariantID" value="@product.VariantId"/>
+								<input type="hidden" name="LanguageID" value="@product.LanguageId"/>
+								<input type="hidden" name="CartCmd" value="createnotificationforthisproduct"/>
+								<div class="m-2">
+									@Translate("Send me an email when the product is in stock.")
+								</div>
+								<div class="form-floating m-2">
+									<input class="form-control" type="text" id="NotificationEmail" value="@(Pageview.User != null ? Pageview.User.Email : "")" name="NotificationEmail" placeholder="@Translate("Email")" required="required" aria-required="aria-required" />
+									<label for="NotificationEmail" class="form-label">@Translate("Email")</label>
+								</div>
+							</form>
+						</div>
+						<div class="modal-footer">
+							<button type="button" class="btn btn-primary" onclick="@notificationOnClick">@Translate("Submit")</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		}
+	</div>
+
+}
