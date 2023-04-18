@@ -11,7 +11,8 @@ const LiveProductInfo = function () {
 			productVariantIdAttr: "data-variant-id",
 			showIfAttr: "data-show-if",
 			innerSliderId: "tns1-iw",
-			loaderClass: "spinner-border"
+			loaderClass: "spinner-border",
+			bearerToken: "data-bearer-token",
 		},
 
 		selectors: {
@@ -98,6 +99,8 @@ const LiveProductInfo = function () {
 					},
 					method: 'GET'
 				};
+				const bearer = el.getAttribute(self.selectors.bearerToken);
+				if (bearer) fetchProducts.headers.Authorization = bearer;
 				
 				const isPostMethod = query.has('RepositoryName');
 				if (isPostMethod) {
@@ -106,7 +109,7 @@ const LiveProductInfo = function () {
 					const currencyCode = getValueAndUpdateQuery(query, 'CurrencyCode', query.get('CurrencyCode'), '');
 					const countryCode = getValueAndUpdateQuery(query, 'CountryCode', query.get('CountryCode'), '');
 					const languageId = getValueAndUpdateQuery(query, 'LanguageId', query.get('LanguageId'), '');
-					const shopId = query.GetValue('ShopId', ''); // Do not remove from querystring. It needs to be in both places
+					const shopId = self.GetValue(query.get('ShopId'), ''); // Do not remove from querystring. It needs to be in both places
 					
 					fetchProducts.method = 'POST';
 					fetchProducts.body = JSON.stringify({ PageSize: pageSize, Parameters : { MainProductID : productIds }, CurrencyCode : currencyCode, CountryCode : countryCode, ShopId : shopId, LanguageId : languageId });
@@ -258,8 +261,7 @@ const LiveProductInfo = function () {
 			function setStockLevel(container, product) {
 				const stockContainers = container.querySelectorAll(self.selectors.stock);
 				if (product.StockLevel != null && stockContainers.length > 0) {
-					let stockLevel = product.StockLevel > 100 ? "100+" : product.StockLevel;
-					self.UpdateValue(stockContainers, stockLevel);
+					self.UpdateValue(stockContainers, product.StockLevel);
 					self.ShowConditionalElement(container.querySelectorAll(self.selectors.stockMessages));
 				}
 
