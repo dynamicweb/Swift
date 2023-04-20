@@ -6,13 +6,18 @@
 	string userAddressesPage = Pageview.CurrentParagraph.Item["UserAddressesPageLink"] != null ? Pageview.CurrentParagraph.Item["UserAddressesPageLink"].ToString() + "&GoBackToPage=" + Pageview.Page.ID : "";
 	string userId = GetString("UserManagement:User.ID");
 	var userAddressLoop = GetLoop("UserManagement:User.UserAddresses");
-
+	
 	bool userHasDefaultAddress = false;
+	bool userAddressSelected = false; 
 	foreach (LoopItem userAddress in userAddressLoop)
 	{
 		if (userAddress.GetBoolean("UserManagement:User.UserAddress.Default"))
 		{
 			userHasDefaultAddress = true;
+		}
+		if (userAddress.GetBoolean("UserManagement:User.UserAddress.SelectedForDeliveryFields"))
+		{
+			userAddressSelected = true;
 		}
 	}
 
@@ -33,10 +38,7 @@
 	{
 		address.Add(GetString("Ecom:Order.Delivery.City"));
 	}
-	if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Country")))
-	{
-		address.Add(GetString("Ecom:Order.Delivery.Country"));
-	}
+
 	string deliveryAddressString = (string.Join(",", address.Select(x => x.ToString()).ToArray()));
 
 	List<string> addressList = new List<string>();
@@ -67,14 +69,12 @@
 	{
 		addressList.Add(GetString("UserManagement:User.Country"));
 	}
-
-	string selectedAddress = Dynamicweb.Context.Current.Request.Form.Get("EcomOrderDeliverySelectedAddressId") ?? "";
-
 	string addressString = (string.Join(",", addressList.Select(x => x.ToString()).ToArray()));
-	string useBillingIsChecked = selectedAddress == "" || selectedAddress == "-1" ? "checked" : "";
+	string useBillingIsChecked = !userAddressSelected ? "checked" : "";
 
 	string disabled = addressString == deliveryAddressString || string.IsNullOrEmpty(deliveryAddressString) || string.IsNullOrEmpty(addressString) ? "" : "disabled";
-	disabled = addressString != deliveryAddressString && userHasDefaultAddress ? "disabled" : disabled;
+	disabled = userAddressSelected && userHasDefaultAddress ? "disabled" : disabled;
+
 
 	//Billing address is missing
 	if (string.IsNullOrWhiteSpace(addressString))
@@ -86,7 +86,6 @@
 	}
 	else
 	{
-
 		<div class="mt-4">
 			<div class="d-flex justify-content-between mb-3">
 				<h3 class="fs-6 fw-normal m-0">@Translate("Select delivery address")</h3>
@@ -150,7 +149,7 @@
 					userAddressList.Add(userAddress.GetString("UserManagement:User.UserAddress.Culture.CountryName"));
 				}
 				string userAddressString = (string.Join(",", userAddressList.Select(x => x.ToString()).ToArray())).Replace(",", ", ");
-				string isChecked = selectedAddress == addressId ? "checked" : "";
+				string isChecked = userAddress.GetBoolean("UserManagement:User.UserAddress.SelectedForDeliveryFields") ? "checked" : "";
 
 				<label class="list-group-item list-group-item-action">
 					<div class="grid">
