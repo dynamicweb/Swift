@@ -2,41 +2,29 @@
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
-	ProductViewModel product = new ProductViewModel();
-
-	ProductViewModelSettings productSetting = new ProductViewModelSettings
-	{
-		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
-		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
-		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
-		ShopId = Pageview.Area.EcomShopId
-	};
-
+	ProductViewModel product = null;
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
-	} else if (Pageview.Item["DummyProduct"] != null) {
-
-		string dummyProductId = "";
+	}
+	else if (Pageview.Item["DummyProduct"] != null)
+	{
 		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
 		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
-		if (productList.Products != null)
+
+		if (productList?.Products is object)
 		{
-			foreach (var p in productList.Products) { dummyProductId = p.Id; }
-			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
-			product = dummyProduct;
-		} else {
-			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+			product = productList.Products[0];
 		}
-	} else if (Pageview.Item["DummyProduct"] == null) {
-		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 	}
 
 	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
 	bool anonymousUser = Pageview.User == null;
 	bool isErpConnectionDown = !Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsWebServiceConnectionAvailable"]);
 	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && isErpConnectionDown;
+}
 
+@if (product is object && !hidePrice) {
 	bool showInformativePrice = Model.Item.GetBoolean("ShowInformativePrice");
 	string unitId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("UnitId")) ? Dynamicweb.Context.Current.Request.Form.Get("UnitId") : string.Empty;
 
@@ -61,10 +49,7 @@
 	contentPadding = contentPadding == "none" ? "p-0" : contentPadding;
 	contentPadding = contentPadding == "small" ? "p-1 px-md-2 py-md-1" : contentPadding;
 	contentPadding = contentPadding == "large" ? "p-2 px-md-3 py-md-2" : contentPadding;
-}
 
-@if (!hidePrice && product.Id != null)
-{
 	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
 	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 
@@ -88,8 +73,8 @@
 	}
 
 	<div class="@textAlign @liveInfoClass item_@Model.Item.SystemName.ToLower()" data-product-id="@product.Id" data-variant-id="@product.VariantId" @productInfoFeed>
-		@if (showInformativePrice && product.PriceInformative.Price != 0) 
-		{ 
+		@if (showInformativePrice && product.PriceInformative.Price != 0)
+		{
 			<div class="opacity-50">
 				<span>@Translate("RRP") </span>
 				<span class="text-decoration-line-through text-price">@product.PriceInformative.PriceFormatted</span>
@@ -245,7 +230,9 @@
 			}
 		}
 	</div>
-} else if (Pageview.IsVisualEditorMode) {
+}
+else if (Pageview.IsVisualEditorMode)
+{
 	<div class="alert alert-dark m-0" role="alert">
 		<span>@Translate("No products available")</span>
 	</div>
