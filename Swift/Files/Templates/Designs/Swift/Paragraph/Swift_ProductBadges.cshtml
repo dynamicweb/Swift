@@ -1,4 +1,6 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Content
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
@@ -31,7 +33,9 @@
 		{
 			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 		}
-	} else if (Pageview.Item["DummyProduct"] == null) {
+	}
+	else if (Pageview.Item["DummyProduct"] == null)
+	{
 		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 	}
 
@@ -51,21 +55,90 @@
 
 @if (product.Id != null)
 {
+	Dictionary<string, ParagraphInfoViewModel> badgeConfigurations;
+	List<string> campaignBadgesValues = Model.Item.GetRawValueString("CampaignBadges") != null ? Model.Item.GetRawValueString("CampaignBadges").Split(new char[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList() : new List<string>();
+
+	if (Dynamicweb.Context.Current.Items.Contains("badgeConfigurations"))
+	{
+		badgeConfigurations = (Dictionary<string, ParagraphInfoViewModel>)Dynamicweb.Context.Current.Items["badgeConfigurations"];
+	}
+	else
+	{
+		var badgesPage = Pageview.AreaSettings.GetLink("EcommerceBadgesPage") != null ? Pageview.AreaSettings.GetLink("EcommerceBadgesPage").PageId : 0;
+		var allBadges = badgesPage != 0 ? Dynamicweb.Content.Services.Paragraphs.GetParagraphsByPageId(badgesPage) : null;
+
+		badgeConfigurations = new Dictionary<string, ParagraphInfoViewModel>();
+		foreach (Paragraph badge in allBadges)
+		{
+			var paragraphviewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(badge);
+			string cssClassName = paragraphviewModel.Item.GetString("CssClassName").Trim().ToLower();
+			if (!badgeConfigurations.ContainsKey(cssClassName))
+			{
+				badgeConfigurations.Add(cssClassName, paragraphviewModel);
+			}
+		}
+		Dynamicweb.Context.Current.Items.Add("badgeConfigurations", badgeConfigurations);
+	}
+
+	int badgesCount = 0;
+	if (badgeConfigurations.Any())
+	{
+		foreach (string campaign in campaignBadgesValues)
+		{
+			if (!string.IsNullOrEmpty(campaign))
+			{
+
+				FieldValueViewModel availableCampaignsObject;
+				product.ProductFields.TryGetValue("Campaign", out availableCampaignsObject);
+
+				if (availableCampaignsObject != null)
+				{
+					string campaignType = string.Empty;
+
+					if (badgeConfigurations.ContainsKey(campaign))
+					{
+						ParagraphInfoViewModel paragraphviewModel;
+						if (badgeConfigurations.TryGetValue(campaign, out paragraphviewModel))
+						{
+							campaignType = paragraphviewModel.Item.GetRawValueString("CampaignType");
+						}
+					}
+
+					List<FieldOptionValueViewModel> availableCampaigns = (List<FieldOptionValueViewModel>)availableCampaignsObject.Value;
+
+					foreach (FieldOptionValueViewModel availableOption in availableCampaigns)
+					{
+						if (campaignType == availableOption.Value)
+						{
+							badgesCount++;
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+
 	bool saleBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("SaleBadgeDesign")) && Model.Item.GetRawValueString("SaleBadgeDesign") != "none" ? true : false;
 	bool newBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("NewBadgeDesign")) && Model.Item.GetRawValueString("NewBadgeDesign") != "none" ? true : false;
 	DateTime createdDate = product.Created.Value;
 	bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
 	showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
-	showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
+	showBadges = (!string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) && badgesCount != 0) ? true : showBadges;
 
-	if (showBadges) { 
+	if (showBadges)
+	{
 		<div class="@badgeSize @horizontalAlign item_@Model.Item.SystemName.ToLower()">
 			@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
 		</div>
-	} else if (Pageview.IsVisualEditorMode) { 
+	}
+	else if (Pageview.IsVisualEditorMode)
+	{
 		<span class="badge bg-success text-light rounded-0">@Translate("Badge example")</span>
 	}
-} else if (Pageview.IsVisualEditorMode) {
+}
+else if (Pageview.IsVisualEditorMode)
+{
 	<span class="badge bg-success text-light rounded-0">@Translate("Badge example")</span>
 }
- 
+
