@@ -4,9 +4,10 @@
 @using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
 @using Dynamicweb.Environment
 
-@{ 
-	bool isDetailPage = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductID"));
+@{
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	int productsCount = 0;
+	int maxProductsCounter = 0;
 
 	string productInfoFeed = "";
 	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
@@ -22,83 +23,33 @@
 		}
 	}
 
+	ProductListViewModel productList = null;
+	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
+	{
+		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
+	}
+	else if (Pageview.Item["DummyProductGroup"] != null && Pageview.IsVisualEditorMode)
+	{
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel groupList = pageViewModel.Item.GetValue("DummyProductGroup") != null ? pageViewModel.Item.GetValue("DummyProductGroup") as ProductListViewModel : new ProductListViewModel();
+
+		if (groupList?.Products is object)
+		{
+			productList = groupList;
+		}
+	}
 }
 
-@if (!isDetailPage) {
+@if (productList is object)
+{
 	<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
 		@{
 			bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
-
-			ProductListViewModel productList = new ProductListViewModel();
 
 			string googleTagManagerID = Pageview.AreaSettings.GetString("GoogleTagManagerID");
 			string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
 			var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
 			bool allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
-
-			ProductListViewModelSettings productListSetting = new ProductListViewModelSettings
-			{
-				LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
-				CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
-				CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
-				ShopId = Pageview.Area.EcomShopId
-			};
-
-			int productsCount = 0;
-			int maxProductsCounter = 0;
-
-			if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
-			{
-				productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
-			}
-			else if (Pageview.Item["DummyProductGroup"] != null)
-			{
-				var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
-				ProductListViewModel groupList = pageViewModel.Item.GetValue("DummyProductGroup") != null ? pageViewModel.Item.GetValue("DummyProductGroup") as ProductListViewModel : new ProductListViewModel();
-
-				if (groupList?.Group?.Id != null)
-				{
-					productList = ViewModelFactory.CreateView(productListSetting, groupList.Group.Id);
-					Dynamicweb.Context.Current.Items.Add("ProductList", productList);
-				}
-				else
-				{
-					productList = ViewModelFactory.CreateView(productListSetting, Dynamicweb.Ecommerce.Services.ProductGroups.GetGroups(Dynamicweb.Ecommerce.Common.Context.LanguageID).FirstOrDefault().Id);
-
-					Dynamicweb.Context.Current.Items.Add("ProductList", productList);
-				}
-			}
-			else if (Pageview.Item["DummyProductGroup"] == null)
-			{
-				productList = ViewModelFactory.CreateView(productListSetting, Dynamicweb.Ecommerce.Services.ProductGroups.GetGroups(Dynamicweb.Ecommerce.Common.Context.LanguageID).FirstOrDefault().Id);
-				Dynamicweb.Context.Current.Items.Add("ProductList", productList);
-			}
-
-			if (Pageview.Page.Item.SystemName == "Swift_ProductListComponentEdit")
-			{
-				if (productList.TotalProductsCount == 0)
-				{
-					ProductViewModelSettings productSetting = new ProductViewModelSettings
-					{
-						LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
-						CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
-						CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
-						ShopId = Pageview.Area.EcomShopId
-					};
-
-					foreach (var product in Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(3, Dynamicweb.Ecommerce.Common.Context.LanguageID, false))
-					{
-						var productView = ViewModelFactory.CreateView(productSetting, product.Id);
-						productList.Products.Add(productView);
-					}
-
-					Dynamicweb.Context.Current.Items["ProductList"] = productList;
-				}
-
-				productList.TotalProductsCount = 3;
-				productList.PageSize = 3;
-				maxProductsCounter = 3;
-			}
 
 			string groupId = productList?.Group?.Id != null ? productList.Group.Id : "";
 			string url = Dynamicweb.Context.Current.Request.RawUrl;
@@ -151,10 +102,10 @@
 							break;
 					}
 
-			<div class="grid">
-				@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
-				{
-					<script>
+					<div class="grid">
+						@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
+						{
+							<script>
 						gtag("event", "view_item_list", {
 							item_list_id: "product_list_item_repeater",
 							item_list_name: "Product list (Item Repeater)",
@@ -170,13 +121,14 @@
 								}
 							]
 						});
-					</script>
-				}
+							</script>
+						}
 
-				@foreach (ProductViewModel product in productList.Products)
-				{
-					if (maxProductsCounter == 0 || (productsCount < maxProductsCounter)) {
-						string link = product.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
+						@foreach (ProductViewModel product in productList.Products)
+						{
+							if (maxProductsCounter == 0 || (productsCount < maxProductsCounter))
+							{
+								string link = product.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
 
 								if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 								{
@@ -187,45 +139,46 @@
 									Dynamicweb.Context.Current.Items.Add("ProductDetails", product);
 								}
 
-						if (Model.Item.GetString("ListComponentSource") != null) {
-							<article class="@gridColumnMobileSize @gridColumnSize @listItemTheme @listItemPaddingClass d-flex flex-column position-relative product js-product" data-product-id="@product.Id" data-variant-id="@product.VariantId" itemscope itemtype="https://schema.org/Product">
-								@{
-									string clickProductLink = string.Empty;
-									if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
-									{
-										clickProductLink = "onclick=\"return clickProductLink('" + @product.Id + "', '" + @product.Name + "', '" + @product.VariantName + "', '" + @product.Price.CurrencyCode + "', '" + @PriceViewModelExtensions.ToStringInvariant(product.Price) + "')\"";
-									}
-								}
-								<a href="@link" class="stretched-link" onmouseover="swift.Image.swapImage(event)" onmouseout="swift.Image.swapImage(event)" @clickProductLink>
-									<span class="visually-hidden">@product.Name</span>
-								</a>
-								@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
+								if (Model.Item.GetString("ListComponentSource") != null)
 								{
-									<script>
-										function clickProductLink(productId, productName, productVariant, productCurrency, productPrice) {
-											if (typeof gtag !== "undefined") {
-												gtag("event", "select_item", {
-													item_list_id: "product_list_item_repeater",
-													item_list_name: "Product list (Item Repeater)",
-													items: [
-														{
-															item_id: productId,
-															item_name: productName,
-															currency: productCurrency,
-															item_list_id: "product_list_item_repeater",
-															item_list_name: "Product list (Item Repeater)",
-															item_variant: productVariant,
-															price: productPrice
-														}
-													]
-												});
+									<article class="@gridColumnMobileSize @gridColumnSize @listItemTheme @listItemPaddingClass d-flex flex-column position-relative product js-product" data-product-id="@product.Id" data-variant-id="@product.VariantId" itemscope itemtype="https://schema.org/Product">
+										@{
+											string clickProductLink = string.Empty;
+											if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
+											{
+												clickProductLink = "onclick=\"return clickProductLink('" + @product.Id + "', '" + @product.Name + "', '" + @product.VariantName + "', '" + @product.Price.CurrencyCode + "', '" + @PriceViewModelExtensions.ToStringInvariant(product.Price) + "')\"";
 											}
 										}
-									</script>
+										<a href="@link" class="stretched-link" onmouseover="swift.Image.swapImage(event)" onmouseout="swift.Image.swapImage(event)" @clickProductLink>
+											<span class="visually-hidden">@product.Name</span>
+										</a>
+										@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
+										{
+											<script>
+												function clickProductLink(productId, productName, productVariant, productCurrency, productPrice) {
+													if (typeof gtag !== "undefined") {
+														gtag("event", "select_item", {
+															item_list_id: "product_list_item_repeater",
+															item_list_name: "Product list (Item Repeater)",
+															items: [
+																{
+																	item_id: productId,
+																	item_name: productName,
+																	currency: productCurrency,
+																	item_list_id: "product_list_item_repeater",
+																	item_list_name: "Product list (Item Repeater)",
+																	item_variant: productVariant,
+																	price: productPrice
+																}
+															]
+														});
+													}
+												}
+											</script>
+										}
+										@RenderGrid(listItemSourcePageId)
+									</article>
 								}
-								@RenderGrid(listItemSourcePageId)
-							</article>
-						}
 
 								productsCount++;
 							}
@@ -265,7 +218,8 @@
 										<input type="hidden" name="SearchLayout" value="@searchLayout">
 									}
 
-									@if (!string.IsNullOrEmpty(mainProductId)) { 
+									@if (!string.IsNullOrEmpty(mainProductId))
+									{
 										<input type="hidden" name="MainProductID" value="@mainProductId">
 									}
 
@@ -278,7 +232,8 @@
 									<input type="hidden" name="SortBy" value="@sortBySelection">
 									<input type="hidden" name="RequestType" value="UpdateList">
 
-									@{
+									@if (productList?.FacetGroups is object)
+									{
 										string nextPageLink = "/Default.aspx?ID=" + Pageview.Page.ID + "&PageSize=" + pageSize + "&SortBy=" + sortBySelection;
 
 										foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
@@ -297,9 +252,9 @@
 
 										nextPageLink += productList?.Group?.Id != null ? "&GroupID=" + productList.Group.Id : "";
 										nextPageLink += !string.IsNullOrEmpty(searchQuery) ? "&q=" + searchQuery : "";
+									
+										<a href="@nextPageLink" class="btn btn-primary" onclick="swift.ProductList.Update(event)" id="LoadMoreButton_@Model.ID">@Translate("Load more products")</a>
 									}
-
-									<a href="@nextPageLink" class="btn btn-primary" onclick="swift.ProductList.Update(event)" id="LoadMoreButton_@Model.ID">@Translate("Load more products")</a>
 								</form>
 							}
 						</div>
@@ -365,5 +320,11 @@
 				}
 			}
 		}
+	</div>
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0" role="alert">
+		<span>@Translate("Product list item repeater: The repeater paragraph will be shown here, if any products are available")</span>
 	</div>
 }

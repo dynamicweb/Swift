@@ -4,44 +4,26 @@
 @using Dynamicweb.Environment
 
 @{
-	string searchParameter = Dynamicweb.Context.Current.Request.GetString("q");
-
-	ProductListViewModel productList = new ProductListViewModel();
-
-	ProductListViewModelSettings productSetting = new ProductListViewModelSettings
-	{
-		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
-		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
-		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
-		ShopId = Pageview.Area.EcomShopId
-	};
-
+	ProductListViewModel productList = null;
 	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
 	{
 		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
 	}
-	else if (Pageview.Item["DummyProductGroup"] != null)
+	else if (Pageview.Item["DummyProductGroup"] != null && Pageview.IsVisualEditorMode)
 	{
 		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
 		ProductListViewModel groupList = pageViewModel.Item.GetValue("DummyProductGroup") != null ? pageViewModel.Item.GetValue("DummyProductGroup") as ProductListViewModel : new ProductListViewModel();
 
-		if (groupList?.Group?.Id != null)
+		if (groupList?.Products is object)
 		{
-			productList = ViewModelFactory.CreateView(productSetting, groupList.Group.Id);
-			Dynamicweb.Context.Current.Items.Add("ProductList", productList);
+			productList = groupList;
 		}
-		else
-		{
-			productList = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.ProductGroups.GetGroups(Dynamicweb.Ecommerce.Common.Context.LanguageID).FirstOrDefault().Id);
+	}
+}
 
-			Dynamicweb.Context.Current.Items.Add("ProductList", productList);
-		}
-	}
-	else if (Pageview.Item["DummyProductGroup"] == null)
-	{
-		productList = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.ProductGroups.GetGroups(Dynamicweb.Ecommerce.Common.Context.LanguageID).FirstOrDefault().Id);
-		Dynamicweb.Context.Current.Items.Add("ProductList", productList);
-	}
+@if (productList is object)
+{
+	string searchParameter = Dynamicweb.Context.Current.Request.GetString("q");
 
 	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-4");
 
@@ -62,33 +44,42 @@
 	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
-}
 
-<div class="@(contentPadding)@(theme) item_@Model.Item.SystemName.ToLower()">
-	@if (!string.IsNullOrEmpty(headerName))
-	{
-		<div class="grid gap-0">
-			@if (layout == "text-start") {
-				<div class="g-col-12 g-col-lg-9">
-					<h1 class="@titleFontSize">@headerName</h1>
-				</div>
-				<div class="g-col-12 g-col-lg-3 text-lg-end mb-3 mb-lg-0">
-					@productList.TotalProductsCount @Translate("products")
-				</div>
-			} else {
-				<div class="g-col-12 text-center d-flex flex-column align-items-center">
-					<h1 class="@titleFontSize">@headerName</h1>
-				</div>
-				<div class="g-col-12 text-center mb-3">
-					@productList.TotalProductsCount @Translate("products")
-				</div>
-			}
-		</div>
-	}
-	else if (Pageview.IsVisualEditorMode)
-	{
-		<div class="alert alert-dark m-0" role="alert">
-			<span>@Translate("Product list header: The header will be shown here, if any")</span>
-		</div>
-	}
-</div>
+	<div class="@(contentPadding)@(theme) item_@Model.Item.SystemName.ToLower()">
+		@if (!string.IsNullOrEmpty(headerName))
+		{
+			<div class="grid gap-0">
+				@if (layout == "text-start")
+				{
+					<div class="g-col-12 g-col-lg-9">
+						<h1 class="@titleFontSize">@headerName</h1>
+					</div>
+					<div class="g-col-12 g-col-lg-3 text-lg-end mb-3 mb-lg-0">
+						@productList.TotalProductsCount @Translate("products")
+					</div>
+				}
+				else
+				{
+					<div class="g-col-12 text-center d-flex flex-column align-items-center">
+						<h1 class="@titleFontSize">@headerName</h1>
+					</div>
+					<div class="g-col-12 text-center mb-3">
+						@productList.TotalProductsCount @Translate("products")
+					</div>
+				}
+			</div>
+		}
+		else if (Pageview.IsVisualEditorMode)
+		{
+			<div class="alert alert-dark m-0" role="alert">
+				<span>@Translate("Product list header: The header will be shown here, if any")</span>
+			</div>
+		}
+	</div>
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0" role="alert">
+		<span>@Translate("Product list header: The header will be shown here, if any")</span>
+	</div>
+}

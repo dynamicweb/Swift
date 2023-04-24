@@ -4,43 +4,25 @@
 @using Dynamicweb.Environment
 
 @{
-	ProductListViewModel productList = new ProductListViewModel();
-
-	ProductListViewModelSettings productSetting = new ProductListViewModelSettings
-	{
-		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
-		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
-		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
-		ShopId = Pageview.Area.EcomShopId
-	};
-
+	ProductListViewModel productList = null;
 	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
 	{
 		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
 	}
-	else if (Pageview.Item["DummyProductGroup"] != null)
+	else if (Pageview.Item["DummyProductGroup"] != null && Pageview.IsVisualEditorMode)
 	{
 		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
 		ProductListViewModel groupList = pageViewModel.Item.GetValue("DummyProductGroup") != null ? pageViewModel.Item.GetValue("DummyProductGroup") as ProductListViewModel : new ProductListViewModel();
 
-		if (groupList?.Group?.Id != null)
+		if (groupList?.Products is object)
 		{
-			productList = ViewModelFactory.CreateView(productSetting, groupList.Group.Id);
-			Dynamicweb.Context.Current.Items.Add("ProductList", productList);
-		}
-		else
-		{
-			productList = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.ProductGroups.GetGroups(Dynamicweb.Ecommerce.Common.Context.LanguageID).FirstOrDefault().Id);
-
-			Dynamicweb.Context.Current.Items.Add("ProductList", productList);
+			productList = groupList;
 		}
 	}
-	else if (Pageview.Item["DummyProductGroup"] == null)
-	{
-		productList = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.ProductGroups.GetGroups(Dynamicweb.Ecommerce.Common.Context.LanguageID).FirstOrDefault().Id);
-		Dynamicweb.Context.Current.Items.Add("ProductList", productList);
-	}
+}
 
+@if (productList is object)
+{
 	string searchParameter = Dynamicweb.Context.Current.Request.GetString("q");
 
 	bool hideTitle = Model.Item.GetBoolean("HideGroupTitle");
@@ -65,24 +47,36 @@
 	string layout = Model.Item.GetRawValueString("Layout", "text-start");
 	string autoMargin = layout == "text-start" ? "my-auto" : "m-auto";
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
-}
 
-@if ((!string.IsNullOrEmpty(headerName) && !hideTitle) || !string.IsNullOrEmpty(groupDescription)) {
-	<div class="h-100 @(contentPadding)@(theme) item_@Model.Item.SystemName.ToLower()">
-		<div class="@(layout) @(maxWidth) w-100 @autoMargin">
-			@if (!hideTitle) {
-				<h1 class="@titleFontSize">@headerName</h1>
-			}
+	if ((!string.IsNullOrEmpty(headerName) && !hideTitle) || !string.IsNullOrEmpty(groupDescription))
+	{
+		<div class="h-100 @(contentPadding)@(theme) item_@Model.Item.SystemName.ToLower()">
+			<div class="@(layout) @(maxWidth) w-100 @autoMargin">
+				@if (!hideTitle)
+				{
+					<h1 class="@titleFontSize">@headerName</h1>
+				}
 
-			@if (!hideDescription && !string.IsNullOrEmpty(groupDescription)) {
-				<div class="@descriptionFontSize">
-					@groupDescription
-				</div>
-			}
+				@if (!hideDescription && !string.IsNullOrEmpty(groupDescription))
+				{
+					<div class="@descriptionFontSize">
+						@groupDescription
+					</div>
+				}
+			</div>
 		</div>
-	</div>
-} else if (Pageview.IsVisualEditorMode) {
+	}
+	else if (Pageview.IsVisualEditorMode)
+	{
+		<div class="alert alert-dark m-0" role="alert">
+			<span>@Translate("Product list info: The info paragraph will be shown here, if any")</span>
+		</div>
+	}
+}
+else if (Pageview.IsVisualEditorMode)
+{
 	<div class="alert alert-dark m-0" role="alert">
 		<span>@Translate("Product list info: The info paragraph will be shown here, if any")</span>
 	</div>
 }
+

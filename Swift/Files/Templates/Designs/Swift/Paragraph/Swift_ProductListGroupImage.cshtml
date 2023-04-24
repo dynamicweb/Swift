@@ -5,42 +5,24 @@
 @using Dynamicweb.Frontend
 
 @{
-	ProductListViewModel productList = new ProductListViewModel();
-
-	ProductListViewModelSettings productSetting = new ProductListViewModelSettings
-	{
-		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
-		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
-		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
-		ShopId = Pageview.Area.EcomShopId
-	};
-
+	ProductListViewModel productList = null;
 	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
 	{
 		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
 	}
-	else if (Pageview.Item["DummyProductGroup"] != null)
+	else if (Pageview.Item["DummyProductGroup"] != null && Pageview.IsVisualEditorMode)
 	{
 		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
 		ProductListViewModel groupList = pageViewModel.Item.GetValue("DummyProductGroup") != null ? pageViewModel.Item.GetValue("DummyProductGroup") as ProductListViewModel : new ProductListViewModel();
 
-		if (groupList?.Group?.Id != null)
+		if (groupList?.Products is object)
 		{
-			productList = ViewModelFactory.CreateView(productSetting, groupList.Group.Id);
-			Dynamicweb.Context.Current.Items.Add("ProductList", productList);
-		}
-		else
-		{
-			productList = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.ProductGroups.GetGroups(Dynamicweb.Ecommerce.Common.Context.LanguageID).FirstOrDefault().Id);
-			Dynamicweb.Context.Current.Items.Add("ProductList", productList);
+			productList = groupList;
 		}
 	}
-	else if (Pageview.Item["DummyProductGroup"] == null)
-	{
-		productList = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.ProductGroups.GetGroups(Dynamicweb.Ecommerce.Common.Context.LanguageID).FirstOrDefault().Id);
-		Dynamicweb.Context.Current.Items.Add("ProductList", productList);
-	}
+}
 
+@if (productList is object) { 
 	string groupImage = productList?.Group?.Assets != null ? productList.Group.Assets.FirstOrDefault(x => x.Name == "LargeImage").Value : "";
 	string groupName = productList?.Group?.Name != null ? productList.Group.Name : "";
 
@@ -64,16 +46,22 @@
 
 	parms.Add("style", "");
 	parms.Add("alt", groupName);
-}
 
-@if (!string.IsNullOrEmpty(groupImage)) {
-	<div class="item_@Model.Item.SystemName.ToLower()">
-		<figure class="m-0@(ratioCssClass)@(fillClass)" @ratioVariable>
-			@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = groupImage }, parms)
-		</figure>
-	</div>
-} else if (Pageview.IsVisualEditorMode) {
+	if (!string.IsNullOrEmpty(groupImage)) {
+		<div class="item_@Model.Item.SystemName.ToLower()">
+			<figure class="m-0@(ratioCssClass)@(fillClass)" @ratioVariable>
+				@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = groupImage }, parms)
+			</figure>
+		</div>
+	} else if (Pageview.IsVisualEditorMode) {
+		<div class="alert alert-dark m-0" role="alert">
+			<span>@Translate("Product list group image: The image will be shown here, if any")</span>
+		</div>
+	}
+} else if (Pageview.IsVisualEditorMode)
+{
 	<div class="alert alert-dark m-0" role="alert">
 		<span>@Translate("Product list group image: The image will be shown here, if any")</span>
 	</div>
 }
+
