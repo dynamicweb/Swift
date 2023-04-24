@@ -10,17 +10,25 @@
 	string linkFontWeight = Model.Parameters["LinkFontWeight"] != null ? Model.Parameters["LinkFontWeight"].ToString() : string.Empty;
 	string linkCasing = Model.Parameters["LinkCasing"] != null ? Model.Parameters["LinkCasing"].ToString() : string.Empty;
 	string linkFontSize = Model.Parameters["LinkFontSize"] != null ? Model.Parameters["LinkFontSize"].ToString() : string.Empty;
+
+	string layout = Model?.Parameters["Layout"].ToString();
+	string iconSize = "icon-3";
+
+	if (linkFontSize == "fs-7")
+	{
+		iconSize = "icon-2";
+	}
+	if (linkFontSize == "fs-5")
+	{
+		iconSize = "icon-4";
+	}
 }
 
-<nav class="d-none d-lg-flex py-0 @navAlignment desktop">
-	@{@RenderFirstLevelNodes(Model.Nodes, theme, linkFontWeight, linkCasing, linkFontSize)}
+<nav class="d-flex py-0 @navAlignment">
+	@{@RenderFirstLevelNodes(Model.Nodes, theme, linkFontWeight, linkCasing, linkFontSize, iconSize)}
 </nav>
 
-<nav class="d-flex d-lg-none py-0 @navAlignment mobile">
-	@{@RenderFirstLevelNodesMobile(Model.Nodes, linkFontWeight, linkCasing, linkFontSize, navAlignment)}
-</nav>
-
-@helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string theme, string linkFontWeight, string linkCasing, string linkFontSize)
+@helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string theme, string linkFontWeight, string linkCasing, string linkFontSize, string iconSize)
 {
 	string dropdownAlignment = Model.Parameters["DropdownAlignment"] != null ? Model.Parameters["DropdownAlignment"].ToString() : string.Empty;
 	string dropdownLinkHeaderFontWeight = Model.Parameters["DropdownLinkHeaderFontWeight"] != null ? Model.Parameters["DropdownLinkHeaderFontWeight"].ToString() : string.Empty;
@@ -41,13 +49,28 @@
 	imageAlignment = dropdownAlignment == "justify-content-end text-end" && productGroupImagePlacement == "flex-row-reverse" ? "align-items-center" : imageAlignment;
 	bool showProductGroupPromotionImage = Model.Parameters.ContainsKey("ShowProductGroupPromotionImage") ? Convert.ToBoolean(Model.Parameters["ShowProductGroupPromotionImage"].ToString()) : false;
 	string menuId = Model.Parameters.ContainsKey("menu-id") ? $"menu_{Model.Parameters["menu-id"].ToString().ToLower()}" : string.Empty;
+	int currentParagraphId = Pageview.CurrentParagraph.ID;
 
 	<ul class="nav flex-nowrap @menuId">
 		@foreach (var node in nodes)
 		{
 			var page = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
-			var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page);
-			string submenuType = pageViewModel?.PropertyItem != null ? pageViewModel.PropertyItem.GetRawValueString("SubmenuType", "auto") : "auto";
+			string pageType = !string.IsNullOrEmpty(page.ItemType) ? page.ItemType : "Swift_Page";
+
+			submenuType = "auto";
+			if (page.PropertyItem.TryGetValue("SubmenuType", out object submenuTypeValue))
+			{
+				submenuType = Dynamicweb.Core.Converter.ToString(submenuTypeValue);
+			}
+			pageIcon = string.Empty;
+			if (page.PropertyItem.TryGetValue("Icon", out object pageIconValue))
+			{
+				pageIcon = Dynamicweb.Core.Converter.ToString(pageIconValue);
+			}
+
+			//var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page);
+			//string submenuType = pageViewModel?.PropertyItem != null ? pageViewModel.PropertyItem.GetRawValueString("SubmenuType", "auto") : "auto";
+			//string pageIcon = pageViewModel?.PropertyItem != null ? pageViewModel.PropertyItem.GetRawValueString("Icon", "") : "";
 
 			var hasChildren = node.Nodes.Count() > 0;
 			string dropdownAttributes = hasChildren ? " role=\"button\" aria-haspopup=\"true\" aria-expanded=\"false\" data-bs-toggle=\"dropdown\" data-bs-offset=\"0,0\"" : "";
@@ -66,20 +89,20 @@
 			string submenuTypeCss = submenuType == "dropdown" ? " dropdown" : "";
 			submenuTypeCss = submenuType == "megamenu" ? " dropdown position-static" : submenuTypeCss;
 
-			string nodeId = !string.IsNullOrEmpty(node.GroupId) ? "Megamenu_" + node.GroupId + "_" + Pageview.CurrentParagraph.ID : "Megamenu_Page_" + node.PageId.ToString() + "_" + Pageview.CurrentParagraph.ID;
+			string nodeId = !string.IsNullOrEmpty(node.GroupId) ? "Megamenu_" + node.GroupId + "_" + currentParagraphId : "Megamenu_Page_" + node.PageId.ToString() + "_" + currentParagraphId;
 			string dataType = !string.IsNullOrEmpty(node.GroupId) ? "group" : "page";
-			
+
 			<li id="@(nodeId)" data-type="@dataType" class="nav-item@(node.IsActive ? " active" : "")@submenuTypeCss">
 				@if (node.IsClickable)
 				{
 					<a class="nav-link p-2 text-decoration-underline-hover @linkFontWeight @linkCasing @linkFontSize@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" href="@node.Link" @dropdownAttributes id="NavLink_@nodeId">
-						@{@RenderNavigationItem(node, pageViewModel)}
+						@{@RenderNavigationItem(node, pageType, pageIcon, iconSize)}
 					</a>
 				}
 				else
 				{
 					<span class="nav-link p-2 @linkFontWeight @linkCasing @linkFontSize @dropdownAlignment@(hasChildren ? " dropdown-toggle" : "")" @dropdownAttributes id="NavLink_@nodeId">
-						@{@RenderNavigationItem(node, pageViewModel)}
+						@{@RenderNavigationItem(node, pageType, pageIcon, iconSize)}
 					</span>
 				}
 
@@ -96,7 +119,7 @@
 											<div class="d-flex flex-wrap gap-3 mx-n2 mx-xxl-n3 @dropdownAlignment">
 												@foreach (var subnode in node.Nodes)
 												{
-													nodeId = !string.IsNullOrEmpty(subnode.GroupId) ? "Megamenu_" + subnode.GroupId + "_" + Pageview.CurrentParagraph.ID : "Megamenu_Page_" + subnode.PageId.ToString() + "_" + Pageview.CurrentParagraph.ID;
+													nodeId = !string.IsNullOrEmpty(subnode.GroupId) ? "Megamenu_" + subnode.GroupId + "_" + currentParagraphId : "Megamenu_Page_" + subnode.PageId.ToString() + "_" + currentParagraphId;
 													dataType = !string.IsNullOrEmpty(subnode.GroupId) ? "group" : "page";
 
 													<div class="col-4 col-xl-3 col-xxl-2">
@@ -115,7 +138,9 @@
 																	<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
 																}
 															</a>
-														} else { 
+														}
+														else
+														{
 															<div id="@(nodeId)" data-type="@dataType" class="nav-link lh-sm text-break">
 																@if (productGroupImagePlacement != "none")
 																{
@@ -135,7 +160,7 @@
 														{
 															foreach (var subsubnode in subnode.Nodes)
 															{
-																nodeId = !string.IsNullOrEmpty(subsubnode.GroupId) ? "Megamenu_" + subsubnode.GroupId + "_" + Pageview.CurrentParagraph.ID : "Megamenu_Page_" + subsubnode.PageId.ToString() + "_" + Pageview.CurrentParagraph.ID;
+																nodeId = !string.IsNullOrEmpty(subsubnode.GroupId) ? "Megamenu_" + subsubnode.GroupId + "_" + currentParagraphId : "Megamenu_Page_" + subsubnode.PageId.ToString() + "_" + currentParagraphId;
 																dataType = !string.IsNullOrEmpty(subsubnode.GroupId) ? "group" : "page";
 
 																if (subsubnode.IsClickable)
@@ -153,7 +178,9 @@
 																			<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
 																		}
 																	</a>
-																} else { 
+																}
+																else
+																{
 																	<div class="nav-link text-decoration-underline-hover lh-sm text-break" @(subnode.IsActive ? " aria-current='page'" : "")>
 																		@if (productGroupImagePlacement != "none")
 																		{
@@ -184,11 +211,12 @@
 									<div class="d-flex flex-wrap mx-n2 mx-xxl-n3 @dropdownAlignment">
 										@foreach (var subnode in node.Nodes)
 										{
-											nodeId = !string.IsNullOrEmpty(subnode.GroupId) ? "Megamenu_" + subnode.GroupId + "_" + Pageview.CurrentParagraph.ID : "Megamenu_Page_" + subnode.PageId.ToString() + "_" + Pageview.CurrentParagraph.ID;
+											nodeId = !string.IsNullOrEmpty(subnode.GroupId) ? "Megamenu_" + subnode.GroupId + "_" + currentParagraphId : "Megamenu_Page_" + subnode.PageId.ToString() + "_" + currentParagraphId;
 											dataType = !string.IsNullOrEmpty(subnode.GroupId) ? "group" : "page";
 
 											<div class="col-4 col-xl-3 col-xxl-2">
-												@if (subnode.IsClickable) { 
+												@if (subnode.IsClickable)
+												{
 													<a id="@(nodeId)" data-type="@dataType" href="@subnode.Link" class="nav-link text-decoration-underline-hover lh-sm text-break">
 														@if (productGroupImagePlacement != "none")
 														{
@@ -202,7 +230,9 @@
 															<h6 class="m-0 @dropdownLinkHeaderFontWeight @dropdownLinkHeaderCasing @dropdownLinkHeaderFontSize">@subnode.Name</h6>
 														}
 													</a>
-												} else { 
+												}
+												else
+												{
 													<div id="@(nodeId)" data-type="@dataType" class="nav-link -sm text-break">
 														@if (productGroupImagePlacement != "none")
 														{
@@ -223,10 +253,11 @@
 												{
 													foreach (var subsubnode in subnode.Nodes)
 													{
-														nodeId = !string.IsNullOrEmpty(subsubnode.GroupId) ? "Megamenu_" + subsubnode.GroupId + "_" + Pageview.CurrentParagraph.ID : "Megamenu_Page_" + subsubnode.PageId.ToString() + "_" + Pageview.CurrentParagraph.ID;
+														nodeId = !string.IsNullOrEmpty(subsubnode.GroupId) ? "Megamenu_" + subsubnode.GroupId + "_" + currentParagraphId : "Megamenu_Page_" + subsubnode.PageId.ToString() + "_" + currentParagraphId;
 														dataType = !string.IsNullOrEmpty(subsubnode.GroupId) ? "group" : "page";
 
-														if (subsubnode.IsClickable) { 
+														if (subsubnode.IsClickable)
+														{
 															<a id="@(nodeId)" data-type="@dataType" class="nav-link text-decoration-underline-hover lh-sm text-break" href="@subsubnode.Link" @(subnode.IsActive ? " aria-current='page'" : "")>
 																@if (productGroupImagePlacement != "none")
 																{
@@ -240,7 +271,9 @@
 																	<span class="@dropdownLinkFontWeight @dropdownLinkCasing @dropdownLinkFontSize">@subsubnode.Name</span>
 																}
 															</a>
-														} else { 
+														}
+														else
+														{
 															<div id="@(nodeId)" data-type="@dataType" class="nav-link lh-sm text-break" @(subnode.IsActive ? " aria-current='page'" : "")>
 																@if (productGroupImagePlacement != "none")
 																{
@@ -321,47 +354,9 @@
 	</ul>
 }
 
-@helper RenderFirstLevelNodesMobile(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string linkFontWeight, string linkCasing, string linkFontSize, string navAlignment)
+@helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node, string pageType, string pageIcon, string iconSize)
 {
-	<div class="navbar-nav">
-		@foreach (var node in nodes)
-		{
-			var page = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
-			var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page);
-			var hasChildren = node.Nodes.Count() > 0;
 
-			if (node.IsClickable)
-			{
-				<a class="nav-link text-nowrap @linkFontWeight @linkCasing @linkFontSize @(node.IsActive ? " active" : "")" href="@node.Link">
-					@{@RenderNavigationItem(node, pageViewModel)}
-				</a>
-			}
-			else
-			{
-				<span class="nav-link text-nowrap @linkFontWeight @linkCasing @linkFontSize">
-					@{@RenderNavigationItem(node, pageViewModel)}
-				</span>
-			}
-		}
-	</div>
-}
-
-@helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node, PageInfoViewModel pageViewModel)
-{
-	string pageType = pageViewModel?.Item?.SystemName != null ? pageViewModel.Item.SystemName : "Swift_Page";
-	string linkFontSize = Model.Parameters["LinkFontSize"].ToString();
-	string layout = Model?.Parameters["Layout"].ToString();
-	string icon = pageViewModel?.PropertyItem != null ? pageViewModel.PropertyItem.GetRawValueString("Icon", "") : "";
-	string iconSize = "icon-3";
-
-	if (linkFontSize == "fs-7")
-	{
-		iconSize = "icon-2";
-	}
-	if (linkFontSize == "fs-5")
-	{
-		iconSize = "icon-4";
-	}
 
 	if (pageType == "Swift_Cart")
 	{
@@ -379,49 +374,48 @@
 				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
 				break;
 			case "iconsOnly":
-				{@RenderIcon(icon, iconSize)}
+				{@RenderIcon(pageIcon, iconSize)}
 				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
 				break;
 			case "iconsAndLinks":
-				{@RenderIcon(icon, iconSize)}
+				{@RenderIcon(pageIcon, iconSize)}
 				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
 				<span class="align-middle">@node.Name</span>
 				break;
 			case "linksAndIcons":
 				<span class="align-middle">@node.Name</span>
 				<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
-				{@RenderIcon(icon, iconSize)}
+				{@RenderIcon(pageIcon, iconSize)}
 				break;
 		}
 	}
 	else
-	{
+		{
 		switch (layout)
 		{
 			case "linksOnly":
 				<span class="align-middle">@node.Name</span>
 				break;
-
 			case "iconsOnly":
-				{@RenderIcon(icon, iconSize)}
+				{@RenderIcon(pageIcon, iconSize)}
 				break;
 			case "iconsAndLinks":
-				{@RenderIcon(icon, iconSize)}
+				{@RenderIcon(pageIcon, iconSize)}
 				<span class="align-middle">@node.Name</span>
 				break;
 			case "linksAndIcons":
 				<span class="align-middle">@node.Name</span>
-				{@RenderIcon(icon, iconSize)}
+				{@RenderIcon(pageIcon, iconSize)}
 				break;
 		}
 	}
 }
 
-@helper RenderIcon(string icon, string iconSize)
+@helper RenderIcon(string pageIcon, string iconSize)
 {
-	if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none"))
+	if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
 	{
-		string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
+		string iconPath = Dynamicweb.Context.Current.Server.MapPath(pageIcon);
 
 		<span class="@iconSize">
 			@ReadFile(iconPath)
@@ -556,7 +550,7 @@
 						{
 							var imagePath = Dynamicweb.Context.Current.Server.UrlEncode("/Files/Images/" + groupImage);
 							var imageSrc = $"/Admin/Public/GetImage.ashx?Image={imagePath}&Width={productGroupImageSize}&Height={productGroupImageSize}&crop=0";
-							
+
 							<img loading="lazy" class="@productGroupImageShape" alt="@groupName" width="@productGroupImageSize" height="@productGroupImageSize" src="@imageSrc">
 						}
 					}
