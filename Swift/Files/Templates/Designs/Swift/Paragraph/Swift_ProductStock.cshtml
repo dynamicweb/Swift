@@ -2,36 +2,28 @@
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
-	ProductViewModel product = new ProductViewModel();
-
-	ProductViewModelSettings productSetting = new ProductViewModelSettings
-	{
-		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
-		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
-		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
-		ShopId = Pageview.Area.EcomShopId
-	};
-
+	ProductViewModel product = null;
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
-	} else if (Pageview.Item["DummyProduct"] != null) {
-
-		string dummyProductId = "";
+	}
+	else if (Pageview.Item["DummyProduct"] != null)
+	{
 		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
 		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
-		if (productList.Products != null)
+
+		if (productList?.Products is object)
 		{
-			foreach (var p in productList.Products) { dummyProductId = p.Id; }
-			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
-			product = dummyProduct;
-		} else {
-			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+			product = productList.Products[0];
 		}
-	} else if (Pageview.Item["DummyProduct"] == null) {
-		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 	}
 
+	bool isErpConnectionDown = !Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsWebServiceConnectionAvailable"]);
+	bool hideStock = Model.Item.GetBoolean("HideStockState") || (Pageview.AreaSettings.GetBoolean("ErpDownHideStock") && isErpConnectionDown);
+}
+
+@if (product is object && !hideStock)
+{
 	bool IsNeverOutOfStock = product.NeverOutOfstock;
 
 	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
@@ -39,9 +31,6 @@
 	horizontalAlign = horizontalAlign == "end" ? "text-end" : horizontalAlign;
 	bool hasExpectedDelivery = product.ExpectedDelivery != null && product.ExpectedDelivery > DateTime.Now;
 	string expectedDeliveryDate = product.ExpectedDelivery?.ToShortDateString() ?? "";
-
-	bool isErpConnectionDown = !Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsWebServiceConnectionAvailable"]);
-	bool hideStock = Model.Item.GetBoolean("HideStockState") || (Pageview.AreaSettings.GetBoolean("ErpDownHideStock") && isErpConnectionDown);
 
 	string liveInfoClass = "";
 	string productInfoFeed = "";
@@ -58,11 +47,9 @@
 		}
 		liveInfoClass = "js-live-info";
 	}
-}
 
-@if (!hideStock)
-{
-	if (!IsNeverOutOfStock && product.Id != null) {
+	if (!IsNeverOutOfStock)
+	{
 		if (isLazyLoadingForProductInfoEnabled)
 		{
 			<div class="js-stock-state @horizontalAlign item_@Model.Item.SystemName.ToLower() @liveInfoClass" data-product-id="@product.Id" data-variant-id="@product.VariantId" @productInfoFeed>
@@ -95,7 +82,8 @@
 
 			var reserveMode = Dynamicweb.Ecommerce.Frontend.Cart.ProductReserve.Mode;
 			double? reservedAmount = 0;
-			if (reserveMode == Dynamicweb.Ecommerce.Frontend.Cart.ProductReserveMode.AddToCart) {
+			if (reserveMode == Dynamicweb.Ecommerce.Frontend.Cart.ProductReserveMode.AddToCart)
+			{
 				reservedAmount = Dynamicweb.Ecommerce.Frontend.Cart.ProductReserve.GetReservedAmount(product.Id, product.VariantId, 0, unitId);
 			}
 			double? currentStockLevel = product.StockLevel - reservedAmount;
@@ -127,7 +115,9 @@
 
 			</div>
 		}
-	} else if (Pageview.IsVisualEditorMode) {
+	}
+	else if (Pageview.IsVisualEditorMode)
+	{
 		<div class="alert alert-info">@Translate("No products available")</div>
 	}
 }

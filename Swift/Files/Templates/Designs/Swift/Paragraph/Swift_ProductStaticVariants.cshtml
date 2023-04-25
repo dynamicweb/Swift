@@ -3,63 +3,39 @@
 @using Dynamicweb.Frontend
 @using System.IO
 
-@functions {
-	public ProductViewModel product { get; set; } = new ProductViewModel();
-}
-
 @{
-	@* Get the product data *@
-	ProductViewModelSettings productSetting = new ProductViewModelSettings
-	{
-		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
-		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
-		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
-		ShopId = Pageview.Area.EcomShopId
-	};
-
+	ProductViewModel product = null;
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
-	else if (Pageview.Item["DummyProduct"] != null && Pageview.IsVisualEditorMode)
+	else if (Pageview.Item["DummyProduct"] != null)
 	{
-		string dummyProductId = "";
 		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
 		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
-		if (productList.Products != null)
-		{
-			foreach (var p in productList.Products) { dummyProductId = p.Id; }
-			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
-			product = dummyProduct;
-		}
-		else
-		{
-			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
-		}
-	}
-	else if (Pageview.Item["DummyProduct"] == null)
-	{
-		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
-	}
 
+		if (productList?.Products is object)
+		{
+			product = productList.Products[0];
+		}
+	}
+}
+
+@if (product is object)
+{
 	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
 	horizontalAlign = horizontalAlign == "center" ? "align-items-center text-center" : horizontalAlign;
 	horizontalAlign = horizontalAlign == "end" ? "align-items-end text-end" : horizontalAlign;
 
 	bool hideGroupHeaders = Model.Item.GetBoolean("HideGroupHeaders");
-
 	string variantsLayout = Model.Item.GetRawValueString("Layout", "images");
-}
 
-@if (product.Id != null)
-{
 	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
 
 	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
 	bool anonymousUser = Pageview.User == null;
 	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser || Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && !Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsWebServiceConnectionAvailable"]);
 
-	int variantGroupCount = 0;
 	var selectedGroups = Model.Item.GetRawValueString("Groups").Split(',').ToList();
 	int showMaxVariants = Model.Item.GetInt32("MaxVariantsToRender") != 0 ? Model.Item.GetInt32("MaxVariantsToRender") : 1;
 
@@ -74,7 +50,8 @@
 				<div>
 					@foreach (var selectedGroupId in selectedGroups)
 					{
-						if (!hideGroupHeaders && groupId == selectedGroupId) { 
+						if (!hideGroupHeaders && groupId == selectedGroupId)
+						{
 							<h3 class="h6 m-0">@variantGroup.Name</h3>
 						}
 					}
@@ -97,7 +74,8 @@
 												string defaultPrice = !hidePrice ? product.Price.PriceFormatted : "0";
 												string variantPrice = !hidePrice ? product.Price.PriceFormatted : "0";
 
-												if (variantsLayout == "images") { 												
+												if (variantsLayout == "images")
+												{
 													if (isLazyLoadingForProductInfoEnabled)
 													{
 														<figure class="w-100 d-block m-0" data-price-formatted="" onmouseover="swift.StaticVariants.SwitchProduct(event, '@product.Id', this.getAttribute('data-price-formatted'), '@variantImage'); event.stopPropagation();" onmouseout="swift.StaticVariants.SwitchProduct(event, '@product.Id', this.getAttribute('data-price-formatted'), '@defaultProductImage')" style="z-index: 1">
@@ -114,7 +92,9 @@
 															</div>
 														</figure>
 													}
-												} else { 
+												}
+												else
+												{
 													<span class="colorbox colorbox-sm rounded-circle border me-1" style="background-color: @variant.Color"></span>
 												}
 											}
@@ -158,13 +138,13 @@
 
 						@if (variantsCount == 0 && Pageview.IsVisualEditorMode)
 						{
-					<div class="alert alert-dark m-0">@Translate("No variants available")</div>
+							<div class="alert alert-dark m-0">@Translate("No variants available")</div>
 						}
 					</div>
 				</div>
 			}
 		</div>
-	} 
+	}
 }
 else if (Pageview.IsVisualEditorMode)
 {
