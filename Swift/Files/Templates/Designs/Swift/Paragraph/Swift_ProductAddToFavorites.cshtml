@@ -3,50 +3,41 @@
 @using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
 
 @{
-	ProductViewModel product = new ProductViewModel();
-
-	ProductViewModelSettings productSetting = new ProductViewModelSettings
-	{
-		LanguageId = Dynamicweb.Ecommerce.Common.Context.LanguageID,
-		CurrencyCode = Dynamicweb.Ecommerce.Common.Context.Currency.Code,
-		CountryCode = Dynamicweb.Ecommerce.Common.Context.Country.Code2,
-		ShopId = Pageview.Area.EcomShopId
-	};
-
+	ProductViewModel product = null;
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
-	} else if (Pageview.Item["DummyProduct"] != null) {
-
-		string dummyProductId = "";
+	}
+	else if (Pageview.Item["DummyProduct"] != null)
+	{
 		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
 		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
-		if (productList.Products != null)
+
+		if (productList?.Products is object)
 		{
-			foreach (var p in productList.Products) { dummyProductId = p.Id; }
-			ProductViewModel dummyProduct = dummyProductId != "" ? ViewModelFactory.CreateView(productSetting, dummyProductId) : new ProductViewModel();
-			product = dummyProduct;
-		} else {
-			product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
+			product = productList.Products[0];
 		}
-	} else if (Pageview.Item["DummyProduct"] == null) {
-		product = ViewModelFactory.CreateView(productSetting, Dynamicweb.Ecommerce.Services.Products.GetLastActiveProducts(1, Dynamicweb.Ecommerce.Common.Context.LanguageID, false).FirstOrDefault().Id);
 	}
 
-	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", string.Empty);
 	bool anonymousUser = Pageview.User == null;
 }
 
-
-@if (!anonymousUser && product.Id != null) {
+@if (product is object && !anonymousUser)
+{
 	@RenderFavorites(product)
 }
 
-else if (Pageview.IsVisualEditorMode) { 
+else if (product is object && Pageview.IsVisualEditorMode)
+{
 	@RenderFavorites(product)
 }
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0">@Translate("No products available")</div>
+}
 
-@helper RenderFavorites(ProductViewModel product) { 
+@helper RenderFavorites(ProductViewModel product)
+{
 	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", string.Empty);
 	horizontalAlign = horizontalAlign == "center" ? "justify-content-center" : horizontalAlign;
 	horizontalAlign = horizontalAlign == "end" ? "justify-content-end" : horizontalAlign;
@@ -85,7 +76,7 @@ else if (Pageview.IsVisualEditorMode) {
 	int defaultFavoriteListId = 0;
 
 	if (Pageview?.User?.ID != null)
-    {
+	{
 		IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
 		if (favoreiteLists.Count() == 1)
 		{
@@ -94,14 +85,15 @@ else if (Pageview.IsVisualEditorMode) {
 				defaultFavoriteListId = list.ListId;
 			}
 		}
-    }
+	}
 
 	favoriteParameters.Add("ListId", defaultFavoriteListId);
 	favoriteParameters.Add("ButtonSize", buttonSize);
 	favoriteParameters.Add("ButtonStyle", buttonStyleClass);
 	favoriteParameters.Add("ButtonWidth", fullWidth);
 
-	if (!Model.Item.GetBoolean("HideButtonText")) {
+	if (!Model.Item.GetBoolean("HideButtonText"))
+	{
 		favoriteParameters.Add("ShowButtonText", true);
 	}
 
