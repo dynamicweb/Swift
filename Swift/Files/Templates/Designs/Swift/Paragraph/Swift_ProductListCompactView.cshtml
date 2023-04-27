@@ -251,8 +251,10 @@
 
 					<div class="grid gap-1 flex-grow-1 align-items-baseline">
 						<div class="g-col-12 g-col-lg-6">
-							<h3 class="h6 mb-0">@product.Name @if (!string.IsNullOrEmpty(product.VariantName))
-							{<text>(@product.VariantName)</text>}</h3>
+							<h3 class="h6 mb-0">
+								@product.Name @if (!string.IsNullOrEmpty(product.VariantName))
+							{<text>(@product.VariantName)</text>}
+							</h3>
 
 							@if (!hideProductNumber)
 							{
@@ -522,16 +524,19 @@
 	{
 		if (isLazyLoadingForProductInfoEnabled)
 		{
+			string inStockStateLabel = !string.IsNullOrEmpty(product.StockStatus) ? product.StockStatus : Translate("In stock");
+			string noStockStateLabel = !string.IsNullOrEmpty(product.StockStatus) ? product.StockStatus : Translate("Out of Stock");
+
 			<div class="js-stock-state">
 				@if (!Model.Item.GetBoolean("HideInventory"))
 				{
-					<p class="fs-7 text-success m-0 d-none" data-show-if="LiveProductInfo.product.StockLevel > 0"><span class="js-text-stock"></span> @Translate("In stock")</p>
+					<p class="fs-7 text-success m-0 d-none" data-show-if="LiveProductInfo.product.StockLevel > 0"><span class="js-text-stock"></span> @inStockStateLabel</p>
 				}
 				else
 				{
-					<p class="fs-7 text-success m-0 d-none" data-show-if="LiveProductInfo.product.StockLevel > 0">@Translate("In stock")</p>
+					<p class="fs-7 text-success m-0 d-none" data-show-if="LiveProductInfo.product.StockLevel > 0">@inStockStateLabel</p>
 				}
-				<p class="fs-7 text-danger m-0 d-none" data-show-if="LiveProductInfo.product.StockLevel <= 0">@Translate("Out of Stock")</p>
+				<p class="fs-7 text-danger m-0 d-none" data-show-if="LiveProductInfo.product.StockLevel <= 0">@noStockStateLabel</p>
 
 				<p class="d-none" data-show-if="LiveProductInfo.product.ExpectedDelivery != null && new Date(LiveProductInfo.product.ExpectedDelivery) > new Date()">
 					<span>@Translate("Expected:")</span>
@@ -541,20 +546,25 @@
 		}
 		else
 		{
-			if (product.StockLevel > 0)
+			var reserveMode = Dynamicweb.Ecommerce.Frontend.Cart.ProductReserve.Mode;
+			double? reservedAmount = 0;
+			if (reserveMode == Dynamicweb.Ecommerce.Frontend.Cart.ProductReserveMode.AddToCart)
 			{
-				if (!Model.Item.GetBoolean("HideInventory"))
-				{
-					<p class="fs-7 text-success m-0">@stockLevel @Translate("In stock")</p>
-				}
-				else
-				{
-					<p class="fs-7 text-success m-0">@Translate("In stock")</p>
-				}
+				reservedAmount = Dynamicweb.Ecommerce.Frontend.Cart.ProductReserve.GetReservedAmount(product.Id, product.VariantId, 0, "");
+			}
+
+			double? currentStockLevel = product.StockLevel - reservedAmount;
+			string stockStateLabel = currentStockLevel > 0 ? Translate("In stock") : Translate("Out of stock");
+			stockStateLabel = !string.IsNullOrEmpty(product.StockStatus) ? product.StockStatus : stockStateLabel;
+			string stockStateCss = currentStockLevel > 0 ? "text-success" : "text-danger";
+
+			if (!Model.Item.GetBoolean("HideInventory") && currentStockLevel > 0)
+			{
+				<p class="fs-7 m-0 @stockStateCss">@currentStockLevel @stockStateLabel</p>
 			}
 			else
 			{
-				<p class="fs-7 text-danger m-0">@Translate("Out of Stock")</p>
+				<p class="fs-7 m-0 @stockStateCss">@stockStateLabel</p>
 			}
 
 			if (hasExpectedDelivery)
