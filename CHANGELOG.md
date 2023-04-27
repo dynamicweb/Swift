@@ -1,5 +1,43 @@
 # Changelog
 
+## [v1.21.0] - 27-04-2023
+
+## Bugfixes
+Itemtypes: Navigation, hover underline doesn't disappear 
+Itemtypes: Mega menu, the menu items doesn't align with 1. level 
+Itemtypes: Preferences, the menu triggers hidden row 
+Itemtypes: Article list, slider indicators are not based on number of articles
+Itemtypes: Article list, slider item 1 doesn't have a left border and shadow.
+Itemtypes: Search, text is not wrapped
+Itemtypes: Sliders, Selected variants in shown wrong sort order
+Itemtypes: Media, Media Gallery, Media Table: No fallback to first frame if video doesn't have a thumbnail
+Itemtypes: ProductDetailsImage, Fix default image shown twice
+Itemtypes: Favorites, icon not updated and JS error when add/remove. Re-work and simplify the favorites markup
+Itemtypes: Variants with Live Product Info not updating properly
+System emails: Background color not rendered in emails
+General: Related product list, Quantity selector UI broken at mobile. Set min width on the quantity selector
+General: Input and stock are strings and not floats
+General: Ecommerce badges, code rendered when no badges
+General: Branding, buttons lacks default paddings
+General: Performance optimization: ProductList Current.Items logic
+General: Performance optimization: Product items part 1 - (ProductGridComponent, ProductSliderComponent, Product sliderStandard, ProductComponentSlider, RelatedProducts)
+General: Performance optimization: Product items part 2 - (ProductAddToCart, ProductAddToDownloadCart, ProductAddToFavorites, ProductAddToQuoteCart, ProductBadges, ProductDefaultImage, ProductDetailsImage)
+General: Performance optimization: Product items part 3 - (BackInStockNotification, ProductDownloadData, ProductHeader, ProductLongDescription, ProductNumber, ProductPrice, ProductPriceTable, ProductShortDescription, ProductSpecification, ProductStaticVariants, ProductStock, ProductStockLocations, ProductVariantSelector)
+General: Performance optimization: Article list
+General: Performance and Respect responsive and adaptive settings in navigation and megamenu
+General: Cleanup and optimize how we add meta data for website settings and Page properties
+General: SwiftDW10, Frontend error in Express buy
+General: SwiftDW10, " Services does not exist " error in article lists
+General: SwiftDW10, Country does not contain a definition for Name error when you try to add new address
+
+## Added
+Itemtypes: Support Anchlor links on the content paragraphs from Content/paragraphs/standard
+Itemtypes: Product component, Back in stock notifications for Product Details
+Itemtypes: Product compoent, Stock location
+
+## Removed
+Itemtypes: ProductCatalogDetailApp, two item types with the same system name
+
 ## [v1.20.0] - 30-03-2023
 
 ## Bugfixes
