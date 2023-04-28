@@ -1,15 +1,15 @@
 
-![alt text](https://github.com/dynamicweb/Swift/blob/main/Swift/Files/Images/Logos/Logo_Swift_transparent-background-black.png?raw=true)
+# Swift by DynamicWeb
 
-![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/Dynamicweb%20Release-v9.15.5-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/)
+Swift is a **plug-and-play standard solution** which allows you to create beautiful mobile-friendly  websites. It is **fast and easy to build ecommerce sites** on Dynamicweb for both **B2C** and **B2B**. Using configuration and almost no coding. 
 
+![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/Dynamicweb%20Release-v9.15.5-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-purple)](https://doc.dynamicweb.com/swift/setup-project) 
+
+[Key features](#key-features) • [Installation](#installation) • [Requirements](#requirements) • [Hosting & Install DW](#hosting-environment-and-dynamicweb-install) • [Database](#swift-database-and-product-images) • [License](#log-in-and-install-a-license)
 
 ![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Bikeshop.png)
 
-
-# Introduction  
-
-Dynamicweb Swift is a **plug-and-play standard solution** which allows you to create beautiful mobile-friendly  websites. It is **fast and easy to build ecommerce sites** on Dynamicweb for both **B2C** and **B2B**. Using configuration and almost no coding. 
+## Key features 
 
 * **Mobile first** :iphone:, responsive, scaleable and content resilient rendering. Ensuring painless mobile experience.
 * **Lighthouse 95+ points** :100: performance optimized implementation, ensuring users do not churn
@@ -18,17 +18,16 @@ Dynamicweb Swift is a **plug-and-play standard solution** which allows you to cr
 * **Web Accessibility Guidelines (WCAG)** :trophy: Level AA compliance, make web content more accessible
 * **World Wide Web (W3C)** :globe_with_meridians: validated following website formatting standards
 
-
+![alt text](http://doc.dynamicweb.com//Files/Images/Swift/VE-clothes.gif)
 # Installation
 
 Swift is installed on top of a [Dynamicweb application](https://doc.dynamicweb.com/get-started/introduction).
 This repository contains a `./Files` with design files, images, and other static resources
 
-
 **The basic install procedure is:**
 
 1. Prepare the hosting environment
-2. Install the Dynamicweb application
+2. Install the DynamicWeb application
 3. Set up a website in IIS Manager and add the Swift-folder as a virtual directory
 4. Download the [Swift Product Image folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.19.0/Swift_20230224_DemoProductImages.zip "Download Swift Product Image folder") and insert the folder here `Swift/Files/Files/Images/Products`
 5. Build the Swift design
@@ -36,32 +35,33 @@ This repository contains a `./Files` with design files, images, and other static
 7. Log in and install a license
 
 ## Requirements
-* **Swift 1.20.0** requires **Dynamicweb version 9.15.5** or newer
-* **Swift 1.20.0** requires **Dynamicweb version 9.15.4** or newer
-* **Swift 1.19.0** requires **Dynamicweb version 9.15.2** or newer
-* **Swift 1.18.0** requires **Dynamicweb version 9.15.1** or newer
-* **Swift 1.17.0** requires **Dynamicweb version 9.14.6** or newer
-* **Swift 1.16.0** requires **Dynamicweb version 9.14.5** or newer
-* **Swift 1.15.0** requires **Dynamicweb version 9.14.2** or newer
-* **Swift 1.14.1** requires **Dynamicweb version 9.13.11** or newer
-* **Swift 1.14.0** requires **Dynamicweb version 9.13.11** or newer
-* **Swift 1.13.1** requires **Dynamicweb version 9.13.11** or newer
-* **Swift 1.12.0** requires **Dynamicweb version 9.13.8** or newer
-* **Swift 1.11.0** requires **Dynamicweb version 9.13.6** or newer
-* **Swift 1.10.0** requires **Dynamicweb version 9.13.6** or newer
-* **Swift 1.9.0** requires **Dynamicweb version 9.13.4** or newer
-* **Swift 1.8.0** requires **Dynamicweb version 9.13.3** or newer
-* **Swift 1.7.0** requires **Dynamicweb version 9.13.3** or newer
-* **Swift 1.6.1** requires **Dynamicweb version 9.13.0** or newer
-* **Swift 1.5** requires **Dynamicweb version 9.12.9** or newer
-* **Swift 1.1** requires **Dynamicweb version 9.12.3** or newer
+
+* **Swift 1.21.0** requires **DynamicWeb version 9.15.5** or newer
+* **Swift 1.20.0** requires **DynamicWeb version 9.15.4** or newer
+* **Swift 1.19.0** requires **DynamicWeb version 9.15.2** or newer
+* **Swift 1.18.0** requires **DynamicWeb version 9.15.1** or newer
+* **Swift 1.17.0** requires **DynamicWeb version 9.14.6** or newer
+* **Swift 1.16.0** requires **DynamicWeb version 9.14.5** or newer
+* **Swift 1.15.0** requires **DynamicWeb version 9.14.2** or newer
+* **Swift 1.14.1** requires **DynamicWeb version 9.13.11** or newer
+* **Swift 1.14.0** requires **DynamicWeb version 9.13.11** or newer
+* **Swift 1.13.1** requires **DynamicWeb version 9.13.11** or newer
+* **Swift 1.12.0** requires **DynamicWeb version 9.13.8** or newer
+* **Swift 1.11.0** requires **DynamicWeb version 9.13.6** or newer
+* **Swift 1.10.0** requires **DynamicWeb version 9.13.6** or newer
+* **Swift 1.9.0** requires **DynamicWeb version 9.13.4** or newer
+* **Swift 1.8.0** requires **DynamicWeb version 9.13.3** or newer
+* **Swift 1.7.0** requires **DynamicWeb version 9.13.3** or newer
+* **Swift 1.6.1** requires **DynamicWeb version 9.13.0** or newer
+* **Swift 1.5** requires **DynamicWeb version 9.12.9** or newer
+* **Swift 1.1** requires **DynamicWeb version 9.12.3** or newer
 
 * The baseline database is a bacpac file created using the Microsoft SQL Server 2016 standard (version SQL server 15.0.2080.9) using SQL Server Management Studio 2019 version 15.018040.0.
 
 
-## Hosting environment and Dynamicweb install
+## Hosting environment and DynamicWeb install
 
-Swift must be installed on a server or local machine running Windows and a recent Dynamicweb application.
+Swift must be installed on a server or local machine running Windows and a recent DynamicWeb application.
 
 
 | Links |      |
@@ -70,10 +70,9 @@ Swift must be installed on a server or local machine running Windows and a recen
 | Hosting | [Preparing the hosting environment](https://doc.dynamicweb.com/get-started/introduction/installation/hosting-environment "Preparing the hosting environment")|
 | Install | [Dynamicweb](https://doc.dynamicweb.com/get-started/introduction/installation/installing-dynamicweb "Install Dynamicweb") |
 
-After following these guides you will have a freshly installed Dynamicweb solution, which is ready to run Swift.
+After following these guides you will have a freshly installed DynamicWeb solution, which is ready to run Swift.
 
 ## Swift database and product images
-
 
 
 | Download |      |
@@ -92,7 +91,7 @@ To use the Swift-design you must add the Files-folder from this repository as a 
 4. Enter the physical path to the Swift `./Files` folder
 5. Click OK
 
-This sets the downloaded `./Files` folder as a virtual directory for the website, which means that you can easily upgrade the Dynamicweb application without having to move the `.\Files` folder every time.
+This sets the downloaded `./Files` folder as a virtual directory for the website, which means that you can easily upgrade the DynamicWeb application without having to move the `.\Files` folder every time.
 
 ## Install Node.js and build design
 
@@ -158,4 +157,4 @@ Whenever the solution is accessed this file will be used in place of the databas
 
 * After logging in you will be asked to [Install a license](https://doc.dynamicweb.com/get-started/introduction/installation/installing-a-license "Install a license").  
 
-* If you instead see the Dynamicweb Installer the database and solution are not correctly linked. Try recycling the application pool and trying again.
+* If you instead see the DynamicWeb Installer the database and solution are not correctly linked. Try recycling the application pool and trying again.
