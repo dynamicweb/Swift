@@ -1,15 +1,15 @@
 
-![alt text](https://github.com/dynamicweb/Swift/blob/main/Swift/Files/Images/Logos/Logo_Swift_transparent-background-black.png?raw=true)
+# Swift by DynamicWeb
 
-![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/Dynamicweb%20Release-v9.15.5-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/)
+Swift is a **plug-and-play standard solution** which allows you to create beautiful mobile-friendly  websites. It is **fast and easy to build ecommerce sites** on Dynamicweb for both **B2C** and **B2B**. Using configuration and almost no coding. 
 
+![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/Dynamicweb%20Release-v9.15.5-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-purple)](https://doc.dynamicweb.com/swift/setup-project) 
+
+[Key features](#key-features) • [Installation](#installation) • [Requirements](#requirements) • [Hosting & Install DW](#hosting-environment-and-dynamicweb-install) • [Database](#swift-database-and-product-images) • [License](#log-in-and-install-a-license)
 
 ![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Bikeshop.png)
 
-
-# Introduction  
-
-Dynamicweb Swift is a **plug-and-play standard solution** which allows you to create beautiful mobile-friendly  websites. It is **fast and easy to build ecommerce sites** on Dynamicweb for both **B2C** and **B2B**. Using configuration and almost no coding. 
+## Key features 
 
 * **Mobile first** :iphone:, responsive, scaleable and content resilient rendering. Ensuring painless mobile experience.
 * **Lighthouse 95+ points** :100: performance optimized implementation, ensuring users do not churn
@@ -18,12 +18,11 @@ Dynamicweb Swift is a **plug-and-play standard solution** which allows you to cr
 * **Web Accessibility Guidelines (WCAG)** :trophy: Level AA compliance, make web content more accessible
 * **World Wide Web (W3C)** :globe_with_meridians: validated following website formatting standards
 
-
+![alt text](http://doc.dynamicweb.com//Files/Images/Swift/VE-clothes.gif)
 # Installation
 
 Swift is installed on top of a [Dynamicweb application](https://doc.dynamicweb.com/get-started/introduction).
 This repository contains a `./Files` with design files, images, and other static resources
-
 
 **The basic install procedure is:**
 
@@ -36,7 +35,8 @@ This repository contains a `./Files` with design files, images, and other static
 7. Log in and install a license
 
 ## Requirements
-* **Swift 1.20.0** requires **Dynamicweb version 9.15.5** or newer
+
+* **Swift 1.21.0** requires **Dynamicweb version 9.15.5** or newer
 * **Swift 1.20.0** requires **Dynamicweb version 9.15.4** or newer
 * **Swift 1.19.0** requires **Dynamicweb version 9.15.2** or newer
 * **Swift 1.18.0** requires **Dynamicweb version 9.15.1** or newer
@@ -73,7 +73,6 @@ Swift must be installed on a server or local machine running Windows and a recen
 After following these guides you will have a freshly installed Dynamicweb solution, which is ready to run Swift.
 
 ## Swift database and product images
-
 
 
 | Download |      |
