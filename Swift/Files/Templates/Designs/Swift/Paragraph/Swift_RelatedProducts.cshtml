@@ -144,7 +144,7 @@
 
 	//--- SELECTED PRODUCTS ---
 	ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("Products");
-	if (products != null && (sourceType == "selected" || sourceType == "related"))
+	if (products != null && (sourceType == "selected" || sourceType == "frequently"))
 	{
 		hasVariants = products.Products.Any(p => !string.IsNullOrEmpty(p.VariantId));
 		foreach (var productSelection in products.Products)
@@ -190,7 +190,14 @@
 			{
 				foreach (var relatedProduct in group.Products)
 				{
-					relateFromProductIds.Add(relatedProduct.ProductId);
+					if (!string.IsNullOrEmpty(relatedProduct.VariantId))
+					{
+						relateFromProductVariantIds.Add($"{relatedProduct.ProductId} {relatedProduct.VariantId}");
+					}
+					else
+					{
+						relateFromProductVariantIds.Add($"{relatedProduct.ProductId}");
+					}
 				}
 			}
 		}
@@ -204,7 +211,8 @@
 	//Set the parameters to the url
 	string linkParameters = "";
 	linkParameters += sourceType != "related-products" && sourceType != "frequently" && sourceType != "selected" ? "&GroupId=" + groupIds : "";
-	linkParameters += !string.IsNullOrEmpty(productIds) && sourceType != "most-sold" && sourceType != "trending" && sourceType != "latest" && sourceType != "frequently" ? "&MainProductId=" + productIds : "";
+	linkParameters += !string.IsNullOrEmpty(productIds) && sourceType != "most-sold" && sourceType != "trending" && sourceType != "latest" && sourceType != "frequently" && sourceType != "related-products" ? "&MainProductId=" + productIds : "";
+	linkParameters += !string.IsNullOrEmpty(productVariantIds) && sourceType == "related-products" ? "&ProductVariantId=" + productVariantIds : "";
 	linkParameters += sourceType == "variants" ? "&IsVariant=true" : "";
 	linkParameters += sourceType == "latest" ? "&SortBy=Created" : "";
 	linkParameters += sourceType == "most-sold" ? "&SortBy=OrderCount" : "";
@@ -231,7 +239,7 @@
 	string indicatorsVisibleOnSmallDevices = (Model.Item.GetBoolean("IndicatorsVisibleOnSmallDevices")) ? "slider-indicators-sm" : string.Empty;
 
 	bool productsFound = true;
-	if (string.IsNullOrEmpty(groupIds) && string.IsNullOrEmpty(productIds))
+	if (string.IsNullOrEmpty(groupIds) && string.IsNullOrEmpty(productIds) && string.IsNullOrEmpty(productVariantIds))
 	{
 		if (Pageview.IsVisualEditorMode)
 		{
@@ -301,6 +309,10 @@
 		{
 			<input type="hidden" name="BoughtWithProductIds" value="[@productIds]">
 		}
+		@if (sourceType != "frequently" && hasVariants)
+		{
+			<input type="hidden" name="ProductVariantId" value="@productVariantIds" />
+		}
 
 		@*--- LATEST ---*@
 		@if (sourceType == "latest")
@@ -320,13 +332,9 @@
 		}
 
 		@*--- RELATED PRODUCTS ---*@
-		@if (sourceType == "related-products" && !hasVariants)
+		@if (sourceType == "related-products")
 		{
-			<input type="hidden" name="MainProductID" id="MainProductID_@Model.ID" value="@productIds">
-		}
-		@if (sourceType == "related-products" && hasVariants)
-		{
-			<input type="hidden" name="ProductVariantId" value="@productVariantIds" />
+			<input type="hidden" name="ProductVariantId" id="MainProductID_@Model.ID" value="@productVariantIds" />
 		}
 
 		@* General parameters *@
@@ -459,7 +467,14 @@
 
 			foreach (var relatedProduct in group.Products)
 			{
-				fromProductIds.Add(relatedProduct.ProductId);
+					if (!string.IsNullOrEmpty(relatedProduct.VariantId))
+					{
+						fromProductIds.Add($"{relatedProduct.ProductId} {relatedProduct.VariantId}");
+					}
+					else
+					{
+						fromProductIds.Add($"{relatedProduct.ProductId}");
+					}
 			}
 			<script type="module">
 				document.querySelector("#ParentColumnSize_@Model.ID").value = document.querySelector("#RelatedProducts_@(Model.ID)_@group.Id").closest("[data-col-size]").getAttribute("data-col-size");
@@ -472,3 +487,5 @@
 		}
 	}
 }
+
+
