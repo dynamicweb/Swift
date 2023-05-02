@@ -11,7 +11,8 @@ const LiveProductInfo = function () {
 			productVariantIdAttr: "data-variant-id",
 			showIfAttr: "data-show-if",
 			innerSliderId: "tns1-iw",
-			loaderClass: "spinner-border"
+			loaderClass: "spinner-border",
+			bearerToken: "data-bearer-token",
 		},
 
 		selectors: {
@@ -91,13 +92,15 @@ const LiveProductInfo = function () {
 				
 				const feedUrlArray = feedUrl.split('?');
 				const query = new URLSearchParams(self.SanitizeParameters(feedUrlArray[1]));
-				let fetchInit = {
+				let fetchProducts = {
 					headers: {
 						'Accept': 'application/json',
 						'Content-Type': 'application/json'
 					},
 					method: 'GET'
 				};
+				const bearer = el.getAttribute(self.selectors.bearerToken);
+				if (bearer) fetchProducts.headers.Authorization = bearer;
 				
 				const isPostMethod = query.has('RepositoryName');
 				if (isPostMethod) {
@@ -105,17 +108,17 @@ const LiveProductInfo = function () {
 					const pageSize = getValueAndUpdateQuery(query, 'PageSize', parseInt(query.get('PageSize')), 100);
 					const currencyCode = getValueAndUpdateQuery(query, 'CurrencyCode', query.get('CurrencyCode'), '');
 					const countryCode = getValueAndUpdateQuery(query, 'CountryCode', query.get('CountryCode'), '');
-					const shopId = getValueAndUpdateQuery(query, 'ShopId', query.get('ShopId'), '');
 					const languageId = getValueAndUpdateQuery(query, 'LanguageId', query.get('LanguageId'), '');
+					const shopId = self.GetValue(query.get('ShopId'), ''); // Do not remove from querystring. It needs to be in both places
 					
-					fetchInit.method = 'POST';
-					fetchInit.body = JSON.stringify({ PageSize: pageSize, Parameters : { MainProductID : productIds }, CurrencyCode : currencyCode, CountryCode : countryCode, ShopId : shopId, LanguageId : languageId });
+					fetchProducts.method = 'POST';
+					fetchProducts.body = JSON.stringify({ PageSize: pageSize, Parameters : { MainProductID : productIds }, CurrencyCode : currencyCode, CountryCode : countryCode, ShopId : shopId, LanguageId : languageId });
 				}
 				
 				const path = feedUrlArray[0];
 				const url = path + '?' + query.toString();
 		
-				fetch(url, fetchInit)
+				fetch(url, fetchProducts)
 					.then(function (response) {
 						return response.json()
 					})
@@ -258,8 +261,7 @@ const LiveProductInfo = function () {
 			function setStockLevel(container, product) {
 				const stockContainers = container.querySelectorAll(self.selectors.stock);
 				if (product.StockLevel != null && stockContainers.length > 0) {
-					let stockLevel = product.StockLevel > 100 ? "100+" : product.StockLevel;
-					self.UpdateValue(stockContainers, stockLevel);
+					self.UpdateValue(stockContainers, product.StockLevel);
 					self.ShowConditionalElement(container.querySelectorAll(self.selectors.stockMessages));
 				}
 
