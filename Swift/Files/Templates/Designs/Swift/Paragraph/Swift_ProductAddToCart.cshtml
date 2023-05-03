@@ -75,7 +75,7 @@
 	string addToCartIcon = Model.Item.GetRawValueString("Icon", iconPath + "shopping-cart.svg");
 	string addToCartLabel = !addToCartIcon.Contains("_none") ? $"<span class=\"icon-2\">{ReadFile(addToCartIcon)}</span>" : "";
 	addToCartLabel += !addToCartIcon.Contains("_none") && !Model.Item.GetBoolean("HideButtonText") ? " " : "";
-	addToCartLabel += !Model.Item.GetBoolean("HideButtonText") ? $"<span class=\"d-none d-md-inline\">{Translate("Add to cart")}</span><span class=\"d-inline d-md-none\">{Translate("Add")}</span>" : "";
+	addToCartLabel += !Model.Item.GetBoolean("HideButtonText") ? Translate("Add to cart") : "";
 
 	if (product.VariantInfo.VariantInfo == null || whenVariantsExist == "disable") {
 		string unitId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("UnitId")) ? Dynamicweb.Context.Current.Request.Form.Get("UnitId") : product.DefaultUnitId;
@@ -165,84 +165,112 @@
 				}
 
 				<div class="d-flex flex-row w-100">
-					@if (!anonymousUser && favoritesSelector)
-					{
-						@RenderPartial("Components/ToggleFavorite.cshtml", product)
-					}
-
 					@if (!quantitySelector)
 					{
 						<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" type="hidden" @disableAddToCart>
 					}
 
-					<div class="input-group input-primary-button-group flex-nowrap@(inputSize)">
-						@if (quantitySelector)
+					@if (unitsSelector && product.UnitOptions.Count > 0)
+					{
+						string selectedUnitName = !string.IsNullOrEmpty(unitId) && product?.UnitOptions != null ? unitId : product.UnitOptions.FirstOrDefault<UnitOptionViewModel>().Name;
+
+						foreach (var unitOption in product.UnitOptions)
 						{
-							<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control swift_quantity-field" style="min-width: 60px; max-width: 100px; z-index: 1" type="number" onchange="swift.Cart.UpdateOnEnterKey(event)" onkeyup="swift.Cart.UpdateOnEnterKey(event)" @disableAddToCart>
+							if (unitOption.Id == unitId)
+							{
+								selectedUnitName = unitOption.Name;
+							}
 						}
 
-						@if (unitsSelector && product.UnitOptions.Count > 0)
-						{
-							string selectedUnitName = !string.IsNullOrEmpty(unitId) && product?.UnitOptions != null ? unitId : product.UnitOptions.FirstOrDefault<UnitOptionViewModel>().Name;
-
-							foreach (var unitOption in product.UnitOptions)
-							{
-								if (unitOption.Id == unitId)
+						<div class="d-flex flex-column gap-2 w-100">
+							<div class="input-group input-primary-button-group flex-nowrap@(inputSize)">
+								@if (!anonymousUser && favoritesSelector)
 								{
-									selectedUnitName = unitOption.Name;
+									@RenderPartial("Components/ToggleFavorite.cshtml", product)
 								}
-							}
 
-							<button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-								@selectedUnitName
-							</button>
-									<ul class="dropdown-menu swift_unit-field">
-								@foreach (var unitOption in product.UnitOptions)
+								@if (quantitySelector)
 								{
-									var selectedUnit = unitOption.Id == unitId ? "selected" : "";
+									<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control swift_quantity-field" style="min-width: 60px; max-width: 100px; z-index: 1" type="number" onchange="swift.Cart.UpdateOnEnterKey(event)" onkeyup="swift.Cart.UpdateOnEnterKey(event)" @disableAddToCart>
+								}
 
-									<li>
-										<button type="button" class="btn dropdown-item" data-value="@unitOption.Id" onclick="document.querySelector('#UnitSelectorForm_@(product.Id)_@(product.VariantId)_@Model.ID').querySelector('.js-unit-id').value = this.getAttribute('data-value');
-																									document.querySelector('#Unit_@(product.Id)_@product.VariantId').value = this.getAttribute('data-value');
-																									swift.PageUpdater.Update(document.querySelector('#UnitSelectorForm_@(product.Id)_@(product.VariantId)_@Model.ID'))">
-											<span>@unitOption.Name</span>
-											<span>
-												@if (unitOption.StockLevel > 0)
-												{
-													if (!Model.Item.GetBoolean("HideInventory"))
+								<button class="btn btn-secondary @flexFill dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+									@selectedUnitName
+								</button>
+
+								<ul class="dropdown-menu swift_unit-field">
+									@foreach (var unitOption in product.UnitOptions)
+									{
+										var selectedUnit = unitOption.Id == unitId ? "selected" : "";
+
+										<li>
+											<button type="button" class="btn dropdown-item" data-value="@unitOption.Id" onclick="document.querySelector('#UnitSelectorForm_@(product.Id)_@(product.VariantId)_@Model.ID').querySelector('.js-unit-id').value = this.getAttribute('data-value');
+																										document.querySelector('#Unit_@(product.Id)_@product.VariantId').value = this.getAttribute('data-value');
+																										swift.PageUpdater.Update(document.querySelector('#UnitSelectorForm_@(product.Id)_@(product.VariantId)_@Model.ID'))">
+												<span>@unitOption.Name</span>
+												<span>
+													@if (unitOption.StockLevel > 0)
 													{
-														<span class="small text-success">@unitOption.StockLevel @Translate("In stock")</span>
+														if (!Model.Item.GetBoolean("HideInventory"))
+														{
+															<span class="small text-success">@unitOption.StockLevel @Translate("In stock")</span>
+														}
+														else
+														{
+															<span class="small text-success">@Translate("In stock")</span>
+														}
 													}
 													else
 													{
-														<span class="small text-success">@Translate("In stock")</span>
+														<span class="small text-danger">@Translate("Out of Stock")</span>
 													}
-												}
-												else
-												{
-													<span class="small text-danger">@Translate("Out of Stock")</span>
-												}
-											</span>
-										</button>
-									</li>
+												</span>
+											</button>
+										</li>
+									}
+								</ul>
+							</div>
+							<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary @(buttonSize) js-add-to-cart-button" style="white-space: nowrap" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)_@Pageview.CurrentParagraph.ID">
+								@if (!Model.Item.GetBoolean("HideButtonText"))
+								{
+									<span class="text-nowrap d-flex align-items-center justify-content-center gap-2">
+										@addToCartLabel
+									</span>
 								}
-							</ul>
+								else
+								{
+									@addToCartLabel
+								}
+							</button>
+						</div>
+					} 
+					else
+					{
+						if (!anonymousUser && favoritesSelector)
+						{
+							@RenderPartial("Components/ToggleFavorite.cshtml", product)
 						}
 
-						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary @(buttonSize) @flexFill js-add-to-cart-button" style="white-space: nowrap" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)_@Pageview.CurrentParagraph.ID">
-							@if (!Model.Item.GetBoolean("HideButtonText"))
+						<div class="input-group input-primary-button-group flex-nowrap@(inputSize)">
+							@if (quantitySelector)
 							{
-								<span class="text-nowrap d-flex align-items-center justify-content-center gap-2">
-									@addToCartLabel
-								</span>
+								<input id="Quantity_@(product.Id)_@product.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control swift_quantity-field" style="min-width: 60px; max-width: 100px; z-index: 1" type="number" onchange="swift.Cart.UpdateOnEnterKey(event)" onkeyup="swift.Cart.UpdateOnEnterKey(event)" @disableAddToCart>
 							}
-							else
-							{
-								@addToCartLabel
-							}
-						</button>
 
-					</div>
+							<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary @(buttonSize) @flexFill js-add-to-cart-button" style="white-space: nowrap" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)_@Pageview.CurrentParagraph.ID">
+								@if (!Model.Item.GetBoolean("HideButtonText"))
+								{
+									<span class="text-nowrap d-flex align-items-center justify-content-center gap-2">
+										@addToCartLabel
+									</span>
+								}
+								else
+								{
+									@addToCartLabel
+								}
+							</button>
+						</div>
+					}
 				</div>
 			</form>
 		</div>
