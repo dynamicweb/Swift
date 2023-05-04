@@ -19,10 +19,8 @@ const ExpressBuy = function (){
 			const productCounter = document.querySelector("#modalProductCounter").value;
 			const replacementArticle = document.querySelector("#replacementProductsModal .modal-body article");
 			const productArticle = document.querySelector("article[data-product-counter='" + productCounter + "']");
-	
-			replacementArticle.classList.remove("d-none");
+			
 			productArticle.replaceWith(replacementArticle);
-	
 			this.UpdateReplacementElements(true);
 		},
 	
@@ -36,7 +34,6 @@ const ExpressBuy = function (){
 			document.querySelectorAll(".productReplacementMessage[data-product-counter='" + productCounter + "']").forEach(function (messageElement) {
 				messageElement.innerHTML = replaced ? messageElement.getAttribute("data-replaced-by-message") : messageElement.getAttribute("data-replace-refused-message");
 			})
-	
 			document.querySelector(".productReplacementsButton[data-product-counter='" + productCounter + "']").remove();
 		}
 	}
