@@ -22,12 +22,23 @@
 	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 	
 	string replacementProductLink = replacementProduct.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
-	string replacementProductImage = $"/Admin/public/getimage.ashx?image={Dynamicweb.Context.Current.Server.UrlEncode(replacementProduct.DefaultImage.Value)}&width=60&height=60&format=webp&Crop=5&fillcanvas=true";
 	string replacementProductStockState = replacementProduct.NeverOutOfstock ? Translate("In stock") : $"{replacementProduct.StockLevel} {Translate("In stock")}";
 	string replacementProductPrice = showPricesWithVat == "false" && !neverShowVat ? replacementProduct.PriceBeforeDiscount.PriceWithoutVatFormatted : replacementProduct.PriceBeforeDiscount.PriceFormatted;
 					
 	string replacementProductMinQty = replacementProduct.PurchaseMinimumQuantity != 1 ? replacementProduct.PurchaseMinimumQuantity.ToString() : "1";
 	string replacementProductStepQty = replacementProduct.PurchaseQuantityStep > 1 ? replacementProduct.PurchaseQuantityStep.ToString() : "1";
+	
+	string disableQuantityField = (replacementProduct.StockLevel < 1 && !replacementProduct.NeverOutOfstock) || replacementProduct.Discontinued ? "disabled" : "";
+	int productCounter = Dynamicweb.Core.Converter.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("productCounter"));
+	double? quantity = Dynamicweb.Core.Converter.ToDouble(Dynamicweb.Context.Current.Request.QueryString.Get("quantity"));
+
+	if (productCounter == 0) { productCounter = 1; }
+	if (quantity == 0) { quantity = replacementProduct.PurchaseMinimumQuantity; }
+
+	bool isErpConnectionDown = !Dna.Ecommerce.LiveIntegration.TemplatesHelper.IsWebServiceConnectionAvailable();
+	bool hidePrice = Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && isErpConnectionDown;
+	
+	string link = Model.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
 	
 	<table class="table" id="modalReplacementBody">
 		<thead>
@@ -51,36 +62,23 @@
 			<td class="border-bottom-0 align-middle text-danger">@Translate("Discontinued")</td>
 			<td class="border-bottom-0 align-middle text-end" id="modalProductPrice">
 				@if (showPricesWithVat == "false" && !neverShowVat)
-                {
-	                <span class="text-decoration-line-through opacity-75">
-		                <span class="text-price">@Model.PriceBeforeDiscount.PriceWithoutVatFormatted</span>
-	                </span>
-                }
-                else
-                {
-                	<span class="text-decoration-line-through opacity-75">
-                		<span class="text-price">@Model.PriceBeforeDiscount.PriceFormatted</span>
-                	</span>
-                }
+				{
+					<span class="text-decoration-line-through opacity-75">
+						<span class="text-price">@Model.PriceBeforeDiscount.PriceWithoutVatFormatted</span>
+					</span>
+				}
+				else
+				{
+					<span class="text-decoration-line-through opacity-75">
+						<span class="text-price">@Model.PriceBeforeDiscount.PriceFormatted</span>
+					</span>
+				}
 			</td>
 		</tr>
 		<tr>
 			<td class="fw-bold text-center" colspan="6">@Translate("Replacement Product")</td>
 		</tr>
-		<tr id="replacement-product"
-			data-replacement-product-id="@replacementProduct.Id"
-		    data-replacement-product-variant-id="@replacementProduct.VariantId"
-		    data-replacement-product-link="@replacementProductLink"
-		    data-replacement-product-image="@replacementProductImage"
-		    data-replacement-product-number="@replacementProduct.Number"
-		    data-replacement-product-name="@replacementProduct.Name"
-		    data-replacement-product-variant-name="@replacementProduct.VariantName"
-		    data-replacement-product-stock-state="@replacementProductStockState"
-		    data-replacement-product-price="@replacementProductPrice"
-		    data-replacement-product-min-qty="@replacementProductMinQty"
-		    data-replacement-product-step-qty="@replacementProductStepQty"
-		    >
-			
+		<tr>
 			<td class="border-bottom-0 align-middle">
 				<img class="img-fluid productImage" src="/Admin/public/getimage.ashx?image=@Dynamicweb.Context.Current.Server.UrlEncode(replacementProduct.DefaultImage.Value)&width=60&height=60&format=webp&Crop=5&fillcanvas=true" height="60" width="60" alt="@replacementProduct.Name">
 			</td>
@@ -102,4 +100,68 @@
 		</tr>
 		</tbody>
 	</table>
+	
+	<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center product d-none">
+		
+		<div class="d-none d-lg-block g-col-12 border-top"></div>
+
+		<input type="hidden" name="ProductLoopCounter@(productCounter)" value="@(productCounter)">
+		<input type="hidden" class="productId" name="ProductId@(productCounter)" value="@replacementProduct.Id">
+		<input type="hidden" class="productVariantId" name="VariantId@(productCounter)" value="@replacementProduct.VariantId">
+
+		<div class="g-col-1">
+			<a class="productLink" href="@replacementProductLink" tabindex="-1">
+				<img class="img-fluid productImage" src="/Admin/public/getimage.ashx?image=@Dynamicweb.Context.Current.Server.UrlEncode(replacementProduct.DefaultImage.Value)&width=60&height=60&format=webp&Crop=5&fillcanvas=true" height="60" width="60" alt="@replacementProduct.Name">
+			</a>
+		</div>
+
+		<div class="g-col-7 g-col-lg-9 grid grid-9 gap-0 gap-lg-2 lh-1">
+
+			<div class="g-col-5 g-col-lg-1 order-1">
+				<span class="fs-8 fs-lg-6"><a href="@replacementProductLink" tabindex="-1" class="text-decoration-none text-decoration-underline-hover productNumber">@replacementProduct.Number</a></span>
+			</div>
+
+			<div class="g-col-5 g-col-lg-4 order-3 lh-1">
+				<span class="fs-8 fs-lg-6"><a href="@replacementProductLink" tabindex="-1" class="text-decoration-none text-decoration-underline-hover productName">@replacementProduct.Name</a></span>
+				<span class="fs-8 fs-lg-6 fst-italic fw-bold d-block">
+					<a href="@link" class="text-decoration-none text-decoration-underline-hover productReplacementMessage">@Translate("Replacing") @Model.Name</a>
+				</span>
+			</div>
+
+			<div class="g-col-2 g-col-lg-1 order-4">
+				<span class="fs-8 fs-lg-6"><a href="@replacementProductLink" tabindex="-1" class="text-decoration-none text-decoration-underline-hover productVariantName">@replacementProduct.VariantName</a></span>
+			</div>
+
+			<div class="g-col-2 g-col-lg-1 order-4">
+				@if (replacementProduct.Discontinued)
+				{
+					<div class="fs-8 fs-lg-6 text-end text-lg-start text-danger productStockState">@Translate("Discontinued")</div>
+				}
+				else if (replacementProduct.NeverOutOfstock)
+				{
+					<div class="fs-8 fs-lg-6 text-end text-lg-start text-success">@Translate("In stock")</div>
+				} else if (replacementProduct.StockLevel > 0)
+				{
+					<div class="fs-8 fs-lg-6 text-end text-lg-start text-success">@replacementProduct.StockLevel @Translate("In stock")</div>
+				}
+				else
+				{
+					<div class="fs-8 fs-lg-6 text-end text-lg-start text-danger">@Translate("Out of Stock")</div>
+				}
+			</div>
+
+			<div class="g-col-4 g-col-lg-2 text-end order-2 order-lg-last">
+				@if (!hidePrice)
+				{
+					<span class="text-price fs-8 fs-lg-6 productPrice">@replacementProduct.Price.PriceFormatted</span>
+				}
+			</div>
+		</div>
+
+		<div class="g-col-2 g-col-lg-2">
+			<label for="Quantity" class="visually-hidden">@Translate("Quantity")</label>
+		<input type="number" step="@replacementProductStepQty" min="@replacementProductMinQty" class="form-control text-center ms-auto swift_quantity-field" value="@quantity" name="Quantity@(productCounter)" @disableQuantityField style="max-width: 85px;">
+		</div>
+
+	</article>
 }

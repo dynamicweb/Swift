@@ -158,7 +158,7 @@
 					</div>
 					<div class="modal-body"></div>
 					<div class="modal-footer">
-						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="RefuseReplacementProduct()">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="swift.ExpressBuy.RefuseReplacementProduct()">
 							<div class="d-flex gap-2 align-items-center lh-base">
 								<span>@Translate("Refuse Replacement")</span>
 								<span class="icon-2">
@@ -166,7 +166,7 @@
 								</span>
 							</div>
 						</button>
-						<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="AcceptReplacementProduct()">
+						<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="swift.ExpressBuy.AcceptReplacementProduct()">
 							<div class="d-flex gap-2 align-items-center lh-base">
 								<span>@Translate("Accept Replacement")</span>
 								<span class="icon-2">
@@ -178,75 +178,6 @@
 				</div>
 			</div>
 		</div>
-		
-		<script>
-			function OpenReplacementModal(productCounter){
-				const productArticle = document.querySelector("article[data-product-counter='"+productCounter+"']");
-				const modalBody = document.querySelector("#replacementProductsModal .modal-body");
-				const modalTitleProductName = document.querySelector("#modalTitleProductName");
-				const modalProductCounter = document.querySelector("#modalProductCounter");
-				const productNameElement = productArticle.querySelector(".productName");
-				const productReplacementFeed = productArticle.getAttribute("data-replacement-feed");
-				
-				swift.PageUpdater.UpdateFromUrl(modalBody, productReplacementFeed).then(function() {
-					modalTitleProductName.innerHTML = productNameElement.innerHTML
-					modalProductCounter.value = productCounter;
-				});
-			}
-			
-			function AcceptReplacementProduct(){
-				const modalProductCounter = document.querySelector("#modalProductCounter");
-				const productCounter = modalProductCounter.value;
-				const productArticle = document.querySelector("article[data-product-counter='" + productCounter + "']");
-				const replacementProduct = document.querySelector("#replacement-product");
-				
-				// Update general product data
-				productArticle.querySelector(".productNumber").innerHTML = replacementProduct.getAttribute("data-replacement-product-number");
-				productArticle.querySelector(".productNumber").href = replacementProduct.getAttribute("data-replacement-product-link");
-				productArticle.querySelector(".productName").innerHTML = replacementProduct.getAttribute("data-replacement-product-name");
-				productArticle.querySelector(".productName").href = replacementProduct.getAttribute("data-replacement-product-link");
-				productArticle.querySelector(".productLink").href = replacementProduct.getAttribute("data-replacement-product-link");
-				productArticle.querySelector(".productVariantName").innerHTML = replacementProduct.getAttribute("data-replacement-product-variant-name");
-				productArticle.querySelector(".productVariantName").innerHTML = replacementProduct.getAttribute("data-replacement-product-price");
-				productArticle.querySelector(".productId").value = replacementProduct.getAttribute("data-replacement-product-id");
-				productArticle.querySelector(".productVariantId").value = replacementProduct.getAttribute("data-replacement-product-variant-id");
-				productArticle.querySelector(".productImage").src = replacementProduct.getAttribute("data-replacement-product-image");
-				productArticle.querySelector(".productImage").alt = replacementProduct.getAttribute("data-replacement-product-name");
-				
-				// Update quantity field
-				productArticle.querySelector(".swift_quantity-field").min = replacementProduct.getAttribute("data-replacement-product-min-qty");
-				productArticle.querySelector(".swift_quantity-field").step = replacementProduct.getAttribute("data-replacement-product-step-qty");
-				productArticle.querySelector(".swift_quantity-field").disabled = false;
-
-				// Update Stock State
-				productArticle.querySelector(".productStockState").innerHTML = replacementProduct.getAttribute("data-replacement-product-stock-state");
-				productArticle.querySelector(".productStockState").classList.add("text-success");
-				productArticle.querySelector(".productStockState").classList.remove("text-danger");
-				
-				// Update Article css class
-				productArticle.classList.remove("opacity-50");
-				productArticle.classList.remove("user-select-none");
-				productArticle.classList.remove("pe-none");
-
-				UpdateReplacementElements(productCounter, true);
-			}
-			
-			function RefuseReplacementProduct(){
-				const productCounter = document.querySelector("#modalProductCounter").value;
-				
-				UpdateReplacementElements(productCounter, false);
-			}
-			
-			function UpdateReplacementElements(productCounter, replaced) {
-				// Update Replacement messages
-				document.querySelectorAll(".productReplacementMessage[data-product-counter='" + productCounter + "']").forEach(function (messageElement) {
-					messageElement.innerHTML = replaced ? messageElement.getAttribute("data-replaced-by-message") : messageElement.getAttribute("data-replace-refused-message");
-				})
-				
-				// Hide 'Replace' button
-				document.querySelector(".productReplacementsButton[data-product-counter='" + productCounter + "']").classList.add("d-none");
-			}
-		</script>
 	}
 
 	<header class="g-col-12 py-2 d-none d-lg-block">
@@ -289,7 +220,7 @@
 
 			ProductViewModel replacementProduct = product.Discontinued && product.ReplacementProduct != null && !string.IsNullOrEmpty(product.ReplacementProduct.ProductId) ? product.ReplacementProduct.GetProduct() : null;
 			bool showReplacementProduct = product.Discontinued && replacementProduct != null && replacementProduct.Active && (replacementProduct.StockLevel > 0 || replacementProduct.NeverOutOfstock);
-			string replacementProductFeed = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl("Default.aspx?ID=" + GetPageIdByNavigationTag("ReorderReplacement") + "&ProductId=" + product.Id + "&getproductinfo=true");
+			string replacementProductFeed = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl("Default.aspx?ID=" + GetPageIdByNavigationTag("ReorderReplacement") + "&ProductId=" + product.Id + "&productCounter=" + productCounter + "&quantity=" + quantity + "&getproductinfo=true");
 
 			<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center product @disableOrderline" data-product-counter="@productCounter" data-replacement-feed="@replacementProductFeed">
 				
@@ -314,7 +245,7 @@
 					<div class="g-col-5 g-col-lg-4 order-3 lh-1">
 						<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover productName">@product.Name</a></span>
 						<span class="fs-8 fs-lg-6 fst-italic fw-bold d-block">
-							<a href="@link" class="text-decoration-none text-decoration-underline-hover productReplacementMessage" data-product-counter="@productCounter" data-replaced-by-message="@($"{Translate("Replacing")} {product.Name}")" data-replace-refused-message="@Translate("Replacement Refused")"></a>
+							<a href="@link" class="text-decoration-none text-decoration-underline-hover productReplacementMessage" data-product-counter="@productCounter" data-replace-refused-message="@Translate("Replacement Refused")"></a>
 						</span>
 					</div>
 
@@ -358,7 +289,7 @@
 			if (product.Discontinued && showReplacementProduct)
 			{
 				<div class="position-relative start-50 translate-middle d-flex g-start-8 productReplacementsButton" data-product-counter="@productCounter" data-replacing-message="@($"{Translate("Replacing")} {product.Name}")" data-replace-refused-message="@Translate("Replacement Refused")">
-					<a class="btn btn-sm btn-primary" role="button" data-bs-target="#replacementProductsModal" data-bs-toggle="modal" onclick="OpenReplacementModal(@productCounter)" alt="@Translate("View replacement product")">@Translate("Replace")</a>
+					<a class="btn btn-sm btn-primary" role="button" data-bs-target="#replacementProductsModal" data-bs-toggle="modal" onclick="swift.ExpressBuy.OpenReplacementModal(@productCounter)" alt="@Translate("View replacement product")">@Translate("Replace")</a>
 				</div>
 			}
 
