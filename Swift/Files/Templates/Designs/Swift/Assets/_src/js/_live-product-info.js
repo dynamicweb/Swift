@@ -33,6 +33,7 @@ const LiveProductInfo = function () {
 			productPriceQuantity: ".js-text-price-quantity",
 			productPriceQuantityFieldForLists: ".item_swift_productlistcompactview .js-quantity, .item_swift_productlistlistview .js-quantity",
 			productPricePrice: ".js-text-price-price",
+			quantityField: ".swift_quantity-field",
 			stock: ".js-text-stock",
 			expectedDelivery: ".js-text-expected-delivery",
 			stockMessages: ".js-stock-state div, .js-stock-state small, .js-stock-state p",
@@ -149,7 +150,7 @@ const LiveProductInfo = function () {
 				setStockLevel(container, product);
 				setExpectedDelivery(container, product);
 				updateVariantSelector(container);
-				enableQuantityBoxesOnLegacyProductLists(container, product);
+				enableQuantityFieldAddToCartAndLoadMore(container, product);
 			});
 
 			function removeLoaders(container) {
@@ -288,10 +289,16 @@ const LiveProductInfo = function () {
 				}
 			}
 			
-			function enableQuantityBoxesOnLegacyProductLists(container, product) {
+			function enableQuantityFieldAddToCartAndLoadMore(container, product) {
 				if (product.StockLevel && product.StockLevel > 0)
 				{
 					container.querySelectorAll(self.selectors.productPriceQuantityFieldForLists).forEach(function (el){
+						el.disabled = false;
+					});
+					container.querySelectorAll(self.selectors.quantityField).forEach(function (el){
+						el.disabled = false;
+					});
+					container.querySelectorAll(self.selectors.addToCart).forEach(function (el){
 						el.disabled = false;
 					});
 				}
