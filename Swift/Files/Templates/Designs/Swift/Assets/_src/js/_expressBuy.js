@@ -8,33 +8,32 @@ const ExpressBuy = function (){
 			swift.PageUpdater.UpdateFromUrl(modalBody, productReplacementFeed).then(function() {
 				const productNameElement = productArticle.querySelector(".productName");
 				const modalTitleProductName = document.querySelector("#modalTitleProductName");
-				const modalProductCounter = document.querySelector("#modalProductCounter");
 	
 				modalTitleProductName.innerHTML = productNameElement.innerHTML
-				modalProductCounter.value = productCounter;
+				sessionStorage.setItem("productCounter", productCounter);
 			});
 		},
 	
 		AcceptReplacementProduct: function (){
-			const productCounter = document.querySelector("#modalProductCounter").value;
+			const productCounter = sessionStorage.getItem("productCounter");
 			const replacementArticle = document.querySelector("#replacementProductsModal .modal-body article");
 			const productArticle = document.querySelector("article[data-product-counter='" + productCounter + "']");
 			
 			productArticle.replaceWith(replacementArticle);
-			this.UpdateReplacementElements(true);
+			this.UpdateReplacementElements(productCounter, true);
 		},
 	
 		RefuseReplacementProduct: function () {
-			this.UpdateReplacementElements(false);
+			const productCounter = sessionStorage.getItem("productCounter");
+			this.UpdateReplacementElements(sessionStorage.getItem("productCounter"), false);
 		},
 	
-		UpdateReplacementElements: function(replaced) {
-			const productCounter = document.querySelector("#modalProductCounter").value;
-	
+		UpdateReplacementElements: function(productCounter, replaced) {
 			document.querySelectorAll(".productReplacementMessage[data-product-counter='" + productCounter + "']").forEach(function (messageElement) {
 				messageElement.innerHTML = replaced ? messageElement.getAttribute("data-replaced-by-message") : messageElement.getAttribute("data-replace-refused-message");
 			})
 			document.querySelector(".productReplacementsButton[data-product-counter='" + productCounter + "']").remove();
+			sessionStorage.removeItem("productCounter");
 		}
 	}
 }();
