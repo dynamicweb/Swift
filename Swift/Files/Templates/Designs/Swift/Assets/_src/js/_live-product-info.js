@@ -39,6 +39,7 @@ const LiveProductInfo = function () {
 			stockMessages: ".js-stock-state div, .js-stock-state small, .js-stock-state p",
 			relatedProducts: "[id^='RelatedProducts']",
 			content: "#content",
+			loadMoreButton: ".swift_load_more_button",
 		},
 		
 		init: function() {
@@ -300,6 +301,9 @@ const LiveProductInfo = function () {
 					});
 					container.querySelectorAll(self.selectors.addToCart).forEach(function (el){
 						el.disabled = false;
+					});
+					container.querySelectorAll(self.selectors.loadMoreButton).forEach(function (el){
+						el.classList.remove("d-none");
 					});
 				}
 			}
