@@ -151,8 +151,9 @@ const LiveProductInfo = function () {
 				setStockLevel(container, product);
 				setExpectedDelivery(container, product);
 				updateVariantSelector(container);
-				enableQuantityFieldAddToCartAndLoadMore(container, product);
+				enableQuantityFieldAndAddToCart(container, product);
 			});
+			showLoadMore();
 
 			function removeLoaders(container) {
 				container.querySelectorAll(self.selectors.loader).forEach(function (el){
@@ -290,7 +291,7 @@ const LiveProductInfo = function () {
 				}
 			}
 			
-			function enableQuantityFieldAddToCartAndLoadMore(container, product) {
+			function enableQuantityFieldAndAddToCart(container, product) {
 				if (product.StockLevel && product.StockLevel > 0)
 				{
 					container.querySelectorAll(self.selectors.productPriceQuantityFieldForLists).forEach(function (el){
@@ -302,10 +303,13 @@ const LiveProductInfo = function () {
 					container.querySelectorAll(self.selectors.addToCart).forEach(function (el){
 						el.disabled = false;
 					});
-					container.querySelectorAll(self.selectors.loadMoreButton).forEach(function (el){
-						el.classList.remove("d-none");
-					});
 				}
+			}
+			
+			function showLoadMore() {
+				document.querySelectorAll(self.selectors.loadMoreButton).forEach(function (el){
+					el.classList.remove("d-none");
+				});
 			}
 		},
 
