@@ -1,4 +1,6 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using System.Collections.Generic
+@using System.Linq
 
 @functions {
 
@@ -20,13 +22,17 @@
 
 }
 @{
+	List<LoopItem> fields = GetLoop("Fields");
+	bool hasDateFields = fields.Any(f => f.GetString("Field.Type") == "Date");
+	
     @GetString("Form.FormStart") 
     <div class="item-inner grid">
         @GetString("Form.SystemFields")
 
-        @foreach (LoopItem field in GetLoop("Fields"))
+        @foreach (LoopItem field in fields)
         {
-            string fieldType = field.GetString("Field.Type");
+	        const string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	        string fieldType = field.GetString("Field.Type");
             string inputType = fieldType.ToLower().Replace("textinput", "text");
             bool required = field.GetBoolean("Field.Required");
             string systemName = field.GetString("Field.SystemName");
@@ -51,14 +57,14 @@
                     case "Tel":
                     case "Number":
 	                    <div class="form-floating">
-                        <input id="@systemName" class="form-control" type="@inputType" name="@systemName" placeholder="@placeholder" value="@value" required="@required" @pattern />
-                        <label for="@systemName" class="form-label">@label@(required ? $" ({Translate("required")})" : "")</label>
+	                        <input id="@systemName" class="form-control" type="@inputType" name="@systemName" placeholder="@placeholder" value="@value" required="@required" @pattern />
+	                        <label for="@systemName" class="form-label">@label@(required ? $" ({Translate("required")})" : "")</label>
                         </div>
                         break;
 
                     case "Color":
-		                    <label for="@systemName" class="form-label">@label</label>
-		                    <input type="color" class="form-control form-control-color" value="@value" id="@systemName" name="@systemName" title="@label">
+	                    <label for="@systemName" class="form-label">@label</label>
+	                    <input type="color" class="form-control form-control-color" value="@value" id="@systemName" name="@systemName" title="@label">
                         break;
 
 	                case "Textarea":
@@ -75,13 +81,13 @@
 						break;
 
 					case "File":
-							<label for="@systemName" class="form-label">@name@(required ? $" ({Translate("required")})" : "")</label>
-							<input class="form-control" type="@inputType" id="@systemName" name="@systemName" required="@required">
+						<label for="@systemName" class="form-label">@name@(required ? $" ({Translate("required")})" : "")</label>
+						<input class="form-control" type="@inputType" id="@systemName" name="@systemName" required="@required">
                         break;
 	                    
 	                case "Range":
-			                <label for="@systemName" class="form-label">@label</label>
-                            <input type="range" class="form-range" name="@systemName" id="@systemName">
+		                <label for="@systemName" class="form-label">@label</label>
+                        <input type="range" class="form-range" name="@systemName" id="@systemName">
 		                break;
 		                
 	                case "Week":
@@ -89,14 +95,33 @@
 	                case "Month":
 	                case "Search":
 	                case "Url":
-                    case "Date":
                     case "Datetime":
                     case "Datetime-Local":
                         //Missing component
                         break;
+		                
+		            case "Date":
+                        <div class="input-group form-floating flatpickr">
+	                        <input type="text" class="form-control" id="@systemName" name="@systemName" placeholder="@placeholder" data-input>
+	                        <label for="@systemName" class="form-label">@label@(required ? $" ({Translate("required")})" : "")</label>
+
+                        	<button class="btn btn-outline-primary d-flex justify-content-center align-items-center" type="button" data-toggle id="ToggleDateCalendar">
+                        		<span class="icon-2">
+                        			@ReadFile(iconPath + "calendar.svg")
+                        		</span>
+                        	</button>
+
+                        	<button class="btn btn-outline-primary d-flex justify-content-center align-items-center" type="button" data-clear id="DeleteDeliveryDate">
+                        		<span class="icon-2">
+                        			@ReadFile(iconPath + "x.svg")
+                        		</span>
+                        	</button>
+                        </div>
+			            break;
 
                     case "CheckBox":
                         string isChecked = value.ToLower() == "true" ? "checked" : ""; 
+	                    
                         <div class="form-check">
                             <input class="form-check-input" type="@inputType" id="@systemName" name="@systemName" required="@required" @isChecked>
                             <label class="form-check-label" for="@systemName">@label@(required ? $" ({Translate("required")})" : "")</label>
@@ -106,6 +131,7 @@
                     case "Radio":
                     case "CheckBoxList":
                         string type = fieldType.ToLower() == "radio" ? "radio" : "checkbox";
+	                    
                         <label class="form-label d-block">@label@(required ? $" ({Translate("required")})" : "")</label>
                         foreach (LoopItem option in field.GetLoop("Options"))
                         {
@@ -169,4 +195,31 @@
     </div>
 
     @GetString("Form.FormEnd")
+
+	if (hasDateFields)
+	{
+		<script type="module">
+			swift.AssetLoader.Load('Files/Templates/Designs/Swift/Assets/css/flatpickr.min.css', 'css');
+
+			@* Wait for flatpickr styles and then import the js and load the flatpick instance *@
+			document.addEventListener('load.swift.assetloader', function () {
+				import('./Files/Templates/Designs/Swift/Assets/js/flatpickr.js').then(function(){
+
+					@* Set the flatpickr locale language from culture info *@
+					flatpickr.localize(flatpickr.l10ns.@(Pageview.Area.CultureInfo.TwoLetterISOLanguageName));
+
+					flatpickr(".flatpickr", {
+						altInput: true,
+						weekNumbers: true,
+						minDate: new Date().fp_incr(1),
+						wrap: true,
+						formatDate: (date, format, locale) => {
+							return date.toLocaleDateString('@(Pageview.Area.CultureInfo)');
+						},
+					});
+				});
+			})
+
+		</script>
+	}
 }
