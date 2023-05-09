@@ -33,11 +33,13 @@ const LiveProductInfo = function () {
 			productPriceQuantity: ".js-text-price-quantity",
 			productPriceQuantityFieldForLists: ".item_swift_productlistcompactview .js-quantity, .item_swift_productlistlistview .js-quantity",
 			productPricePrice: ".js-text-price-price",
+			quantityField: ".swift_quantity-field",
 			stock: ".js-text-stock",
 			expectedDelivery: ".js-text-expected-delivery",
 			stockMessages: ".js-stock-state div, .js-stock-state small, .js-stock-state p",
 			relatedProducts: "[id^='RelatedProducts']",
 			content: "#content",
+			loadMoreButton: ".swift_load_more_button",
 		},
 		
 		init: function() {
@@ -149,8 +151,9 @@ const LiveProductInfo = function () {
 				setStockLevel(container, product);
 				setExpectedDelivery(container, product);
 				updateVariantSelector(container);
-				enableQuantityBoxesOnLegacyProductLists(container, product);
+				enableQuantityFieldAndAddToCart(container, product);
 			});
+			showLoadMore();
 
 			function removeLoaders(container) {
 				container.querySelectorAll(self.selectors.loader).forEach(function (el){
@@ -288,13 +291,25 @@ const LiveProductInfo = function () {
 				}
 			}
 			
-			function enableQuantityBoxesOnLegacyProductLists(container, product) {
+			function enableQuantityFieldAndAddToCart(container, product) {
 				if (product.StockLevel && product.StockLevel > 0)
 				{
 					container.querySelectorAll(self.selectors.productPriceQuantityFieldForLists).forEach(function (el){
 						el.disabled = false;
 					});
+					container.querySelectorAll(self.selectors.quantityField).forEach(function (el){
+						el.disabled = false;
+					});
+					container.querySelectorAll(self.selectors.addToCart).forEach(function (el){
+						el.disabled = false;
+					});
 				}
+			}
+			
+			function showLoadMore() {
+				document.querySelectorAll(self.selectors.loadMoreButton).forEach(function (el){
+					el.classList.remove("d-none");
+				});
 			}
 		},
 
