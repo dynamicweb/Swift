@@ -308,11 +308,9 @@ const LocationsMap = function () {
 			var geocoder = new google.maps.Geocoder();
 			geocoder.geocode(request, function (results, status) {
 				if (status == google.maps.GeocoderStatus.OK) {
-					map.setZoom(7);
-					//map.panTo(results[0].geometry.location);
-					//searchResultMarker.setPosition(results[0].geometry.location);
-
-					LocationsMap.findNearestMarker(results[0].geometry.location);
+					// To adjust Zoom Level
+					var bound = results[0].geometry.viewport;
+					map.fitBounds(bound);
 				} else {
 					console.log('Geocode was not successful for the following reason: ' + status);
 				}
