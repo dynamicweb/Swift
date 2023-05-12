@@ -7,14 +7,12 @@
 	private Dynamicweb.Frontend.LinkViewModel GetLink(ItemViewModel item)
 	{
 		string linkType = item.GetRawValueString("LinkType", "page");
-		Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
 
-		if (linkType == "page" && item.GetLink("ButtonLink") != null)
+		if (linkType == "page" && item.GetLink("ButtonLink") is LinkViewModel buttonLink)
 		{
-			link = item.GetLink("ButtonLink");
+			return buttonLink;
 		}
-
-		if (linkType == "product-group")
+		else if (linkType == "product-group")
 		{
 			IList<ProductGroupViewModel> selectedGroups = item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
 			IList<string> groupIds = new List<string> { };
@@ -27,14 +25,13 @@
 				}
 			}
 
-			link = new Dynamicweb.Frontend.LinkViewModel()
+			return new Dynamicweb.Frontend.LinkViewModel()
 			{
 				Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
 				IsExternal = false
 			};
 		}
-
-		if (linkType == "product")
+		else if (linkType == "product")
 		{
 			ProductListViewModel products = item.GetValue<ProductListViewModel>("ProductLink");
 			IList<string> productIds = new List<string> { };
@@ -47,18 +44,24 @@
 				}
 			}
 
-			string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
-			string productLink = products.Products.FirstOrDefault().GetProductLink(GetPageIdByNavigationTag("Shop"), false);
-			productLink = productIds.Count != 1 ? "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&" + productParameter + "=" + string.Join(",", productIds).Trim() : productLink;
+			string productLink;
+			if (productIds.Count != 1)
+			{
+				productLink = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&MainProductId=" + string.Join(",", productIds).Trim();
+			}
+			else
+			{
+				productLink = products.Products.FirstOrDefault().GetProductLink(GetPageIdByNavigationTag("Shop"), false);
+			}
 
-			link = new Dynamicweb.Frontend.LinkViewModel()
+			return new Dynamicweb.Frontend.LinkViewModel()
 			{
 				Url = productLink,
 				IsExternal = false
 			};
 		}
 
-		return link;
+		return new Dynamicweb.Frontend.LinkViewModel();
 	}
 }
 
@@ -67,19 +70,19 @@
 	bool isFirstPoster = false;
 	string movePageBehindClass = "";
 	if (Pageview.Page.PropertyItem != null)
-		{
+	{
 		string headerCssClass = Pageview.Page.PropertyItem["MoveThisPageBehindTheHeader"] != null ? Pageview.Page.PropertyItem["MoveThisPageBehindTheHeader"].ToString() : "sticky-top";
 		movePageBehind = headerCssClass == "fixed-top" && !Pageview.IsVisualEditorMode ? true : false;
 		if (movePageBehind)
-			{
+		{
 			movePageBehindClass = " poster-behind";
 			if (!Dynamicweb.Context.Current.Items.Contains("firstPosterIsRendered"))
-				{
+			{
 				isFirstPoster = true;
 				Dynamicweb.Context.Current.Items.Add("firstPosterIsRendered", true);
-				}
 			}
 		}
+	}
 
 	string title = Model.Item.GetString("Title");
 	var sliderItems = Model.Item?.GetItems("Slider_Items") ?? Enumerable.Empty<Dynamicweb.Frontend.ItemViewModel>().ToList();
@@ -90,7 +93,8 @@
 	buttonSize = buttonSize == "regular" ? "" : buttonSize;
 	buttonSize = buttonSize == "large" ? " btn-lg" : buttonSize;
 	string contentPadding = Model.Item.GetRawValueString("ContentPadding", string.Empty);
-	switch (contentPadding){
+	switch (contentPadding)
+	{
 		case "small":
 			contentPadding = " p-3";
 			break;
@@ -127,7 +131,7 @@
 	string autoplayInterval = Model.Item.GetRawValueString("AutoplayInterval", string.Empty);
 	bool hideSliderNavigation = false;
 
-	if(navigationStyle == "slider-nav-none")
+	if (navigationStyle == "slider-nav-none")
 	{
 		hideSliderNavigation = true;
 	}
@@ -198,8 +202,9 @@
 	string itemLayout = item.GetRawValueString("ItemLayout", "poster");
 	string layout = item.GetRawValueString("Layout", "align-middle-center-text-center");
 	string containerWidth = "container-xl";
-	int xPos = item?.GetFile("Image")?.FocalPositionFromLeft ?? 50;
-	int yPos = item?.GetFile("Image")?.FocalPositionFromTop ?? 50;
+	FileViewModel image = item.GetFile("Image");
+	int xPos = image?.FocalPositionFromLeft ?? 50;
+	int yPos = image?.FocalPositionFromTop ?? 50;
 	string theme = !string.IsNullOrWhiteSpace(item.GetRawValueString("Theme")) ? " theme " + item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 	string active = isFirst ? "active" : "";
 	string alignment = string.Empty;
@@ -243,9 +248,9 @@
 		case "poster":
 
 			<li class="@(theme)">
-				@{@RenderImage(item)}
+				@{@RenderImage(item, image)}
 
-				@{string position = item.GetFile("Image") is object ? "position-absolute top-0 bottom-0 start-0 end-0 " : string.Empty;}
+				@{string position = image is object ? "position-absolute top-0 bottom-0 start-0 end-0 " : string.Empty;}
 
 				<div class="@(position)h-100 grid grid-1 p-3 px-xl-3 py-xl-4 @(containerWidth) @(alignment)" @(maxWidth)>
 					<div class="grid grid-1 gap-3">
@@ -267,7 +272,7 @@
 				<div class="row g-0 h-100">
 					<div class="col-12 col-lg-6 col-xl-7 mh-100">
 						<div class="overflow-hidden h-100 w-100">
-							@{@RenderImage(item)}
+							@{@RenderImage(item, image)}
 						</div>
 					</div>
 					<div class="col-12 col-lg-6 col-xl-5 mh-100 grid grid-1 p-3 px-xl-3 py-xl-4 @(containerWidth) @(alignment)" @(maxWidth)>
@@ -300,7 +305,7 @@
 						</div>
 					</div>
 					<div class="col-12 col-lg-6 col-xl-7 mh-100">
-						@{@RenderImage(item)}
+						@{@RenderImage(item, image)}
 					</div>
 				</div>
 			</li>
@@ -313,7 +318,7 @@
 				@if (!string.IsNullOrEmpty(item.GetString("Image")))
 				{
 					var altText = !string.IsNullOrEmpty(item.GetString("ImageAlt")) ? item.GetString("ImageAlt") : item.GetString("Title", string.Empty);
-					var image = item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel();
+					image = image ?? new Dynamicweb.Frontend.FileViewModel();
 					var link = GetLink(item);
 
 					if (link is object && !string.IsNullOrEmpty(link.Url))
@@ -336,9 +341,9 @@
 	}
 }
 
-@helper RenderImage(ItemViewModel item)
+@helper RenderImage(ItemViewModel item, FileViewModel image)
 {
-	if (!string.IsNullOrEmpty(item.GetString("Image")))
+	if (image is object)
 	{
 		var altText = !string.IsNullOrEmpty(item.GetString("ImageAlt")) ? item.GetString("ImageAlt") : item.GetString("Title", string.Empty);
 		var parms = new Dictionary<string, object>();
@@ -346,7 +351,7 @@
 		parms.Add("columns", Model.GridRowColumnCount);
 		parms.Add("alt", altText);
 
-		@RenderPartial("Components/Image.cshtml", item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+		@RenderPartial("Components/Image.cshtml", image ?? new Dynamicweb.Frontend.FileViewModel(), parms)
 	}
 }
 
