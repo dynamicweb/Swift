@@ -1,0 +1,121 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+
+
+@{
+	ProductViewModel product = null;
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Page.Item["DummyProduct"] != null)
+	{
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+
+		if (productList?.Products is object)
+		{
+			product = productList.Products[0];
+		}
+	}
+}
+
+@if (product is object)
+{
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", string.Empty);
+	horizontalAlign = horizontalAlign == "center" ? "justify-content-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "end" ? "justify-content-end" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "full" ? string.Empty : horizontalAlign;
+
+	string buttonSize = Model.Item.GetRawValueString("ButtonSize", "regular");
+
+	switch (buttonSize)
+	{
+		case "small":
+			buttonSize = " btn-sm";
+			break;
+		case "regular":
+			buttonSize = string.Empty;
+			break;
+		case "large":
+			buttonSize = " btn-lg";
+			break;
+	}
+
+	string iconPath = "/Files/icons/";
+
+	string flexFill = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "flex-fill" : string.Empty;
+	string fullWidth = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "w-100" : string.Empty;
+	string icon = Model.Item.GetRawValueString("Icon", iconPath + "download.svg");
+	string label = !icon.Contains("_none") ? $"<span class=\"icon-2\">{ReadFile(icon)}</span>" : string.Empty;
+	label += !icon.Contains("_none") && !Model.Item.GetBoolean("HideButtonText") ? " " : string.Empty;
+	label += !Model.Item.GetBoolean("HideButtonText") && !string.IsNullOrEmpty(Model.Item.GetString("Title")) ? Model.Item.GetString("Title") : string.Empty;
+
+	var selectedCatalogs = Model.Item.GetList("SelectedCatalogs").SelectedOptions;
+	int catalogCount = 0;
+
+	<div class="d-flex @horizontalAlign @fullWidth item_@Model.Item.SystemName.ToLower()">
+		<button type="button" class="btn btn-primary @(buttonSize) @flexFill" data-bs-toggle="modal" data-bs-target="#DownloadPublicationModal@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID" style="white-space: nowrap" title="@Model.Item.GetString("Title")" id="DownloadPublication@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID">
+			@if (!Model.Item.GetBoolean("HideButtonText"))
+			{
+				<span class="text-nowrap d-flex align-items-center justify-content-center gap-2">
+					@label
+				</span>
+			}
+			else
+			{
+				@label
+			}
+		</button>
+	</div>
+
+	<div class="modal fade" id="DownloadPublicationModal@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID" tabindex="-1" aria-labelledby="#DownloadPublicationModalLabel@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<form target="_blank" action="/Default.aspx" method="get">
+					<input type="hidden" name="MainProductId" value="@product.Id">
+					<input type="hidden" name="ShowPrice" value="true">
+					<input type="hidden" name="ShowStock" value="true">
+					<input type="hidden" name="EcomLanguage" value="en">
+					<input type="hidden" name="Print" value="true">
+
+					@if (!string.IsNullOrEmpty(product.VariantId))
+					{
+						<input type="hidden" name="VariantId" value="@product.VariantId">
+					}
+
+					<div class="modal-header">
+						<h1 class="modal-title fs-5" id="DownloadPublicationModalLabel@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID">@Translate("Publication for print")</h1>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<div class="modal-body">
+						@foreach (var catalog in selectedCatalogs)
+						{
+							var selected = catalogCount == 0 ? "checked" : string.Empty;
+							var page = Dynamicweb.Content.Services.Pages.GetPage(Convert.ToInt32(catalog.Value));
+							var radioId = $"CatalogCheck_{Model.ID}_{catalog.Value}";
+
+							<div class="form-check">
+								<input class="form-check-input" type="radio" name="ID" value="@catalog.Value" id="@radioId" @selected>
+								<label class="form-check-label" for="@radioId">
+									@catalog.Name
+								</label>
+							</div>
+
+							catalogCount++;
+						}
+					</div>
+					<div class="modal-footer">
+						<button type="submit" class="btn btn-primary">@Translate("Print")</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</div>
+
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0">@Translate("No products available")</div>
+}
