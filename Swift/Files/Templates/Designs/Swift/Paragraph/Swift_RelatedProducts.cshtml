@@ -8,7 +8,7 @@
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
-	if (Pageview.Item["DummyProduct"] != null && Pageview.IsVisualEditorMode)
+	if (Pageview.IsVisualEditorMode && Pageview.Item["DummyProduct"] != null)
 	{
 		ProductListViewModel productList = Pageview.GetPageviewModel().Item.GetValue<ProductListViewModel>("DummyProduct");
 		if (productList?.Products is object)
@@ -17,7 +17,7 @@
 		}
 	}
 
-	string title = Model?.Item?.GetString("Title") != null ? Model.Item.GetString("Title") : Translate("Products");
+	string title = Model?.Item?.GetRawValueString("Title", Translate("Products"));
 	string campaignValues = Model.Item.GetRawValueString("CampaignBadges", string.Empty);
 
 	//Styling
@@ -36,12 +36,14 @@
 	string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
 
 	//Link generation
-	string pageId = Model.Item.GetLink("ProductSliderServicePage") != null ? Model.Item.GetLink("ProductSliderServicePage").PageId.ToString() : "";
-	string servicePageByNavigationTag = GetPageIdByNavigationTag("ProductSliderService") != 0 ? GetPageIdByNavigationTag("ProductSliderService").ToString() : "";
-	pageId = pageId == "" ? servicePageByNavigationTag : pageId;
+	string pageId = !string.IsNullOrEmpty(Model.Item.GetRawValueString("ProductSliderServicePage")) ? Model.Item.GetLink("ProductSliderServicePage").PageId.ToString() : "";
+	if (string.IsNullOrEmpty(pageId))
+	{
+		pageId = GetPageIdByNavigationTag("ProductSliderService").ToString();
+	}
 
 	string url = "/Default.aspx?ID=" + pageId;
-	if (!url.Contains("LayoutTemplate"))
+	if (!url.Contains("LayoutTemplate", StringComparison.OrdinalIgnoreCase))
 	{
 		url += url.Contains("?") ? "&LayoutTemplate=Designs/Swift/Swift_PageClean.cshtml" : "?LayoutTemplate=Designs/Swift/Swift_PageClean.cshtml";
 	}
@@ -64,8 +66,7 @@
 	bool hasVariants = false;
 
 	//--- VARIANTS ---
-	ProductListViewModel productsToRelateToVariants = Model.Item.GetValue<ProductListViewModel>("ProductsToRelateToVariants");
-	if (productsToRelateToVariants != null && sourceType == "variants")
+	if (sourceType == "variants" && Model.Item.GetValue<ProductListViewModel>("ProductsToRelateToVariants") is ProductListViewModel productsToRelateToVariants)
 	{
 		foreach (var productSelection in productsToRelateToVariants.Products)
 		{
@@ -74,8 +75,7 @@
 	}
 
 	//--- MOST SOLD ---
-	IList<ProductGroupViewModel> groupsToRelateToMostSold = Model.Item.GetValue<IList<ProductGroupViewModel>>("GroupsToRelateToMostSold");
-	if (groupsToRelateToMostSold != null && sourceType == "most-sold")
+	if (sourceType == "most-sold" && Model.Item.GetValue<IList<ProductGroupViewModel>>("GroupsToRelateToMostSold") is IList<ProductGroupViewModel> groupsToRelateToMostSold)
 	{
 		foreach (var fromGroup in groupsToRelateToMostSold)
 		{
@@ -84,8 +84,7 @@
 	}
 
 	//--- TRENDING ---
-	IList<ProductGroupViewModel> groupsToRelateToTrending = Model.Item.GetValue<IList<ProductGroupViewModel>>("GroupsToRelateToTrending");
-	if (groupsToRelateToTrending != null && sourceType == "trending")
+	if (sourceType == "trending" && Model.Item.GetValue<IList<ProductGroupViewModel>>("GroupsToRelateToTrending") is IList<ProductGroupViewModel> groupsToRelateToTrending)
 	{
 		foreach (var fromGroup in groupsToRelateToTrending)
 		{
@@ -94,8 +93,7 @@
 	}
 
 	//--- LATEST ---
-	IList<ProductGroupViewModel> groupsToRelateToLatest = Model.Item.GetValue<IList<ProductGroupViewModel>>("GroupsToRelateToLatest");
-	if (groupsToRelateToLatest != null && sourceType == "latest")
+	if (sourceType == "latest" && Model.Item.GetValue<IList<ProductGroupViewModel>>("GroupsToRelateToLatest") is IList<ProductGroupViewModel> groupsToRelateToLatest)
 	{
 		foreach (var fromGroup in groupsToRelateToLatest)
 		{
@@ -104,8 +102,7 @@
 	}
 
 	//--- FREQUENTLY BOUGHT ---
-	ProductListViewModel productsToRelateTo = Model.Item.GetValue<ProductListViewModel>("ProductsToRelateTo");
-	if (productsToRelateTo != null && sourceType == "frequently")
+	if (sourceType == "frequently" && Model.Item.GetValue<ProductListViewModel>("ProductsToRelateTo") is ProductListViewModel productsToRelateTo)
 	{
 		foreach (var fromProduct in productsToRelateTo.Products)
 		{
@@ -114,8 +111,7 @@
 	}
 
 	//--- SELECTED PRODUCTS ---
-	ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("Products");
-	if (products != null && (sourceType == "selected" || sourceType == "frequently"))
+	if ((sourceType == "selected" || sourceType == "frequently") && Model.Item.GetValue<ProductListViewModel>("Products") is ProductListViewModel products)
 	{
 		hasVariants = products.Products.Any(p => !string.IsNullOrEmpty(p.VariantId));
 		foreach (var productSelection in products.Products)
@@ -136,23 +132,11 @@
 	}
 
 	//--- RELATED PRODUCTS ---
-	if (sourceType == "related-products")
+	if (sourceType == "related-products" && Model.Item.GetValue<ProductListViewModel>("ProductsToRelateTo2") is ProductListViewModel selectedRelationProduct)
 	{
-		ProductListViewModel selectedRelationProduct = Model.Item.GetValue<ProductListViewModel>("ProductsToRelateTo2");
-		if (selectedRelationProduct?.Products != null)
+		if (selectedRelationProduct.Products.Any())
 		{
-			if (selectedRelationProduct.Products.Count > 0)
-			{
-				int productCount = 0;
-				foreach (var selectedProduct in selectedRelationProduct.Products)
-				{
-					if (productCount == 0)
-					{
-						product = selectedProduct;
-						productCount++;
-					}
-				}
-			}
+			product = selectedRelationProduct.Products.FirstOrDefault();
 		}
 
 		if (product?.RelatedGroups != null)
@@ -440,14 +424,14 @@
 
 			foreach (var relatedProduct in group.Products)
 			{
-					if (!string.IsNullOrEmpty(relatedProduct.VariantId))
-					{
-						fromProductIds.Add($"{relatedProduct.ProductId} {relatedProduct.VariantId}");
-					}
-					else
-					{
-						fromProductIds.Add($"{relatedProduct.ProductId}");
-					}
+				if (!string.IsNullOrEmpty(relatedProduct.VariantId))
+				{
+					fromProductIds.Add($"{relatedProduct.ProductId} {relatedProduct.VariantId}");
+				}
+				else
+				{
+					fromProductIds.Add($"{relatedProduct.ProductId}");
+				}
 			}
 			<script type="module">
 				document.querySelector("#ParentColumnSize_@Model.ID").value = document.querySelector("#RelatedProducts_@(Model.ID)_@group.Id").closest("[data-col-size]").getAttribute("data-col-size");
@@ -460,5 +444,3 @@
 		}
 	}
 }
-
-
