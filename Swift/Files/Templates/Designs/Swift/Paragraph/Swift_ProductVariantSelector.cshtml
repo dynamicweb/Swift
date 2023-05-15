@@ -56,16 +56,16 @@
 
 	private string GetDefaultOrVariantGroupValue(string variantGroupId, string itemField, string itemFieldDefaultValue, Dictionary<string, string> fieldValueMapping)
 	{
-		string horizontalTextAlign = Model.Item.GetRawValueString(itemField, itemFieldDefaultValue);
-		horizontalTextAlign = fieldValueMapping.ContainsKey(horizontalTextAlign) ? fieldValueMapping[horizontalTextAlign] : horizontalTextAlign;
+		string itemFieldValue = Model.Item.GetRawValueString(itemField, itemFieldDefaultValue);
+		itemFieldValue = fieldValueMapping.ContainsKey(itemFieldValue) ? fieldValueMapping[itemFieldValue] : itemFieldValue;
 
 		// If no variantGroup (i.e. Visual Editor), return default value
-		if (string.IsNullOrEmpty(variantGroupId)) return horizontalTextAlign;
+		if (string.IsNullOrEmpty(variantGroupId)) return itemFieldValue;
 
 		string showVariantGroups = Model.Item.GetString("ShowVariantGroupOptions", "all");
 		var selectedVariantGroupsList = !string.IsNullOrEmpty(Model.Item.GetRawValueString("VariantGroups")) ? Model.Item.GetItems("VariantGroups") : new List<Dynamicweb.Frontend.ItemViewModel>();
 		// If no exceptions or settings are all the same, return default value
-		if (showVariantGroups == "all" || selectedVariantGroupsList == null || !selectedVariantGroupsList.Any()) return horizontalTextAlign;
+		if (showVariantGroups == "all" || selectedVariantGroupsList == null || !selectedVariantGroupsList.Any()) return itemFieldValue;
 
 		// Get specific value for variant group
 		foreach (var selectedVariantGroupListItem in selectedVariantGroupsList)
@@ -73,11 +73,35 @@
 			var variantGroups = selectedVariantGroupListItem.GetRawValueString("VariantGroups").Split(',');
 			if (!variantGroups.Any(s => s.Equals(variantGroupId))) continue;
 
-			horizontalTextAlign = selectedVariantGroupListItem.GetRawValueString(itemField, itemFieldDefaultValue);
-			horizontalTextAlign = fieldValueMapping.ContainsKey(horizontalTextAlign) ? fieldValueMapping[horizontalTextAlign] : horizontalTextAlign;
+			itemFieldValue = selectedVariantGroupListItem.GetRawValueString(itemField, itemFieldDefaultValue);
+			itemFieldValue = fieldValueMapping.ContainsKey(itemFieldValue) ? fieldValueMapping[itemFieldValue] : itemFieldValue;
 		}
 
-		return horizontalTextAlign;
+		return itemFieldValue;
+	}
+	
+	private bool GetDefaultOrVariantGroupValue(string variantGroupId, string itemField)
+	{
+		bool itemFieldValue = Model.Item.GetBoolean(itemField);
+
+		// If no variantGroup (i.e. Visual Editor), return default value
+		if (string.IsNullOrEmpty(variantGroupId)) return itemFieldValue;
+
+		string showVariantGroups = Model.Item.GetString("ShowVariantGroupOptions", "all");
+		var selectedVariantGroupsList = !string.IsNullOrEmpty(Model.Item.GetRawValueString("VariantGroups")) ? Model.Item.GetItems("VariantGroups") : new List<Dynamicweb.Frontend.ItemViewModel>();
+		// If no exceptions or settings are all the same, return default value
+		if (showVariantGroups == "all" || selectedVariantGroupsList == null || !selectedVariantGroupsList.Any()) return itemFieldValue;
+
+		// Get specific value for variant group
+		foreach (var selectedVariantGroupListItem in selectedVariantGroupsList)
+		{
+			var variantGroups = selectedVariantGroupListItem.GetRawValueString("VariantGroups").Split(',');
+			if (!variantGroups.Any(s => s.Equals(variantGroupId))) continue;
+
+			itemFieldValue = selectedVariantGroupListItem.GetBoolean(itemField);
+		}
+
+		return itemFieldValue;
 	}
 }
 
@@ -126,11 +150,20 @@
 				string variantGroupLayout = GetLayoutForVariantGroup(variantGroup.Id);
 				string horizontalAlign = GetDefaultOrVariantGroupValue(variantGroup.Id, "HorizontalAlignment", "", new Dictionary<string, string> { { "center", "justify-content-center" }, { "end", "justify-content-end" } });
 				string horizontalTextAlign = GetDefaultOrVariantGroupValue(variantGroup.Id, "HorizontalAlignment", "", new Dictionary<string, string> { { "center", "text-center" }, { "end", "text-end" } });
+				bool showSelectedOptionName = GetDefaultOrVariantGroupValue(variantGroup.Id, "ShowSelectedOptionName");
 
 				<div>
 					@if (!hideGroupHeaders)
 					{
-						<h3 class="h6 @horizontalTextAlign">@group.Name</h3>
+						<h3 class="h6 @horizontalTextAlign">
+							@group.Name
+							
+							@if (showSelectedOptionName)
+		                    {
+								string selectedOptionName = group.Options.FirstOrDefault(opt => variantId.Contains(opt.Id))?.Name ?? string.Empty;
+			                    <span class="fw-light px-1 swift-selected-option-name">@selectedOptionName</span>    
+		                    }
+						</h3>
 					}
 					<div class="d-flex gap-2 @horizontalAlign flex-wrap js-variant-group" data-group-id="@groupNumber">
 						@if (variantGroupLayout == "button")
