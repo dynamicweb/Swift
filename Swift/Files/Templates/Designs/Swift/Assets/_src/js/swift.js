@@ -15,6 +15,7 @@ import { Typeahead } from './_typeahead';
 import { AssetLoader } from './_assetLoader';
 import { LiveProductInfo } from './_live-product-info';
 import { BackInStockNotification } from './_backInStockNotification';
+import { ExpressBuy } from './_expressBuy';
 
 //Bootstrap
 window.bootstrap = bootstrap;
@@ -37,7 +38,8 @@ const swift = function () {
 		Image: Image,
 		AssetLoader: AssetLoader,
 		LiveProductInfo: LiveProductInfo,
-		BackInStockNotification: BackInStockNotification
+		BackInStockNotification: BackInStockNotification,
+		ExpressBuy: ExpressBuy
 	}
 }();
 export { swift };

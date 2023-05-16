@@ -59,9 +59,11 @@
 	}
 
 	var products = order == null ? Model.Products : orderProducts;
+	bool hasDiscontinuedProducts = products.Any(p => p.Discontinued && !string.IsNullOrEmpty(p.ReplacementProduct.ProductId) && p.ReplacementProduct.GetProduct() != null
+		&& p.ReplacementProduct.GetProduct().Active && (p.ReplacementProduct.GetProduct().StockLevel > 0 || p.ReplacementProduct.GetProduct().NeverOutOfstock));
 }
 
-@if (products.Count() > 0)
+@if (products.Any())
 {
 	<div class="modal fade" id="outOfStockProductsModal" tabindex="-1" aria-labelledby="outOfStockProductsModal" aria-hidden="true">
 		<div class="modal-dialog modal-xl modal-dialog-centered">
@@ -85,7 +87,12 @@
 						<tbody>
 							@foreach (var product in products)
 							{
-								if (product.StockLevel < 1 && !product.NeverOutOfstock)
+								productCounter += 1;
+								
+								ProductViewModel replacementProduct = product.Discontinued && product.ReplacementProduct != null && !string.IsNullOrEmpty(product.ReplacementProduct.ProductId) ? product.ReplacementProduct.GetProduct() : null;
+								bool showReplacementProduct = product.Discontinued && replacementProduct != null && replacementProduct.Active && (replacementProduct.StockLevel > 0 || replacementProduct.NeverOutOfstock);
+								
+								if ((product.StockLevel < 1 && !product.NeverOutOfstock) || product.Discontinued)
 								{
 									<tr>
 										<td class="align-middle">
@@ -96,12 +103,18 @@
 										</td>
 										<td class="align-middle">
 											<span class="fs-8 fs-lg-6">@product.Name</span>
+											@if (product.Discontinued && showReplacementProduct)
+											{												
+												<span class="fs-9 fs-lg-7 fst-italic fw-bold d-block js-product-replacements-message" data-product-counter="@productCounter" data-replaced-by-message="@($"{Translate("Replaced by")} {replacementProduct.Name}")" data-replace-refused-message="@Translate("Replacement Refused")">@Translate("Replacement not selected")</span>
+											}
 										</td>
 										<td class="align-middle">
 											<span class="fs-8 fs-lg-6">@product.VariantName</span>
 										</td>
 										<td class="align-middle">
-											<span class="fs-8 fs-lg-6 text-end text-lg-start text-danger">@Translate("Out of Stock")</span>
+											<span class="fs-8 fs-lg-6 text-end text-lg-start text-danger">
+												@Translate(product.Discontinued ? "Discontinued" : "Out of Stock")
+											</span>
 										</td>
 										@if (!hidePrice)
 										{
@@ -130,6 +143,42 @@
 		</div>
 	</div>
 
+	if (hasDiscontinuedProducts)
+	{
+		<div class="modal fade" id="replacementProductsModal" tabindex="-1" aria-hidden="true">
+			<div class="modal-dialog modal-xl modal-dialog-centered">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h1 class="modal-title fs-5">
+							@Translate("Replacement Product for")
+							<span class="fst-italic js-modal-title-product-name"></span>
+						</h1>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+					</div>
+					<div class="modal-body js-replacement-modal-body"></div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="swift.ExpressBuy.RefuseReplacementProduct()">
+							<div class="d-flex gap-2 align-items-center lh-base">
+								<span>@Translate("Refuse Replacement")</span>
+								<span class="icon-2">
+									@ReadFile(iconPath + "x.svg")
+								</span>
+							</div>
+						</button>
+						<button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick="swift.ExpressBuy.AcceptReplacementProduct()">
+							<div class="d-flex gap-2 align-items-center lh-base">
+								<span>@Translate("Accept Replacement")</span>
+								<span class="icon-2">
+									@ReadFile(iconPath + "check.svg")
+								</span>
+							</div>
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+
 	<header class="g-col-12 py-2 d-none d-lg-block">
 		<div class="grid gap-2 lh-1">
 			<div class="g-col-1"></div>
@@ -142,6 +191,8 @@
 		</div>
 	</header>
 
+	productCounter = 0;
+	
 	foreach (var product in products)
 	{
 		if (product != null && product?.PrimaryOrDefaultGroup?.Id != null) {
@@ -155,8 +206,8 @@
 				quantity = value;
 			}
 
-			string disableQuantityField = product.StockLevel < 1 && !product.NeverOutOfstock ? "disabled" : "";
-			string disableOrderline = product.StockLevel < 1 && !product.NeverOutOfstock ? "pe-none user-select-none opacity-50" : "";
+			string disableQuantityField = (product.StockLevel < 1 && !product.NeverOutOfstock) || product.Discontinued ? "disabled" : "";
+			string disableOrderline = (product.StockLevel < 1 && !product.NeverOutOfstock) || product.Discontinued ? "pe-none user-select-none opacity-50" : "";
 
 			string link = product.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
 
@@ -166,36 +217,47 @@
 				productsOutOfStock++;
 			}
 
-			<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center product @disableOrderline">
+			ProductViewModel replacementProduct = product.Discontinued && product.ReplacementProduct != null && !string.IsNullOrEmpty(product.ReplacementProduct.ProductId) ? product.ReplacementProduct.GetProduct() : null;
+			bool showReplacementProduct = product.Discontinued && replacementProduct != null && replacementProduct.Active && (replacementProduct.StockLevel > 0 || replacementProduct.NeverOutOfstock);
+			string replacementProductFeed = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl("Default.aspx?ID=" + GetPageIdByNavigationTag("ReorderReplacement") + "&ProductId=" + product.Id + "&productCounter=" + productCounter + "&quantity=" + quantity + "&getproductinfo=true");
 
+			<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center product js-replacement-product @disableOrderline" data-product-counter="@productCounter" data-replacement-feed="@replacementProductFeed">
+				
 				<div class="d-none d-lg-block g-col-12 border-top"></div>
 
 				<input type="hidden" name="ProductLoopCounter@(productCounter)" value="@(productCounter)">
-				<input type="hidden" name="ProductId@(productCounter)" value="@product.Id">
-				<input type="hidden" name="VariantId@(productCounter)" value="@product.VariantId">
+				<input type="hidden" class="productId" name="ProductId@(productCounter)" value="@product.Id">
+				<input type="hidden" class="productVariantId" name="VariantId@(productCounter)" value="@product.VariantId">
 
 				<div class="g-col-1">
-					<a href="@link" tabindex="-1">
-						<img class="img-fluid" src="/Admin/public/getimage.ashx?image=@Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value)&width=60&height=60&format=webp&Crop=5&fillcanvas=true" height="60" width="60" alt="@product.Name">
+					<a class="productLink" href="@link" tabindex="-1">
+						<img class="img-fluid productImage" src="/Admin/public/getimage.ashx?image=@Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value)&width=60&height=60&format=webp&Crop=5&fillcanvas=true" height="60" width="60" alt="@product.Name">
 					</a>
 				</div>
 
 				<div class="g-col-7 g-col-lg-9 grid grid-9 gap-0 gap-lg-2 lh-1">
 
 					<div class="g-col-5 g-col-lg-1 order-1">
-						<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.Number</a></span>
+						<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover productNumber">@product.Number</a></span>
 					</div>
 
 					<div class="g-col-5 g-col-lg-4 order-3 lh-1">
-						<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.Name</a></span>
+						<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover js-product-name">@product.Name</a></span>
+						<span class="fs-8 fs-lg-6 fst-italic fw-bold d-block">
+							<a href="@link" class="text-decoration-none text-decoration-underline-hover js-product-replacements-message" data-product-counter="@productCounter" data-replace-refused-message="@Translate("Replacement Refused")"></a>
+						</span>
 					</div>
 
 					<div class="g-col-2 g-col-lg-1 order-4">
-						<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@product.VariantName</a></span>
+						<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover productVariantName">@product.VariantName</a></span>
 					</div>
 
 					<div class="g-col-2 g-col-lg-1 order-4">
-						@if (product.NeverOutOfstock)
+						@if (product.Discontinued)
+						{
+							<div class="fs-8 fs-lg-6 text-end text-lg-start text-danger productStockState">@Translate("Discontinued")</div>
+						}
+						else if (product.NeverOutOfstock)
 						{
 							<div class="fs-8 fs-lg-6 text-end text-lg-start text-success">@Translate("In stock")</div>
 						} else if (product.StockLevel > 0)
@@ -211,7 +273,7 @@
 					<div class="g-col-4 g-col-lg-2 text-end order-2 order-lg-last">
 						@if (!hidePrice)
 						{
-							<span class="text-price fs-8 fs-lg-6">@product.Price.PriceFormatted</span>
+							<span class="text-price fs-8 fs-lg-6 productPrice">@product.Price.PriceFormatted</span>
 						}
 					</div>
 				</div>
@@ -222,6 +284,14 @@
 				</div>
 
 			</article>
+
+			if (product.Discontinued && showReplacementProduct)
+			{
+				<div class="position-relative start-50 translate-middle d-flex g-start-8 js-product-replacements-button" data-product-counter="@productCounter" data-replacing-message="@($"{Translate("Replacing")} {product.Name}")" data-replace-refused-message="@Translate("Replacement Refused")">
+					<a class="btn btn-sm btn-primary" role="button" data-bs-target="#replacementProductsModal" data-bs-toggle="modal" onclick="swift.ExpressBuy.OpenReplacementModal(@productCounter)" alt="@Translate("View replacement product")">@Translate("Replace")</a>
+				</div>
+			}
+
 		} else { 
 			<article class="g-col-12">
 				<div class="alert alert-danger">
