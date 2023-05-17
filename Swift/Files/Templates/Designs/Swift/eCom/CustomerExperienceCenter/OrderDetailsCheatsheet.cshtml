@@ -21,13 +21,13 @@
 		</tr>
 		<tr>
 			<!--Unit price-->
-            <th>@Translate("With Discount / Price")</th>
-            <th>@Translate("Discount")</th>
             <th>@Translate("Without Discount")</th>
+            <th>@Translate("Discount")</th>
+            <th>@Translate("With Discount / Price")</th>
             <!--Total price-->
-            <th>@Translate("With Discount / Price")</th>
-            <th>@Translate("Discount")</th>
             <th>@Translate("Without Discount")</th>
+            <th>@Translate("Discount")</th>
+            <th>@Translate("With Discount / Price")</th>
 		</tr>
 		</thead>
 		@foreach (var orderline in Model.OrderLines)
@@ -47,26 +47,20 @@
 				<td>@RenderOrderlineName(orderline)</td>
 				<td>@orderline.Quantity</td>
 				<!--Unit price-->
-				<td>@RenderOrderlineUnitPriceWithDiscount(orderline)</td>
-				<td>@RenderOrderlineUnitDiscount(orderline)</td>
 				<td>@RenderOrderlineUnitPriceWithoutDiscount(orderline)</td>
+				<td>@RenderOrderlineUnitDiscount(orderline)</td>
+				<td>@RenderOrderlineUnitPriceWithDiscount(orderline)</td>
 				<!--Total price-->
-				<td>@RenderOrderlineTotalPriceWithDiscount(orderline)</td>
-				<td>@RenderOrderlineTotalDiscount(orderline)</td>
 				<td>@RenderOrderlineTotalPriceWithoutDiscount(orderline)</td>
+				<td>@RenderOrderlineTotalDiscount(orderline)</td>
+				<td>@RenderOrderlineTotalPriceWithDiscount(orderline)</td>
 			</tr>
 		}
 		<tr>
 			<td colspan="5">@Translate("Total of original price / Total product discounts / Total with all product discounts*")<br/><small>@Translate("*Price after product discounts, before order discounts, fees and taxes")</small></td>
-			<td class="bg-success text-white">
-				<small class="text-warning">How to get the total price of orderlines without order discounts, product discounts nor tax orderlines? 😒</small>
-				<small class="text-danger">@Translate("Missing in ViewModel")</small>
-			</td>
+			<td class="bg-success text-white">@RenderPrices(Model.TotalPriceWithoutDiscountsFeesAndTaxes, "Model.TotalPriceWithoutDiscountsFeesAndTaxes")</td>
 			<td class="bg-danger text-white">@RenderPrices(Model.TotalProductDiscount, "Model.TotalProductDiscount")</td>
-			<td class="bg-success text-white">
-				@RenderPrices(Model.PriceBeforeFees, "Model.PriceBeforeFees")
-				<small class="text-warning">How to get the total price of orderlines with product discounts, without tax orderlines? 😒</small>
-			</td>
+			<td class="bg-success text-white">@RenderPrices(Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes, "Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes")</td>
 		</tr>
 
 		<tr>
@@ -87,7 +81,7 @@
 				<br/>
 				<small class="text-muted">(Model.TotalPriceBeforeFeesAndTaxes)</small>
 			</td>
-			<td class="bg-dark text-white">@RenderPrices("Ecom:Order.TotalPriceWithoutDiscountsFeesAndTaxes")</td>
+			<td class="bg-dark text-white">@RenderPrices(Model.TotalPriceWithoutDiscountsFeesAndTaxes, "Model.TotalPriceWithoutDiscountsFeesAndTaxes")</td>
 			<td class="bg-dark text-white">@RenderPrices(Model.TotalDiscount, "Model.TotalDiscount")</td>
 			<td class="bg-dark text-white">@RenderPrices(Model.TotalPriceBeforeFeesAndTaxes, "Model.TotalPriceBeforeFeesAndTaxes")</td>
 		</tr>
@@ -456,7 +450,8 @@
 
 @helper RenderOrderlineName(OrderLineViewModel orderline)
 {
-	var innerPadding = !string.IsNullOrEmpty(orderline.ParentLineId) ? "ps-4" : "";
+	var isChildOrderline = !string.IsNullOrEmpty(orderline.ParentLineId); 
+	var innerPadding = isChildOrderline ? "ps-4" : "";
 	
 	<div class="@innerPadding">
 		@if (IsDiscountOrderline(orderline))
@@ -475,20 +470,31 @@
 			<br/>
 			<small>@productNumber</small>
 		}
-		<br/>
-		<small class="text-muted">@Translate("Orderline type"): @orderline.OrderLineType (@orderline.OrderLineType.GetHashCode())</small>
 		
 		<br/>
-		<small class="text-muted">@Translate("Orderline Id"): @orderline.Id</small>
+		<small class="text-muted"><span class="fw-bold">@Translate("Orderline Id"):</span> @orderline.Id</small>
 		
 		<br/>
-		<small class="text-muted">@Translate("Parent Orderline Id"): @orderline.ParentLineId</small>
+		<small class="text-muted"><span class="fw-bold">@Translate("Orderline type"):</span> @orderline.OrderLineType (@orderline.OrderLineType.GetHashCode())</small>
+		
+		@if (isChildOrderline)
+		{
+			<br/>
+			<small class="text-muted"><span class="fw-bold">@Translate("Parent Orderline Id"):</span> @orderline.ParentLineId</small>
+		}
 	</div>
 }
 
 @helper RenderOrderlineUnitPriceWithoutDiscount(OrderLineViewModel orderline)
 {
-	@RenderPrices(orderline.UnitPrice, "OrderLineViewModel orderline.UnitPrice")
+	if (IsDiscountOrderline(orderline) || IsTaxOrderline(orderline))
+	{
+		<small class="text-muted">@Translate("Same as") <span class="fw-bold">@Translate("With Discount / Price")</span></small>
+	}
+	else
+	{
+		@RenderPrices(orderline.UnitPrice, "OrderLineViewModel orderline.UnitPrice")
+	}
 }
 
 @helper RenderOrderlineUnitDiscount(OrderLineViewModel orderline)
@@ -505,19 +511,19 @@
 
 @helper RenderOrderlineUnitPriceWithDiscount(OrderLineViewModel orderline)
 {
+	@RenderPrices(orderline.UnitPriceWithProductDiscount, "OrderLineViewModel orderline.UnitPriceWithProductDiscount")
+}
+
+@helper RenderOrderlineTotalPriceWithoutDiscount(OrderLineViewModel orderline)
+{
 	if (IsDiscountOrderline(orderline) || IsTaxOrderline(orderline))
 	{
 		<small class="text-muted">@Translate("Same as") <span class="fw-bold">@Translate("With Discount / Price")</span></small>
 	}
 	else
 	{
-		@RenderPrices(orderline.UnitPriceWithProductDiscount, "OrderLineViewModel orderline.UnitPriceWithProductDiscount")
+		@RenderPrices(orderline.Price, "OrderLineViewModel orderline.Price")
 	}
-}
-
-@helper RenderOrderlineTotalPriceWithoutDiscount(OrderLineViewModel orderline)
-{
-	@RenderPrices(orderline.Price, "OrderLineViewModel orderline.Price")
 }
 
 @helper RenderOrderlineTotalDiscount(OrderLineViewModel orderline)
@@ -534,14 +540,7 @@
 
 @helper RenderOrderlineTotalPriceWithDiscount(OrderLineViewModel orderline)
 {
-	if (IsDiscountOrderline(orderline) || IsTaxOrderline(orderline))
-	{
-		<small class="text-muted">@Translate("Same as") <span class="fw-bold">@Translate("With Discount / Price")</span></small>
-	}
-	else
-	{
-		@RenderPrices(orderline.TotalPriceWithProductDiscounts, "OrderLineViewModel orderline.TotalPriceWithProductDiscounts")
-	}
+	@RenderPrices(orderline.TotalPriceWithProductDiscounts, "OrderLineViewModel orderline.TotalPriceWithProductDiscounts")
 }
 
 @functions
