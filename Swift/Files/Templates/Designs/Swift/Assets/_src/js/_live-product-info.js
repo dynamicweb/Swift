@@ -11,8 +11,7 @@ const LiveProductInfo = function () {
 			productVariantIdAttr: "data-variant-id",
 			showIfAttr: "data-show-if",
 			innerSliderId: "tns1-iw",
-			loaderClass: "spinner-border",
-			bearerToken: "data-bearer-token",
+			loaderClass: "spinner-border"
 		},
 
 		selectors: {
@@ -101,8 +100,6 @@ const LiveProductInfo = function () {
 					},
 					method: 'GET'
 				};
-				const bearer = el.getAttribute(self.selectors.bearerToken);
-				if (bearer) fetchProducts.headers.Authorization = bearer;
 				
 				const isPostMethod = query.has('RepositoryName');
 				if (isPostMethod) {
