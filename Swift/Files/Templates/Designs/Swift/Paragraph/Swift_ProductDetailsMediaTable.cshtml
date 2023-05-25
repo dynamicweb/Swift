@@ -97,148 +97,144 @@
 	bool hideThumbnails = Model.Item.GetBoolean("HideThumbnails");
 
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
-}
+	int modalVideoNumber = 0;
 
-@* Get assets from selected categories or get all assets *@
-
-
-<div class="@spacing@(theme) item_@Model.Item.SystemName.ToLower()">
-	@if (totalAssets != 0 && assetsList.Count() != 0)
+	@* Get assets from selected categories or get all assets *@
+	
+	if (totalAssets != 0 && assetsList.Any())
 	{
-		if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
-		{
-			string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "h3");
+		<div class="@spacing@(theme) item_@Model.Item.SystemName.ToLower()">
+			@if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
+			{
+				string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "h3");
 
-			<h3 class="@titleFontSize mb-3">
-				@Model.Item.GetString("Title")
-			</h3>
-		}
+				<h3 class="@titleFontSize mb-3">
+					@Model.Item.GetString("Title")
+				</h3>
+			}
 
-		<div class="table-responsive">
-			<table class="table table-hover align-middle mb-0" style="table-layout: fixed;">
-				<thead>
-					<tr>
-						@if (!hideThumbnails)
-						{
-							<th style="width:60px">&nbsp;</th>
-						}
-						<th>@Translate("Name")</th>
-						<th class="text-end d-none d-lg-table-cell">@Translate("Download")</th>
-						<th class="text-end" style="width:100px">@Translate("File type")</th>
-					</tr>
-				</thead>
-				<tbody class="border-top-0">
-					@foreach (MediaViewModel asset in assetsList)
-					{
-						var assetValue = asset.Value.ToLower();
-						string assetName = !string.IsNullOrEmpty(asset.DisplayName) ? asset.DisplayName :  asset.Value.Substring( asset.Value.LastIndexOf('/') + 1);
-
-						bool isVideo = false;
-						foreach (string format in supportedVideoFormats)
-						{ //Videos
-							if (assetValue.Contains(format))
+			<div class="table-responsive">
+				<table class="table table-hover align-middle mb-0" style="table-layout: fixed;">
+					<thead>
+						<tr>
+							@if (!hideThumbnails)
 							{
-								isVideo = true;
+								<th style="width:60px">&nbsp;</th>
+							}
+							<th>@Translate("Name")</th>
+							<th class="text-end d-none d-lg-table-cell">@Translate("Download")</th>
+							<th class="text-end" style="width:100px">@Translate("File type")</th>
+						</tr>
+					</thead>
+					<tbody class="border-top-0">
+						@foreach (MediaViewModel asset in assetsList)
+						{
+							var assetValue = asset.Value.ToLower();
+							string assetName = !string.IsNullOrEmpty(asset.DisplayName) ? asset.DisplayName :  asset.Value.Substring( asset.Value.LastIndexOf('/') + 1);
+
+							bool isVideo = false;
+							foreach (string format in supportedVideoFormats)
+							{ //Videos
+								if (assetValue.Contains(format))
+								{
+									isVideo = true;
+								}
+							}
+
+							if (!isVideo)
+							{
+								string filePath = Dynamicweb.Context.Current.Server.MapPath(assetValue);
+								long fileSize = 0;
+
+								if (File.Exists(filePath)) {
+									fileSize = new System.IO.FileInfo(filePath) != null ? new System.IO.FileInfo(filePath).Length / 1024 : 0;
+
+									foreach (string format in allSupportedFormats)
+									{
+										if (assetValue.Contains(format))
+										{
+											<tr class="position-relative">
+												@if (!hideThumbnails)
+												{
+													@RenderAsset(asset)
+												}
+												<td>
+													<a href="@assetValue" class="text-decoration-none text-break" download title="@assetName">
+														@assetName
+													</a>
+												</td>
+												<td class="text-end d-none d-lg-table-cell">
+													<a href="@assetValue" class="text-decoration-none stretched-link" download title="@assetName">
+														@fileSize KB <div class="icon-2" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
+													</a>
+												</td>
+												<td class="text-end">@format</td>
+											</tr>
+										}
+									}
+		                        } 
+							}
+							else
+							{
+								string videoType = asset.Value.Contains("youtu.be") || asset.Value.Contains("youtube") ? "Youtube" : "";
+								videoType = asset.Value.Contains("vimeo") ? "Vimeo" : videoType;
+
+								<tr data-bs-toggle="modal" data-bs-target="#modal_@(Model.ID)_@videoNumber" style="cursor: pointer">
+									@if (!hideThumbnails)
+									{
+										@RenderAsset(asset)
+									}
+									<td>
+										@assetName
+									</td>
+									<td class="d-none d-lg-table-cell">&nbsp;</td>
+									<td align="right">@videoType</td>
+								</tr>
+
+								videoNumber++;
 							}
 						}
+					</tbody>
+				</table>
+			</div>
 
-						if (!isVideo)
-						{
-							string filePath = Dynamicweb.Context.Current.Server.MapPath(assetValue);
-							long fileSize = 0;
+			@foreach (MediaViewModel asset in assetsList)
+			{
+				var assetName = asset.Value.ToLower();
 
-							if (File.Exists(filePath)) {
-								fileSize = new System.IO.FileInfo(filePath) != null ? new System.IO.FileInfo(filePath).Length / 1024 : 0;
-
-								foreach (string format in allSupportedFormats)
-								{
-									if (assetValue.Contains(format))
-									{
-										<tr class="position-relative">
-											@if (!hideThumbnails)
-											{
-												@RenderAsset(asset)
-											}
-											<td>
-												<a href="@assetValue" class="text-decoration-none text-break" download title="@assetName">
-													@assetName
-												</a>
-											</td>
-											<td class="text-end d-none d-lg-table-cell">
-												<a href="@assetValue" class="text-decoration-none stretched-link" download title="@assetName">
-													@fileSize KB <div class="icon-2" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
-												</a>
-											</td>
-											<td class="text-end">@format</td>
-										</tr>
-									}
-								}
-                            } 
-						}
-						else
-						{
-							string videoType = asset.Value.Contains("youtu.be") || asset.Value.Contains("youtube") ? "Youtube" : "";
-							videoType = asset.Value.Contains("vimeo") ? "Vimeo" : videoType;
-
-							<tr data-bs-toggle="modal" data-bs-target="#modal_@(Model.ID)_@videoNumber" style="cursor: pointer">
-								@if (!hideThumbnails)
-								{
-									@RenderAsset(asset)
-								}
-								<td>
-									@assetName
-								</td>
-								<td class="d-none d-lg-table-cell">&nbsp;</td>
-								<td align="right">@videoType</td>
-							</tr>
-
-							videoNumber++;
-						}
-					}
-				</tbody>
-			</table>
-		</div>
-
-		int modalVideoNumber = 0;
-		foreach (MediaViewModel asset in assetsList)
-		{
-			var assetName = asset.Value.ToLower();
-
-			foreach (string format in supportedVideoFormats)
-			{ //Videos
-				if (assetName.Contains(format))
-				{
-					<div class="modal fade js-video-modal" id="modal_@(Model.ID)_@modalVideoNumber" tabindex="-1" aria-labelledby="productDetailsTableModalTitle_@(Model.ID)_@modalVideoNumber" aria-hidden="true">
-						<div class="modal-dialog modal-dialog-centered modal-xl">
-							<div class="modal-content">
-								<div class="modal-header visually-hidden">
-									<h5 class="modal-title" id="productDetailsTableModalTitle_@(Model.ID)_@modalVideoNumber">@product.Title</h5>
-									<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-								</div>
-								<div class="modal-body p-2 p-lg-3 h-100">
-									@{ @RenderVideoPlayer(asset) }
+				foreach (string format in supportedVideoFormats)
+				{ //Videos
+					if (assetName.Contains(format))
+					{
+						<div class="modal fade js-video-modal" id="modal_@(Model.ID)_@modalVideoNumber" tabindex="-1" aria-labelledby="productDetailsTableModalTitle_@(Model.ID)_@modalVideoNumber" aria-hidden="true">
+							<div class="modal-dialog modal-dialog-centered modal-xl">
+								<div class="modal-content">
+									<div class="modal-header visually-hidden">
+										<h5 class="modal-title" id="productDetailsTableModalTitle_@(Model.ID)_@modalVideoNumber">@product.Title</h5>
+										<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+									</div>
+									<div class="modal-body p-2 p-lg-3 h-100">
+										@{ @RenderVideoPlayer(asset) }
+									</div>
 								</div>
 							</div>
 						</div>
-					</div>
 
-					modalVideoNumber++;
+						modalVideoNumber++;
+					}
 				}
 			}
-		}
+		</div>
 	}
 	else if (Pageview.IsVisualEditorMode)
 	{
-		RatioSettings ratioSettings = GetRatioSettings();
-
 		<div class="h-100 @theme">
 			<div class="alert alert-dark m-0">
 				@Translate("No assets are available")
 			</div>
 		</div>
 	}
-
-</div>
+}
 
 @helper RenderAsset(MediaViewModel asset)
 {
