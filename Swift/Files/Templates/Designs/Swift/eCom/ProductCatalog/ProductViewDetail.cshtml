@@ -2,6 +2,7 @@
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Core
+@using Dynamicweb.Environment
 
 @{
 	string metaDescription = string.IsNullOrEmpty(Model.MetaDescription) ? Model.Name : Model.MetaDescription;
@@ -33,16 +34,40 @@
 		string variantIdParam = hasVariantId ? $"/{Model.VariantId}" : "";
 		string priceFilledProperties = $"Price,PriceFormatted{(showPricesWithVat == "false" && !neverShowVat ? ",PriceWithVat,PriceWithVatFormatted" : "")}";
 		string productInfoFeed = $@"/dwapi/ecommerce/products/{Model.Id}{variantIdParam}
-					?UserId={Converter.ToString(Pageview.User?.ID)}
-					&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
-					&FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel,VariantInfo,NeverOutOfstock,Prices
-					&PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
-					&PriceSettings.FilledProperties={priceFilledProperties}
-					&getproductinfo=true";
+	?UserId={Converter.ToString(Pageview.User?.ID)}
+	&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
+	&FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel,VariantInfo,NeverOutOfstock,Prices
+	&PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
+	&PriceSettings.FilledProperties={priceFilledProperties}
+	&getproductinfo=true";
 		Dynamicweb.Context.Current.Items["ProductInfoFeed"] = productInfoFeed;
 
 		<script type="module">
 			swift.LiveProductInfo.init();
+		</script>
+	}
+
+	string googleTagManagerID = Pageview.AreaSettings.GetString("GoogleTagManagerID");
+	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
+	var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
+	bool allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
+
+
+	if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
+	{
+		<script>
+			gtag("event", "view_item", {
+				currency: "@Model.Price.CurrencyCode",
+				value: @PriceViewModelExtensions.ToStringInvariant(Model.Price),
+				items: [
+				{
+					item_id: "@Model.Number",
+					item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(Model.Name)",
+					currency: "@Model.Price.CurrencyCode",
+					price: @PriceViewModelExtensions.ToStringInvariant(Model.Price)
+				}
+				]
+			});
 		</script>
 	}
 }
