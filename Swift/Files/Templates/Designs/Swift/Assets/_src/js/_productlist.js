@@ -13,6 +13,7 @@ const ProductList = function () {
 			var form = clickedButton.closest("form");
 			var responseTargetElement = !form.getAttribute("data-response-target-element").includes(".") ? document.querySelector("#" + form.getAttribute("data-response-target-element")) : clickedButton.closest(form.getAttribute("data-response-target-element"));
 			var preloader = form.getAttribute("data-preloader");
+			var swap = form.getAttribute("data-swap") ? form.getAttribute("data-swap") : "innerHTML";
 
 			let formData = new FormData(form);
 
@@ -77,8 +78,12 @@ const ProductList = function () {
 					newParams.set("ID", pageId);
 				}
 
-				newParams.delete("PageSize");
 				newParams.set("LayoutTemplate", "Swift_PageClean.cshtml"); //Set template to not include header and footer
+
+				if (swap == "afterend") {
+					newParams.delete("PageSize");
+					newParams.set("IsProductList", "True");
+				}
 
 				var newUrl = url.origin + url.pathname + "?" + newParams.toString(); //Create url with the new parameters 
 
@@ -100,7 +105,7 @@ const ProductList = function () {
 						window.history.replaceState({}, '', decodeURI(updatedUrl));
 					}
 
-					ProductList.Success(response, responseTargetElement, addPreloaderTimer, formData);
+					ProductList.Success(response, responseTargetElement, addPreloaderTimer, formData, swap);
 				} else {
 					ProductList.Error(response, responseTargetElement, addPreloaderTimer);
 				}
@@ -135,7 +140,22 @@ const ProductList = function () {
 				}
 
 				//Replace the markup
-				responseTargetElement.innerHTML = html;
+				if (swap == "innerHTML" || swap == "") {
+					responseTargetElement.innerHTML = html;
+				} else if (swap == "afterend") {
+					var tempDiv = document.createElement('div');
+					tempDiv.innerHTML = html;
+					var outerDiv = tempDiv.getElementsByTagName('div')[0];
+					outerDiv.outerHTML = outerDiv.innerHTML;
+
+					responseTargetElement.parentNode.insertBefore(outerDiv, responseTargetElement.nextSibling);
+
+					var loadMoreArea = document.querySelector("#ProductListLoadMore");
+
+					if (loadMoreArea) {
+						loadMoreArea.remove();
+					}
+				}
 
 				swift.Scroll.hideHeadersOnScroll();
 				swift.Scroll.handleAlternativeTheme();
