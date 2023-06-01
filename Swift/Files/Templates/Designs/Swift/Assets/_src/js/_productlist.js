@@ -82,7 +82,6 @@ const ProductList = function () {
 
 				if (swap == "afterend") {
 					newParams.delete("PageSize");
-					newParams.set("IsProductList", "True");
 				}
 
 				var newUrl = url.origin + url.pathname + "?" + newParams.toString(); //Create url with the new parameters 
@@ -96,9 +95,12 @@ const ProductList = function () {
 					}
 
 					if (updateUrl != "false") {
-						newParams.set("PageSize", pageSize);
 						newParams.delete("LayoutTemplate");
-						newParams.delete("PageNum");
+
+						if (swap == "afterend") {
+							newParams.set("PageSize", pageSize);
+							newParams.delete("PageNum");
+						}
 
 						var updatedUrl = window.location.origin + url.pathname + "?" + newParams;
 
