@@ -11,7 +11,7 @@ const ProductList = function () {
 		Update: async function (e) {
 			var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
 			var form = clickedButton.closest("form");
-			var responseTargetElement = document.querySelector("#" + form.getAttribute("data-response-target-element"));
+			var responseTargetElement = !form.getAttribute("data-response-target-element").includes(".") ? document.querySelector("#" + form.getAttribute("data-response-target-element")) : clickedButton.closest(form.getAttribute("data-response-target-element"));
 			var preloader = form.getAttribute("data-preloader");
 
 			let formData = new FormData(form);
@@ -71,11 +71,13 @@ const ProductList = function () {
 				const newParams = new URLSearchParams(formData); //Get parameters from the form
 				var url = new URL(form.action);	//Get the url from the form
 				var pageId = url.searchParams.get("ID");
+				var pageSize = newParams.get("PageSize") ? newParams.get("PageSize") : 12;
 
 				if (pageId) {
 					newParams.set("ID", pageId);
 				}
 
+				newParams.delete("PageSize");
 				newParams.set("LayoutTemplate", "Swift_PageClean.cshtml"); //Set template to not include header and footer
 
 				var newUrl = url.origin + url.pathname + "?" + newParams.toString(); //Create url with the new parameters 
@@ -89,7 +91,9 @@ const ProductList = function () {
 					}
 
 					if (updateUrl != "false") {
+						newParams.set("PageSize", pageSize);
 						newParams.delete("LayoutTemplate");
+						newParams.delete("PageNum");
 
 						var updatedUrl = window.location.origin + url.pathname + "?" + newParams;
 
@@ -103,7 +107,7 @@ const ProductList = function () {
 			}
 		},
 
-		Success: async function (response, responseTargetElement, addPreloaderTimer, formData) {
+		Success: async function (response, responseTargetElement, addPreloaderTimer, formData, swap = "innerHTML") {
 			clearTimeout(addPreloaderTimer);
 
 			//Replace content
