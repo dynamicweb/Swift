@@ -60,14 +60,17 @@
 					<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
 						<input id="Quantity_@(Model.Id)_@Model.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control swift_quantity-field" style="max-width: 100px" type="number" onkeydown="swift.Cart.UpdateOnEnterKey(event)" @disableAddToCart>
 						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(Model.Id)_@Pageview.CurrentParagraph.ID" @disableAddToCart>@Translate("Add to cart")</button>
-						@if (stepQty != "1") {
+						@if (stepQty != "1")
+						{
 							<div class="invalid-feedback d-none">
 								@Translate("Please select a quantity that is dividable by") @stepQty
 							</div>
 						}
 					</div>
 					<label for="Quantity_@(Model.Id)_@Model.VariantId" class="visually-hidden">@Translate("Quantity")</label>
-				} else {
+				}
+				else
+				{
 					<input id="Quantity_@(Model.Id)_@Model.VariantId" name="Quantity" value="@valueQty" type="hidden" @disableAddToCart>
 					<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(Model.Id)_@Pageview.CurrentParagraph.ID" @disableAddToCart>@Translate("Add to cart")</button>
 				}
@@ -91,8 +94,6 @@
 	bool quantitySelector = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("QuantitySelector")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form.Get("QuantitySelector")) : false;
 
 	bool IsNeverOutOfStock = Model.NeverOutOfstock;
-	bool hideInventory = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("HideInventory")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form.Get("HideInventory")) : false;
-	bool hideStockState = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("HideStockState")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form.Get("HideStockState")) : false;
 	bool hasExpectedDelivery = Model.ExpectedDelivery != null && Model.ExpectedDelivery > DateTime.Now;
 	string expectedDeliveryDate = Model.ExpectedDelivery?.ToShortDateString() ?? "";
 
@@ -105,14 +106,18 @@
 		variantUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl($"Default.aspx?ID={GetPageIdByNavigationTag("Shop")}&GroupID={Model.PrimaryOrDefaultGroup.Id}&ProductID={Model.Id}&VariantID={Model.VariantId}");
 	}
 
+	string getProductInfo = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["getproductinfo"]) ? Dynamicweb.Context.Current.Request.Form["getproductinfo"] : "";
+
 	<form action="/Default.aspx?ID=@variantSelectorServicePageId" class="js-variant-selector" data-combinations="@string.Join(",", Model.VariantCombinations())" data-response-target-element="DynamicModalContent" data-base-url="@baseUrl" data-friendly-url="@variantUrl">
 		<input type="hidden" name="productId" value="@Model.Id">
 		<input type="hidden" name="variantid" value="@Model.VariantId">
 		<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()">
-		<input type="hidden" name="HideInventory" value="@hideInventory.ToString()">
-		<input type="hidden" name="HideStockState" value="@hideStockState.ToString()">
 		<input type="hidden" name="VariantSelectorServicePage" value="@variantSelectorServicePageId">
 		<input type="hidden" name="ViewType" value="ModalContent">
+		@if (!string.IsNullOrEmpty(getProductInfo))
+		{
+			<input type="hidden" name="getproductinfo" value="@getProductInfo">
+		}
 
 		@foreach (var variantGroup in Model.VariantGroups())
 		{
@@ -147,32 +152,73 @@
 		}
 	</form>
 
-	if (!IsNeverOutOfStock && !hideStockState)
+	string liveInfoClass = "";
+	string productInfoFeed = "";
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
+	if (isLazyLoadingForProductInfoEnabled)
 	{
-		<div class="js-stock-state">
-			@if (Model.StockLevel > 0)
+		if (Dynamicweb.Context.Current.Items.Contains("ProductInfoFeed"))
+		{
+			productInfoFeed = Dynamicweb.Context.Current.Items["ProductInfoFeed"]?.ToString();
+			if (!string.IsNullOrEmpty(productInfoFeed))
 			{
-				if (!hideInventory)
-				{
-					<div class="small text-success">@Model.StockLevel @Translate("In stock")</div>
-				}
-				else
-				{
-					<div class="small text-success">@Translate("In stock")</div>
-				}
+				productInfoFeed = $"data-product-info-feed=\"{productInfoFeed}\"";
 			}
-			else
-			{
-				<div class="small text-danger">@Translate("Out of Stock")</div>
-			}
+		}
+		liveInfoClass = "js-live-info";
+	}
 
-			@if (hasExpectedDelivery)
-			{
-				<div>
-					<span>@Translate("Expected in stock:")</span>
-					<span>@expectedDeliveryDate</span>
+	if (!IsNeverOutOfStock)
+	{
+		if (isLazyLoadingForProductInfoEnabled)
+		{
+			string inStockStateLabel = !string.IsNullOrEmpty(Model.StockStatus) ? Model.StockStatus : Translate("In stock");
+			string noStockStateLabel = !string.IsNullOrEmpty(Model.StockStatus) ? Model.StockStatus : Translate("Out of Stock");
+
+			<div class="js-stock-state @liveInfoClass" data-product-id="@Model.Id" data-variant-id="@Model.VariantId" @productInfoFeed>
+				<div class="mt-3 js-stock-state spinner-border">
+					<div class="small text-success d-none" data-show-if="LiveProductInfo.product.StockLevel > 0">
+						<span class="js-text-stock"></span>
+						@inStockStateLabel
+					</div>
+					<div class="small text-danger d-none" data-show-if="LiveProductInfo.product.StockLevel <= 0">@noStockStateLabel</div>
+
+					<div class="d-none" data-show-if="LiveProductInfo.product.ExpectedDelivery != null && new Date(LiveProductInfo.product.ExpectedDelivery) > new Date()">
+						<span>@Translate("Expected back in stock"): </span>
+						<span class="js-text-expected-delivery"></span>
+					</div>
 				</div>
+			</div>
+		}
+		else
+		{
+			string firstUnitId = Model?.UnitOptions?.FirstOrDefault() != null ? Model.UnitOptions.FirstOrDefault().Id : "";
+			string defaultUnitId = !string.IsNullOrEmpty(Model.DefaultUnitId) ? Model.DefaultUnitId : firstUnitId;
+			string unitId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("UnitId")) ? Dynamicweb.Context.Current.Request.Form.Get("UnitId") : defaultUnitId;
+
+			var reserveMode = Dynamicweb.Ecommerce.Frontend.Cart.ProductReserve.Mode;
+			double? reservedAmount = 0;
+			if (reserveMode == Dynamicweb.Ecommerce.Frontend.Cart.ProductReserveMode.AddToCart)
+			{
+				reservedAmount = Dynamicweb.Ecommerce.Frontend.Cart.ProductReserve.GetReservedAmount(Model.Id, Model.VariantId, 0, unitId);
 			}
-		</div>
+			double? currentStockLevel = Model.StockLevel - reservedAmount;
+
+			string stockStateLabel = currentStockLevel > 0 ? Translate("In stock") : Translate("Out of stock");
+			stockStateLabel = !string.IsNullOrEmpty(Model.StockStatus) ? Model.StockStatus : stockStateLabel;
+			string stockStateCss = currentStockLevel > 0 ? "text-success" : "text-danger";
+
+			<div class="js-stock-state">
+				<div class="small @stockStateCss"><span class="js-text-stock">@currentStockLevel</span> @stockStateLabel</div>
+
+				@if (hasExpectedDelivery)
+				{
+					<div>
+						<span>@Translate("Expected in stock"): </span>
+						<span>@expectedDeliveryDate</span>
+					</div>
+				}
+			</div>
+		}
 	}
 }
