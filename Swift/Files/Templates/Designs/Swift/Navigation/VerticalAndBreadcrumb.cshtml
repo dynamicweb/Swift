@@ -1,0 +1,140 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using Dynamicweb
+@using System.IO
+
+@functions {
+	public string GetActiveGroupId(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string parentGroupId)
+	{
+		foreach (var node in nodes)
+		{
+			var hasChildren = node.Nodes.Count() > 0;
+
+			if (hasChildren)
+			{
+				var groupId = GetActiveGroupId(node.Nodes, node.GroupId);
+				if (groupId != "")
+				{
+					return groupId;
+				}
+			}
+
+			if (node.IsActive == true)
+			{
+				return parentGroupId;
+			}
+		}
+
+		return "";
+	}
+}
+
+@{
+	string theme = Model.Parameters.ContainsKey("Theme") ? Model.Parameters["Theme"].ToString().ToLower() : "";
+
+	string uniqueId = Model.Parameters.ContainsKey("ID") ? "_" + Model.Parameters["ID"].ToString().ToLower() : "";
+	string menuId = Model.Parameters.ContainsKey("menu-id") ? $"menu_{Model.Parameters["menu-id"].ToString().ToLower()}" : string.Empty;
+
+	string currentGroupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GroupID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") : "";
+	string activeGroupId = GetActiveGroupId(Model.Nodes, currentGroupId);
+
+	string breadcrumbNavigation = RenderNodesForBreadcrumb(Model.Nodes).ToString();
+}
+
+<div class="@menuId">
+	@if (!string.IsNullOrEmpty(breadcrumbNavigation))
+	{
+		<div class="navbar ms-n3">
+			<ul class="navbar-nav flex-column flex-fill">
+				@breadcrumbNavigation
+			</ul>
+		</div>
+	}
+
+	<div class="navbar">
+		<ul class="navbar-nav flex-column flex-fill">
+			@RenderNodesForNavigation(Model.Nodes, "", activeGroupId)
+		</ul>
+	</div>
+</div>
+
+@helper RenderNodesForNavigation(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string parentGroupId, string activeGroupId, bool parentIsActive = false)
+{
+	string contentPadding = Model.Parameters.ContainsKey("ContentPadding") ? Model.Parameters["ContentPadding"].ToString().ToLower() : "";
+
+	foreach (var node in nodes)
+	{
+		var hasChildren = node.Nodes.Count() > 0;
+		bool endLevel = node.IsActive && !hasChildren;
+
+		@*if (!hasChildren && !node.IsActive)
+			{
+				if (parentGroupId == activeGroupId)
+				{
+					<li class="nav-item@(node.IsActive ? " active" : "")">
+						<a class="nav-link flex-fill text-reset@(contentPadding)" @(node.IsActive ? "aria-current='page'" : "") href="@node.Link">
+							<span class="@(node.IsActive ? "fw-bold" : "")">@node.Name</span>
+						</a>
+					</li>
+				}
+			}*@
+
+		if (!endLevel)
+		{
+			if ((node.IsActive || parentIsActive))
+			{
+				<li class="nav-item@(node.IsActive ? " active" : "")">
+					<a class="nav-link flex-fill text-reset@(contentPadding)" @(node.IsActive ? "aria-current='page'" : "") href="@node.Link">
+						<span class="@(node.IsActive ? "fw-bold" : "")">@node.Name</span>
+					</a>
+
+					@if (hasChildren)
+					{
+						<ul class="navbar-nav ps-3">
+							@RenderNodesForNavigation(node.Nodes, node.GroupId, activeGroupId, node.IsActive)
+						</ul>
+					}
+				</li>
+			}
+			else if (hasChildren)
+			{
+				@RenderNodesForNavigation(node.Nodes, node.GroupId, activeGroupId, node.IsActive)	
+			}
+		}
+		else
+		{
+			foreach (var endNode in nodes)
+			{
+				<li class="nav-item@(endNode.IsActive ? " active" : "")">
+					<a class="nav-link flex-fill text-reset@(contentPadding)" @(endNode.IsActive ? "aria-current='page'" : "") href="@endNode.Link">
+						<span class="@(endNode.IsActive ? "fw-bold" : "")">@endNode.Name</span>
+					</a>
+				</li>
+			}
+		}
+
+	}
+}
+
+@helper RenderNodesForBreadcrumb(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
+{
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	foreach (var node in nodes)
+	{
+		var hasChildren = node.Nodes.Count() > 0;
+
+		if (node.InPath && !node.IsActive)
+		{
+			<li class="nav-item">
+				<a class="nav-link flex-fill text-reset text-uppercase d-flex align-items-center" @(node.IsActive ? "aria-current='page'" : "") href="@node.Link">
+					<span class="icon-4">@ReadFile(iconPath + "chevron-left.svg")</span><span class="fw-bold">@node.Name</span>
+				</a>
+			</li>
+		}
+
+		if (hasChildren)
+		{
+			@RenderNodesForBreadcrumb(node.Nodes)
+		}
+	}
+}
