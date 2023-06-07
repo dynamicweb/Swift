@@ -13,94 +13,33 @@
 		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
 	}
 
+	string url = Pageview.SearchFriendlyUrl;
+	url = url.LastIndexOf("?") != -1 ? url.Substring(0, url.LastIndexOf("?")) : url;
+
+	//Fix for non-friendly urls
+	if (Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") != null)
+	{
+		string groupId = Dynamicweb.Context.Current.Request.QueryString.Get("GroupID");
+		url += "?GroupID=" + groupId;
+	}
+
 	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
 	contentPadding = Model.Item.GetRawValueString("ContentPadding", "") == "none" ? " px-0 py-2" : contentPadding;
-	contentPadding = Model.Item.GetRawValueString("ContentPadding", "") == "small" ? " px-3 py-2" : contentPadding;
+	contentPadding = Model.Item.GetRawValueString("ContentPadding", "") == "small" ? " p-3" : contentPadding;
+
+	string align = Model.Item.GetRawValueString("Align", "");
 }
 
 @if (productList.TotalProductsCount > 0)
 {
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 
-	//Desktop
-	if (layout == "horizontal") {
-		contentPadding = Model.Item.GetRawValueString("ContentPadding", "") == "small" ? " p-3" : contentPadding;
-
-
-		<div class="@theme @contentPadding h-100">
-			<form method="post" action="@url" data-response-target-element="content" id="FacetsForm_Desktop_@Model.ID" class="d-none d-lg-flex gap-3 flex-row flex-wrap item_@Model.Item.SystemName.ToLower()">
-				@{
-					@RenderForm(productList, "desktop", enableSorting, layout)
-				}
-			</form>
-		</div>
-    }
-}
-else if (Pageview.IsVisualEditorMode)
-{
-	<div class="alert alert-dark m-0" role="alert">
-		<span>@Translate("Sort by: The selector will be shown here, if any")</span>
-	</div>
-}
-
-
-@helper RenderForm(ProductListViewModel productList, string deviceType, bool enableSorting, string layout = "vertical")
-{
 	string groupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GroupID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") : "";
-
-	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 	string pageSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("PageSize")) ? Dynamicweb.Context.Current.Request.QueryString.Get("PageSize") : productList.PageSize.ToString();
 
 	string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
 	string searchLayout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout") : "";
 
-	string groupsTheme = "";
-	string extraBottomMargin = "";
-	if (deviceType != "mobile")
-	{
-		groupsTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("FacetGroupsTheme")) ? " theme " + Model.Item.GetRawValueString("FacetGroupsTheme").Replace(" ", "").Trim().ToLower() : "";
-		extraBottomMargin = !string.IsNullOrEmpty(groupsTheme) ? "mb-3" : "";
-	}
-
-	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
-	contentPadding = contentPadding == "none" ? " px-0 py-2" : contentPadding;
-	contentPadding = contentPadding == "small" ? " px-3 py-2" : contentPadding;
-
-	<input type="hidden" name="PageSize" value="@pageSize">
-
-	if (!string.IsNullOrEmpty(searchQuery)) { 
-		<input type="hidden" name="q" value="@searchQuery">
-		<input type="hidden" name="SearchLayout" value="@searchLayout">
-	}
-
-	if (enableSorting)
-	{
-		if (layout == "vertical") {
-			<div class="border-bottom@(contentPadding)@(groupsTheme)">
-				<h2 class="opacity-85 m-0 my-2 flex-fill h6">@Translate("Sort by")</h2>
-				<div class="d-flex flex-column gap-2" id="SortBy_@(deviceType)_@Model.ID">
-					@{
-						@RenderSorting(deviceType)
-					}
-				</div>
-			</div>
-        }
-		if (layout == "horizontal") {
-			<button class="btn @(groupsTheme) dropdown-toggle" type="button" id="SortBy_@(deviceType)_@Model.ID" data-bs-toggle="dropdown" aria-expanded="false">
-				@Translate("Sort by")
-			</button>
-			<div class="dropdown-menu p-3 @(groupsTheme)" aria-labelledby="SortBy_@(deviceType)_@Model.ID" style="min-width: 280px">
-				<div class="d-flex flex-column gap-2">
-					@{
-						@RenderSorting(deviceType)
-					}
-				</div>
-			</div>
-        }
-	}
-}
-
-@helper RenderSorting(string deviceType) { 
 	string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "";
 	sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
 	string sortNameSelectedRelevance = sortBySelection.ToLower() == "" || sortBySelection.ToLower() == "relevance" ? "checked" : "";
@@ -111,74 +50,127 @@ else if (Pageview.IsVisualEditorMode)
 	string sortNewSelected = sortBySelection.ToLower() == "-created" ? "checked" : "";
 	string sortMostSoldSelected = sortBySelection.ToLower() == "-ordercount" ? "checked" : "";
 
+	string sortByLabel = Translate("Relevance");
+	sortByLabel = sortBySelection.ToLower() == "nameforsort" ? Translate("Name (A-Z)") : sortByLabel;
+	sortByLabel = sortBySelection.ToLower() == "-nameforsort" ? Translate("Name (Z-A)") : sortByLabel;
+	sortByLabel = sortBySelection.ToLower() == "price" ? Translate("Lowest price") : sortByLabel;
+	sortByLabel = sortBySelection.ToLower() == "-price" ? Translate("Highest price") : sortByLabel;
+	sortByLabel = sortBySelection.ToLower() == "-created" ? Translate("Newest") : sortByLabel;
+	sortByLabel = sortBySelection.ToLower() == "-ordercount" ? Translate("Most sold") : sortByLabel;
+
 	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
 	bool anonymousUser = Pageview.User == null;
 	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
 
-	if (Model.Item.GetBoolean("SortByRelevance"))
-	{
-		<div class="form-check">
-			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="" id="SortByRelevance_@(deviceType)_@Model.ID" @sortNameSelectedRelevance>
-			<label class="form-check-label" for="SortByRelevance_@(deviceType)_@Model.ID">
-				@Translate("Relevance")
-			</label>
-		</div>
-	}
-	if (Model.Item.GetBoolean("SortByNameAZ"))
-	{
-		<div class="form-check">
-			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="NameForSort" id="SortByNameAZ_@(deviceType)_@Model.ID" @sortNameSelectedAZ>
-			<label class="form-check-label" for="SortByNameAZ_@(deviceType)_@Model.ID">
-				@Translate("Name (A-Z)")
-			</label>
-		</div>
-	}
-	if (Model.Item.GetBoolean("SortByNameZA"))
-	{
-		<div class="form-check">
-			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-NameForSort" id="SortByNameZA_@(deviceType)_@Model.ID" @sortNameSelectedZA>
-			<label class="form-check-label" for="SortByNameZA_@(deviceType)_@Model.ID">
-				@Translate("Name (Z-A)")
-			</label>
-		</div>
-	}
-	if (Model.Item.GetBoolean("SortByNewest"))
-	{
-		<div class="form-check">
-			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-created" id="SortByNew_@(deviceType)_@Model.ID" @sortNewSelected>
-			<label class="form-check-label" for="SortByNew_@(deviceType)_@Model.ID">
-				@Translate("Newest")
-			</label>
-		</div>
-	}
-	if (!hidePrice)
-	{
-		if (Model.Item.GetBoolean("SortByLowestPrice"))
-		{
-			<div class="form-check">
-				<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="Price" id="SortByPriceLow_@(deviceType)_@Model.ID" @sortPriceLowSelected>
-				<label class="form-check-label" for="SortByPriceLow_@(deviceType)_@Model.ID">
-					@Translate("Lowest price")
-				</label>
+	<div class="@theme @contentPadding h-100">
+		<form method="post" action="@url" data-response-target-element="content" id="SortByForm_Desktop_@Model.ID" class="@align item_@Model.Item.SystemName.ToLower()">
+			<input type="hidden" name="PageSize" value="@pageSize">
+
+			@if (productList?.FacetGroups != null)
+			{
+				foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+				{
+					foreach (FacetViewModel facetItem in facetGroup.Facets)
+					{
+						foreach (FacetOptionViewModel facetOption in facetItem.Options)
+						{
+							if (facetOption.Selected)
+							{
+								<input type="hidden" name="@facetItem.QueryParameter" value="[@facetOption.Value]">
+							}
+						}
+					}
+				}
+			}
+
+			@if (!string.IsNullOrEmpty(searchQuery))
+			{
+				<input type="hidden" name="q" value="@searchQuery">
+				<input type="hidden" name="SearchLayout" value="@searchLayout">
+			}
+
+			<button class="btn dropdown-toggle" type="button" id="SortBy_@Model.ID" data-bs-toggle="dropdown" aria-expanded="false">
+				<span class="fw-bold d-none d-lg-inline-block">@Translate("Sort by"):</span> <span>@sortByLabel</span>
+			</button>
+
+			<div class="dropdown-menu p-3" aria-labelledby="SortBy_@Model.ID" style="min-width: 280px">
+				<div class="d-flex flex-column gap-2">
+					@{
+						if (Model.Item.GetBoolean("SortByRelevance"))
+						{
+							<div class="form-check">
+								<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="" id="SortByRelevance_@Model.ID" @sortNameSelectedRelevance>
+								<label class="form-check-label" for="SortByRelevance_@Model.ID">
+									@Translate("Relevance")
+								</label>
+							</div>
+						}
+						if (Model.Item.GetBoolean("SortByNameAZ"))
+						{
+							<div class="form-check">
+								<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="NameForSort" id="SortByNameAZ_@Model.ID" @sortNameSelectedAZ>
+								<label class="form-check-label" for="SortByNameAZ_@Model.ID">
+									@Translate("Name (A-Z)")
+								</label>
+							</div>
+						}
+						if (Model.Item.GetBoolean("SortByNameZA"))
+						{
+							<div class="form-check">
+								<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-NameForSort" id="SortByNameZA_@Model.ID" @sortNameSelectedZA>
+								<label class="form-check-label" for="SortByNameZA_@Model.ID">
+									@Translate("Name (Z-A)")
+								</label>
+							</div>
+						}
+						if (Model.Item.GetBoolean("SortByNewest"))
+						{
+							<div class="form-check">
+								<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-created" id="SortByNew_@Model.ID" @sortNewSelected>
+								<label class="form-check-label" for="SortByNew_@Model.ID">
+									@Translate("Newest")
+								</label>
+							</div>
+						}
+						if (!hidePrice)
+						{
+							if (Model.Item.GetBoolean("SortByLowestPrice"))
+							{
+								<div class="form-check">
+									<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="Price" id="SortByPriceLow_@Model.ID" @sortPriceLowSelected>
+									<label class="form-check-label" for="SortByPriceLow_@Model.ID">
+										@Translate("Lowest price")
+									</label>
+								</div>
+							}
+							if (Model.Item.GetBoolean("SortByHighestPrice"))
+							{
+								<div class="form-check">
+									<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-Price" id="SortByPriceHigh_@Model.ID" @sortPriceHighSelected>
+									<label class="form-check-label" for="SortByPriceHigh_@Model.ID">
+										@Translate("Highest price")
+									</label>
+								</div>
+							}
+						}
+						if (Model.Item.GetBoolean("SortByMostSold"))
+						{
+							<div class="form-check">
+								<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-OrderCount" id="SortByMostSold_@Model.ID" @sortMostSoldSelected>
+								<label class="form-check-label" for="SortByMostSold_@Model.ID">
+									@Translate("Most sold")
+								</label>
+							</div>
+						}
+					}
+				</div>
 			</div>
-		}
-		if (Model.Item.GetBoolean("SortByHighestPrice"))
-		{
-			<div class="form-check">
-				<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-Price" id="SortByPriceHigh_@(deviceType)_@Model.ID" @sortPriceHighSelected>
-				<label class="form-check-label" for="SortByPriceHigh_@(deviceType)_@Model.ID">
-					@Translate("Highest price")
-				</label>
-			</div>
-		}
-	}
-	if (Model.Item.GetBoolean("SortByMostSold"))
-	{
-		<div class="form-check">
-			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-OrderCount" id="SortByMostSold_@(deviceType)_@Model.ID" @sortMostSoldSelected>
-			<label class="form-check-label" for="SortByMostSold_@(deviceType)_@Model.ID">
-				@Translate("Most sold")
-			</label>
-		</div>
-	}
+		</form>
+	</div>
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0" role="alert">
+		<span>@Translate("Sort by: The selector will be shown here, if any")</span>
+	</div>
 }
