@@ -187,6 +187,19 @@ const ProductList = function () {
 						backdrop.parentElement.removeChild(backdrop);
 					}
 				}
+
+				//Fire the 'afterSwap' event
+				let replacedEvent = new CustomEvent("afterSwap.swift.productlist", {
+					cancelable: true,
+					detail: {
+						cancelable: true,
+						detail: {
+							formData: formData,
+							html: html
+						}
+					}
+				});
+				var globalDispatcher = document.dispatchEvent(replacedEvent);
 			}
 		},
 

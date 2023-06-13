@@ -41,7 +41,7 @@ const LiveProductInfo = function () {
 			loadMoreButton: ".swift_load_more_button",
 		},
 		
-		init: function() {
+		init: function () {
             const self = this;
             self.UpdateProductInfo();
 
@@ -61,11 +61,14 @@ const LiveProductInfo = function () {
 				observer.observe(relatedProducts, {childList: true, subtree: true});
 			}
 
-			document.addEventListener("updated.swift.pageupdater", function () {
+			document.addEventListener("afterSwap.swift.productlist", function () {
 				const feedUrlElements = document.querySelectorAll(LiveProductInfo.selectors.productInfoFeed);
+
+				LiveProductInfo.UpdateProductInfo();
 
 				if (feedUrlElements.length) {
 					const content = document.querySelector(LiveProductInfo.selectors.content);
+
 					if (content) {
 						const observer = new MutationObserver(function (mutationsList, observer) {
 							observer.disconnect();
@@ -82,7 +85,7 @@ const LiveProductInfo = function () {
 			const self = this;
 			const feedUrlElements = selector ? selector.querySelectorAll(self.selectors.productInfoFeed) : document.querySelectorAll(self.selectors.productInfoFeed);
 			const liveInfoContainers = document.querySelectorAll(self.selectors.liveInfo);
-			
+
 			if (!(feedUrlElements && liveInfoContainers.length)) return;
 
 			let uniqueFeeds = [];
@@ -176,6 +179,7 @@ const LiveProductInfo = function () {
 								price = product.VariantInfo.PriceMin.PriceFormatted + " - " + product.VariantInfo.PriceMax.PriceFormatted;
 							}
 						}
+
 						self.UpdateValue(priceContainers, price);
 					}
 
