@@ -42,7 +42,7 @@
 
 @if (productList is object)
 {
-	<div class="h-100@(theme) item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
+	<div class="h-100@(theme) product-list item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
 		@{
 			bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
 
@@ -62,10 +62,14 @@
 			if (productList.TotalProductsCount > 0)
 			{
 				int pageSizeSetting = Converter.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("OriginalPageSize")) > 0 ? Converter.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("OriginalPageSize")) : productList.PageSize;
-				int pageSize = productList.PageSize;
-				pageSize += pageSizeSetting;
+				int pageNumber = Converter.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("PageNum")) > 0 ? Converter.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("PageNum")) : productList.CurrentPage;
+				int pageSize = Converter.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("PageSize")) > 0 ? Converter.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("PageSize")) : productList.PageSize;
+				pageNumber = pageSize != pageSizeSetting ? (pageSize / pageSizeSetting) : pageNumber;
+				int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : pageSizeSetting * pageNumber;
+				loadedProducts = loadedProducts > productList.TotalProductsCount ? productList.TotalProductsCount : loadedProducts;
 
-				int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
+				pageNumber += 1;
+
 				string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
 				string searchLayout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout") : "";
 
@@ -111,21 +115,21 @@
 						@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
 						{
 							<script>
-						gtag("event", "view_item_list", {
-							item_list_id: "product_list_item_repeater",
-							item_list_name: "Product list (Item Repeater)",
-							items: [
-								@foreach (ProductViewModel product in productList.Products)
-								{
-									<text>{
-										item_id: "@product.Number",
-										item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.Name)",
-										currency: "@product.Price.CurrencyCode",
-										price: @PriceViewModelExtensions.ToStringInvariant(product.Price)
-									},</text>
-								}
-							]
-						});
+								gtag("event", "view_item_list", {
+									item_list_id: "product_list_item_repeater",
+									item_list_name: "Product list (Item Repeater)",
+									items: [
+										@foreach (ProductViewModel product in productList.Products)
+										{
+											<text>{
+												item_id: "@product.Number",
+												item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.Name)",
+												currency: "@product.Price.CurrencyCode",
+												price: @PriceViewModelExtensions.ToStringInvariant(product.Price)
+											},</text>
+										}
+									]
+								});
 							</script>
 						}
 
@@ -190,16 +194,16 @@
 						}
 					</div>
 
-					<div class="my-3">
+					<div class="my-3" id="ProductListLoadMore">
 						<div class="text-center">
 							<div class="opacity-85 mb-3">@loadedProducts @Translate("out of") @productList.TotalProductsCount @Translate("products")</div>
-							@if (productList.PageCount != 1 && maxProductsCounter == 0)
+							@if (productList.PageCount != 1 && maxProductsCounter == 0 && loadedProducts < productList.TotalProductsCount)
 							{
 								string sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? "";
 								sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
 								string mainProductId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("MainProductID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("MainProductID") : "";
 
-								<form method="get" action="@url" data-response-target-element="content" class="w-100">
+								<form method="get" action="@url" data-response-target-element=".product-list" data-swap="afterend" class="w-100">
 									@if (productList?.FacetGroups != null)
 									{
 										foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
@@ -234,13 +238,15 @@
 									}
 
 									<input type="hidden" name="OriginalPageSize" value="@pageSizeSetting">
-									<input type="hidden" name="PageSize" value="@pageSize">
+									<input type="hidden" name="PageSize" value="@(loadedProducts + pageSizeSetting)">
+									<input type="hidden" name="PageNum" value="@pageNumber">
 									<input type="hidden" name="SortBy" value="@sortBySelection">
 									<input type="hidden" name="RequestType" value="UpdateList">
+									<input type="hidden" name="ParagraphID" value="@Model.ID">
 
 									@if (productList?.FacetGroups is object)
 									{
-										string nextPageLink = "/Default.aspx?ID=" + Pageview.Page.ID + "&PageSize=" + pageSize + "&SortBy=" + sortBySelection;
+										string nextPageLink = $"/Default.aspx?ID={Pageview.Page.ID}&PageNum={pageNumber}&SortBy={sortBySelection}";
 
 										foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
 										{
@@ -259,7 +265,7 @@
 										nextPageLink += productList?.Group?.Id != null ? "&GroupID=" + productList.Group.Id : "";
 										nextPageLink += !string.IsNullOrEmpty(searchQuery) ? "&q=" + searchQuery : "";
 										string disableLoadMore = isLazyLoadingForProductInfoEnabled ? "d-none" : "";
-									
+
 										<a href="@nextPageLink" class="btn btn-primary swift_load_more_button @disableLoadMore" onclick="swift.ProductList.Update(event)" id="LoadMoreButton_@Model.ID">@Translate("Load more products")</a>
 									}
 								</form>
