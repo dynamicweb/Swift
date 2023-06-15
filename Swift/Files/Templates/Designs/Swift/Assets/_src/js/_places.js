@@ -46,6 +46,13 @@ const Places = function () {
 			});
 		},
 
+		changeCountryWithAddressFormat: function (countryCode) {
+			const form = document.querySelector("#AddressForm");
+			form.querySelector("input[name=AddAddressesForm]").remove();
+			form.querySelector("input[name=ManageAddressesFormAction]").value = "Add";
+			swift.PageUpdater.Update(form);
+		},
+
 		fillInAddress: function () {
 			var fieldPrefix = settings.fieldPrefix;
 			fieldPrefix = document.querySelector("#EcomOrderDeliveryAddress") && fieldPrefix == null ? "EcomOrderDelivery" : fieldPrefix;
