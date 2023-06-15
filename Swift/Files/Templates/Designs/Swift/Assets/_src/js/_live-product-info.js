@@ -103,6 +103,8 @@ const LiveProductInfo = function () {
 					},
 					method: 'GET'
 				};
+				const bearerToken = getLoginBearerToken();
+				if (bearerToken !== "") fetchProducts.headers.Authorization = bearerToken;
 				
 				const isPostMethod = query.has('RepositoryName');
 				if (isPostMethod) {
@@ -131,6 +133,22 @@ const LiveProductInfo = function () {
 						console.error(error)
 					})
 			})
+			
+			function getLoginBearerToken() {
+				let cookie = getCookie("SwiftLoginBearerToken");
+				if (!cookie) return "";
+
+				let cookieValues = cookie.split("&");
+				if(cookieValues.length > 0) return "";
+
+				return cookieValues[0].replace("Token=", "");
+			}
+			
+			function getCookie(name) {
+				const value = `; ${document.cookie}`;
+				const parts = value.split(`; ${name}=`);
+				if (parts.length === 2) return parts.pop().split(';').shift();
+			}
 			
 			function getValueAndUpdateQuery(query, parameter, value, fallbackValue) {
 				query.delete(parameter);
