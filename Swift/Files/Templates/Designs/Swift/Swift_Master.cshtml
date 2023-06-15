@@ -4,7 +4,15 @@
 @using Dynamicweb.Environment
 @using Dynamicweb.Frontend
 
-@{
+@{ 
+	var brandingPageId = Model.Area.Item?.GetInt32("BrandingPage") ?? 0;
+	var themePageId = Model.Area.Item?.GetInt32("ThemesPage") ?? 0;
+	var brandingPage = brandingPageId != 0 ? Dynamicweb.Content.Services.Pages?.GetPage(brandingPageId) ?? null : null;
+	var themesParagraphs = themePageId != 0 ? Dynamicweb.Content.Services.Paragraphs?.GetParagraphsByPageId(themePageId) ?? null : null;
+}
+
+@if (themesParagraphs != null || brandingPage != null)
+{
 	string swiftVersion = ReadFile("/Files/Templates/Designs/Swift/swift_version.txt");
 	bool renderAsResponsive = Model.Area.Item.GetString("DeviceRendering", "responsive").Equals("responsive", StringComparison.OrdinalIgnoreCase);
 	bool renderMobile = Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Mobile || Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Tablet;
@@ -16,32 +24,20 @@
 		responsiveClassMobile = " d-block d-xl-none";
 	}
 
+	var headerDesktopLink = Model.Area.Item?.GetLink("HeaderDesktop") ?? null;
+	var headerMobileLink = Model.Area.Item?.GetLink("HeaderMobile") ?? null;
+
+	var footerDesktopLink = Model.Area.Item?.GetLink("FooterDesktop") ?? null;
+	var footerMobileLink = Model.Area.Item?.GetLink("FooterMobile") ?? null;
+
 	var disableWideBreakpoints = Model.Area?.Item?.GetRawValueString("DisableWideBreakpoints", "default");
 
-	var brandingPageId = Model.Area.Item.GetInt32("BrandingPage");
-	var themePageId = Model.Area.Item.GetInt32("ThemesPage");
 	string customHeaderInclude = !string.IsNullOrEmpty(Model.Area.Item.GetRawValueString("CustomHeaderInclude")) ? Model.Area.Item.GetFile("CustomHeaderInclude").Name : string.Empty;
 
-	var brandingPage = Dynamicweb.Content.Services.Pages?.GetPage(brandingPageId) ?? null;
 	var themesParagraphLastChanged = Dynamicweb.Content.Services.Paragraphs.GetParagraphsByPageId(themePageId).OrderByDescending(p => p.Audit.LastModifiedAt).FirstOrDefault();
-
 	var cssLastModified = brandingPage.Audit.LastModifiedAt > themesParagraphLastChanged.Audit.LastModifiedAt ? brandingPage.Audit.LastModifiedAt : themesParagraphLastChanged.Audit.LastModifiedAt;
+
 	var cssThemeAndBrandingStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath($"/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_{Model.Area.ID}.min.css"));
-
-	// Schema.org details for PDP
-	bool isProductDetailsPage = Dynamicweb.Context.Current.Request.QueryString.AllKeys.Contains("ProductID");
-	bool isArticlePage = Model.ItemType == "Swift_Article";
-	string schemaOrgType = string.Empty;
-
-	if (isProductDetailsPage)
-	{
-		schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Product\"";
-	}
-
-	if (isArticlePage)
-	{
-		schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Article\"";
-	}
 
 	if (!cssThemeAndBrandingStyleFileInfo.Exists || cssThemeAndBrandingStyleFileInfo.LastWriteTime < brandingPage.Audit.LastModifiedAt)
 	{
@@ -64,6 +60,22 @@
 			themePageview.Output();
 		}
 	}
+
+	// Schema.org details for PDP
+	bool isProductDetailsPage = Dynamicweb.Context.Current.Request.QueryString.AllKeys.Contains("ProductID");
+	bool isArticlePage = Model.ItemType == "Swift_Article";
+	string schemaOrgType = string.Empty;
+
+	if (isProductDetailsPage)
+	{
+		schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Product\"";
+	}
+
+	if (isArticlePage)
+	{
+		schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Article\"";
+	}
+
 
 	var cssStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift/Assets/css/styles.css"));
 	var jsFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift/Assets/js/scripts.js"));
@@ -97,7 +109,7 @@
 	Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift/Assets/css/styles.css?{cssStyleFileInfo.LastWriteTime.Ticks}>; rel=preload; as=style;");
 	Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_{Model.Area.ID}.min.css?{cssLastModified.Ticks}; rel=preload; as=style;");
 	Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift/Assets/js/scripts.js?{jsFileInfo.LastWriteTime.Ticks}; rel=preload; as=script;");
-	
+
 
 	SetMetaTags();
 
@@ -115,281 +127,307 @@
 
 	Uri url = Dynamicweb.Context.Current.Request.Url;
 	string hostName = url.Host;
-}
-<!doctype html>
-<html lang="@Pageview.Area.CultureInfo.TwoLetterISOLanguageName">
-<head>
-	<!-- @swiftVersion -->
-	@* Required meta tags *@
-	<meta charset="utf-8">
-	<meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0">
-	<link rel="shortcut icon" href="@favicon">
-	<link rel="apple-touch-icon" href="/Files/Templates/Designs/Swift/Assets/Images/logo_transparent.png">
 
-	@Model.MetaTags
+	<!doctype html>
+	<html lang="@Pageview.Area.CultureInfo.TwoLetterISOLanguageName">
+	<head>
+		<!-- @swiftVersion -->
+		@* Required meta tags *@
+		<meta charset="utf-8">
+		<meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0">
+		<link rel="shortcut icon" href="@favicon">
+		<link rel="apple-touch-icon" href="/Files/Templates/Designs/Swift/Assets/Images/logo_transparent.png">
 
-	@{
-		var alreadyWrittenTwoletterIsos = new List<string>();
-		@* Languages meta data *@
-	foreach (var language in languages)
-	{
-		hostName = url.Host;
-		if (language?.Area != null)
+		@Model.MetaTags
+
+		@{
+			var alreadyWrittenTwoletterIsos = new List<string>();
+			@* Languages meta data *@
+		foreach (var language in languages)
 		{
-			if (language.Area?.MasterArea != null && !string.IsNullOrEmpty(language.Area.MasterArea.DomainLock))
+			hostName = url.Host;
+			if (language?.Area != null)
 			{
-				hostName = language.Area.MasterArea.DomainLock; //dk.domain.com or dk-domain.dk
-			}
-			if (language != null && language.Published && language.Area.Active && language.Area.Published)
-			{
-				if (!string.IsNullOrEmpty(language.Area.DomainLock))
+				if (language.Area?.MasterArea != null && !string.IsNullOrEmpty(language.Area.MasterArea.DomainLock))
 				{
-					hostName = language.Area.DomainLock; //dk.domain.com or dk-domain.dk
+					hostName = language.Area.MasterArea.DomainLock; //dk.domain.com or dk-domain.dk
 				}
-				string querystring = $"Default.aspx?ID={language.ID}";
-				if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString["GroupID"]))
+				if (language != null && language.Published && language.Area.Active && language.Area.Published)
 				{
-					querystring += $"&GroupID={Dynamicweb.Context.Current.Request.QueryString["GroupID"]}";
-				}
-				if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString["ProductID"]))
-				{
-					querystring += $"&ProductID={Dynamicweb.Context.Current.Request.QueryString["ProductID"]}";
-				}
-				if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString["VariantID"]))
-				{
-					querystring += $"&VariantID={Dynamicweb.Context.Current.Request.QueryString["VariantID"]}";
-				}
+					if (!string.IsNullOrEmpty(language.Area.DomainLock))
+					{
+						hostName = language.Area.DomainLock; //dk.domain.com or dk-domain.dk
+					}
+					string querystring = $"Default.aspx?ID={language.ID}";
+					if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString["GroupID"]))
+					{
+						querystring += $"&GroupID={Dynamicweb.Context.Current.Request.QueryString["GroupID"]}";
+					}
+					if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString["ProductID"]))
+					{
+						querystring += $"&ProductID={Dynamicweb.Context.Current.Request.QueryString["ProductID"]}";
+					}
+					if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString["VariantID"]))
+					{
+						querystring += $"&VariantID={Dynamicweb.Context.Current.Request.QueryString["VariantID"]}";
+					}
 
-				string friendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(querystring);
-				if (language.Area.RedirectFirstPage && language.ParentPageId == 0 && language.Sort == 1)
-				{
-					friendlyUrl = "/";
-				}
-				string href = $"{url.Scheme}://{hostName}{friendlyUrl}";
+					string friendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(querystring);
+					if (language.Area.RedirectFirstPage && language.ParentPageId == 0 && language.Sort == 1)
+					{
+						friendlyUrl = "/";
+					}
+					string href = $"{url.Scheme}://{hostName}{friendlyUrl}";
 
 
-					<link rel="alternate" hreflang="@language.Area.CultureInfo.Name.ToLower()" href="@href">
-				if (!alreadyWrittenTwoletterIsos.Contains(language.Area.CultureInfo.TwoLetterISOLanguageName))
-				{
-						<link rel="alternate" hreflang="@language.Area.CultureInfo.TwoLetterISOLanguageName.ToLower()" href="@href">
+						<link rel="alternate" hreflang="@language.Area.CultureInfo.Name.ToLower()" href="@href">
+					if (!alreadyWrittenTwoletterIsos.Contains(language.Area.CultureInfo.TwoLetterISOLanguageName))
+					{
+							<link rel="alternate" hreflang="@language.Area.CultureInfo.TwoLetterISOLanguageName.ToLower()" href="@href">
+					}
 				}
 			}
 		}
-	}
-	}
+		}
 
-	<title>@Model.Title</title>
-	@* Bootstrap + Swift stylesheet *@
-	<link href="/Files/Templates/Designs/Swift/Assets/css/styles.css?@cssStyleFileInfo.LastWriteTime.Ticks" rel="stylesheet" media="all" type="text/css">
+		<title>@Model.Title</title>
+		@* Bootstrap + Swift stylesheet *@
+		<link href="/Files/Templates/Designs/Swift/Assets/css/styles.css?@cssStyleFileInfo.LastWriteTime.Ticks" rel="stylesheet" media="all" type="text/css">
 
-	@if (disableWideBreakpoints != "disableBoth")
-	{
-		<style>
-			@@media ( min-width: 1600px ) {
-				.container-xxl,
-				.container-xl,
-				.container-lg,
-				.container-md,
-				.container-sm,
-				.container {
-					max-width: 1520px;
-				}
-			}
-		</style>
-
-
-
-		if (disableWideBreakpoints != "disableUltraWideOnly")
+		@if (disableWideBreakpoints != "disableBoth")
 		{
 			<style>
-				@@media ( min-width: 1920px ) {
+				@@media ( min-width: 1600px ) {
 					.container-xxl,
 					.container-xl,
 					.container-lg,
 					.container-md,
 					.container-sm,
 					.container {
-						max-width: 1820px;
+						max-width: 1520px;
 					}
 				}
 			</style>
-		}
-	}
 
-	@* Branding and Themes min stylesheet *@
-	<link href="/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_@(Model.Area.ID).min.css?@cssLastModified.Ticks" rel="stylesheet" media="all" type="text/css" data-last-modified-content="@cssLastModified">
-	<script src="/Files/Templates/Designs/Swift/Assets/js/scripts.js?@jsFileInfo.LastWriteTime.Ticks" defer></script>
 
-	<script type="module">
-		swift.Scroll.hideHeadersOnScroll();
-		swift.Scroll.handleAlternativeTheme();
 
-		window.addEventListener('load', () => {
-			const aosColumns = document.querySelectorAll('[data-aos]');
-			if (aosColumns.length > 0) {
-				swift.AssetLoader.Load('Files/Templates/Designs/Swift/Assets/js/aos.js?@jsFileInfo.LastWriteTime.Ticks', 'js');
-				document.addEventListener('load.swift.assetloader', function () {
-					AOS.init({ duration: 400, delay: 100, easing: 'ease-in-out', mirror: false, disable: window.matchMedia('(prefers-reduced-motion: reduce)') });
-				});
+			if (disableWideBreakpoints != "disableUltraWideOnly")
+			{
+				<style>
+					@@media ( min-width: 1920px ) {
+						.container-xxl,
+						.container-xl,
+						.container-lg,
+						.container-md,
+						.container-sm,
+						.container {
+							max-width: 1820px;
+						}
+					}
+				</style>
 			}
-		})
-	</script>
+		}
 
-	@* Google tag manager *@
-	@if (!string.IsNullOrWhiteSpace(googleTagManagerID) && allowTracking)
-	{
-		<script>
-			(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-			new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-			j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-			'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-			})(window, document, 'script', 'dataLayer', '@(googleTagManagerID)');
+		@* Branding and Themes min stylesheet *@
+		<link href="/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_@(Model.Area.ID).min.css?@cssLastModified.Ticks" rel="stylesheet" media="all" type="text/css" data-last-modified-content="@cssLastModified">
+		<script src="/Files/Templates/Designs/Swift/Assets/js/scripts.js?@jsFileInfo.LastWriteTime.Ticks" defer></script>
 
-			function gtag() { dataLayer.push(arguments); }
+		<script type="module">
+			swift.Scroll.hideHeadersOnScroll();
+			swift.Scroll.handleAlternativeTheme();
+
+			window.addEventListener('load', () => {
+				const aosColumns = document.querySelectorAll('[data-aos]');
+				if (aosColumns.length > 0) {
+					swift.AssetLoader.Load('Files/Templates/Designs/Swift/Assets/js/aos.js?@jsFileInfo.LastWriteTime.Ticks', 'js');
+					document.addEventListener('load.swift.assetloader', function () {
+						AOS.init({ duration: 400, delay: 100, easing: 'ease-in-out', mirror: false, disable: window.matchMedia('(prefers-reduced-motion: reduce)') });
+					});
+				}
+			})
 		</script>
-	}
 
-	@if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowTracking)
-	{
-		var GoogleAnalyticsDebugMode = "";
-
-		if (Model.Area.Item.GetBoolean("EnableGoogleAnalyticsDebugMode"))
+		@* Google tag manager *@
+		@if (!string.IsNullOrWhiteSpace(googleTagManagerID) && allowTracking)
 		{
-			GoogleAnalyticsDebugMode = ", {'debug_mode': true}";
+			<script>
+				(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+				new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+				j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+				'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+				})(window, document, 'script', 'dataLayer', '@(googleTagManagerID)');
+
+				function gtag() { dataLayer.push(arguments); }
+			</script>
 		}
 
-		<script async src="https://www.googletagmanager.com/gtag/js?id=@googleAnalyticsMeasurementID"></script>
-		<script>
-			window.dataLayer = window.dataLayer || [];
-			function gtag() { dataLayer.push(arguments); }
-			gtag('js', new Date());
-			gtag('config', '@googleAnalyticsMeasurementID'@GoogleAnalyticsDebugMode);
-		</script>
-	}
+		@if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowTracking)
+		{
+			var GoogleAnalyticsDebugMode = "";
 
-	@if (!string.IsNullOrWhiteSpace(customHeaderInclude))
-	{
-		@RenderPartial($"Components/Custom/{customHeaderInclude}")
-	}
-</head>
-<body class="brand @(masterTheme)" id="page@(Model.ID)">
-
-	@* Google tag manager *@
-	@if (!string.IsNullOrWhiteSpace(googleTagManagerID) && allowTracking)
-	{
-		<noscript>
-			<iframe src="https://www.googletagmanager.com/ns.html?id=@(googleTagManagerID)"
-					height="0" width="0" style="display:none;visibility:hidden"></iframe>
-		</noscript>
-	}
-
-	@if (renderAsResponsive || !renderMobile)
-	{
-		<header class="page-header @headerCssClass top-0@(responsiveClassDesktop)" id="page-header-desktop">
-			@if (@Model.Area.Item.GetLink("HeaderDesktop") != null)
+			if (Model.Area.Item.GetBoolean("EnableGoogleAnalyticsDebugMode"))
 			{
-				@RenderGrid(@Model.Area.Item.GetLink("HeaderDesktop").PageId)
+				GoogleAnalyticsDebugMode = ", {'debug_mode': true}";
 			}
-		</header>
-	}
 
-	@if ((renderAsResponsive || renderMobile))
-	{
-		<header class="page-header @headerCssClass top-0@(responsiveClassMobile)" id="page-header-mobile">
-			@if (@Model.Area.Item.GetLink("HeaderMobile") != null)
-			{
-				@RenderGrid(@Model.Area.Item.GetLink("HeaderMobile").PageId)
-			}
-		</header>
-	}
+			<script async src="https://www.googletagmanager.com/gtag/js?id=@googleAnalyticsMeasurementID"></script>
+			<script>
+				window.dataLayer = window.dataLayer || [];
+				function gtag() { dataLayer.push(arguments); }
+				gtag('js', new Date());
+				gtag('config', '@googleAnalyticsMeasurementID'@GoogleAnalyticsDebugMode);
+			</script>
+		}
 
-	<main id="content" @(schemaOrgType)>
-		<div data-intersect></div>
-		@ContentPlaceholder()
-	</main>
+		@if (!string.IsNullOrWhiteSpace(customHeaderInclude))
+		{
+			@RenderPartial($"Components/Custom/{customHeaderInclude}")
+		}
+	</head>
+	<body class="brand @(masterTheme)" id="page@(Model.ID)">
 
-	@if (renderAsResponsive || !renderMobile)
-	{
-		<footer class="page-footer@(responsiveClassDesktop)" id="page-footer-desktop">
-			@if (@Model.Area.Item.GetLink("FooterDesktop") != null)
-			{
-				@RenderGrid(@Model.Area.Item.GetLink("FooterDesktop").PageId)
-			}
-		</footer>
-	}
+		@* Google tag manager *@
+		@if (!string.IsNullOrWhiteSpace(googleTagManagerID) && allowTracking)
+		{
+			<noscript>
+				<iframe src="https://www.googletagmanager.com/ns.html?id=@(googleTagManagerID)"
+						height="0" width="0" style="display:none;visibility:hidden"></iframe>
+			</noscript>
+		}
 
-	@if (renderAsResponsive || renderMobile)
-	{
-		<footer class="page-footer@(responsiveClassMobile)" id="page-footer-mobile">
-			@if (@Model.Area.Item.GetLink("FooterMobile") != null)
-			{
-				@RenderGrid(@Model.Area.Item.GetLink("FooterMobile").PageId)
-			}
-		</footer>
-	}
+		@if (renderAsResponsive || !renderMobile)
+		{
+			<header class="page-header @headerCssClass top-0@(responsiveClassDesktop)" id="page-header-desktop">
+				@if (headerDesktopLink != null)
+				{
+					@RenderGrid(headerDesktopLink.PageId)
+				}
+			</header>
+		}
 
-	@* Render any offcanvas menu here *@
-	@RenderSnippet("offcanvas")
+		@if ((renderAsResponsive || renderMobile))
+		{
+			<header class="page-header @headerCssClass top-0@(responsiveClassMobile)" id="page-header-mobile">
+				@if (headerMobileLink != null)
+				{
+					@RenderGrid(headerMobileLink.PageId)
+				}
+			</header>
+		}
 
-	@{
-		bool isErpConnectionDown = !Dynamicweb.Core.Converter.ToBoolean(Context.Current.Items["IsWebServiceConnectionAvailable"]);
-	}
+		<main id="content" @(schemaOrgType)>
+			<div data-intersect></div>
+			@ContentPlaceholder()
+		</main>
 
-	@* Language selector modal *@
-	<div class="modal fade" id="PreferencesModal" tabindex="-1" aria-hidden="true">
-		<div class="modal-dialog modal-dialog-centered modal-sm" id="PreferencesModalContent">
-			@* The content here comes from an external request *@
-		</div>
-	</div>
+		@if (renderAsResponsive || !renderMobile)
+		{
+			<footer class="page-footer@(responsiveClassDesktop)" id="page-footer-desktop">
+				@if (footerDesktopLink != null)
+				{
+					@RenderGrid(footerDesktopLink.PageId)
+				}
+			</footer>
+		}
 
-	@* Favorite toast *@
-	<div aria-live="polite" aria-atomic="true">
-		<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-			<div id="favoriteNotificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-				<div class="toast-header">
-					<strong class="me-auto">@Translate("Favorite list updated")</strong>
-					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-				</div>
-				<div class="toast-body d-flex gap-3">
-					<div id="favoriteNotificationToast_Image"></div>
-					<div id="favoriteNotificationToast_Text"></div>
-				</div>
-			</div>
-		</div>
-	</div>
+		@if (renderAsResponsive || renderMobile)
+		{
+			<footer class="page-footer@(responsiveClassMobile)" id="page-footer-mobile">
+				@if (footerMobileLink != null)
+				{
+					@RenderGrid(footerMobileLink.PageId)
+				}
+			</footer>
+		}
 
-	@* Modal for dynamic content *@
-	<div class="modal fade js-product" id="DynamicModal" tabindex="-1" aria-hidden="true">
-		<div class="modal-dialog modal-dialog-centered modal-md">
-			<div class="modal-content theme light" id="DynamicModalContent">
+		@* Render any offcanvas menu here *@
+		@RenderSnippet("offcanvas")
+
+		@{
+			bool isErpConnectionDown = !Dynamicweb.Core.Converter.ToBoolean(Context.Current.Items["IsWebServiceConnectionAvailable"]);
+		}
+
+		@* Language selector modal *@
+		<div class="modal fade" id="PreferencesModal" tabindex="-1" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered modal-sm" id="PreferencesModalContent">
 				@* The content here comes from an external request *@
 			</div>
 		</div>
-	</div>
 
-	@* Offcanvas for dynamic content *@
-	<div class="offcanvas offcanvas-end theme light" tabindex="-1" id="DynamicOffcanvas" style="width: 30rem">
-		@* The content here comes from an external request *@
-	</div>
-
-	@if (Model.Area.Item.GetBoolean("ShowErpDownMessage") && !Dynamicweb.Core.Converter.ToBoolean(Context.Current.Items["IsWebServiceConnectionAvailable"]))
-	{
-		string erpDownMessageTheme = !string.IsNullOrWhiteSpace(Model.Area.Item.GetRawValueString("ErpDownMessageTheme")) ? " theme " + Model.Area.Item.GetRawValueString("ErpDownMessageTheme").Replace(" ", "").Trim().ToLower() : "theme light";
-
-		<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1040">
-			<div class="toast fade show border-0 @erpDownMessageTheme" role="alert" aria-live="assertive" aria-atomic="true">
-				<div class="toast-header">
-					<strong class="me-auto">@Translate("Connection down")</strong>
-					<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-				</div>
-				<div class="toast-body">
-					@Translate("We are experiencing some connectivity issues. Not all features may be available to you.")
+		@* Favorite toast *@
+		<div aria-live="polite" aria-atomic="true">
+			<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+				<div id="favoriteNotificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+					<div class="toast-header">
+						<strong class="me-auto">@Translate("Favorite list updated")</strong>
+						<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+					</div>
+					<div class="toast-body d-flex gap-3">
+						<div id="favoriteNotificationToast_Image"></div>
+						<div id="favoriteNotificationToast_Text"></div>
+					</div>
 				</div>
 			</div>
 		</div>
-	}
-</body>
-</html>
+
+		@* Modal for dynamic content *@
+		<div class="modal fade js-product" id="DynamicModal" tabindex="-1" aria-hidden="true">
+			<div class="modal-dialog modal-dialog-centered modal-md">
+				<div class="modal-content theme light" id="DynamicModalContent">
+					@* The content here comes from an external request *@
+				</div>
+			</div>
+		</div>
+
+		@* Offcanvas for dynamic content *@
+		<div class="offcanvas offcanvas-end theme light" tabindex="-1" id="DynamicOffcanvas" style="width: 30rem">
+			@* The content here comes from an external request *@
+		</div>
+
+		@if (Model.Area.Item.GetBoolean("ShowErpDownMessage") && !Dynamicweb.Core.Converter.ToBoolean(Context.Current.Items["IsWebServiceConnectionAvailable"]))
+		{
+			string erpDownMessageTheme = !string.IsNullOrWhiteSpace(Model.Area.Item.GetRawValueString("ErpDownMessageTheme")) ? " theme " + Model.Area.Item.GetRawValueString("ErpDownMessageTheme").Replace(" ", "").Trim().ToLower() : "theme light";
+
+			<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1040">
+				<div class="toast fade show border-0 @erpDownMessageTheme" role="alert" aria-live="assertive" aria-atomic="true">
+					<div class="toast-header">
+						<strong class="me-auto">@Translate("Connection down")</strong>
+						<button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+					</div>
+					<div class="toast-body">
+						@Translate("We are experiencing some connectivity issues. Not all features may be available to you.")
+					</div>
+				</div>
+			</div>
+		}
+	</body>
+	</html>
+} else if (Pageview.IsVisualEditorMode) {
+	<head>
+		<title>@Model.Title</title>
+		@* Bootstrap + Swift stylesheet *@
+		<link href="/Files/Templates/Designs/Swift/Assets/css/styles.css" rel="stylesheet" media="all" type="text/css">
+	</head>
+	<body class="p-3">
+		<div class="alert alert-danger" role="alert">
+			@Translate("Basic Swift setup is needed!")
+		</div>
+
+		@if (brandingPage == null) { 
+			<div class="alert alert-warning" role="alert">
+				@Translate("Please add a Branding page and reference it in website settings")
+			</div>
+		}
+
+		@if (themesParagraphs == null) { 
+			<div class="alert alert-warning"  role="alert">
+				@Translate("Please add a Themes collection page and reference it in website settings")
+			</div>
+		}
+	</body>				
+}
+
+
 @functions {
 	void SetMetaTags()
 	{
@@ -509,5 +547,5 @@
 		{
 			Pageview.Meta.AddTag("twitter:title", twitterCardTitle);
 		}
-	}
-}
+	} 
+} 
