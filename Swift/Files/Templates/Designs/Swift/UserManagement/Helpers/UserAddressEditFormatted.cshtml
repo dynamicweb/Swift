@@ -1,0 +1,149 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using System
+@using System.Collections.Generic
+@using System.Linq
+@using System.Text.RegularExpressions
+@using Dynamicweb.Ecommerce.International
+
+@helper RenderUserAddressEdit()
+{
+	string currentCountry = !string.IsNullOrEmpty(GetString("UserManagement:User.UserAddress.CountryCode.Value")) ? GetString("UserManagement:User.UserAddress.CountryCode.Value") : Pageview.Area?.EcomCountryCode != null ? Pageview.Area.EcomCountryCode : "dk";;
+	List<List<string>> addressFormat = Dynamicweb.Ecommerce.International.Country.GetEditAddress(currentCountry);
+	CountryCollection regions = Dynamicweb.Ecommerce.Services.Countries.GetRegions(currentCountry);
+	
+	if (!addressFormat.Any())
+	{
+		/* If the current country is not setup in address format, use the site country's address format */
+		addressFormat = Dynamicweb.Ecommerce.International.Country.GetEditAddress(Dynamicweb.Ecommerce.Common.Context.Country.Code2);
+	}
+
+	foreach (var addressLine in addressFormat)
+	{
+		string columnSize = GetBootstrapColumnSizeForUserAddress(addressLine);
+
+		for (var i = 0; i < addressLine.Count; i++)
+		{
+			addressLine[i] = ReplaceUserAddressPlaceholder(addressLine[i], "{name}", ""); @* This needs tobe empty because there is no 'Name' property on the user Address object, but the format from the UI will/could have it *@
+			addressLine[i] = ReplaceUserAddressPlaceholder(addressLine[i], "{firstName}", ""); @* This needs tobe empty because there is no 'First Name' property on the user Address object, but the format from the UI will/could have it *@
+			addressLine[i] = ReplaceUserAddressPlaceholder(addressLine[i], "{lastName}", ""); @* This needs tobe empty because there is no 'Last Name' property on the user Address object, but the format from the UI will/could have it *@
+			addressLine[i] = ReplaceUserAddressPlaceholder(addressLine[i], "{company}", "UserManagement_Form_Company", "Company", GetString("UserManagement:User.UserAddress.Company.Value"), Translate("Company"), GetString("UserManagement:User.UserAddress.Company.Input.Error"), columnSize, false);
+			addressLine[i] = ReplaceUserAddressPlaceholder(addressLine[i], "{address}", "UserManagement_Form_Address", "Address", GetString("UserManagement:User.UserAddress.Address.Value"), Translate("Street & number"), GetString("UserManagement:User.UserAddress.Address.Input.Error"), columnSize);
+			addressLine[i] = ReplaceUserAddressPlaceholder(addressLine[i], "{address1}", "UserManagement_Form_Address", "Address", GetString("UserManagement:User.UserAddress.Address.Value"), Translate("Street & number"), GetString("UserManagement:User.UserAddress.Address.Input.Error"), columnSize);
+			addressLine[i] = ReplaceUserAddressPlaceholder(addressLine[i], "{address2}", "UserManagement_Form_Address2", "Address2", GetString("UserManagement:User.UserAddress.Address2.Value"), Translate("Additional address"), GetString("UserManagement:User.UserAddress.Address2.Input.Error"), columnSize);
+			addressLine[i] = ReplaceUserAddressPlaceholder(addressLine[i], "{zip}", "UserManagement_Form_Zip", "Zip", GetString("UserManagement:User.UserAddress.Zip.Value"), Translate("Zip"), GetString("UserManagement:User.UserAddress.Zip.Input.Error"), columnSize);
+			addressLine[i] = ReplaceUserAddressPlaceholder(addressLine[i], "{city}", "UserManagement_Form_City", "City", GetString("UserManagement:User.UserAddress.City.Value"), Translate("Town / City"), GetString("UserManagement:User.UserAddress.City.Input.Error"), columnSize);
+			addressLine[i] = ReplaceUserAddressPlaceholder(addressLine[i], "{regionCode}", RenderUserAddressRegionField(currentCountry, regions, columnSize).ToString());
+			addressLine[i] = ReplaceUserAddressPlaceholder(addressLine[i], "{region}", RenderUserAddressRegionField(currentCountry, regions, columnSize).ToString());
+			addressLine[i] = ReplaceUserAddressPlaceholder(addressLine[i], "{country}", RenderUserAddressCountryField(currentCountry, columnSize).ToString());
+			
+			@* Remove any bad placeholders the user may have submitted *@
+			addressLine[i] = Regex.Replace(addressLine[i], "{phone}", "", RegexOptions.IgnoreCase); 
+			addressLine[i] = Regex.Replace(addressLine[i], "{email}", "", RegexOptions.IgnoreCase);
+		}
+		@(string.Join(string.Empty, addressLine.ToArray()))
+	}
+}
+
+@helper RenderUserAddressRegionField(string currentCountry, CountryCollection regions, string wrapperClass)
+{
+	string regionLabel = currentCountry == "CA" ? Translate("Province") : currentCountry == "US" ? Translate("State") : Translate("Region");
+
+	if (regions.Any())
+	{
+		<div class="@wrapperClass">
+			<div class="form-floating">
+				@{ string regionCode = GetString("UserManagement:User.UserAddress.State.Value");
+
+					<select class="form-select" id="UserManagement_Form_State" name="State">
+						@foreach (var region in regions)
+						{
+							string selected = region.RegionCode == regionCode ? "selected" : "";
+							<option value="@region.RegionCode" @selected>@region.Name</option>
+						}
+					</select>
+				}
+				<label for="UserManagement_Form_State">@regionLabel</label>
+			</div>
+		</div>
+	}
+	else
+	{
+		@RenderUserAddressField("UserManagement_Form_State", "State", GetString("UserManagement:User.UserAddress.State.Value"), regionLabel, GetString("UserManagement:User.UserAddress.State.Input.Error"), wrapperClass, false);
+	}
+}
+
+@helper RenderUserAddressCountryField(string currentCountry, string wrapperClass)
+{
+	<div class="@wrapperClass">
+		<div class="form-floating">
+			@if (GetBoolean("UserManagement:User.ManageAddresses.AddAddress"))
+			{
+				<select class="form-select" id="UserManagement_Form_CountryCode" name="CountryCode" onchange="swift.Places.changeCountry(this.value);">
+					<option selected>@Translate("Select country")</option>
+					@foreach (var country in GetLoop("UserManagement.CountryList"))
+					{
+						string selected = country.GetString("Country.Code2") == currentCountry ? "selected" : "";
+						<option value="@country.GetString("Country.Code2")" @selected>@country.GetString("Country.Name")</option>
+					}
+				</select>
+			}
+			else
+			{
+				<select class="form-select" id="UserManagement_Form_CountryCode" name="CountryCode" onchange="submitForm()">
+					@foreach (var country in GetLoop("UserManagement.CountryList"))
+					{
+						string selected = country.GetString("Country.Code2") == GetString("UserManagement:User.UserAddress.CountryCode.Value") ? "selected" : "";
+						<option value="@country.GetString("Country.Code2")" @selected>@country.GetString("Country.Name")</option>
+					}
+				</select>}
+			<label for="UserManagement_Form_CountryCode" class="form-label">@Translate("Country")</label>
+		</div>
+	</div>
+}
+
+@functions
+{
+	public string GetBootstrapColumnSizeForUserAddress(List<string> addressLineArray)
+	{
+		string combinedLine = string.Join(",", addressLineArray);
+		string prefix = "g-col-12 g-col-lg-";
+
+		int addressLinePlaceholderCount = combinedLine.Count(s => s.Equals('{'));
+		if (addressLinePlaceholderCount <= 0) return prefix + "12";
+		
+		double columnSize = (double)12 / addressLinePlaceholderCount;
+		return prefix + Math.Ceiling(columnSize);
+	}
+	
+	public string ReplaceUserAddressPlaceholder(string addressLine, string pattern, string replacement)
+	{
+		return Regex.Replace(addressLine, pattern, replacement, RegexOptions.IgnoreCase);
+	}
+	
+	public string ReplaceUserAddressPlaceholder(string addressLine, string placeholder, string fieldId, string fieldName, string fieldValue, string fieldLabel, string fieldError, string wrapperClass, bool required = true, string fieldType = "text")
+	{
+		if (addressLine.IndexOf(placeholder, StringComparison.OrdinalIgnoreCase) < 0) return addressLine;
+		
+		string fieldHtml = RenderUserAddressField(fieldId, fieldName, fieldValue, fieldLabel, fieldError, wrapperClass, required, fieldType);
+		return Regex.Replace(addressLine, placeholder, fieldHtml, RegexOptions.IgnoreCase);
+	}
+	
+	public string RenderUserAddressField(string fieldId, string fieldName, string fieldValue, string fieldLabel, string fieldError, string wrapperClass, bool isRequired = true, string fieldType = "text")
+	{
+		string markup = "";
+		fieldType = string.IsNullOrEmpty(fieldType) ? "text" : fieldType;
+		fieldLabel = isRequired ? fieldLabel : $"{fieldLabel} ({Translate("optional")})";
+		string required = isRequired ? "required=\"required\"" : "";
+		string invalidCssClass = !string.IsNullOrEmpty(fieldError) ? "is-invalid" : "";
+
+		markup += $"<div class=\"{wrapperClass}\">";
+		markup += $"<div class=\"form-floating\">";
+		markup += $"<input type=\"{fieldType}\" class=\"form-control {invalidCssClass}\" name=\"{fieldName}\" id=\"{fieldId}\" value=\"{fieldValue}\" placeholder=\"{fieldLabel}\" {required}>";
+		markup += $"<label for=\"{fieldName}\">{fieldLabel}</label>";
+		markup += $"<div class=\"invalid-feedback\">{fieldError}</div>";
+		markup += $"</div>";
+		markup += $"</div>";
+
+		return markup;
+	}
+}
