@@ -104,7 +104,12 @@ const LiveProductInfo = function () {
 					method: 'GET'
 				};
 				const bearerToken = getLoginBearerToken();
-				if (bearerToken !== "") fetchProducts.headers.Authorization = bearerToken;
+				if (bearerToken !== "") {
+					fetchProducts.headers.Authorization = bearerToken;
+				}
+				else {
+					console.error("The Bearer Token cookie is missing. You may not have the necessary dll installed. Disable 'Lazy Loading' of Live product info to get updated data.")
+				}
 				
 				const isPostMethod = query.has('RepositoryName');
 				if (isPostMethod) {
