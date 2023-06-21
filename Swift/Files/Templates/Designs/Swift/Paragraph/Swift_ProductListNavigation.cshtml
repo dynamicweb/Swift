@@ -1,0 +1,63 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Frontend.Navigation
+@using Dynamicweb.Environment
+@using Dynamicweb.Core.Encoders
+@using System.Text.RegularExpressions
+
+@{
+	ProductListViewModel productList = new ProductListViewModel();
+
+	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
+	{
+		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
+	}
+
+	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
+	contentPadding = Model.Item.GetRawValueString("ContentPadding", "") == "none" ? " px-0 py-2" : contentPadding;
+	contentPadding = Model.Item.GetRawValueString("ContentPadding", "") == "small" ? " px-3 py-2" : contentPadding;
+}
+
+@if (productList.TotalProductsCount > 0)
+{
+	string groupNavigationLayout = Model.Item.GetRawValueString("GroupNavigationLayout", "collapsible");
+
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+
+	int startLevel = Convert.ToInt32(Model.Item.GetRawValueString("GroupNavigationStartLevel", "2"));
+	int stopLevel = Convert.ToInt32(Model.Item.GetRawValueString("GroupNavigationStopLevel", "9"));
+
+	var navigationSettings = new NavigationSettings();
+	navigationSettings.StopLevel = stopLevel;
+	navigationSettings.Parameters.Add("ContentPadding", contentPadding);
+	navigationSettings.StartLevel = startLevel;
+
+	<div class="border-bottom py-2@(theme)">
+		@if (groupNavigationLayout == "collapsible")
+		{
+			navigationSettings.ExpandMode = ExpandMode.All;
+			navigationSettings.Parameters.Add("HideTexts", false);
+			navigationSettings.Parameters.Add("HideIcons", true);
+
+			<div class="d-flex@(contentPadding)" data-bs-toggle="collapse" data-bs-target="#ProductGroupNavigation_@Model.ID" role="button" aria-expanded="true" aria-controls="ProductGroupNavigation_@Model.ID">
+				<h2 class="opacity-85 m-0 flex-fill h6">@Translate("Navigation")</h2>
+				<div class="my-auto collapse-chevron-icon"></div>
+			</div>
+			<div class="collapse show" id="ProductGroupNavigation_@Model.ID">
+				@Navigation.RenderNavigation("Navigation/Vertical.cshtml", navigationSettings)
+			</div>
+		}
+
+		@if (groupNavigationLayout == "filter")
+		{
+			navigationSettings.ExpandMode = ExpandMode.Path;
+			@Navigation.RenderNavigation("Navigation/VerticalAndBreadcrumb.cshtml", navigationSettings)
+		}
+	</div>
+}
+else
+{
+	<div class="alert alert-dark m-0" role="alert">
+		@Translate("Navigation: The navigation will be shown here, if any")
+	</div>
+}

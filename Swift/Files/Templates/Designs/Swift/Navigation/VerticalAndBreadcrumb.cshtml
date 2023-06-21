@@ -1,0 +1,196 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using Dynamicweb
+@using System.IO
+
+@{
+	bool isRoot = Model.Nodes.Any(n => n.IsActive);
+
+	string contentPadding = Model.Parameters.ContainsKey("ContentPadding") ? Model.Parameters["ContentPadding"].ToString().ToLower() : "";
+}
+
+<div class="@contentPadding">
+	@if (!isRoot)
+	{
+		<div class="navbar ms-n2 mb-2 p-0 d-none d-lg-block">
+			<ul class="navbar-nav">
+				@RenderNodesForBreadcrumb(Model.Nodes)
+			</ul>
+		</div>
+	}
+
+	<div class="ms-n3 mb-2 p-0 d-block d-lg-none position-relative">
+		@if (!isRoot) { 
+			@RenderNodesForMobileBreadcrumb(Model.Nodes)
+		} else { 
+			<h2 class="h3 text-center w-100">@Translate("Categories")</h2>
+		}
+	</div>
+
+	<nav class="navbar d-none d-lg-block">
+		<ul class="navbar-nav">
+			@RenderNodesForNavigation(Model.Nodes, false, isRoot)
+		</ul>
+	</nav>
+
+	<nav class="navbar d-block d-lg-none">
+		<ul class="nav nav-pills gap-2 overflow-auto flex-nowrap py-3 ms-n3 me-s3 ps-3 vw-100">
+			@RenderNodesForMobileNavigation(Model.Nodes, false)
+		</ul>
+	</nav>
+</div>
+
+@helper RenderNodesForNavigation(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, bool parentIsActive, bool isRoot)
+{
+	foreach (var node in nodes)
+	{
+		var hasChildren = node.Nodes.Count() > 0;
+		bool endLevel = node.IsActive && !hasChildren;
+
+		if (!endLevel) //Handle the layout on all levels, except the end level
+		{
+			if ((node.IsActive || parentIsActive))
+			{
+				if (isRoot && node.IsActive) //Handle the special layout at the root level
+				{
+					<li class="nav-item">
+						<h2 class="h6 mb-3 py-1">@Translate("Categories")</h2>
+					</li>
+
+					@RenderNodesForNavigation(node.Nodes, node.IsActive, isRoot)
+				}
+				else
+				{
+					<li class="nav-item">
+						<a class="nav-link text-reset py-1" @(node.IsActive ? "aria-current='page'" : "") href="@node.Link">
+							@if (node.IsActive)
+							{
+								<h2 class="h6">@node.Name</h2>
+							}
+							else
+							{
+								@node.Name
+							}
+						</a>
+
+						@if (hasChildren)
+						{
+							<ul class="navbar-nav ps-3">
+								@RenderNodesForNavigation(node.Nodes, node.IsActive, isRoot)
+							</ul>
+						}
+					</li>
+				}
+			}
+			else if (hasChildren)
+			{
+				@RenderNodesForNavigation(node.Nodes, node.IsActive, isRoot)
+			}
+		}
+		else //Handle the special layout at the end level
+		{
+			foreach (var endNode in nodes)
+			{
+				<li class="nav-item@(endNode.IsActive ? " active" : "")">
+					<a class="nav-link text-reset py-1" @(endNode.IsActive ? "aria-current='page'" : "") href="@endNode.Link">
+						<span class="@(endNode.IsActive ? "fw-bold" : "")">@endNode.Name</span>
+					</a>
+				</li>
+			}
+		}
+
+	}
+}
+
+@helper RenderNodesForBreadcrumb(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
+{
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	foreach (var node in nodes)
+	{
+		var hasChildren = node.Nodes.Count() > 0;
+
+		if (node.InPath && !node.IsActive)
+		{
+			<li class="nav-item">
+				<a class="nav-link text-reset text-uppercase d-flex align-items-center py-1" href="@node.Link">
+					<span class="icon-3">@ReadFile(iconPath + "chevron-left.svg")</span><span class="fw-bold">@node.Name</span>
+				</a>
+			</li>
+		}
+
+		if (hasChildren)
+		{
+			@RenderNodesForBreadcrumb(node.Nodes)
+		}
+	}
+}
+
+
+
+
+@helper RenderNodesForMobileNavigation(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, bool parentIsActive)
+{
+	foreach (var node in nodes)
+	{
+		var hasChildren = node.Nodes.Count() > 0;
+		bool endLevel = node.IsActive && !hasChildren;
+
+		if (!endLevel)
+		{
+			if (parentIsActive && !node.IsActive)
+			{
+				<li class="nav-item">
+					<a class="btn btn-sm btn-secondary rounded-pill text-nowrap" href="@node.Link">
+						@node.Name
+					</a>
+				</li>
+			}
+
+			@RenderNodesForMobileNavigation(node.Nodes, node.IsActive)
+		}
+		else //Handle the special layout at the end level
+		{
+			foreach (var endNode in nodes)
+			{
+				if (!endNode.IsActive)
+				{
+					<div class="nav-item">
+						<a class="btn btn-sm btn-secondary rounded-pill text-nowrap" href="@endNode.Link">
+							@endNode.Name
+						</a>
+					</div>
+				}
+			}
+		}
+	}
+}
+
+@helper RenderNodesForMobileBreadcrumb(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
+{
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	foreach (var node in nodes)
+	{
+		var hasChildren = node.Nodes.Count() > 0;
+		var isLinkNode = node.Nodes.Any(n => n.IsActive);
+
+		if (isLinkNode)
+		{
+			<a class="text-reset position-absolute top-0 left-0 ps-2" href="@node.Link">
+				<span class="icon-3">@ReadFile(iconPath + "chevron-left.svg")</span>
+			</a>
+		}
+
+		if (node.IsActive)
+		{
+			<h1 class="h3 w-100 text-center">
+				@node.Name
+			</h1>
+		}
+
+		if (hasChildren)
+		{
+			@RenderNodesForMobileBreadcrumb(node.Nodes)
+		}
+	}
+}
