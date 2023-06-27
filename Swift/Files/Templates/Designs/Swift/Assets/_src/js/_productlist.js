@@ -84,32 +84,39 @@ const ProductList = function () {
 					newParams.delete("PageSize");
 				}
 
-				var newUrl = url.origin + url.pathname + "?" + newParams.toString(); //Create url with the new parameters 
+				var newUrl = url.origin + url.pathname + "?" + newParams.toString(); //Create url with the new parameters
 
-				let response = await fetch(newUrl);
-				if (response.ok) {
-					//Update URL
-					let updateUrl = "true";
-					if (form.getAttribute("data-update-url") != undefined) {
-						updateUrl = form.getAttribute("data-update-url");
-					}
+				//Handle ios devices (Scroll not working on async loaded content)
+				if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1 && swap != "afterend") {
+					newParams.set("LayoutTemplate", "");
+					window.location = url.origin + url.pathname + "?" + newParams.toString();
+				} else {
+					let response = await fetch(newUrl);
 
-					if (updateUrl != "false") {
-						newParams.delete("LayoutTemplate");
-
-						if (swap == "afterend") {
-							newParams.set("PageSize", pageSize);
-							newParams.delete("PageNum");
+					if (response.ok) {
+						//Update URL
+						let updateUrl = "true";
+						if (form.getAttribute("data-update-url") != undefined) {
+							updateUrl = form.getAttribute("data-update-url");
 						}
 
-						var updatedUrl = window.location.origin + url.pathname + "?" + newParams;
+						if (updateUrl != "false") {
+							newParams.delete("LayoutTemplate");
 
-						window.history.replaceState({}, '', decodeURI(updatedUrl));
+							if (swap == "afterend") {
+								newParams.set("PageSize", pageSize);
+								newParams.delete("PageNum");
+							}
+
+							var updatedUrl = window.location.origin + url.pathname + "?" + newParams;
+
+							window.history.replaceState({}, '', decodeURI(updatedUrl));
+						}
+
+						ProductList.Success(response, responseTargetElement, addPreloaderTimer, formData, swap);
+					} else {
+						ProductList.Error(response, responseTargetElement, addPreloaderTimer);
 					}
-
-					ProductList.Success(response, responseTargetElement, addPreloaderTimer, formData, swap);
-				} else {
-					ProductList.Error(response, responseTargetElement, addPreloaderTimer);
 				}
 			}
 		},
