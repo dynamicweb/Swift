@@ -3,7 +3,7 @@
 
 Swift is a **plug-and-play standard solution** which allows you to create beautiful mobile-friendly  websites. It is **fast and easy to build ecommerce sites** on Dynamicweb for both **B2C** and **B2B**. Using configuration and almost no coding. 
 
-![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/Dynamicweb%20Release-v9.15.8-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-purple)](https://doc.dynamicweb.com/swift/setup-project) 
+![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/Dynamicweb%20Release-v9.15.9-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-purple)](https://doc.dynamicweb.com/swift/setup-project) 
 
 [Key features](#key-features) • [Installation](#installation) • [Requirements](#requirements) • [Hosting & Install DW](#hosting-environment-and-dynamicweb-install) • [Database](#swift-database-and-product-images) • [License](#log-in-and-install-a-license)
 
@@ -37,7 +37,7 @@ This repository contains a `./Files` with design files, images, and other static
 
 ## Requirements
 
-* **Swift 1.22.0** requires **DynamicWeb version 9.15.8** or newer
+* **Swift 1.22.0** requires **DynamicWeb version 9.15.9** or newer
 * **Swift 1.21.0** requires **DynamicWeb version 9.15.5** or newer
 * **Swift 1.20.0** requires **DynamicWeb version 9.15.4** or newer
 
