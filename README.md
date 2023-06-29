@@ -3,7 +3,7 @@
 
 Swift is a **plug-and-play standard solution** which allows you to create beautiful mobile-friendly  websites. It is **fast and easy to build ecommerce sites** on Dynamicweb for both **B2C** and **B2B**. Using configuration and almost no coding. 
 
-![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/Dynamicweb%20Release-v9.15.5-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-purple)](https://doc.dynamicweb.com/swift/setup-project) 
+![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/Dynamicweb%20Release-v9.15.9-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-purple)](https://doc.dynamicweb.com/swift/setup-project) 
 
 [Key features](#key-features) • [Installation](#installation) • [Requirements](#requirements) • [Hosting & Install DW](#hosting-environment-and-dynamicweb-install) • [Database](#swift-database-and-product-images) • [License](#log-in-and-install-a-license)
 
@@ -17,6 +17,7 @@ Swift is a **plug-and-play standard solution** which allows you to create beauti
 *  **Build designed pages** :art: using visual drag and drop to create your content
 * **Web Accessibility Guidelines (WCAG)** :trophy: Level AA compliance, make web content more accessible
 * **World Wide Web (W3C)** :globe_with_meridians: validated following website formatting standards
+* **Visual editor** :rainbow: building content pages, product list and product detail pages in a visual manner and with components 
 
 ![alt text](http://doc.dynamicweb.com//Files/Images/Swift/VE-clothes.gif)
 # Installation
@@ -29,32 +30,18 @@ This repository contains a `./Files` with design files, images, and other static
 1. Prepare the hosting environment
 2. Install the DynamicWeb application
 3. Set up a website in IIS Manager and add the Swift-folder as a virtual directory
-4. Download the [Swift Product Image folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.19.0/Swift_20230224_DemoProductImages.zip "Download Swift Product Image folder") and insert the folder here `Swift/Files/Files/Images/Products`
+4. Download the [Swift Product Image folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.19.0/Swift_20230629_DemoProductImages.zip "Download Swift Product Image folder") and insert the folder here `Swift/Files/Files/Images/Products`
 5. Build the Swift design
 6. Install the Swift database & connect solution to it
 7. Log in and install a license
 
 ## Requirements
 
+* **Swift 1.22.0** requires **DynamicWeb version 9.15.9** or newer
 * **Swift 1.21.0** requires **DynamicWeb version 9.15.5** or newer
 * **Swift 1.20.0** requires **DynamicWeb version 9.15.4** or newer
-* **Swift 1.19.0** requires **DynamicWeb version 9.15.2** or newer
-* **Swift 1.18.0** requires **DynamicWeb version 9.15.1** or newer
-* **Swift 1.17.0** requires **DynamicWeb version 9.14.6** or newer
-* **Swift 1.16.0** requires **DynamicWeb version 9.14.5** or newer
-* **Swift 1.15.0** requires **DynamicWeb version 9.14.2** or newer
-* **Swift 1.14.1** requires **DynamicWeb version 9.13.11** or newer
-* **Swift 1.14.0** requires **DynamicWeb version 9.13.11** or newer
-* **Swift 1.13.1** requires **DynamicWeb version 9.13.11** or newer
-* **Swift 1.12.0** requires **DynamicWeb version 9.13.8** or newer
-* **Swift 1.11.0** requires **DynamicWeb version 9.13.6** or newer
-* **Swift 1.10.0** requires **DynamicWeb version 9.13.6** or newer
-* **Swift 1.9.0** requires **DynamicWeb version 9.13.4** or newer
-* **Swift 1.8.0** requires **DynamicWeb version 9.13.3** or newer
-* **Swift 1.7.0** requires **DynamicWeb version 9.13.3** or newer
-* **Swift 1.6.1** requires **DynamicWeb version 9.13.0** or newer
-* **Swift 1.5** requires **DynamicWeb version 9.12.9** or newer
-* **Swift 1.1** requires **DynamicWeb version 9.12.3** or newer
+
+See requirements for older Swift versions [here](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-1)
 
 * The baseline database is a bacpac file created using the Microsoft SQL Server 2016 standard (version SQL server 15.0.2080.9) using SQL Server Management Studio 2019 version 15.018040.0.
 
@@ -77,8 +64,8 @@ After following these guides you will have a freshly installed DynamicWeb soluti
 
 | Download |      |
 | ------ | ------ |
-| Database | [Swift database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.19.0/Swift_20230224_Database.zip "Download Swift database")|
-| Image folder | [Swift Product Image](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.19.0/Swift_20230224_DemoProductImages.zip "Download Swift Product Image folder") |
+| Database | [Swift database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.22.0/Swift_20230629_Database.zip "Download Swift database")|
+| Image folder | [Swift Product Image](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.22.0/Swift_20230629_DemoProductImages.zip "Download Swift Product Image folder") |
 
 
 ## Add Swift-folder as virtual directory
