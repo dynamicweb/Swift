@@ -1,0 +1,54 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using System.Linq
+@using System.Text.RegularExpressions
+@using Dynamicweb.Ecommerce.International
+
+@helper RenderUserItemAddressInline(LoopItem result)
+{
+	List<List<string>> addressFormat = Dynamicweb.Ecommerce.International.Country.GetDisplayAddress(result.GetString("CountryCode"));
+	string regionCode = result.GetString("State"); 
+	string regionName = GetRegionName(result.GetString("CountryCode"), regionCode); 
+	string countryName = Dynamicweb.Ecommerce.Services.Countries.GetCountry(result.GetString("CountryCode")).GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID); 
+	
+	foreach (List<string> addressLine in addressFormat)
+	{
+		for (var i = 0; i < addressLine.Count; i++)
+		{
+			addressLine[i] = Regex.Replace(addressLine[i], "{name}", "", RegexOptions.IgnoreCase); @* This needs tobe empty because there is no 'Name' property on the user Address object, but the format from the UI will/could have it *@
+			addressLine[i] = Regex.Replace(addressLine[i], "{firstName}", "", RegexOptions.IgnoreCase); @* This needs tobe empty because there is no 'First Name' property on the user Address object, but the format from the UI will/could have it *@
+			addressLine[i] = Regex.Replace(addressLine[i], "{lastName}", "", RegexOptions.IgnoreCase); @* This needs tobe empty because there is no 'Last Name' property on the user Address object, but the format from the UI will/could have it *@
+			addressLine[i] = Regex.Replace(addressLine[i], "{company}", result.GetString("Company"), RegexOptions.IgnoreCase);
+			addressLine[i] = Regex.Replace(addressLine[i], "{address}", result.GetString("Address"), RegexOptions.IgnoreCase);
+			addressLine[i] = Regex.Replace(addressLine[i], "{address1}", result.GetString("Address"), RegexOptions.IgnoreCase);
+			addressLine[i] = Regex.Replace(addressLine[i], "{address2}", result.GetString("Address2"), RegexOptions.IgnoreCase);
+			addressLine[i] = Regex.Replace(addressLine[i], "{zip}", result.GetString("Zip"), RegexOptions.IgnoreCase);
+			addressLine[i] = Regex.Replace(addressLine[i], "{city}", result.GetString("City"), RegexOptions.IgnoreCase);
+			addressLine[i] = Regex.Replace(addressLine[i], "{regionCode}", regionCode, RegexOptions.IgnoreCase);
+			addressLine[i] = Regex.Replace(addressLine[i], "{region}", regionName, RegexOptions.IgnoreCase);
+			addressLine[i] = Regex.Replace(addressLine[i], "{countryCode}", result.GetString("CountryCode"), RegexOptions.IgnoreCase);
+			addressLine[i] = Regex.Replace(addressLine[i], "{country}", countryName, RegexOptions.IgnoreCase);
+			
+			@* Remove any bad placeholders the user may have submitted *@
+			addressLine[i] = Regex.Replace(addressLine[i], "{phone}", "", RegexOptions.IgnoreCase); 
+			addressLine[i] = Regex.Replace(addressLine[i], "{email}", "", RegexOptions.IgnoreCase);
+		}
+		var completeLine = string.Join(string.Empty, addressLine.ToArray());
+		if (!string.IsNullOrWhiteSpace(completeLine))
+		{
+			<span>@completeLine</span>
+		}
+	}
+}
+
+@functions {
+
+	public string GetRegionName(string countryCode, string regionValue)
+	{
+		CountryCollection allCountryRegions = Dynamicweb.Ecommerce.Services.Countries.GetRegions(countryCode);
+		Country matchedRegion = allCountryRegions.FirstOrDefault(r => r.RegionCode == regionValue || r.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID) == regionValue);
+
+		if (matchedRegion == null) return regionValue;
+		
+		return matchedRegion.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID);
+	}
+}
