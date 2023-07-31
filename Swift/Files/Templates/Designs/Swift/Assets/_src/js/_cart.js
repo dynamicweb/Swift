@@ -1,6 +1,7 @@
 const Cart = function () {
 	return {
 		Update: async function (e) {
+			//NP: clickedButton is not always the button. Sometimes it is the qty input field if [enter] is pressed
 			const clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
 
 			//Setup the form data
@@ -137,7 +138,6 @@ const Cart = function () {
 			input.onkeydown = (e) => {
 				if (e.keyCode === 13) {
 					Cart.Update(e);
-					input.value = 1;
 				}
 			};
 
@@ -163,7 +163,7 @@ const Cart = function () {
 			if (globalDispatcher != false && localDispatcher != false) {
 				//Cleanup
 				clickedButton.classList.remove("disabled");
-				clickedButton.style.width = "auto";
+				clickedButton.style.width = "";
 				clickedButton.disabled = false;
 				clickedButton.innerHTML = clickedButton.getAttribute("data-content");
 				clickedButton.setAttribute("data-content", "");
@@ -207,7 +207,7 @@ const Cart = function () {
 			}, 200);
 
 			clickedButton.classList.remove("disabled");
-			clickedButton.style.width = "auto";
+			clickedButton.style.width = "";
 			clickedButton.disabled = false;
 			clickedButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512"><title>circle-notch</title><g fill="#ffffff"><path d="M288 24.103v8.169a11.995 11.995 0 0 0 9.698 11.768C396.638 63.425 472 150.461 472 256c0 118.663-96.055 216-216 216-118.663 0-216-96.055-216-216 0-104.534 74.546-192.509 174.297-211.978A11.993 11.993 0 0 0 224 32.253v-8.147c0-7.523-6.845-13.193-14.237-11.798C94.472 34.048 7.364 135.575 8.004 257.332c.72 137.052 111.477 246.956 248.531 246.667C393.255 503.711 504 392.789 504 256c0-121.187-86.924-222.067-201.824-243.704C294.807 10.908 288 16.604 288 24.103z"></path></g></svg>';
 		},
