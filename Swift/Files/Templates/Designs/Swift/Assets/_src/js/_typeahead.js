@@ -87,7 +87,7 @@ const Typeahead = function() {
 			if (searchField.value.trim() != "") {
 				var resultsPageId = searchField.closest(".js-suggest-form").getAttribute("data-search-results-page");
 				var defaultDetailsPageId = searchField.closest(".js-suggest-form").getAttribute("data-product-details-page-id");
-				var searchUrl = "/Default.aspx?ID=" + resultsPageId + "&defaultpdpId=" + defaultDetailsPageId + "&redirect=false&eq=" + encodeURIComponent(searchField.value.toLowerCase());
+				var searchUrl = "/Default.aspx?ID=" + resultsPageId + "&defaultpdpId=" + defaultDetailsPageId + "&IsVariant=false&redirect=false&eq=" + encodeURIComponent(searchField.value.toLowerCase());
 
 				const signal = controller.signal;
 				let abortError = false;
