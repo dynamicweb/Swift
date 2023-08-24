@@ -3,9 +3,7 @@ const ProductList = function () {
 	return {
 		init: function () {
 			//Auto initialize
-			document.querySelectorAll(".js-product-list").forEach(function (el) {
-				ProductList.Update(el);
-			});
+			document.querySelectorAll(".js-product-list").forEach(el => ProductList.Update(el));
 		},
 
 		Update: async function (e) {
@@ -143,6 +141,8 @@ const ProductList = function () {
 			var globalDispatcher = document.dispatchEvent(event);
 
 			if (globalDispatcher != false) {
+				var scripts;
+
 				//Remove preloader
 				if (document.querySelector("#overlay")) {
 					document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
@@ -164,26 +164,26 @@ const ProductList = function () {
 						loadMoreArea.remove();
 					}
 
-					var scripts = responseTargetElement.querySelectorAll("script").forEach(function (script) {
-						script.remove();
-					});
+					scripts = responseTargetElement.querySelectorAll("script");
+					scripts.forEach(script => { script.remove(); });
 				}
 
 				swift.Scroll.hideHeadersOnScroll();
 				swift.Scroll.handleAlternativeTheme();
 
 				//Run scripts from the loaded html
-				var scripts = Array.prototype.slice.call(responseTargetElement.getElementsByTagName("script"));
-				for (var i = 0; i < scripts.length; i++) {
-					if (scripts[i].src != "") {
+				scripts = responseTargetElement.querySelectorAll("script");
+				scripts.forEach(script => {
+					if (script.src != "") {
 						var tag = document.createElement("script");
-						tag.src = scripts[i].src;
+						tag.src = script.src;
+
 						document.getElementsByTagName("head")[0].appendChild(tag);
 					}
 					else {
-						eval(scripts[i].innerHTML);
+						eval(script.innerHTML);
 					}
-				}
+				});
 
 				//Modal
 				var requestType = formData.get("RequestType");
@@ -238,9 +238,7 @@ const ProductList = function () {
 			var localDispatcher = clickedButton.dispatchEvent(event);
 
 			if (globalDispatcher != false && localDispatcher != false) {
-				form.querySelectorAll("input[type='checkbox']").forEach(function (el) {
-					el.checked = false;
-				});
+				form.querySelectorAll("input[type='checkbox']").forEach(el => el.checked = false);
 
 				ProductList.Update(e);
 			}
