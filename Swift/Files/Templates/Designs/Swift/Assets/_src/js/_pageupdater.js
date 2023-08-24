@@ -151,6 +151,7 @@ const PageUpdater = function () {
 			var localDispatcher = clickedButton.dispatchEvent(event);
 
 			if (globalDispatcher != false && localDispatcher != false) {
+
 				//Remove preloader
 				if (document.querySelector("#overlay")) {
 					document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
@@ -159,22 +160,23 @@ const PageUpdater = function () {
 				//Replace content
 				if (responseTargetElement != null) {
 					responseTargetElement.innerHTML = html;
+					var scripts = responseTargetElement.querySelectorAll("script");
 
 					swift.Scroll.hideHeadersOnScroll();
 					swift.Scroll.handleAlternativeTheme();
 
 					//Run scripts from the loaded html
-					var scripts = Array.prototype.slice.call(responseTargetElement.getElementsByTagName("script"));
-					for (var i = 0; i < scripts.length; i++) {
-						if (scripts[i].src != "") {
+					scripts.forEach(script => {
+						if (script.src != "") {
 							var tag = document.createElement("script");
-							tag.src = scripts[i].src;
+							tag.src = script.src;
+
 							document.getElementsByTagName("head")[0].appendChild(tag);
 						}
 						else {
-							eval(scripts[i].innerHTML);
+							eval(script.innerHTML);
 						}
-					}
+					});
 				}
 			}
 		},
