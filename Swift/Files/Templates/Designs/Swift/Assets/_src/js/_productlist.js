@@ -160,10 +160,13 @@ const ProductList = function () {
 					responseTargetElement.parentNode.insertBefore(outerDiv, responseTargetElement.nextSibling);
 
 					var loadMoreArea = document.querySelector("#ProductListLoadMore");
-
 					if (loadMoreArea) {
 						loadMoreArea.remove();
 					}
+
+					var scripts = responseTargetElement.querySelectorAll("script").forEach(function (script) {
+						script.remove();
+					});
 				}
 
 				swift.Scroll.hideHeadersOnScroll();
