@@ -55,6 +55,10 @@
 	var selectedCatalogs = Model.Item.GetList("SelectedCatalogs").SelectedOptions;
 	int catalogCount = 0;
 
+	var ecomLanguages = Dynamicweb.Ecommerce.Services.Languages.GetLanguages();
+	var currencies = Dynamicweb.Ecommerce.Services.Currencies.GetAllCurrencies();
+	var languageId = Dynamicweb.Ecommerce.Common.Context.LanguageID;
+
 	<div class="d-flex @horizontalAlign @fullWidth item_@Model.Item.SystemName.ToLower()">
 		<button type="button" class="btn btn-primary @(buttonSize) @flexFill" data-bs-toggle="modal" data-bs-target="#DownloadPublicationModal@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID" style="white-space: nowrap" title="@Model.Item.GetString("Title")" id="DownloadPublication@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID">
 			@if (!Model.Item.GetBoolean("HideButtonText"))
@@ -71,11 +75,10 @@
 	</div>
 
 	<div class="modal fade" id="DownloadPublicationModal@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID" tabindex="-1" aria-labelledby="#DownloadPublicationModalLabel@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID" aria-hidden="true">
-		<div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+		<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
 			<div class="modal-content">
-				<form target="_blank" action="/Default.aspx" method="get">
+				<form target="_blank" action="/Default.aspx" method="post">
 					<input type="hidden" name="mainproductid" value="@product.Id">
-					<input type="hidden" name="showprice" value="true">
 					<input type="hidden" name="print" value="true">
 
 					@if (!string.IsNullOrEmpty(product.VariantId))
@@ -87,22 +90,84 @@
 						<h1 class="modal-title fs-5" id="DownloadPublicationModalLabel@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID">@Translate("Publication for print")</h1>
 						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 					</div>
-					<div class="modal-body">
-						@foreach (var catalog in selectedCatalogs)
-						{
-							var selected = catalogCount == 0 ? "checked" : string.Empty;
-							var page = Dynamicweb.Content.Services.Pages.GetPage(Convert.ToInt32(catalog.Value));
-							var radioId = $"CatalogCheck_{Model.ID}_{catalog.Value}";
+					<div class="modal-body grid gap-0 p-0">
+						<div class="g-col-3 border-end p-3">
 
-							<div class="form-check">
-								<input class="form-check-input" type="radio" name="ID" value="@catalog.Value" id="@radioId" @selected>
-								<label class="form-check-label" for="@radioId">
-									@catalog.Name
-								</label>
+							@*@if (Model.Item.GetBoolean("LanguageSelector") && ecomLanguages.Count() > 1) 
+							{ 
+								<div class="mb-4">
+									<label class="form-label">@Translate("Language")</label>
+									<select name="languageid" class="form-select" aria-label="@Translate("Language")">
+										@foreach (var language in ecomLanguages)
+										{
+											<option value="@language.LanguageId">@language.GetDisplayName()</option>
+										}
+									</select>
+								</div>
+							}*@
+
+							@if (Model.Item.GetBoolean("ShowPriceSelector"))
+							{
+								<div class="mb-4">
+									<label class="form-label">@Translate("Show price")</label>
+									<div class="form-check">
+										<input class="form-check-input" type="radio" name="hideprice" value="false" id="HidePriceFalse_@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID" checked onchange="document.querySelector('#CurrencySelector_@(product.Id)_@(product.VariantId)_@(Pageview.CurrentParagraph.ID)').classList.remove('d-none')">
+										<label class="form-check-label" for="HidePriceFalse_@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID">
+											@Translate("Yes")
+										</label>
+									</div>
+									<div class="form-check">
+										<input class="form-check-input" type="radio" name="hideprice" value="true" id="HidePriceTrue_@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID" onchange="document.querySelector('#CurrencySelector_@(product.Id)_@(product.VariantId)_@(Pageview.CurrentParagraph.ID)').classList.add('d-none')">
+										<label class="form-check-label" for="HidePriceTrue_@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID">
+											@Translate("No")
+										</label>
+									</div>
+								</div>
+							}
+
+							@*@if (Model.Item.GetBoolean("CurrencySelector"))
+							{
+								<div class="mb-4" id="CurrencySelector_@(product.Id)_@(product.VariantId)_@Pageview.CurrentParagraph.ID">
+									<label class="form-label">@Translate("Currency")</label>
+									<select name="currencycode" class="form-select" aria-label="@Translate("Currency")">
+										@foreach (var currency in currencies)
+										{
+											<option value="@currency.Code">@currency.GetName(languageId)</option>
+										}
+									</select>
+								</div>
+							}*@
+						</div>
+						<div class="g-col-9 p-3">
+							<div class="thumb-selector grid">
+								@foreach (var catalog in selectedCatalogs)
+								{
+									var selected = catalogCount == 0 ? "checked" : string.Empty;
+									var radioId = $"CatalogCheck_{Model.ID}_{catalog.Value}";
+									var page = Dynamicweb.Content.Services.Pages.GetPage(Convert.ToInt32(catalog.Value));
+									string image = page.Item["Thumbnail"] !=  null ? page.Item["Thumbnail"].ToString() : "";
+									string hideRadio = !string.IsNullOrEmpty(image) ? "d-none" : "";
+									string radioStartPadding = !string.IsNullOrEmpty(image) ? "p-0" : "";
+
+									<div class="g-col-3">
+										<div class="form-check @radioStartPadding">
+											<input class="form-check-input ps-3 @hideRadio" type="radio" name="ID" value="@catalog.Value" id="@radioId" @selected>
+											<label class="thumbnail form-check-label d-flex flex-column" for="@radioId">
+												@if (!string.IsNullOrEmpty(image)) 
+												{ 
+													<span class="thumbnail-image mb-2" >
+														<img class="w-100 h-100" src="/Admin/Public/GetImage.ashx?image=@image&width=200&format=webp" />
+													</span>
+												}
+												<span class="fw-bold">@catalog.Name </span>
+											</label>
+										</div>
+									</div>
+
+									catalogCount++;
+								}
 							</div>
-
-							catalogCount++;
-						}
+						</div>
 					</div>
 					<div class="modal-footer">
 						<button type="submit" class="btn btn-primary">@Translate("Print")</button>
