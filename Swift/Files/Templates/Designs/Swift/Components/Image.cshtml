@@ -5,7 +5,26 @@
 @if (!string.IsNullOrEmpty(Model.Path))
 {
 	string imagePath = Model?.Path ?? "";
-	imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
+	string imagePathUrlEncoded = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
+
+	var eagerLoadNewImages = GetViewParameterBoolean("eagerLoadNewImages");
+	var doNotUseGetimage = GetViewParameterBoolean("doNotUseGetimage");
+	bool imageIsNewAndNeedsEagerLoading = false;
+	if (eagerLoadNewImages)
+	{
+		var fullImagePath = Dynamicweb.Context.Current.Server.MapPath(imagePath);
+		if (System.IO.File.Exists(fullImagePath))
+		{
+			var fileInfo = new System.IO.FileInfo(fullImagePath);
+			if (fileInfo.LastWriteTime.AddDays(7) > DateTime.Now)
+			{
+				//image was changed in the last 7 days - eager load it.
+				imageIsNewAndNeedsEagerLoading = true;
+			}
+		}
+	}
+
+
 
 	int xPos = Model?.FocalPositionFromLeft ?? 50;
 	int yPos = Model?.FocalPositionFromTop ?? 50;
@@ -46,16 +65,19 @@
 
 
 	@* Image sizes + a fallback image *@
-	//string imagePathXS = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=360&format=webp";
-	//string imagePathS = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=480&format=webp";
-	string imagePathM = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=640&format=webp{imageQuality}";
-	string imagePathL = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=960&format=webp{imageQuality}";
-	string imagePathXL = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=1280&format=webp{imageQuality}";
-	string imagePathXXL = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=1920&format=webp{imageQuality}";
+	string imagePathM = $"/Admin/Public/GetImage.ashx?image={imagePathUrlEncoded}&width=640&format=webp{imageQuality}";
+	string imagePathL = $"/Admin/Public/GetImage.ashx?image={imagePathUrlEncoded}&width=960&format=webp{imageQuality}";
+	string imagePathXL = $"/Admin/Public/GetImage.ashx?image={imagePathUrlEncoded}&width=1280&format=webp{imageQuality}";
+	string imagePathXXL = $"/Admin/Public/GetImage.ashx?image={imagePathUrlEncoded}&width=1920&format=webp{imageQuality}";
 	string imagePathFallBack = imagePathM;
 
 	@* attributes to send to the image tag *@
 	string loading = !string.IsNullOrEmpty(GetViewParameterString("loading")) ? GetViewParameterString("loading") : "lazy";
+	if (imageIsNewAndNeedsEagerLoading)
+	{
+		loading = "eager";
+	}
+
 	var cssClass = GetViewParameter("cssClass");
 	var itemprop = GetViewParameter("itemprop");
 	var style = GetViewParameter("style");
@@ -63,9 +85,10 @@
 	var dataImageNumber = GetViewParameter("data-image-number");
 	var id = GetViewParameter("id"); //	GetViewParameter returns null if no value is found leaving out the id attribute if no value is present for this parameter.
 	var title = GetViewParameter("title");
-	if (title != null) {
+	if (title != null)
+	{
 		title = title.ToString() != "" ? "title=\"" + title + "\"" : "";
-    }
+	}
 
 	if (imagePath.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
 	{
@@ -73,7 +96,7 @@
 			@ReadFile(Model.Path)
 		</div>
 	}
-	else if (!imagePath.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase))
+	else if (!imagePath.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) || doNotUseGetimage)
 	{
 		<img src="@Model.Path"
 			 loading="@loading"
@@ -94,7 +117,7 @@
 			@imagePathXL  1280w,
 			@imagePathXXL 1920w"
 			 src="@imagePathFallBack"
-			 sizes="(min-width: 992px) @imgSizeSelector, 100vw"
+			 sizes="(max-width: 992px) 100vw, @imgSizeSelector"
 			 loading="@loading"
 			 decoding="async"
 			 class="@cssClass"
