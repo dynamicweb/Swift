@@ -82,6 +82,10 @@ const ProductList = function () {
 					newParams.delete("PageSize");
 				}
 
+				if (newParams.get("GroupId")) {
+					newParams.delete("GroupId");
+				}
+
 				var newUrl = url.origin + url.pathname + "?" + newParams.toString(); //Create url with the new parameters
 
 				//Handle ios devices (Scroll not working on async loaded content)
