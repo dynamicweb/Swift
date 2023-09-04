@@ -3,9 +3,7 @@ const ProductList = function () {
 	return {
 		init: function () {
 			//Auto initialize
-			document.querySelectorAll(".js-product-list").forEach(function (el) {
-				ProductList.Update(el);
-			});
+			document.querySelectorAll(".js-product-list").forEach(el => ProductList.Update(el));
 		},
 
 		Update: async function (e) {
@@ -84,6 +82,10 @@ const ProductList = function () {
 					newParams.delete("PageSize");
 				}
 
+				if (newParams.get("GroupId")) {
+					newParams.delete("GroupId");
+				}
+
 				var newUrl = url.origin + url.pathname + "?" + newParams.toString(); //Create url with the new parameters
 
 				//Handle ios devices (Scroll not working on async loaded content)
@@ -143,6 +145,8 @@ const ProductList = function () {
 			var globalDispatcher = document.dispatchEvent(event);
 
 			if (globalDispatcher != false) {
+				var scripts;
+
 				//Remove preloader
 				if (document.querySelector("#overlay")) {
 					document.querySelector("#overlay").parentNode.removeChild(document.querySelector("#overlay"));
@@ -160,27 +164,30 @@ const ProductList = function () {
 					responseTargetElement.parentNode.insertBefore(outerDiv, responseTargetElement.nextSibling);
 
 					var loadMoreArea = document.querySelector("#ProductListLoadMore");
-
 					if (loadMoreArea) {
 						loadMoreArea.remove();
 					}
+
+					scripts = responseTargetElement.querySelectorAll("script");
+					scripts.forEach(script => { script.remove(); });
 				}
 
 				swift.Scroll.hideHeadersOnScroll();
 				swift.Scroll.handleAlternativeTheme();
 
 				//Run scripts from the loaded html
-				var scripts = Array.prototype.slice.call(responseTargetElement.getElementsByTagName("script"));
-				for (var i = 0; i < scripts.length; i++) {
-					if (scripts[i].src != "") {
+				scripts = responseTargetElement.querySelectorAll("script");
+				scripts.forEach(script => {
+					if (script.src != "") {
 						var tag = document.createElement("script");
-						tag.src = scripts[i].src;
+						tag.src = script.src;
+
 						document.getElementsByTagName("head")[0].appendChild(tag);
 					}
 					else {
-						eval(scripts[i].innerHTML);
+						eval(script.innerHTML);
 					}
-				}
+				});
 
 				//Modal
 				var requestType = formData.get("RequestType");
@@ -235,9 +242,7 @@ const ProductList = function () {
 			var localDispatcher = clickedButton.dispatchEvent(event);
 
 			if (globalDispatcher != false && localDispatcher != false) {
-				form.querySelectorAll("input[type='checkbox']").forEach(function (el) {
-					el.checked = false;
-				});
+				form.querySelectorAll("input[type='checkbox']").forEach(el => el.checked = false);
 
 				ProductList.Update(e);
 			}
