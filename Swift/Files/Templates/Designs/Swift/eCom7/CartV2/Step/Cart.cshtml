@@ -25,15 +25,14 @@
 <div class="grid gap-0" id="Cart">
 
 	<header class="g-col-12">
-		@{
-			@RenderPageHeader()
-		}
+		<div class="pb-3 pb-lg-0 pt-3 pt-lg-5">
+			<h1 class="h3 mb-2">@Translate("Shopping Cart")</h1>
+			<p class="mb-0"><span>@Translate("Items in your shopping cart"):</span> <span>@GetString("Ecom:Order.OrderLines.TotalProductQuantity")</span></p>
+		</div>
 	</header>
 
 	<div class="g-col-12 g-col-lg-8 pe-lg-5 pb-md-5">
-		@{
-			@RenderErrors()
-		}
+		@Include("Helpers/Errors.cshtml")
 
 		<form name="ordersubmit" id="ordersubmit" method="post" autocomplete="off">
 
@@ -47,13 +46,67 @@
 				</div>
 			</header>
 
-			@{
-				@RenderOrderLinesForTracking()
+			@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
+			{
+				<script>
+					gtag("event", "view_cart", {
+						currency: "@GetString("Ecom:Order.Currency.Code")",
+						value: @GetDouble("Ecom:Order.Price.PriceWithVAT.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+						items: [
+							@foreach (LoopItem orderline in GetLoop("OrderLines"))
+							{
+								<text>
+								{
+									item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
+									item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(orderline.GetString("Ecom:Order:OrderLine.ProductName"))",
+									currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
+									price: @orderline.GetDouble("Ecom:Order:OrderLine.UnitPrice.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+									quantity: @orderline.GetDouble("Ecom:Order:OrderLine.Quantity").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+								},</text>
+							}
+						]
+					});
+				</script>
 			}
 
-			@{
-				@RenderOrderLines()
+			@foreach (LoopItem orderline in GetLoop("OrderLines"))
+			{
+				<text>
+					@Include("Helpers/OrderLineItem.cshtml")
+				</text>
 			}
+
+			<script>
+				function debounce(func, wait, immediate) {
+					var timeout;
+					return function () {
+						var context = this, args = arguments;
+						var later = function () {
+							timeout = null;
+							if (!immediate) func.apply(context, args);
+						};
+						var callNow = immediate && !timeout;
+						clearTimeout(timeout);
+						timeout = setTimeout(later, wait);
+						if (callNow) func.apply(context, args);
+					};
+				};
+
+				var UpdateQuantity = debounce(function (input, stock) {
+					var inputValue = parseFloat(input.value);
+					var stock = parseFloat(stock);
+
+					if (inputValue <= stock) {
+						input.classList.remove("is-invalid");
+						input.closest(".js-input-group").querySelector(".js-not-enough-stock").classList.add("d-none");
+						document.querySelector("#ordersubmit").submit();
+					} else {
+						input.value = stock;
+						input.classList.add("is-invalid");
+						input.closest(".js-input-group").querySelector(".js-not-enough-stock").classList.remove("d-none");
+					}
+				}, 300);
+			</script>
 
 			<div class="d-none d-lg-block">
 				@{@RenderCartNavigation()}
@@ -67,9 +120,9 @@
 			<header>
 				<h4 class="fs-6 fw-normal mb-2">@Translate("Order summary")</h4>
 			</header>
-			@{
-				@RenderOrderSummary()
-			}
+
+			@Include("Helpers/OrderSummary.cshtml")
+
 			<div class="d-block d-lg-none">
 				@{
 					@RenderCartNavigation()
@@ -81,81 +134,6 @@
 
 </div>
 
-@helper RenderPageHeader()
-{
-	<div class="pb-3 pb-lg-0 pt-3 pt-lg-5">
-		<h1 class="h3 mb-2">@Translate("Shopping Cart")</h1>
-		<p class="mb-0"><span>@Translate("Items in your shopping cart"):</span> <span>@GetString("Ecom:Order.OrderLines.TotalProductQuantity")</span></p>
-	</div>
-}
-
-@helper RenderOrderLinesForTracking()
-{
-	if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
-	{
-		<script>
-			gtag("event", "view_cart", {
-				currency: "@GetString("Ecom:Order.Currency.Code")",
-				value: @GetDouble("Ecom:Order.Price.PriceWithVAT.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
-				items: [
-					@foreach (LoopItem orderline in GetLoop("OrderLines"))
-					{
-						<text>
-						{
-							item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
-							item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(orderline.GetString("Ecom:Order:OrderLine.ProductName"))",
-							currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
-							price: @orderline.GetDouble("Ecom:Order:OrderLine.UnitPrice.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
-							quantity: @orderline.GetDouble("Ecom:Order:OrderLine.Quantity").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
-						},</text>
-					}
-				]
-			});
-		</script>
-	}
-}
-
-@helper RenderOrderLines()
-{
-	<text>
-		@foreach (LoopItem orderline in GetLoop("OrderLines"))
-		{
-			@RenderOrderLineItem(orderline)
-		}
-	</text>
-
-	<script>
-		function debounce(func, wait, immediate) {
-			var timeout;
-			return function () {
-				var context = this, args = arguments;
-				var later = function () {
-					timeout = null;
-					if (!immediate) func.apply(context, args);
-				};
-				var callNow = immediate && !timeout;
-				clearTimeout(timeout);
-				timeout = setTimeout(later, wait);
-				if (callNow) func.apply(context, args);
-			};
-		};
-
-		var UpdateQuantity = debounce(function (input, stock) {
-			var inputValue = parseFloat(input.value);
-			var stock = parseFloat(stock);
-
-			if (inputValue <= stock) {
-				input.classList.remove("is-invalid");
-				input.closest(".js-input-group").querySelector(".js-not-enough-stock").classList.add("d-none");
-				document.querySelector("#ordersubmit").submit();
-			} else {
-				input.value = stock;
-				input.classList.add("is-invalid");
-				input.closest(".js-input-group").querySelector(".js-not-enough-stock").classList.remove("d-none");
-			}
-		}, 300);
-	</script>
-}
 
 @helper RenderCartNavigation()
 {
@@ -203,8 +181,3 @@
 
 	</div>
 }
-
-@Include("Helpers/Errors.cshtml")
-@Include("Helpers/OrderLineItem.cshtml")
-@Include("Helpers/OrderSummary.cshtml")
-@Include("Helpers/VoucherForm.cshtml")
