@@ -5,6 +5,9 @@
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
 	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
 
+	bool hidePublicationForm = Pageview.CurrentParagraph.Item["HidePublicationForm"] != null ? Convert.ToBoolean(Pageview.CurrentParagraph.Item["HidePublicationForm"].ToString()) : false;
+	bool hideProductInformationForm = Pageview.CurrentParagraph.Item["HideProductInformationForm"] != null ? Convert.ToBoolean(Pageview.CurrentParagraph.Item["HideProductInformationForm"].ToString()) : false;
+
 	string shopPageId = Pageview.CurrentParagraph.Item["ShopPageLink"] != null ? Pageview.CurrentParagraph.Item["ShopPageLink"].ToString() : "";
 
 	var ecomLanguages = Dynamicweb.Ecommerce.Services.Languages.GetLanguages();
@@ -15,6 +18,10 @@
 	string confirmationPage = Pageview.CurrentParagraph.Item["ConfirmationPageLink"] != null ? Pageview.CurrentParagraph.Item["ConfirmationPageLink"].ToString() : "";
 
 	int languageCount = 0;
+
+	var selectedCatalogs = Pageview.CurrentParagraph.Item["SelectedCatalogs"] != null ? Pageview.CurrentParagraph.Item["SelectedCatalogs"].ToString().Split(',') : null;
+	int selectedCatalogsCount = selectedCatalogs != null ? selectedCatalogs.Count() : 0;
+	int catalogCount = 0;
 }
 
 @if (GetLoop("OrderLines").Count > 0) { 
@@ -60,7 +67,8 @@
 				link += $"&ProductID={productId}";
 				link += !string.IsNullOrEmpty(variantId) ? $"&VariantID={variantId}" : "";
 
-				if (orderline.GetBoolean("Ecom:Order:OrderLine.IsProduct")) {
+				if (orderline.GetBoolean("Ecom:Order:OrderLine.IsProduct"))
+				{
 					<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center mb-1">
 						<div class="g-col-12 border-top"></div>
 
@@ -72,11 +80,11 @@
 
 						<div class="g-col-7 g-col-lg-9 grid grid-9 gap-0 gap-lg-3 lh-1">
 							<div class="g-col-4 g-col-lg-3 order-1">
-								<span class="fs-8 fs-lg-6"><a href="@link"  tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@number</a></span>
+								<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@number</a></span>
 							</div>
 
 							<div class="g-col-5 g-col-lg-6 order-2 lh-1">
-								<span class="fs-8 fs-lg-6"><a href="@link"  tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@name</a></span>
+								<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@name</a></span>
 							</div>
 						</div>
 
@@ -90,15 +98,84 @@
 			}
 		</section>
 
-		@if (!string.IsNullOrEmpty(confirmationPage)) { 
-			<aside class="g-col-12 g-col-lg-4 position-relative">
-				<div class="p-3 p-lg-5 pb-lg-4@(theme)">
+		<aside class="g-col-12 g-col-lg-4 position-relative">
+
+			@if (selectedCatalogsCount > 0 && !hidePublicationForm)
+			{
+				<div class="p-3 p-lg-5 pb-lg-4 mb-4@(theme)">
+					<form target="_blank" action="/Default.aspx" method="post" class="sticky-receipt">
+						<input type="hidden" name="ShopId" value="@Pageview.Area.EcomShopId">
+						<input type="hidden" name="mainproductid" value="@string.Join(",", productIds.ToArray())">
+						<input type="hidden" name="print" value="true">
+
+						<div class="mb-3">
+							<h3 class="h5">@Translate("Publication")</h3>
+							<div>@Translate("Configure your publication setup")</div>
+						</div>
+
+						@if (Convert.ToBoolean(Pageview.CurrentParagraph.Item["ShowPriceSelector"]))
+						{
+							<div class="mb-4">
+								<label class="form-label">@Translate("Show price")</label>
+								<div class="form-check">
+									<input class="form-check-input" type="radio" name="hideprice" value="false" id="HidePriceFalse_@Pageview.CurrentParagraph.ID" checked>
+									<label class="form-check-label" for="HidePriceFalse_@Pageview.CurrentParagraph.ID">
+										@Translate("Yes")
+									</label>
+								</div>
+								<div class="form-check">
+									<input class="form-check-input" type="radio" name="hideprice" value="true" id="HidePriceTrue_@Pageview.CurrentParagraph.ID">
+									<label class="form-check-label" for="HidePriceTrue_@Pageview.CurrentParagraph.ID">
+										@Translate("No")
+									</label>
+								</div>
+							</div>
+						}
+
+					<div class="grid grid-1 grid-lg-2 gap-lg-3 mb-4">
+						@foreach (var catalog in selectedCatalogs)
+						{
+							var selected = catalogCount == 0 ? "checked" : string.Empty;
+							var radioId = $"CatalogCheck_{catalog}";
+							var page = Dynamicweb.Content.Services.Pages.GetPage(Convert.ToInt32(catalog));
+							string imagePath = page.Item["Thumbnail"] != null ? $"/Admin/Public/GetImage.ashx?image={page.Item["Thumbnail"].ToString()}&width=200&format=webp" : $"https://placehold.co/235x300?text={@Translate(page.GetDisplayName())}";
+
+							<div class="form-thumb">
+								<input class="form-thumb-input visually-hidden" type="radio" name="ID" value="@catalog" id="@radioId" @selected>
+								<label class="form-thumb-label d-flex flex-column" for="@radioId" role="button">
+									<span class="d-block p-1">
+										<img class="rounded-2 w-100" style="object-fit:cover" src="@imagePath" />
+									</span>
+									<span class="d-grid p-3">
+										<span class="d-block fw-bold">@page.GetDisplayName()</span>
+										@*<span class="d-block opacity-75 fs-7 lh-sm">@catalog.Name</span> // Descriptive text goes here //*@
+									</span>
+								</label>
+							</div>
+
+							catalogCount++;
+						}
+					</div>
+
+						<button type="submit" class="btn btn-primary w-100" title="@Translate("Print")">@Translate("Print")</button>
+
+						@if (!string.IsNullOrEmpty(shopPageId))
+						{
+							<a href="/Default.aspx?ID=@shopPageId" class="btn btn-secondary w-100 mt-3" title="@Translate("Add more products")">@Translate("Add more products")</a>
+						}
+					</form>
+				</div>
+			}
+
+			@if (!string.IsNullOrEmpty(confirmationPage) && !hideProductInformationForm)
+			{
+				<div class="p-3 p-lg-5 pb-lg-4 mb-4@(theme)">
 					<form action="/dwapi/ecommerce/products/export" class="sticky-receipt js-product-export-form">
 						<input type="hidden" name="ShopId" value="@Pageview.Area.EcomShopId">
 						<input type="hidden" name="Template" value="/Files/Templates/Designs/Swift/eCom/ProductCatalog/ExportProductsMail.cshtml">
 						<input type="hidden" name="PageSize" value="100">
 
-						<div class="mb-2">
+						<div class="mb-3">
 							<h3 class="h5">@Translate("Product information")</h3>
 							<div>@Translate("Select a language and format for your product file")</div>
 						</div>
@@ -227,7 +304,7 @@
 						}
 					</form>
 				</div>
-			</aside>
-		}
+			}
+		</aside>
 	</div>
 } 
