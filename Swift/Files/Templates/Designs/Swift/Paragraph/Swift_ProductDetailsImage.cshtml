@@ -50,23 +50,18 @@
 		return Model.Item.GetRawValueString("ThumbnailPlacement", "bottom");
 	}
 
-	public string GetThumbnailAlignment()
-	{
-		return GetThumbnailPlacement() == "bottom" ? "flex-column" : string.Empty;
-	}
-
-	public string GetThumbnailAxisAndSide()
+	public string GetThumbnailRowSettingCss()
 	{
 		switch (GetThumbnailPlacement())
 		{
 			case "bottom":
-				return "3 my-3";
+				return "d-flex flex-wrap";
 			case "left":
-				return "1 mx-2 flex-column order-first";
+				return "d-flex flex-column order-first";
 			case "right":
-				return "1 mx-2 flex-column order-last";
+				return "d-flex flex-column order-last";
 			default:
-				return "3 my-3";
+				return "d-flex flex-wrap";
 		}
 	}
 
@@ -160,24 +155,27 @@
 		int assetNumber = 0;
 		int thumbnailNumber = 0;
 		int modalAssetNumber = 0;
+		string thumbnailAxisCss = GetThumbnailPlacement() == "bottom" ? "flex-column" : string.Empty;
 
-		<div class="d-flex h-100@(theme) position-relative @GetThumbnailAlignment() item_@Model.Item.SystemName.ToLower()">
-			<div class="col">
+		<div class="d-flex gap-3 h-100 @(thumbnailAxisCss) @(theme) item_@Model.Item.SystemName.ToLower()">
+			<div id="SmallScreenImages_@Model.ID" class="carousel@(GetArrowsColor()) col position-relative" data-bs-ride="carousel">
 				@{@RenderMainImage(assetsList, assetNumber)}
+				@if (showBadges)
+				{
+					<div class="position-absolute top-0 left-0 p-2 p-lg-3">
+						@{@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)}
+					</div>
+				}
+
 			</div>
+			
 			@if (totalAssets > 1)
 			{
-				<div id="SmallScreenImagesThumbnails_@Model.ID" class="d-flex col-@GetThumbnailAxisAndSide() gap-2">
+				<div class="@(GetThumbnailRowSettingCss()) gap-3" id="SmallScreenImagesThumbnails_@Model.ID">
 					@{@RenderThumbnails(assetsList, thumbnailNumber)}
 				</div>
 			}
 
-			@if (showBadges)
-			{
-				<div class="position-absolute top-0 left-0 p-2 p-lg-3">
-					@{@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)}
-				</div>
-			}
 		</div>
 
 		@* Modal with slides *@
@@ -260,25 +258,23 @@ else if (Pageview.IsVisualEditorMode)
 
 @helper RenderMainImage(IEnumerable<MediaViewModel> assetsList = null, int assetNumber = 0)
 {
-	<div id="SmallScreenImages_@Model.ID" class="carousel@(GetArrowsColor())" data-bs-ride="carousel">
-		<div class="carousel-inner h-100">
-			@foreach (MediaViewModel asset in assetsList)
+	<div class="carousel-inner h-100">
+		@foreach (MediaViewModel asset in assetsList)
+		{
+			var assetValue = asset.Value;
+			foreach (string format in allSupportedFormats)
 			{
-				var assetValue = asset.Value;
-				foreach (string format in allSupportedFormats)
+				if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0)
 				{
-					if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0)
-					{
-						string activeSlide = assetNumber == 0 ? "active" : "";
+					string activeSlide = assetNumber == 0 ? "active" : "";
 
-						<div class="carousel-item @activeSlide" data-bs-interval="99999">
-							@{@RenderAsset(asset, assetNumber, "mobile")}
-						</div>
-						assetNumber++;
-					}
+					<div class="carousel-item @activeSlide" data-bs-interval="99999">
+						@{@RenderAsset(asset, assetNumber, "mobile")}
+					</div>
+					assetNumber++;
 				}
 			}
-		</div>
+		}
 	</div>
 }
 
@@ -316,19 +312,20 @@ else if (Pageview.IsVisualEditorMode)
 				{
 					RatioSettings ratioSettings = GetRatioSettings("desktop");
 
-					<div class="border outline-none @(ratioSettings.CssClass)" style="@(ratioSettings.CssVariable); cursor: pointer" data-bs-target="#SmallScreenImages_@Model.ID" data-bs-slide-to="@thumbnailNumber">
-						<div class="d-flex align-items-center justify-content-center overflow-hidden position-absolute h-100">
-							@foreach (string videoFormat in supportedVideoFormats)
-							{ //Videos
-								if (assetValue.IndexOf(videoFormat, StringComparison.OrdinalIgnoreCase) >= 0)
-								{
-									<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
+					<div class="border outline-none @(ratioSettings.CssClass)" style="@(ratioSettings.CssVariable); cursor: pointer; min-width: 7rem; max-width: 8rem;" data-bs-target="#SmallScreenImages_@Model.ID" data-bs-slide-to="@thumbnailNumber">
+							<div class="d-flex align-items-center justify-content-center overflow-hidden position-absolute h-100">
+								@foreach (string videoFormat in supportedVideoFormats)
+								{ //Videos
+									if (assetValue.IndexOf(videoFormat, StringComparison.OrdinalIgnoreCase) >= 0)
+									{
+										<div class="icon-3 position-absolute text-light" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
+									}
 								}
-							}
-						</div>
+							</div>
+
 						@if (imagePathThumb.IndexOf(".mp4", StringComparison.OrdinalIgnoreCase) < 0)
 						{
-							<img src="@imagePathThumb" alt="@assetName" @assetTitle class="p-0 p-lg-1 @vimeoJsClass w-100 h-100" style="object-fit: contain" data-video-id="@videoId">
+							<img src="@imagePathThumb" alt="@assetName" @assetTitle class="p-0 p-lg-1 @vimeoJsClass w-100 h-100" style="object-fit: contain;" data-video-id="@videoId">
 						}
 						else
 						{
@@ -339,10 +336,11 @@ else if (Pageview.IsVisualEditorMode)
 							</video>
 						}
 					</div>
+
 				}
 				else
 				{
-					<a href="@assetValue" class="ratio ratio-4x3 border outline-none" style="cursor: pointer" download title="@asset.Value">
+					<a href="@assetValue" class="ratio ratio-4x3 border outline-none" style="cursor: pointer; min-width: 7rem; max-width: 8rem;" download title="@asset.Value">
 						@if (asset.Value.IndexOf(".pdf", StringComparison.OrdinalIgnoreCase) >= 0)
 						{
 							<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
