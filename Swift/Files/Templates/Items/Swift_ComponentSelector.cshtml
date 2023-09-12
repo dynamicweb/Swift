@@ -7,6 +7,7 @@
 
 @{ 
 	string editorId = Model.EditorId;
+	int optionsCount = 0;
 }
 
 <style>
@@ -72,25 +73,43 @@
 </style>
 
 <div class="swift-container">
-	@if (Model.Items is object) {
+	@if (Model.Items is object)
+	{
 		foreach (var option in Model.Items)
 		{
 			string thumbnail = !string.IsNullOrEmpty(option.GetString("Thumbnail")) ? option.GetString("Thumbnail") : "";
 			string title = !string.IsNullOrEmpty(option.GetString("Title")) ? option.GetString("Title") : Translate("Component");
-			string badgeId = option.PageID != 0 ? option.PageID.ToString() : "0";
+
+			string currentPageId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("PageID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("PageID") : "0";
+			currentPageId = currentPageId == "0" && !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ID") : currentPageId;
+
+			int componentId = option.PageID != 0 ? option.PageID : 0;
+			int selectedComponentId = !string.IsNullOrEmpty(Model.SelectedValue) ? Convert.ToInt32(Model.SelectedValue) : 0;
+
+			var pageService = new Dynamicweb.Content.PageService();
+			var areaId = pageService.GetPage(Convert.ToInt32(currentPageId)).AreaId;
+
+			componentId = pageService.GetPageOrLanguage(componentId, areaId).ID;
+			selectedComponentId = selectedComponentId > 0 ? pageService.GetPageOrLanguage(selectedComponentId, areaId).ID : 0;
+
+			string checkedOption = selectedComponentId == componentId ? "checked" : "";
+			checkedOption = selectedComponentId == 0 && optionsCount == 0 ? "checked" : checkedOption;
 
 			<div>
-				<input class="swift-component-input" type="radio" id="@(editorId)_@badgeId" name="@editorId"  value="@badgeId" @(Model.SelectedValue == badgeId ? "checked" : "")  style="display: none">
-				<label class="swift-component-label" for="@(editorId)_@badgeId">
+				<input class="swift-component-input" type="radio" id="@(editorId)_@componentId" name="@editorId" value="@componentId" @checkedOption style="display: none">
+				<label class="swift-component-label" for="@(editorId)_@componentId">
 					<div class="swift-component-option">
 						<div class="swift-component-option-title">
 							@title
 						</div>
-						@if (thumbnail != "") { 
+						@if (thumbnail != "")
+						{
 							<div>
 								<img src="/Admin/Public/GetImage.ashx?width=120&height=90&image=@thumbnail" alt="@title">
 							</div>
-						} else { 
+						}
+						else
+						{
 							<div class="swift-component-option-image-container">
 								<div class="swift-component-option-image">
 									<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
@@ -100,8 +119,12 @@
 					</div>
 				</label>
 			</div>
+
+			optionsCount++;
 		}
-	} else { 
+	}
+	else
+	{
 		<div class="swift-alert">@Translate("No components found")</div>
 	}
 </div>
