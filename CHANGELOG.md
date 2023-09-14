@@ -14,8 +14,7 @@
 * General: Updated DW10 project file - SwiftDw10.csproj
 * General: Cart, Quantity field is showing stock not the amount added to cart. OrderLineItem, Always use GetDouble("Ecom:Order:OrderLine.Quantity") - No stock hack
 * Integration Customer Center - Invoices tag is wrong in template. It should be Ecom:IntegrationCustomerCenter.Invoices.Link and not Ecom:IntegrationCustomerCenter.Invoice.Link
-* Integration Customer Center: Fixes:  Paging links broken, 
-Templates for showing lists of open orders, credit memos, invoices broken, Request external PDF broken
+* Integration Customer Center: Fixes:  Fix broken Paging links, CreditList, InvoiceList and OrderList and  request external PDF broken
 * Integration Customer Center: Fix order price according to ERP currency in CreditList, InvoiceList and OrderList
 * General: Add authorization token on _live-product-info.js
 * General: Support external images - StartsWith  " / Files / " for product image assets
