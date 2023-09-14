@@ -79,7 +79,7 @@
 
 		return itemFieldValue;
 	}
-	
+
 	private bool GetDefaultOrVariantGroupValue(string variantGroupId, string itemField)
 	{
 		bool itemFieldValue = Model.Item.GetBoolean(itemField);
@@ -128,20 +128,20 @@
 	bool hideGroupHeaders = Model.Item.GetBoolean("HideGroupHeaders");
 	var productVariantGroups = product.VariantGroups();
 
-	if (productVariantGroups.Any())
+if (productVariantGroups.Any())
+{
+	string[] variantId = product.VariantId.Split('.');
+	int groupNumber = 1;
+
+	string baseUrl = $"Default.aspx?ID={GetPageIdByNavigationTag("Shop")}&GroupID={product.PrimaryOrDefaultGroup.Id}&ProductID={product.Id}";
+	string variantUrl = "";
+	if (!string.IsNullOrEmpty(product.VariantId))
 	{
-		string[] variantId = product.VariantId.Split('.');
-		int groupNumber = 1;
+		variantUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl($"Default.aspx?ID={GetPageIdByNavigationTag("Shop")}&GroupID={product.PrimaryOrDefaultGroup.Id}&ProductID={product.Id}&VariantID={product.VariantId}");
+	}
 
-		string baseUrl = $"Default.aspx?ID={GetPageIdByNavigationTag("Shop")}&GroupID={product.PrimaryOrDefaultGroup.Id}&ProductID={product.Id}";
-		string variantUrl = "";
-		if (!string.IsNullOrEmpty(product.VariantId))
-		{
-			variantUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl($"Default.aspx?ID={GetPageIdByNavigationTag("Shop")}&GroupID={product.PrimaryOrDefaultGroup.Id}&ProductID={product.Id}&VariantID={product.VariantId}");
-		}
-
-		Dictionary<string, string> variantImages = new Dictionary<string, string>();
-		variantImages = GetVariantImages(product.VariantInfo.VariantInfo, variantImages);
+	Dictionary<string, string> variantImages = new Dictionary<string, string>();
+	variantImages = GetVariantImages(product.VariantInfo.VariantInfo, variantImages);
 
 		<form class="d-flex flex-column gap-2 js-variant-selector item_@Model.Item.SystemName.ToLower()" data-combinations="@string.Join(",", product.VariantCombinations())" data-base-url="@baseUrl" data-friendly-url="@variantUrl">
 			@foreach (var variantGroup in productVariantGroups)
@@ -157,107 +157,103 @@
 					{
 						<h3 class="h6 @horizontalTextAlign">
 							@group.Name
-							
+
 							@if (showSelectedOptionName)
-		                    {
+							{
 								string selectedOptionName = group.Options.FirstOrDefault(opt => variantId.Contains(opt.Id))?.Name ?? string.Empty;
-			                    <span class="fw-light px-1 swift-selected-option-name">@selectedOptionName</span>    
-		                    }
+								<span class="fw-light px-1 swift-selected-option-name">@selectedOptionName</span>
+							}
 						</h3>
 					}
-					<div class="d-flex gap-2 @horizontalAlign flex-wrap js-variant-group" data-group-id="@groupNumber">
-						@if (variantGroupLayout == "button")
+				<div class="d-flex gap-2 @horizontalAlign flex-wrap js-variant-group" data-group-id="@groupNumber">
+					@if (variantGroupLayout == "button")
+					{
+						foreach (var option in group.Options)
 						{
-							foreach (var option in group.Options)
-							{
-								string active = variantId != null && variantId.Contains(option.Id) ? "active" : "";
-								string buttonId = $"{product.Id}_{option.Id}_{Pageview.CurrentParagraph.ID}";
-								string contrastColor = string.Empty;
-								string optionLayout = optionLayout = GetDefaultOrVariantGroupValue(variantGroup.Id, "ButtonLayout", "rounded-circle", new Dictionary<string, string> { { "round", "rounded-circle" }, { "square", "" } });
-								var displayType = group.DisplayType;
+							string active = variantId != null && variantId.Contains(option.Id) ? "active" : "";
+							string buttonId = $"{product.Id}_{option.Id}_{Pageview.CurrentParagraph.ID}";
+							string contrastColor = string.Empty;
+							string buttonAspectRatio = GetDefaultOrVariantGroupValue(variantGroup.Id, "ButtonAspectRatio", "100%", new Dictionary<string, string> { { "100%", "--bs-aspect-ratio:100%" }, { "56%", "--bs-aspect-ratio:56%" }, { "177%", "--bs-aspect-ratio:177%" }, { "75%", "--bs-aspect-ratio:75%" }, { "133%", "--bs-aspect-ratio:133%" } });
 
-								switch (displayType)
-								{
-									case VariantGroupDisplayType.VariantColor:
-										contrastColor = GetContrastColor(option.Color);
-										<button type="button" class="btn colorbox @optionLayout d-inline-block variant-option border js-variant-option @active" style="background-color: @option.Color;  --variantoption-check-color: @contrastColor" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@buttonId">
-											<span class="visually-hidden">@option.Color</span>
-										</button>
-										break;
-									case VariantGroupDisplayType.VariantImage:
-										string variantImage = string.Empty;
-										if (variantImages.TryGetValue(option.Id, out variantImage))
+							string buttonLayout =  GetDefaultOrVariantGroupValue(variantGroup.Id, "ButtonLayout", "rounded-circle", new Dictionary<string, string> { { "round", "rounded-circle" }, { "square", "rounded-0" }, { "square-rounded", "rounded-3" } });
+							string buttonTextLayout = GetDefaultOrVariantGroupValue(variantGroup.Id, "ButtonTextLayout", "", new Dictionary<string, string> { { "default", "" }, { "square", "rounded-0" }, { "square-rounded", "rounded-3" } });
+							var displayType = group.DisplayType;
+							displayType = displayType == VariantGroupDisplayType.NothingSelected && !string.IsNullOrEmpty(option.Color) ? VariantGroupDisplayType.VariantColor : displayType;
+							displayType = displayType == VariantGroupDisplayType.NothingSelected && string.IsNullOrEmpty(option.OptionImage.Value) && string.IsNullOrEmpty(option.Color) ? VariantGroupDisplayType.VariantName : displayType;
+							displayType = displayType == VariantGroupDisplayType.NothingSelected && !string.IsNullOrEmpty(option.OptionImage.Value) ? VariantGroupDisplayType.VariantOptionImage : displayType;
+
+							var btnWidth = displayType == VariantGroupDisplayType.VariantColor || displayType == VariantGroupDisplayType.VariantImage || displayType == VariantGroupDisplayType.VariantOptionImage ? $"style=\"width:64px\"" : string.Empty;
+							var btnClasses = string.Empty;
+
+							btnClasses = displayType == VariantGroupDisplayType.VariantColor ? $"overflow-hidden colorbox colorbox-auto p-0 {buttonLayout}" : btnClasses;
+							btnClasses = displayType == VariantGroupDisplayType.VariantImage ? $"overflow-hidden p-0 {buttonLayout}" : btnClasses;
+							btnClasses = displayType == VariantGroupDisplayType.VariantOptionImage ? $"overflow-hidden colorbox colorbox-auto {buttonLayout} p-0" : btnClasses;
+							btnClasses = displayType == VariantGroupDisplayType.VariantName ? $"btn-secondary {buttonTextLayout}" : btnClasses;
+
+									<button type="button" class="btn @btnClasses d-inline-block variant-option js-variant-option @active" @btnWidth onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
+										<div class="@(displayType == VariantGroupDisplayType.VariantName ? string.Empty : "ratio")" style="@(buttonAspectRatio)">
+
+											@switch (displayType)
+											{
+												case VariantGroupDisplayType.VariantOptionImage:
+													if (!string.IsNullOrEmpty(option.OptionImage.Value))
+													{
+														<img style="object-fit:cover;--variantoption-check-color:@(contrastColor)" src="/Admin/Public/GetImage.ashx?image=@(option.OptionImage.Value)&width=64&format=webp">
+													}
+													else if (!string.IsNullOrEmpty(option.Color))
+													{
+														<span class="" style="background-color:@(option.Color);--variantoption-check-color:@(contrastColor)"><span class="visually-hidden">@option.Color</span></span>
+													}
+													else
+													{
+														<span class="d-flex align-items-center justify-content-center">@(option.Name)</span>
+													}
+													break;
+
+												case VariantGroupDisplayType.VariantImage:
+													string variantImage = string.Empty;
+													variantImages.TryGetValue(option.Id, out variantImage);
+													<img style="object-fit:cover" src="/Admin/Public/GetImage.ashx?image=@(variantImage)&width=64&format=webp">
+													break;
+
+												case VariantGroupDisplayType.VariantColor:
+													contrastColor = GetContrastColor(option.Color);
+													<span class="" style="background-color:@(option.Color);--variantoption-check-color:@(contrastColor)"><span class="visually-hidden">@option.Color</span></span>
+													break;
+
+												case VariantGroupDisplayType.VariantName:
+													<span class="d-flex align-items-center justify-content-center">@(option.Name)</span>
+													break;
+
+											}
+										</div>
+									</button>
+									}
+									}
+									else
+									{
+									<select class="form-select" id="VariantDropdown_@variantGroup.Id" aria-label="@variantGroup.Name" onchange="swift.VariantSelector.OptionClick(event)">
+										@if (string.IsNullOrEmpty(product.VariantId))
 										{
-											<button type="button" class="btn p-0 d-inline-block @optionLayout variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
-												<img class="@optionLayout" src="/Admin/Public/GetImage.ashx?image=@(variantImage)&width=42&format=webp">
-											</button>
+											<option value="" class="variant-option js-variant-option" data-variant-id="">@Translate("Nothing selected")</option>
 										}
-										else
+
+										@foreach (var option in variantGroup.Options)
 										{
-											<button type="button" class="btn btn-secondary d-inline-block variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
-												@option.Name
-											</button>
+											string active = variantId != null && variantId.Contains(option.Id) ? "active" : "";
+											var selected = variantId != null && variantId.Contains(option.Id) ? "selected" : "";
+											var value = $"{product.Id}_{option.Id}";
+
+											<option value="@(value)" class="variant-option js-variant-option @active" data-variant-id="@option.Id" id="@(value)_@(Pageview.CurrentParagraph.ID)" @selected>@option.Name</option>
 										}
-
-										break;
-									case VariantGroupDisplayType.VariantName:
-										<button type="button" class="btn btn-secondary d-inline-block variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@buttonId">
-											@option.Name
-										</button>
-										break;
-									case VariantGroupDisplayType.VariantOptionImage:
-										<button type="button" class="btn p-0 d-inline-block @optionLayout variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(product.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
-											<img class="@optionLayout" src="/Admin/Public/GetImage.ashx?image=@(option.OptionImage.Value)&width=42&format=webp">
-										</button>
-										break;
-									default:
-										if (!string.IsNullOrEmpty(option.Color))
-										{
-											contrastColor = GetContrastColor(option.Color);
-											<button type="button" class="btn colorbox @optionLayout d-inline-block variant-option border js-variant-option @active" style="background-color: @option.Color;  --variantoption-check-color: @contrastColor" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@buttonId">
-												<span class="visually-hidden">@option.Color</span>
-											</button>
-										}
-										else if (!string.IsNullOrEmpty(option.Color) && !string.IsNullOrEmpty(option.Image.Value))
-										{
-											<button type="button" class="btn p-0 d-inline-block @optionLayout variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@buttonId">
-												<img src="/Admin/Public/GetImage.ashx?image=@(option.Image.Value)&width=42&format=webp">
-											</button>
-										}
-										else
-										{
-											<button type="button" class="btn btn-secondary d-inline-block variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@buttonId">
-												@option.Name
-											</button>
-										}
-										break;
-								}
-							}
-						}
-						else
-						{
-							<select class="form-select" id="VariantDropdown_@variantGroup.Id" aria-label="@variantGroup.Name" onchange="swift.VariantSelector.OptionClick(event)">
-								@if (string.IsNullOrEmpty(product.VariantId))
-								{
-									<option value="" class="variant-option js-variant-option" data-variant-id="">@Translate("Nothing selected")</option>
-								}
-
-								@foreach (var option in variantGroup.Options)
-								{
-									string active = variantId != null && variantId.Contains(option.Id) ? "active" : "";
-									var selected = variantId != null && variantId.Contains(option.Id) ? "selected" : "";
-									var value = $"{product.Id}_{option.Id}";
-
-									<option value="@(value)" class="variant-option js-variant-option @active" data-variant-id="@option.Id" id="@(value)_@(Pageview.CurrentParagraph.ID)" @selected>@option.Name</option>
-								}
-							</select>
-						}
-					</div>
-				</div>
+									</select>
+									}
+</div>
+						</div >
 
 
-				groupNumber++;
-			}
+						groupNumber++;
+					}
 		</form>
 
 		<script type="module">
