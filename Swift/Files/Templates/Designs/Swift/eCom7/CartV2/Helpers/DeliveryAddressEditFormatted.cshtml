@@ -1,111 +1,61 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 @using System
 @using System.Collections.Generic
 @using System.Linq
 @using System.Text.RegularExpressions
+@using System.Text
 
-@helper RenderDeliveryAddressEdit(bool enableAdditionalAddress = false)
-{
-	string currentCountry = Pageview.Area?.EcomCountryCode != null ? Pageview.Area.EcomCountryCode : "dk";
-	foreach (LoopItem countryLoopItem in GetLoop("Countries"))
+@functions {
+	public string RenderDeliveryAddressEdit(bool enableAdditionalAddress = false)
 	{
-		if (countryLoopItem.GetString("Ecom:Country.IsDeliveryCountryOrDefault") == "true")
+		string currentCountry = Pageview.Area?.EcomCountryCode != null ? Pageview.Area.EcomCountryCode : "dk";
+		foreach (LoopItem countryLoopItem in GetLoop("Countries"))
 		{
-			currentCountry = countryLoopItem.GetString("Ecom:Country.Code2");
+			if (countryLoopItem.GetString("Ecom:Country.IsDeliveryCountryOrDefault") == "true")
+			{
+				currentCountry = countryLoopItem.GetString("Ecom:Country.Code2");
+			}
 		}
-	}
-	List<List<string>> addressFormat = Dynamicweb.Ecommerce.International.Country.GetEditAddress(currentCountry);
+		List<List<string>> addressFormat = Dynamicweb.Ecommerce.International.Country.GetEditAddress(currentCountry);
 
-	foreach (var addressLine in addressFormat)
-	{
-		string columnSize = GetBootstrapColumnSizeForDeliveryAddress(addressLine, enableAdditionalAddress);
-		
-		for (var i = 0; i < addressLine.Count; i++)
+		string combinedAddressHtmlString = string.Empty;
+
+		foreach (var addressLine in addressFormat)
 		{
-			addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{name}", "EcomOrderDeliveryName", GetString("Ecom:Order.Delivery.Name"), Translate("Name"), columnSize);
-			addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{firstName}", "EcomOrderDeliveryFirstName", GetString("Ecom:Order.Delivery.FirstName"), Translate("First Name"), columnSize);
-			addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{lastName}", "EcomOrderDeliverySurname", GetString("Ecom:Order.Delivery.Surname"), Translate("Last Name"), columnSize);
-			addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{company}", "EcomOrderDeliveryCompany", GetString("Ecom:Order.Delivery.Company"), Translate("Company"), columnSize, false);
-			addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{address}", "EcomOrderDeliveryAddress", GetString("Ecom:Order.Delivery.Address"), Translate("Street & Number"), columnSize);
-			addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{address1}", "EcomOrderDeliveryAddress", GetString("Ecom:Order.Delivery.Address"), Translate("Street & Number"), columnSize);
-			if (enableAdditionalAddress)
+			string columnSize = GetBootstrapColumnSizeForDeliveryAddress(addressLine, enableAdditionalAddress);
+
+			for (var i = 0; i < addressLine.Count; i++)
 			{
-				addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{address2}", "EcomOrderDeliveryAddress2", GetString("Ecom:Order.Delivery.Address2"), Translate("Additional address"), columnSize, false);
-			}
-			else
-			{
-				addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{address2}", "");
-			}
-			addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{zip}", "EcomOrderDeliveryZip", GetString("Ecom:Order.Delivery.Zip"), Translate("Zip code"), columnSize);
-			addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{city}", "EcomOrderDeliveryCity", GetString("Ecom:Order.Delivery.City"), Translate("Town / City"), columnSize);
-			addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{regionCode}", RenderDeliveryAddressRegionField(columnSize).ToString());
-			addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{region}", RenderDeliveryAddressRegionField(columnSize).ToString());
-			addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{country}", (string)RenderDeliveryAddressCountryField(columnSize).ToString());
-						
-			@* Remove any bad placeholders the user may have submitted *@
-			addressLine[i] = Regex.Replace(addressLine[i], "{phone}", "", RegexOptions.IgnoreCase); 
-			addressLine[i] = Regex.Replace(addressLine[i], "{email}", "", RegexOptions.IgnoreCase);
-		}
-		@(string.Join(string.Empty, addressLine.ToArray()))
-	}
-}
-
-@helper RenderDeliveryAddressRegionField(string wrapperClass)
-{
-	var regions = GetLoop("DeliveryRegions"); 
-	string currentCountry = GetString("Ecom:Order.Delivery.Country");
-	string regionLabel = currentCountry == "CA" ? Translate("Province") : currentCountry == "US" ? Translate("State") : Translate("Region");
-
-	if (regions.Any())
-	{
-		<div class="@wrapperClass">
-			<div class="form-floating">
-				<select class="form-select" name="EcomOrderDeliveryRegion" id="EcomOrderDeliveryRegion" onchange="submitForm()">
-					@foreach (LoopItem region in regions)
-					{
-						if (region.GetString("Ecom:DeliveryRegion.IsDeliveryRegion") == "true")
-						{
-							<option value="@region.GetString("Ecom:DeliveryRegion.RegionCode")" selected>@region.GetString("Ecom:DeliveryRegion.Name")</option>
-						}
-						else
-						{
-							<option value="@region.GetString("Ecom:DeliveryRegion.RegionCode")">@region.GetString("Ecom:DeliveryRegion.Name")</option>
-						}
-					}
-				</select>
-				<label for="EcomOrderDeliveryRegion">@regionLabel</label>
-			</div>
-		</div>
-	}
-	else
-	{
-		@RenderDeliveryAddressField("EcomOrderDeliveryRegion", GetString("Ecom:Order.Delivery.Region"), regionLabel, wrapperClass, false)
-	}
-}
-
-@helper RenderDeliveryAddressCountryField(string wrapperClass)
-{
-	<div class="@wrapperClass">
-		<div class="form-floating">
-			<select class="form-select" name="EcomOrderDeliveryCountry" id="EcomOrderDeliveryCountry" onchange="submitForm()">
-				@foreach (LoopItem country in GetLoop("Countries"))
+				addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{name}", "EcomOrderDeliveryName", GetString("Ecom:Order.Delivery.Name"), Translate("Name"), columnSize);
+				addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{firstName}", "EcomOrderDeliveryFirstName", GetString("Ecom:Order.Delivery.FirstName"), Translate("First Name"), columnSize);
+				addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{lastName}", "EcomOrderDeliverySurname", GetString("Ecom:Order.Delivery.Surname"), Translate("Last Name"), columnSize);
+				addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{company}", "EcomOrderDeliveryCompany", GetString("Ecom:Order.Delivery.Company"), Translate("Company"), columnSize, false);
+				addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{address}", "EcomOrderDeliveryAddress", GetString("Ecom:Order.Delivery.Address"), Translate("Street & Number"), columnSize);
+				addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{address1}", "EcomOrderDeliveryAddress", GetString("Ecom:Order.Delivery.Address"), Translate("Street & Number"), columnSize);
+				if (enableAdditionalAddress)
 				{
-					if (country.GetString("Ecom:Country.IsDeliveryCountryOrDefault") == "true")
-					{
-						<option value="@country.GetString("Ecom:Country.Code2")" selected>@country.GetString("Ecom:Country.Name")</option>
-					}
-					else
-					{
-						<option value="@country.GetString("Ecom:Country.Code2")">@country.GetString("Ecom:Country.Name")</option>
-					}
+					addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{address2}", "EcomOrderDeliveryAddress2", GetString("Ecom:Order.Delivery.Address2"), Translate("Additional address"), columnSize, false);
 				}
-			</select>
-			<label for="EcomOrderDeliveryCountry">@Translate("Country")</label>
-		</div>
-	</div>
-}
+				else
+				{
+					addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{address2}", "");
+				}
+				addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{zip}", "EcomOrderDeliveryZip", GetString("Ecom:Order.Delivery.Zip"), Translate("Zip code"), columnSize);
+				addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{city}", "EcomOrderDeliveryCity", GetString("Ecom:Order.Delivery.City"), Translate("Town / City"), columnSize);
+				addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{regionCode}", RenderDeliveryAddressRegionField(columnSize).ToString());
+				addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{region}", RenderDeliveryAddressRegionField(columnSize).ToString());
+				addressLine[i] = ReplaceDeliveryAddressPlaceholder(addressLine[i], "{country}", (string)RenderDeliveryAddressCountryField(columnSize).ToString());
 
-@functions
-{
+				addressLine[i] = Regex.Replace(addressLine[i], "{phone}", "", RegexOptions.IgnoreCase);
+				addressLine[i] = Regex.Replace(addressLine[i], "{email}", "", RegexOptions.IgnoreCase);
+			}
+
+			combinedAddressHtmlString += string.Join(string.Empty, addressLine.ToArray());
+		}
+
+		return combinedAddressHtmlString;
+	}
+
 	public string GetBootstrapColumnSizeForDeliveryAddress(List<string> addressLineArray, bool enableAdditionalAddress)
 	{
 		string combinedLine = string.Join(",", addressLineArray);
@@ -115,37 +65,106 @@
 		if (!enableAdditionalAddress && combinedLine.IndexOf("address2", StringComparison.OrdinalIgnoreCase) >= 0) addressLinePlaceholderCount -= 1;
 		if (!GetLoop("DeliveryRegions").Any() && combinedLine.IndexOf("region", StringComparison.OrdinalIgnoreCase) >= 0) addressLinePlaceholderCount -= 1;
 		if (addressLinePlaceholderCount <= 0) return prefix + "12";
-		
+
 		double columnSize = (double)12 / addressLinePlaceholderCount;
 		return prefix + Math.Ceiling(columnSize);
 	}
-	
+
 	public string ReplaceDeliveryAddressPlaceholder(string addressLine, string pattern, string replacement)
 	{
 		return Regex.Replace(addressLine, pattern, replacement, RegexOptions.IgnoreCase);
 	}
-	
+
 	public string ReplaceDeliveryAddressPlaceholder(string addressLine, string placeholder, string fieldName, string fieldValue, string fieldLabel, string wrapperClass, bool required = true, string fieldType = "text")
 	{
 		if (addressLine.IndexOf(placeholder, StringComparison.OrdinalIgnoreCase) < 0) return addressLine;
-		
+
 		string fieldHtml = RenderDeliveryAddressField(fieldName, fieldValue, fieldLabel, wrapperClass, required, fieldType).ToString();
 		return Regex.Replace(addressLine, placeholder, fieldHtml, RegexOptions.IgnoreCase);
 	}
-		
+
 	public string RenderDeliveryAddressField(string fieldName, string fieldValue, string fieldLabel, string wrapperClass, bool isRequired = true, string fieldType = "text")
 	{
-		string markup = "";
+		StringBuilder markupBuilder = new StringBuilder();
 		fieldType = string.IsNullOrEmpty(fieldType) ? "text" : fieldType;
 		string required = isRequired ? "required=\"required\"" : "";
 
-		markup += $"<div class=\"{wrapperClass}\">";
-		markup += $"<div class=\"form-floating\">";
-		markup += $"<input type=\"{fieldType}\" class=\"form-control\" name=\"{fieldName}\" id=\"{fieldName}\" value=\"{fieldValue}\" placeholder=\"{fieldLabel}\" {required}>";
-		markup += $"<label for=\"{fieldName}\">{fieldLabel}</label>";
-		markup += $"</div>";
-		markup += $"</div>";
+		markupBuilder.Append($"<div class=\"{wrapperClass}\">");
+		markupBuilder.Append("<div class=\"form-floating\">");
+		markupBuilder.Append($"<input type=\"{fieldType}\" class=\"form-control\" name=\"{fieldName}\" id=\"{fieldName}\" value=\"{fieldValue}\" placeholder=\"{fieldLabel}\" {required}>");
+		markupBuilder.Append($"<label for=\"{fieldName}\">{fieldLabel}</label>");
+		markupBuilder.Append("</div>");
+		markupBuilder.Append("</div>");
 
-		return markup;
+		return markupBuilder.ToString();
+	}
+
+	public string RenderDeliveryAddressRegionField(string wrapperClass)
+	{
+		var regions = GetLoop("DeliveryRegions");
+		string currentCountry = GetString("Ecom:Order.Delivery.Country");
+		string regionLabel = currentCountry == "CA" ? Translate("Province") : currentCountry == "US" ? Translate("State") : Translate("Region");
+
+		var result = new StringBuilder();
+
+		if (regions.Any())
+		{
+			result.AppendLine($"<div class=\"{wrapperClass}\">");
+			result.AppendLine("<div class=\"form-floating\">");
+			result.AppendLine("<select class=\"form-select\" name=\"EcomOrderDeliveryRegion\" id=\"EcomOrderDeliveryRegion\" onchange=\"submitForm()\">");
+
+			foreach (LoopItem region in regions)
+			{
+				if (region.GetString("Ecom:DeliveryRegion.IsDeliveryRegion") == "true")
+				{
+					result.AppendLine($"<option value=\"{region.GetString("Ecom:DeliveryRegion.RegionCode")}\" selected>{region.GetString("Ecom:DeliveryRegion.Name")}</option>");
+				}
+				else
+				{
+					result.AppendLine($"<option value=\"{region.GetString("Ecom:DeliveryRegion.RegionCode")}\">{region.GetString("Ecom:DeliveryRegion.Name")}</option>");
+				}
+			}
+
+			result.AppendLine("</select>");
+			result.AppendLine($"<label for=\"EcomOrderDeliveryRegion\">{regionLabel}</label>");
+			result.AppendLine("</div>");
+			result.AppendLine("</div>");
+		}
+		else
+		{
+			var deliveryAddressField = RenderDeliveryAddressField("EcomOrderDeliveryRegion", GetString("Ecom:Order.Delivery.Region"), regionLabel, wrapperClass, false);
+			result.Append(deliveryAddressField);
+		}
+
+		return result.ToString();
+	}
+
+	public string RenderDeliveryAddressCountryField(string wrapperClass)
+	{
+		var countries = GetLoop("Countries");
+
+		var result = new StringBuilder();
+		result.AppendLine($"<div class=\"{wrapperClass}\">");
+		result.AppendLine("<div class=\"form-floating\">");
+		result.AppendLine("<select class=\"form-select\" name=\"EcomOrderDeliveryCountry\" id=\"EcomOrderDeliveryCountry\" onchange=\"submitForm()\">");
+
+		foreach (LoopItem country in countries)
+		{
+			if (country.GetString("Ecom:Country.IsDeliveryCountryOrDefault") == "true")
+			{
+				result.AppendLine($"<option value=\"{country.GetString("Ecom:Country.Code2")}\" selected>{country.GetString("Ecom:Country.Name")}</option>");
+			}
+			else
+			{
+				result.AppendLine($"<option value=\"{country.GetString("Ecom:Country.Code2")}\">{country.GetString("Ecom:Country.Name")}</option>");
+			}
+		}
+
+		result.AppendLine("</select>");
+		result.AppendLine($"<label for=\"EcomOrderDeliveryCountry\">@Translate(\"Country\")</label>");
+		result.AppendLine("</div>");
+		result.AppendLine("</div>");
+
+		return result.ToString();
 	}
 }
