@@ -3,10 +3,37 @@
 @if (!Pageview.IsVisualEditorMode)
 {
 	string menuId = Model.Parameters.ContainsKey("menu-id") ? $"menu_{Model.Parameters["menu-id"].ToString().ToLower()}" : string.Empty;
-	bool showProductInBreadcrumb = Model.Parameters.ContainsKey("showProductInBreadcrumb") ? Dynamicweb.Core.Converter.ToBoolean(Model.Parameters["showProductInBreadcrumb"]) : false; 
+	bool showProductInBreadcrumb = Model.Parameters.ContainsKey("showProductInBreadcrumb") ? Dynamicweb.Core.Converter.ToBoolean(Model.Parameters["showProductInBreadcrumb"]) : false;
 
 	<ol class="breadcrumb small mb-0 @menuId">
-		@{@RenderNodes(Model.Nodes)}
+		@{
+			var nodesStack = new Stack<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel>(Model.Nodes);
+			while (nodesStack.Count > 0)
+			{
+				var node = nodesStack.Pop();
+				if (node.ShowInBreadcrumb)
+				{
+					if (!string.IsNullOrEmpty(node.Link))
+					{
+						<li class="breadcrumb-item">
+							<a href="@node.Link">
+								@node.Name
+							</a>
+						</li>
+					}
+					else
+					{
+						<li class="breadcrumb-item">
+							@node.Name
+						</li>
+					}
+				}
+				foreach (var childNode in node.Nodes)
+				{
+					nodesStack.Push(childNode);
+				}
+			}
+		}
 		@if (showProductInBreadcrumb && !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString["ProductID"]))
 		{
 			string productid = Dynamicweb.Context.Current.Request.QueryString["ProductID"];
@@ -26,31 +53,4 @@ else if (Model.Nodes.Count() < 2)
 	<div class="alert alert-dark m-0" role="alert">
 		<span>@Translate("Breadcrumb navigation: The navigation will be shown here, if any")</span>
 	</div>
-}
-
-@helper RenderNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
-{
-	foreach (var node in nodes)
-	{
-		if (node.ShowInBreadcrumb)
-		{
-			if (!string.IsNullOrEmpty(node.Link))
-			{
-				<li class="breadcrumb-item">
-					<a href="@node.Link">
-						@node.Name
-					</a>
-				</li>
-			}
-			else
-			{
-				<li class="breadcrumb-item">
-					@node.Name
-				</li>
-			}
-
-		}
-
-		{@RenderNodes(node.Nodes)}
-}
 }
