@@ -17,22 +17,78 @@
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
 	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
 
-	var order = Dynamicweb.Ecommerce.Services.Orders.GetById(GetString("Ecom:Order.ID"));
 
-	order.ShippingProviderValues.TryGetValue("ServiceSelectedDataCarrierName", out object serviceSelectedDataCarrierName);
-	order.ShippingProviderValues.TryGetValue("ServiceSelectedDataDescription", out object serviceSelectedDataDescription);
-	order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCompanyName", out object servicePointSelectedDataCompanyName);
-	order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataAddress", out object servicePointSelectedDataAddress);
-	order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataAddress2", out object servicePointSelectedDataAddress2);
-	order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataZipcode", out object servicePointSelectedDataZipcode);
-	order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCity", out object servicePointSelectedDataCity);
-	order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCountry", out object servicePointSelectedDataCountry);
+	@*//Pickup points
+		object serviceSelectedDataCarrierName = null;
+		object serviceSelectedDataDescription = null;
+		object servicePointSelectedDataCompanyName = null;
+		object servicePointSelectedDataAddress = null;
+		object servicePointSelectedDataAddress2 = null;
+		object servicePointSelectedDataZipcode = null;
+		object servicePointSelectedDataCity = null;
+		object servicePointSelectedDataCountry = null;
+
+		if (GetBoolean("Ecom:Order.Delivery.isPickupPoint"))
+		{
+			<h2>Ecom:Order.Delivery.isPickupPoint = true</h2>
+			var order = Dynamicweb.Ecommerce.Common.Context.Cart;
+			bool isGls = order.ShippingProviderValues.ContainsKey("parcelShop");
+			bool isShipmondo = order.ShippingProviderValues.ContainsKey("ServiceSelectedDataCarrierName");
+
+			if (isGls)
+			{
+				order.ShippingProviderValues.TryGetValue("parcelShop", out object selectedParcelShopTemp);
+				order.ShippingProviderValues.TryGetValue("IsServicePointSelected", out object isServicePointSelected);
+
+				if (Dynamicweb.Core.Converter.ToBoolean(isServicePointSelected) && selectedParcelShopTemp is System.Collections.Generic.Dictionary<string, object>)
+				{
+					var selectedParcelShop = (System.Collections.Generic.Dictionary<string, object>)selectedParcelShopTemp;
+
+					//selectedParcelShop.TryGetValue("CompanyName", out serviceSelectedDataCarrierName);
+					//selectedParcelShop.TryGetValue("Number", out serviceSelectedDataDescription);
+					selectedParcelShop.TryGetValue("CompanyName", out servicePointSelectedDataCompanyName);
+					selectedParcelShop.TryGetValue("Streetname", out servicePointSelectedDataAddress);
+					selectedParcelShop.TryGetValue("Streetname2", out servicePointSelectedDataAddress2);
+					selectedParcelShop.TryGetValue("ZipCode", out servicePointSelectedDataZipcode);
+					selectedParcelShop.TryGetValue("CityName", out servicePointSelectedDataCity);
+					selectedParcelShop.TryGetValue("CountryCodeISO3166A2", out servicePointSelectedDataCountry);
+				}
+			}
+
+			if (isShipmondo)
+			{
+				order.ShippingProviderValues.TryGetValue("ServiceSelectedDataCarrierName", out serviceSelectedDataCarrierName);
+				order.ShippingProviderValues.TryGetValue("ServiceSelectedDataDescription", out serviceSelectedDataDescription);
+				order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCompanyName", out servicePointSelectedDataCompanyName);
+				order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataAddress", out servicePointSelectedDataAddress);
+				order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataAddress2", out servicePointSelectedDataAddress2);
+				order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataZipcode", out servicePointSelectedDataZipcode);
+				order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCity", out servicePointSelectedDataCity);
+				order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCountry", out servicePointSelectedDataCountry);
+			}
+		}*@
+
+	var hasShippingProviderContent = false;
+	foreach (LoopItem method in GetLoop("Shippingmethods"))
+	{
+		bool isActive = method.GetBoolean("Ecom:Cart.Shippingmethod.IsSelected");
+
+		if (isActive && !string.IsNullOrEmpty(method.GetString("Ecom:ShippingProvider.Content")))
+		{
+			hasShippingProviderContent = true;
+			break;
+		}
+	}
+
+	string billingAddressString = GetString("Ecom:Order.Customer.Company") + GetString("Ecom:Order.Customer.Address") + GetString("Ecom:Order.Customer.Address2") + GetString("Ecom:Order.Customer.Zip") + GetString("Ecom:Order.Customer.City") + GetString("Ecom:Order.Customer.Phone");
+	string deliveryAddressString = GetString("Ecom:Order.Delivery.Company") + GetString("Ecom:Order.Delivery.Address") + GetString("Ecom:Order.Delivery.Address2") + GetString("Ecom:Order.Delivery.Zip") + GetString("Ecom:Order.Delivery.City") + GetString("Ecom:Order.Delivery.Phone");
+	bool deliveryAndBillingAreDifferent = !string.IsNullOrWhiteSpace(deliveryAddressString) && !billingAddressString.Equals(deliveryAddressString, StringComparison.OrdinalIgnoreCase);
 }
 
 <div class="grid gap-0 h-100" id="DeliveryAnonymous">
 	<div class="g-col-12 g-col-lg-8 p-3 p-lg-4 pe-xl-5 ps-xl-6 ps-xxl-8 order-last order-lg-first@(theme)">
 		<form name="ordersubmit" id="ordersubmit" method="post" autocomplete="off" style="max-width: 65rem; margin-left: auto;">
-
+			<input type="hidden" name="deliveryAddressString" id="deliveryAddressString" value="@deliveryAddressString" />
 			@{
 				@RenderLogo()
 
@@ -44,18 +100,67 @@
 
 				@RenderShippingMethods()
 
-				@RenderOrderDeliveryDate()
 
-				@RenderStepsNavigation()
 			}
 
-			<input type="hidden" name="EcomOrderDeliveryCompany" value="@(serviceSelectedDataCarrierName is object && serviceSelectedDataDescription is object ? Dynamicweb.Core.Converter.ToString(serviceSelectedDataCarrierName) + " " + Dynamicweb.Core.Converter.ToString(serviceSelectedDataDescription) : string.Empty)">
-			<input type="hidden" name="EcomOrderDeliveryName" value="@(servicePointSelectedDataCompanyName is object ? Dynamicweb.Core.Converter.ToString(servicePointSelectedDataCompanyName) : string.Empty)">
-			<input type="hidden" name="EcomOrderDeliveryAddress" value="@(servicePointSelectedDataAddress is object ? Dynamicweb.Core.Converter.ToString(servicePointSelectedDataAddress) : string.Empty)">
-			<input type="hidden" name="EcomOrderDeliveryAddress2" value="@(servicePointSelectedDataAddress2 is object ? Dynamicweb.Core.Converter.ToString(servicePointSelectedDataAddress2) : string.Empty)">
-			<input type="hidden" name="EcomOrderDeliveryZip" value="@(servicePointSelectedDataZipcode is object ? Dynamicweb.Core.Converter.ToString(servicePointSelectedDataZipcode) : string.Empty)">
-			<input type="hidden" name="EcomOrderDeliveryCity" value="@(servicePointSelectedDataCity is object ? Dynamicweb.Core.Converter.ToString(servicePointSelectedDataCity) : string.Empty)">
-			<input type="hidden" name="EcomOrderDeliveryCountry" value="@(servicePointSelectedDataCountry is object ? Dynamicweb.Core.Converter.ToString(servicePointSelectedDataCountry) : string.Empty)">
+			@if (hasShippingProviderContent)
+			{
+				<input type="hidden" name="EcomOrderDeliveryCompany" value="">
+				<input type="hidden" name="EcomOrderDeliveryName" value="">
+				<input type="hidden" name="EcomOrderDeliveryAddress" value="">
+				<input type="hidden" name="EcomOrderDeliveryAddress2" value="">
+				<input type="hidden" name="EcomOrderDeliveryZip" value="">
+				<input type="hidden" name="EcomOrderDeliveryCity" value="">
+				<input type="hidden" name="EcomOrderDeliveryCountry" value="">
+				<input type="hidden" name="EcomOrderDeliveryPhone" value="">
+			}
+			else
+			{
+				<div class="mt-4">
+
+					<h3 class="fs-6 fw-normal mb-0">@Translate("Delivery address")</h3>
+
+					<div class="list-group">
+
+						<label class="list-group-item list-group-item-action d-flex justify-content-between">
+							<span class="d-flex justify-content-between">
+								<input class="form-check-input me-3" type="radio" name="DeliveryAddress" value="False" checked="@(string.IsNullOrWhiteSpace(deliveryAddressString))" onchange="toggleDeliveryAddressContainer(false)" id="SameAsDeliveryAddressRadio">
+								<div>@Translate("Same address as billing address")</div>
+							</span>
+						</label>
+
+						<label class="list-group-item list-group-item-action d-flex justify-content-between">
+							<span class="d-flex justify-content-between">
+								<input class="form-check-input me-3" type="radio" name="DeliveryAddress" value="True" checked="@(!string.IsNullOrWhiteSpace(deliveryAddressString))" onchange="toggleDeliveryAddressContainer(true)" id="UseAnotherBillingAddressRadio">
+								<div>@Translate("Use another delivery address")</div>
+							</span>
+						</label>
+
+						<div class="collapse @(deliveryAndBillingAreDifferent ? "show": "")" id="DeliveryAddressContainer">
+							<div class="list-group-item border-top-0 py-3 bg-light">
+								@{@RenderDeliveryAddressAnonymous()}
+							</div>
+						</div>
+						<div id="DeliveryAddressContainerHiddenFields">
+							@*These fields are submitted when no pickup point is selected or no alternative delivery has been chosen*@
+							<input type="hidden" name="EcomOrderDeliveryCompany" value="" disabled="@(deliveryAndBillingAreDifferent)">
+							<input type="hidden" name="EcomOrderDeliveryName" value="" disabled="@(deliveryAndBillingAreDifferent)">
+							<input type="hidden" name="EcomOrderDeliveryAddress" value="" disabled="@(deliveryAndBillingAreDifferent)">
+							<input type="hidden" name="EcomOrderDeliveryAddress2" value="" disabled="@(deliveryAndBillingAreDifferent)">
+							<input type="hidden" name="EcomOrderDeliveryZip" value="" disabled="@(deliveryAndBillingAreDifferent)">
+							<input type="hidden" name="EcomOrderDeliveryCity" value="" disabled="@(deliveryAndBillingAreDifferent)">
+							<input type="hidden" name="EcomOrderDeliveryRegion" value="" disabled="@(deliveryAndBillingAreDifferent)">
+							<input type="hidden" name="EcomOrderDeliveryCountry" value="" disabled="@(deliveryAndBillingAreDifferent)">
+							<input type="hidden" name="EcomOrderDeliveryPhone" value="" disabled="@(deliveryAndBillingAreDifferent)">
+						</div>
+
+					</div>
+				</div>
+			}
+
+			@RenderOrderDeliveryDate()
+
+			@RenderStepsNavigation()
 
 			<input type="hidden" id="CurrentStep">
 		</form>
@@ -71,6 +176,89 @@
 		swift.PageUpdater.Update(document.querySelector("#ordersubmit"));
 	}
 </script>
+
+<script>
+	function toggleDeliveryAddressContainer(showContainer) {
+		//alert("toggleDeliveryAddressContainer, show: " + showContainer);
+
+		@* Enable the correct form fields *@
+		if (document.querySelector("#DeliveryAddressContainer")) {
+			document.querySelector("#DeliveryAddressContainer").querySelectorAll(".form-control").forEach(function (field) {
+				field.disabled = !showContainer;
+			});
+
+			document.querySelector("#DeliveryAddressContainer").querySelectorAll(".form-select").forEach(function (field) {
+				field.disabled = !showContainer;
+			});
+		}
+
+		if (document.querySelector("#DeliveryAddressContainerHiddenFields")) {
+			document.querySelector("#DeliveryAddressContainerHiddenFields").querySelectorAll("input").forEach(function (field) {
+				field.disabled = showContainer;
+			});
+		}
+
+		if (document.querySelector("#DeliveryAddressContainer")) {
+			try {
+				const addressContainerCollapse = new bootstrap.Collapse("#DeliveryAddressContainer", { toggle: false });
+				if (showContainer) {
+					addressContainerCollapse.show();
+				} else {
+					addressContainerCollapse.hide();
+				}
+			}
+			catch {
+				console.log("Error collapsing!")
+			}
+		}
+	};
+</script>
+
+<script>
+	window.addEventListener('DOMContentLoaded', () => {
+		var showContainer = document.getElementById("deliveryAddressString").value.length > 0;
+		toggleDeliveryAddressContainer(showContainer);
+	});
+</script>
+
+@{
+	string apiKey = Pageview.AreaSettings.GetString("Google_APIKey", "");
+	bool enableFindLocation = Pageview.CurrentParagraph.Item["EnableFindLocation"] != null ? (Boolean)Pageview.CurrentParagraph.Item["EnableFindLocation"] : false;
+
+	if (enableFindLocation && !string.IsNullOrEmpty(apiKey))
+	{
+		string currentCountry = Pageview.Area?.EcomCountryCode != null ? Pageview.Area.EcomCountryCode : "dk";
+		foreach (LoopItem country in GetLoop("Countries"))
+		{
+			if (country.GetString("Ecom:Country.IsDeliveryCountryOrDefault") == "true")
+			{
+				currentCountry = country.GetString("Ecom:Country.Code2");
+			}
+		}
+		<script type="module">
+			const assetLink = 'https://maps.googleapis.com/maps/api/js?key=@(apiKey)&libraries=places';
+
+			let assetFound = false;
+			document.head.querySelectorAll('script').forEach(element => {
+				if (assetLink == element.src) {
+					assetFound = true;
+				}
+			});
+
+			swift.AssetLoader.Load(assetLink, 'js');
+
+			if (!assetFound) {
+				document.addEventListener('load.swift.assetloader', function() {
+					var mapSettings = { currentCountry: "@currentCountry" };
+					swift.Places.init(mapSettings);
+				});
+			} else if (typeof google !== 'undefined') {
+				var mapSettings = { currentCountry: "@currentCountry" };
+				swift.Places.init(mapSettings);
+			}
+		</script>
+	}
+}
 
 @if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
 {
@@ -105,3 +293,152 @@
 @Include("Helpers/OrderDeliveryDate.cshtml")
 @Include("../Helpers/DeliveryAddressDisplayFormatted.cshtml")
 @Include("../Helpers/UserAddressDisplayFormatted.cshtml")
+
+
+@helper RenderDeliveryAddressAnonymous()
+{
+	string currentCountry = Pageview.Area?.EcomCountryCode != null ? Pageview.Area.EcomCountryCode : "dk";
+	foreach (LoopItem country in GetLoop("Countries"))
+	{
+		if (country.GetString("Ecom:Country.IsDeliveryCountryOrDefault") == "true")
+		{
+			currentCountry = country.GetString("Ecom:Country.Code2");
+		}
+	}
+
+	bool isStandardSwiftTemplates = Pageview.AreaSettings.GetString("AddressFieldsBasedOn", "swift") == "swift";
+
+	string countrySelectorColumnSize = "g-col-6";
+	string customerRegionLabel = "State";
+
+	<div class="mt-0 checkout_swift_billing-anonymous">
+
+		<div class="grid">
+
+			<div class="g-col-12">
+				<div class="form-floating">
+					<input type="text" class="form-control" name="EcomOrderDeliveryCompany" id="EcomOrderDeliveryCompany" value="@GetString("Ecom:Order.Delivery.Company")" placeholder="@Translate("Company")">
+					<label for="EcomOrderDeliveryCompany">@Translate("Company (Optional)")</label>
+				</div>
+			</div>
+
+			<div class="g-col-12">
+				<div class="form-floating">
+					<input type="text" class="form-control" name="EcomOrderDeliveryName" id="EcomOrderDeliveryName" value="@GetString("Ecom:Order.Delivery.Name")" placeholder="@Translate("Name")">
+					<label for="EcomOrderDeliveryName">@Translate("Name")</label>
+				</div>
+			</div>
+
+			<div class="g-col-12">
+				<div class="form-floating">
+					<input type="text" class="form-control" name="EcomOrderDeliveryAddress" id="EcomOrderDeliveryAddress" value="@GetString("Ecom:Order.Delivery.Address")" placeholder="@Translate("Street & Number")">
+					<label for="EcomOrderDeliveryAddress">@Translate("Street & Number")</label>
+				</div>
+			</div>
+
+			<div class="g-col-12">
+				<div class="form-floating">
+					<input type="text" class="form-control" name="EcomOrderDeliveryAddress2" id="EcomOrderDeliveryAddress2" value="@GetString("Ecom:Order.Delivery.Address2")" placeholder="@Translate("Additional address")">
+					<label for="EcomOrderDeliveryAddress2">@Translate("Additional address")</label>
+				</div>
+			</div>
+
+			<div class="g-col-12">
+
+				<div class="grid">
+
+					<div class="g-col-3">
+						<div class="form-floating">
+							<input type="text" class="form-control" name="EcomOrderDeliveryZip" id="EcomOrderDeliveryZip" value="@GetString("Ecom:Order.Delivery.Zip")" placeholder="@Translate("Zip code")">
+							<label for="EcomOrderDeliveryZip">@Translate("Zip code")</label>
+						</div>
+					</div>
+
+					@if (currentCountry == "US" || currentCountry == "CA" || currentCountry == "GB")
+					{
+						if (GetLoop("CustomerRegions").Count > 0)
+						{
+							countrySelectorColumnSize = "g-col-3";
+						}
+					}
+
+					<div class="@countrySelectorColumnSize">
+						<div class="form-floating">
+							<input type="text" class="form-control" name="EcomOrderDeliveryCity" id="EcomOrderDeliveryCity" value="@GetString("Ecom:Order.Delivery.City")" placeholder="@Translate("Town / City")">
+							<label for="EcomOrderDeliveryCity">@Translate("Town / City")</label>
+						</div>
+					</div>
+
+					@if (currentCountry == "US" || currentCountry == "CA" || currentCountry == "GB")
+					{
+						if (GetLoop("CustomerRegions").Count > 0)
+						{
+							if (currentCountry == "CA")
+							{
+								customerRegionLabel = Translate("Province");
+							}
+							else if (currentCountry == "GB")
+							{
+								customerRegionLabel = Translate("Region");
+							}
+							else if (currentCountry == "US")
+							{
+								customerRegionLabel = Translate("State");
+							}
+
+							<div class="g-col-3">
+								<div class="form-floating">
+									<select class="form-select" name="EcomOrderCustomerRegion" id="EcomOrderCustomerRegion" onchange="submitForm()">
+										@foreach (LoopItem region in GetLoop("CustomerRegions"))
+										{
+											if (region.GetString("Ecom:CustomerRegion.IsCustomerRegion") == "true")
+											{
+												<option value="@region.GetString("Ecom:CustomerRegion.RegionCode")" selected>@region.GetString("Ecom:CustomerRegion.Name")</option>
+											}
+											else
+											{
+												<option value="@region.GetString("Ecom:CustomerRegion.RegionCode")">@region.GetString("Ecom:CustomerRegion.Name")</option>
+											}
+										}
+									</select>
+									<label for="EcomOrderCustomerRegion">@customerRegionLabel</label>
+								</div>
+							</div>
+						}
+					}
+
+					<div class="g-col-12 g-col-md-3">
+						<div class="form-floating">
+							<select class="form-control" name="EcomOrderDeliveryCountry" id="EcomOrderDeliveryCountry">
+								@foreach (LoopItem country in GetLoop("Countries"))
+								{
+									if (country.GetString("Ecom:Country.IsCustomerCountryOrDefault") == "true" || country.GetString("Ecom:Country.Code2") == GetString("Ecom:Order.Delivery.Country.Code"))
+									{
+										<option value="@country.GetString("Ecom:Country.Code2")" selected>@country.GetString("Ecom:Country.Name")</option>
+									}
+									else
+									{
+										@*<option value="@country.GetString("Ecom:Country.Code2")">@country.GetString("Ecom:Country.Name")</option>*@
+									}
+								}
+							</select>
+							<label for="EcomOrderDeliveryCountry">@Translate("Country")</label>
+						</div>
+					</div>
+
+				</div>
+
+			</div>
+
+			<div class="g-col-12">
+				<div class="form-floating">
+					<input type="tel" class="form-control" name="EcomOrderDeliveryPhone" id="EcomOrderDeliveryPhone" value="@GetString("Ecom:Order.Delivery.Phone")" placeholder="@Translate("Phone number")">
+					<label for="EcomOrderDeliveryPhone">@Translate("Phone number")</label>
+				</div>
+			</div>
+		</div>
+
+	</div>
+
+
+}
