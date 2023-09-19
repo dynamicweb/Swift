@@ -1,6 +1,7 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
 @using Dynamicweb
 @using Dynamicweb.Ecommerce.Orders
+@using System.Text.RegularExpressions
 
 @{
 	string theme = !string.IsNullOrEmpty(Model.Parameters["Theme"].ToString()) ? Model.Parameters["Theme"].ToString() : string.Empty;
@@ -127,10 +128,10 @@
 					{
 						@:</a>
 					}
-				else
-				{
-					@:</span>
-				}
+					else
+					{
+						@:</span>
+					}
 
 					@if (hasChildren && !showOnlyFirstNavLevel)
 					{
@@ -240,26 +241,185 @@
 						}
 					}
 
+					if (preferencesType == "country")
+					{
+						name = Translate("Deliver to") + ": " + Dynamicweb.Ecommerce.Common.Context.Country.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID);
+					}
+					if (preferencesType == "language")
+					{
+						string iconFolder = "/Files/FlagIcons/";
+						pageIcon = iconFolder + Pageview.Area.CultureInfo.Name.ToLower() + ".svg";
+						Regex reg = new Regex(@"\(([^\)]+)\)");
+						name = reg.Replace(Pageview.Area.CultureInfo.DisplayName, "");
+
+						layout = layout == "linksOnly" ? "iconsAndLinks" : layout;
+						bool hideIcon = page.Item?["HideIcon"] != null ? Convert.ToBoolean(page.Item["HideIcon"].ToString()) : false;
+						bool hideName = page.Item?["HideName"] != null ? Convert.ToBoolean(page.Item["HideName"].ToString()) : false;
+						layout = hideIcon ? "linksOnly" : layout;
+						layout = hideName ? "iconsOnly" : layout;
+					}
+					if (preferencesType == "currency")
+					{
+						name = Dynamicweb.Ecommerce.Common.Context.Currency.Code;
+					}
 
 					if (languageSelector && languages.Count > 1)
 					{
-						var preferencesParameters = new Dictionary<string, object>();
-						preferencesParameters.Add("PreferencesType", "language");
-						@RenderPartial("Navigation/Navigation/Preferences.cshtml", node, preferencesParameters)
+						<li class="nav-item dropdown">
+							<form class="d-none d-lg-block" action="/Default.aspx?ID=@node.PageId" data-response-target-element="@(preferencesType)Dropdown_@currentParagraphId" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+								<input type="hidden" name="Type" value="@preferencesType">
+								<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+								<input type="hidden" name="GroupID" value="@groupId">
+								<input type="hidden" name="ProductID" value="@productId">
+								<input type="hidden" name="VariantID" value="@variantId">
+								<input type="hidden" name="FontSize" value="@linkFontSize">
+								<input type="hidden" name="FontWeight" value="@linkFontWeight">
+								<input type="hidden" name="Casing" value="@linkCasing">
+
+								<a id="@node.PageId" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="nav-link p-2 text-nowrap text-decoration-underline-hover @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : string.Empty) dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(node.IsActive ? " aria-current='page'" : string.Empty)>
+									@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+
+									<span class="@(visuallyHidden)">@name</span>
+
+									@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+								</a>
+
+								<ul class="dropdown-menu @(theme)" id="@(preferencesType)Dropdown_@currentParagraphId"></ul>
+							</form>
+
+							<form class="d-block d-lg-none" action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+								<input type="hidden" name="Layout" value="modal">
+								<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+								<input type="hidden" name="GroupID" value="@groupId">
+								<input type="hidden" name="ProductID" value="@productId">
+								<input type="hidden" name="VariantID" value="@variantId">
+								<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link p-2 text-nowrap border-0 swift_open-preferences-modal @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+									@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+
+									<span class="@(visuallyHidden)">@name</span>
+
+									@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+								</button>
+							</form>
+						</li>
 					}
 
 					if (countrySelector && ecomCountries.Count > 1)
 					{
-						var preferencesParameters = new Dictionary<string, object>();
-						preferencesParameters.Add("PreferencesType", "country");
-						@RenderPartial("Navigation/Navigation/Preferences.cshtml", node, preferencesParameters)
+						<li class="nav-item dropdown">
+							<form class="d-none d-lg-block" action="/Default.aspx?ID=@node.PageId" data-response-target-element="@(preferencesType)Dropdown_@currentParagraphId" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+								<input type="hidden" name="Type" value="@preferencesType">
+								<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+								<input type="hidden" name="GroupID" value="@groupId">
+								<input type="hidden" name="ProductID" value="@productId">
+								<input type="hidden" name="VariantID" value="@variantId">
+								<input type="hidden" name="FontSize" value="@linkFontSize">
+								<input type="hidden" name="FontWeight" value="@linkFontWeight">
+								<input type="hidden" name="Casing" value="@linkCasing">
+
+								<a id="@node.PageId" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="nav-link p-2 text-nowrap text-decoration-underline-hover @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : string.Empty) dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(node.IsActive ? " aria-current='page'" : string.Empty)>
+									@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+
+									<span class="@(visuallyHidden)">@name</span>
+
+									@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+								</a>
+
+								<ul class="dropdown-menu @(theme)" id="@(preferencesType)Dropdown_@currentParagraphId"></ul>
+							</form>
+
+							<form class="d-block d-lg-none" action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+								<input type="hidden" name="Layout" value="modal">
+								<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+								<input type="hidden" name="GroupID" value="@groupId">
+								<input type="hidden" name="ProductID" value="@productId">
+								<input type="hidden" name="VariantID" value="@variantId">
+								<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link p-2 text-nowrap border-0 swift_open-preferences-modal @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+									@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+
+									<span class="@(visuallyHidden)">@name</span>
+
+									@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+								</button>
+							</form>
+						</li>
 					}
 
 					if (currencySelector && currencies.Count() > 1)
 					{
-						var preferencesParameters = new Dictionary<string, object>();
-						preferencesParameters.Add("PreferencesType", "currency");
-						@RenderPartial("Navigation/Navigation/Preferences.cshtml", node, preferencesParameters)
+						<li class="nav-item dropdown">
+							<form class="d-none d-lg-block" action="/Default.aspx?ID=@node.PageId" data-response-target-element="@(preferencesType)Dropdown_@currentParagraphId" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+								<input type="hidden" name="Type" value="@preferencesType">
+								<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+								<input type="hidden" name="GroupID" value="@groupId">
+								<input type="hidden" name="ProductID" value="@productId">
+								<input type="hidden" name="VariantID" value="@variantId">
+								<input type="hidden" name="FontSize" value="@linkFontSize">
+								<input type="hidden" name="FontWeight" value="@linkFontWeight">
+								<input type="hidden" name="Casing" value="@linkCasing">
+
+								<a id="@node.PageId" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="nav-link p-2 text-nowrap text-decoration-underline-hover @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : string.Empty) dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(node.IsActive ? " aria-current='page'" : string.Empty)>
+									@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+
+									<span class="@(visuallyHidden)">@name</span>
+
+									@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+								</a>
+
+								<ul class="dropdown-menu @(theme)" id="@(preferencesType)Dropdown_@currentParagraphId"></ul>
+							</form>
+
+							<form class="d-block d-lg-none" action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+								<input type="hidden" name="Layout" value="modal">
+								<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+								<input type="hidden" name="GroupID" value="@groupId">
+								<input type="hidden" name="ProductID" value="@productId">
+								<input type="hidden" name="VariantID" value="@variantId">
+								<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link p-2 text-nowrap border-0 swift_open-preferences-modal @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+									@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+
+									<span class="@(visuallyHidden)">@name</span>
+
+									@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+								</button>
+							</form>
+						</li>
 					}
 				}
 			}

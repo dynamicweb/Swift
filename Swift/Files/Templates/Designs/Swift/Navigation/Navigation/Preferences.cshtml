@@ -2,4 +2,105 @@
 @using Dynamicweb.Ecommerce.Orders
 @using System.Text.RegularExpressions
 
-<li class="nav-item dropdown">TEST</li>
+@{ 
+	string preferencesType = !string.IsNullOrEmpty(GetViewParameterString("PreferencesType")) ? GetViewParameterString("PreferencesType") : string.Empty;
+	string name = string.Empty;
+
+	string theme = Pageview.CurrentParagraph?.Item["Theme"] != null ? Pageview.CurrentParagraph.Item["Theme"].ToString() : string.Empty;
+	string navOrientation = Pageview.CurrentParagraph?.Item["NavOrientation"] != null ? Pageview.CurrentParagraph.Item["navOrientation"].ToString() : string.Empty;
+	string navAlignment = Pageview.CurrentParagraph?.Item["NavAlignment"] != null ? Pageview.CurrentParagraph.Item["navAlignment"].ToString() : string.Empty;
+	string linkFontWeight = Pageview.CurrentParagraph?.Item["LinkFontWeight"] != null ? Pageview.CurrentParagraph.Item["LinkFontWeight"].ToString() : string.Empty;
+	string linkCasing = Pageview.CurrentParagraph?.Item["LinkCasing"] != null ? Pageview.CurrentParagraph.Item["LinkCasing"].ToString() : string.Empty;
+	string linkFontSize = Pageview.CurrentParagraph?.Item["LinkFontSize"] != null ? Pageview.CurrentParagraph.Item["LinkFontSize"].ToString() : string.Empty;
+	string layout = Pageview.CurrentParagraph?.Item["Layout"] != null ? Pageview.CurrentParagraph.Item["Layout"].ToString() : string.Empty;
+	string iconSize = linkFontSize == "fs-7" ? "icon-2" : "icon-3";
+	iconSize = linkFontSize == "fs-5" ? "icon-4" : iconSize;
+
+	string groupId = Dynamicweb.Context.Current.Request["GroupID"] != null ? Dynamicweb.Context.Current.Request["GroupID"].ToString() : string.Empty;
+	string productId = Dynamicweb.Context.Current.Request["ProductID"] != null ? Dynamicweb.Context.Current.Request["ProductID"].ToString() : string.Empty;
+	string variantId = Dynamicweb.Context.Current.Request["VariantID"] != null ? Dynamicweb.Context.Current.Request["VariantID"].ToString() : string.Empty;
+
+	int currentParagraphId = Pageview.CurrentParagraph.ID;
+
+	var page = Dynamicweb.Content.Services.Pages.GetPage(Model.PageId);
+	string pageIcon = string.Empty;
+	if (page.PropertyItem is object && page.PropertyItem.TryGetValue("Icon", out object pageIconValue))
+	{
+		pageIcon = Dynamicweb.Core.Converter.ToString(pageIconValue);
+	}
+	string iconPath = Dynamicweb.Context.Current.Server.MapPath(pageIcon);
+
+	if (preferencesType == "country")
+	{
+		name = Translate("Deliver to") + ": " + Dynamicweb.Ecommerce.Common.Context.Country.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID);
+	}
+	if (preferencesType == "language")
+	{
+		string iconFolder = "/Files/FlagIcons/";
+		pageIcon = iconFolder + Pageview.Area.CultureInfo.Name.ToLower() + ".svg";
+		Regex reg = new Regex(@"\(([^\)]+)\)");
+		name = reg.Replace(Pageview.Area.CultureInfo.DisplayName, "");
+
+		layout = layout == "linksOnly" ? "iconsAndLinks" : layout;
+		bool hideIcon = page.Item?["HideIcon"] != null ? Convert.ToBoolean(page.Item["HideIcon"].ToString()) : false;
+		bool hideName = page.Item?["HideName"] != null ? Convert.ToBoolean(page.Item["HideName"].ToString()) : false;
+		layout = hideIcon ? "linksOnly" : layout;
+		layout = hideName ? "iconsOnly" : layout;
+	}
+	if (preferencesType == "currency")
+	{
+		name = Dynamicweb.Ecommerce.Common.Context.Currency.Code;
+	}
+
+	string visuallyHidden = layout == "iconsOnly" ? "visually-hidden" : null;
+}
+
+<li class="nav-item dropdown">
+	<form class="d-none d-lg-block" action="/Default.aspx?ID=@Model.PageId" data-response-target-element="@(preferencesType)Dropdown_@currentParagraphId" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+		<input type="hidden" name="Type" value="@preferencesType">
+		<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+		<input type="hidden" name="GroupID" value="@groupId">
+		<input type="hidden" name="ProductID" value="@productId">
+		<input type="hidden" name="VariantID" value="@variantId">
+		<input type="hidden" name="FontSize" value="@linkFontSize">
+		<input type="hidden" name="FontWeight" value="@linkFontWeight">
+		<input type="hidden" name="Casing" value="@linkCasing">
+
+		<a id="@Model.PageId" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="nav-link p-2 text-nowrap text-decoration-underline-hover @linkFontSize @linkFontWeight @linkCasing@(Model.IsActive ? " active" : string.Empty) dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(Model.IsActive ? " aria-current='page'" : string.Empty)>
+			@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+			{
+				<span class="@iconSize">@ReadFile(iconPath)</span>
+			}
+
+			<span class="@(visuallyHidden)">@name</span>
+
+			@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+			{
+				<span class="@iconSize">@ReadFile(iconPath)</span>
+			}
+		</a>
+
+		<ul class="dropdown-menu @(theme)" id="@(preferencesType)Dropdown_@currentParagraphId"></ul>
+	</form>
+
+	<form class="d-block d-lg-none" action="/Default.aspx?ID=@Model.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+		<input type="hidden" name="Layout" value="modal">
+		<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+		<input type="hidden" name="GroupID" value="@groupId">
+		<input type="hidden" name="ProductID" value="@productId">
+		<input type="hidden" name="VariantID" value="@variantId">
+		<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link p-2 text-nowrap border-0 swift_open-preferences-modal @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+			@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+			{
+				<span class="@iconSize">@ReadFile(iconPath)</span>
+			}
+
+			<span class="@(visuallyHidden)">@name</span>
+
+			@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+			{
+				<span class="@iconSize">@ReadFile(iconPath)</span>
+			}
+		</button>
+	</form>
+</li>
