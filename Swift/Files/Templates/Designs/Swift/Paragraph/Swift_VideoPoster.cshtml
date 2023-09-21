@@ -49,7 +49,22 @@
 
 <div class="position-relative h-100@(theme)@(movePageBehindClass) item_@Model.Item.SystemName.ToLower()">
 	<div id="@Model.ID" class="user-select-none position-absolute top-0" style="scroll-margin-top:var(--header-height,150px)"></div>
-	@{ @RenderVideo() }
+	@*Render video*@
+	@if (!string.IsNullOrEmpty(Model.Item.GetString("Video")))
+	{
+		string video = Model.Item.GetString("Video");
+		string imageFilter = Model.Item.GetRawValueString("ImageFilter", "");
+		imageFilter = imageFilter == "no-filter" ? "" : imageFilter;
+		imageFilter = imageFilter == "filter" ? " image-filter" : imageFilter;
+		string videoType = Path.GetExtension(video).ToLower();
+
+		<div class="position-absolute top-0 bottom-0 end-0 start-0@(imageFilter)">
+			<video preload="auto" loop autoplay muted playsinline class="h-100 w-100" style="object-fit: cover;">
+				<source src="@Model.Item.GetFile("Video")"
+						type="video/@videoType.Replace(".", "")">
+			</video>
+		</div>
+	}
 
 	@switch (layout)
 	{
@@ -85,152 +100,120 @@
 		<div class="h-100 grid grid-1 @(posterWidth) @posterPadding @(alignment) @(posterHeight)" id="Poster_@Pageview.CurrentParagraph.ID">
 			<div class="grid grid-1 gap-3 gap-md-4">
 				@{
-					@RenderTitle(maxWidth)
-					@RenderText(maxWidth)
-					@RenderButton()
+					//Render title
+					if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
+					{
+						string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-1");
+						string headingLevel = Model.Item.GetString("HeadingLevel", "h2");
+						string headingLevelStart = $"<{headingLevel} class=\"{titleFontSize} m-0\">";
+						string headingLevelStop = $"</{headingLevel}>";
+
+						@headingLevelStart
+						<span class="@maxWidth">@Model.Item.GetString("Title")</span>
+						@headingLevelStop
+					}
+
+					//Render text
+					if (!string.IsNullOrEmpty(Model.Item.GetString("Text")))
+					{
+
+						string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
+						<p class="@subtitleFontSize lead m-0">
+							<span class="@maxWidth">
+								@Model.Item.GetString("Text")
+							</span>
+						</p>
+					}
+					//Render button
+					string linkType = Model.Item.GetRawValueString("LinkType", "page");
+					Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
+
+					string StretchedLink = Model.Item.GetRawValueString("StretchedLink", "");
+					StretchedLink = StretchedLink == "column-not-clickable" ? "" : StretchedLink;
+					StretchedLink = StretchedLink == "column-clickable" ? " stretched-link" : StretchedLink;
+
+					if (linkType == "page" && Model.Item.GetLink("ButtonLink") != null)
+					{
+						link = Model.Item.GetLink("ButtonLink");
+					}
+
+					if (linkType == "product-group")
+					{
+						IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
+						IList<string> groupIds = new List<string> { };
+
+						if (selectedGroups != null)
+						{
+							foreach (var fromGroup in selectedGroups)
+							{
+								groupIds.Add(fromGroup.Id);
+							}
+						}
+
+						link = new Dynamicweb.Frontend.LinkViewModel()
+						{
+							Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
+							IsExternal = false
+						};
+					}
+
+					if (linkType == "product")
+					{
+						ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink");
+						IList<string> productIds = new List<string> { };
+
+						if (products != null && products.Products.Any())
+						{
+							foreach (var product in products.Products)
+							{
+								productIds.Add(product.Id);
+							}
+
+							string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
+							string productLink = products.Products?.FirstOrDefault()?.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
+							productLink = productIds.Count != 1 ? "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&" + productParameter + "=" + string.Join(",", productIds).Trim() : productLink;
+
+							link = new Dynamicweb.Frontend.LinkViewModel()
+							{
+								Url = productLink,
+								IsExternal = false
+							};
+						}
+					}
+
+					if (link != null && !string.IsNullOrEmpty(Model.Item.GetString("ButtonLabel")))
+					{
+						string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : "";
+						string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : "";
+
+						string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "primary");
+						buttonStyle = buttonStyle == "primary" ? "btn-primary" : buttonStyle;
+						buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
+						buttonStyle = buttonStyle == "link" ? "btn-link" : buttonStyle;
+
+						string ButtonSize = Model.Item.GetRawValueString("ButtonSize", "regular");
+						ButtonSize = ButtonSize == "small" ? " btn-sm" : ButtonSize;
+						ButtonSize = ButtonSize == "regular" ? "" : ButtonSize;
+						ButtonSize = ButtonSize == "large" ? " btn-lg" : ButtonSize;
+
+						<div class="mt-0">
+							<a href="@link.Url" @target @rel class="btn @buttonStyle@(ButtonSize)@(StretchedLink)">@Model.Item.GetString("ButtonLabel")</a>
+						</div>
+					}
+					else if (link != null && !string.IsNullOrEmpty(link.Url))
+					{
+						string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : "";
+						string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : "";
+
+						<a href="@link.Url" @target @rel class="@StretchedLink">
+							<span class="visually-hidden">@Model.Item.GetString("Title")</span>
+						</a>
+					}
 				}
 			</div>
 		</div>
 	</div>
 </div>
-
-@helper RenderVideo()
-{
-	if (!string.IsNullOrEmpty(Model.Item.GetString("Video")))
-	{
-		string video = Model.Item.GetString("Video");
-		string imageFilter = Model.Item.GetRawValueString("ImageFilter", "");
-		imageFilter = imageFilter == "no-filter" ? "" : imageFilter;
-		imageFilter = imageFilter == "filter" ? " image-filter" : imageFilter;
-		string videoType = Path.GetExtension(video).ToLower();
-
-		<div class="position-absolute top-0 bottom-0 end-0 start-0@(imageFilter)">
-			<video preload="auto" loop autoplay muted playsinline class="h-100 w-100" style="object-fit: cover;">
-				<source src="@Model.Item.GetFile("Video")"
-						type="video/@videoType.Replace(".", "")">
-			</video>
-		</div>
-	}
-
-}
-
-@helper RenderTitle(string maxWidth)
-{
-
-	if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
-	{
-		string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-1");
-		string headingLevel = Model.Item.GetString("HeadingLevel", "h2");
-		string headingLevelStart = $"<{headingLevel} class=\"{titleFontSize} m-0\">";
-		string headingLevelStop = $"</{headingLevel}>";
-
-		@headingLevelStart
-			<span class="@maxWidth">@Model.Item.GetString("Title")</span>
-		@headingLevelStop
-	}
-}
-
-@helper RenderText(string maxWidth)
-{
-	if (!string.IsNullOrEmpty(Model.Item.GetString("Text")))
-	{
-
-		string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
-		<p class="@subtitleFontSize lead m-0">
-			<span class="@maxWidth">
-				@Model.Item.GetString("Text")
-			</span>
-		</p>
-	}
-}
-
-@helper RenderButton()
-{
-string linkType = Model.Item.GetRawValueString("LinkType", "page");
-Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
-
-string StretchedLink = Model.Item.GetRawValueString("StretchedLink", "");
-StretchedLink = StretchedLink == "column-not-clickable" ? "" : StretchedLink;
-StretchedLink = StretchedLink == "column-clickable" ? " stretched-link" : StretchedLink;
-
-if (linkType == "page" && Model.Item.GetLink("ButtonLink") != null)
-{
-	link = Model.Item.GetLink("ButtonLink");
-}
-
-if (linkType == "product-group")
-{
-	IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
-	IList<string> groupIds = new List<string> { };
-
-	if (selectedGroups != null)
-	{
-		foreach (var fromGroup in selectedGroups)
-		{
-			groupIds.Add(fromGroup.Id);
-		}
-	}
-
-	link = new Dynamicweb.Frontend.LinkViewModel()
-	{
-		Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
-		IsExternal = false
-	};
-}
-
-if (linkType == "product")
-{
-	ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink");
-	IList<string> productIds = new List<string> { };
-
-	if (products != null && products.Products.Any())
-	{
-		foreach (var product in products.Products)
-		{
-			productIds.Add(product.Id);
-		}
-
-		string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
-		string productLink = products.Products?.FirstOrDefault()?.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
-		productLink = productIds.Count != 1 ? "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&" + productParameter + "=" + string.Join(",", productIds).Trim() : productLink;
-
-		link = new Dynamicweb.Frontend.LinkViewModel()
-		{
-			Url = productLink,
-			IsExternal = false
-		};
-	}
-}
-
-if (link != null && !string.IsNullOrEmpty(Model.Item.GetString("ButtonLabel")))
-{
-	string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : "";
-	string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : "";
-
-	string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "primary");
-	buttonStyle = buttonStyle == "primary" ? "btn-primary" : buttonStyle;
-	buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
-	buttonStyle = buttonStyle == "link" ? "btn-link" : buttonStyle;
-
-	string ButtonSize = Model.Item.GetRawValueString("ButtonSize", "regular");
-	ButtonSize = ButtonSize == "small" ? " btn-sm" : ButtonSize;
-	ButtonSize = ButtonSize == "regular" ? "" : ButtonSize;
-	ButtonSize = ButtonSize == "large" ? " btn-lg" : ButtonSize;
-
-		<div class="mt-0">
-			<a href="@link.Url" @target @rel class="btn @buttonStyle@(ButtonSize)@(StretchedLink)">@Model.Item.GetString("ButtonLabel")</a>
-		</div>
-	}
-	else if (link != null && !string.IsNullOrEmpty(link.Url))
-	{
-		string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : "";
-		string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : "";
-
-		<a href="@link.Url" @target @rel class="@StretchedLink">
-			<span class="visually-hidden">@Model.Item.GetString("Title")</span>
-		</a>
-	}
-}
 
 @if (movePageBehind && isFirstPoster)
 {
