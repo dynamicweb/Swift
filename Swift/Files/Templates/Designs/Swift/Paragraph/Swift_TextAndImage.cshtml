@@ -59,7 +59,7 @@
 	parms.Add("columns", Model.GridRowColumnCount);
 
 	string figureCss = Model.Item.GetString("Layout") == "text-center" && Model.Item.GetRawValueString("ImageAspectRatio") == "0" ? "d-flex flex-column align-items-center" : string.Empty;
-	figureCss = Model.Item.GetString("Layout") != "text-center" ? $"mb-0 {ratioCssClass} {ratioVariable}" : figureCss;
+	figureCss = Model.Item.GetString("Layout") != "text-center" ? $"mb-0 {ratioCssClass}" : figureCss;
 
 	if (Model.Item.GetRawValueString("ImageAspectRatio") == "0")
 	{
@@ -70,15 +70,8 @@
 	string linkType = Model.Item.GetRawValueString("LinkType", "page");
 	string linkType2 = Model.Item.GetRawValueString("LinkType2", "page2");
 
-	if (linkType == "page" && Model.Item.GetLink("ButtonLink") != null)
-	{
-		link1 = Model.Item.GetLink("ButtonLink");
-	}
-
-	if (linkType2 == "page2" && Model.Item.GetLink("ButtonLink2") != null)
-	{
-		link2 = Model.Item.GetLink("ButtonLink2");
-	}
+	link1 = linkType == "page" && Model.Item.GetLink("ButtonLink") != null ? Model.Item.GetLink("ButtonLink") : link1;
+	link2 = linkType2 == "page2" && Model.Item.GetLink("ButtonLink2") != null ? Model.Item.GetLink("ButtonLink2") : link2;
 
 	if (linkType == "product-group")
 	{
@@ -181,16 +174,26 @@
 	string rel1 = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link1.IsExternal ? "rel=\"noopener\"" : string.Empty;
 	string rel2 = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link2.IsExternal ? "rel=\"noopener\"" : string.Empty;
 	string buttonLabel = Model.Item.GetString("ButtonLabel", string.Empty);
+	bool buttonHasLabel = !string.IsNullOrEmpty(buttonLabel);
+	buttonLabel = string.IsNullOrEmpty(buttonLabel) ? title : buttonLabel;
 	string buttonLabel2 = Model.Item.GetString("ButtonLabel2", string.Empty);
+	bool buttonHasLabel2 = !string.IsNullOrEmpty(buttonLabel2);
+	buttonLabel2 = string.IsNullOrEmpty(buttonLabel2) ? title : buttonLabel2;
 	string stretchedLink = Model.Item.GetRawValueString("StretchedLink", "column-not-clickable");
 	string stretchedLink2 = Model.Item.GetRawValueString("StretchedLink2", "column-not-clickable");
-	string stretchedLinkClass = stretchedLink == "column-clickable" && string.IsNullOrEmpty(link2.Url) && string.IsNullOrEmpty(buttonLabel2) ? " stretched-link" : string.Empty;
-	string stretchedLinkClass2 = stretchedLink2 == "column-clickable" && string.IsNullOrEmpty(link1.Url) && string.IsNullOrEmpty(buttonLabel) ? " stretched-link" : string.Empty;
+	string stretchedLinkClass = stretchedLink == "column-clickable" && !string.IsNullOrEmpty(link1.Url) ? " stretched-link" : string.Empty;
+	string stretchedLinkClass2 = stretchedLink2 == "column-clickable" && !string.IsNullOrEmpty(link2.Url) ? " stretched-link" : string.Empty;
 	string buttonSize = Model.Item.GetRawValueString("ButtonSize", "regular");
 	buttonSize = buttonSize == "small" ? " btn-sm" : buttonSize;
 	buttonSize = buttonSize == "regular" ? string.Empty : buttonSize;
 	buttonSize = buttonSize == "large" ? " btn-lg" : buttonSize;
 	string alignmentClass = Model.Item.GetString("Layout") == "text-center" ? " justify-content-center" : string.Empty;
+
+	string buttonVisuallyHidden = !buttonHasLabel ? " visually-hidden" : string.Empty;
+	string buttonClasses = buttonHasLabel ? $"text-nowrap btn{buttonStyle}{buttonSize}{stretchedLinkClass}{buttonVisuallyHidden}" : stretchedLinkClass;
+
+	string buttonVisuallyHidden2 = !buttonHasLabel2 ? " visually-hidden" : string.Empty;
+	string buttonClasses2 = buttonHasLabel2 ? $"text-nowrap btn{buttonStyle2}{buttonSize}{stretchedLinkClass2}{buttonVisuallyHidden2}" : stretchedLinkClass2;
 }
 
 <div class="d-flex flex-column@(gapClass) h-100 position-relative@(theme) item_@Model.Item.SystemName.ToLower()">
@@ -198,69 +201,6 @@
 
 	@switch (layout)
 	{
-		case "image-top":
-			@if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
-			{
-				<figure class="@figureCss">
-					@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
-				</figure>
-			}
-			if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) || !string.IsNullOrEmpty(Model.Item.GetString("Lead")) || !string.IsNullOrEmpty(Model.Item.GetString("Text")) || link1 != null && !string.IsNullOrEmpty(link1.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
-			{
-				<div class="d-flex flex-column gap-3 h-100@(contentPaddingClass)">
-					@if (!string.IsNullOrEmpty(title) && !hideTitle)
-					{
-						@headingLevelStart
-						@title
-						@headingLevelStop
-					}
-					@if (!string.IsNullOrEmpty(Model.Item.GetString("Lead")))
-					{
-						<p class="m-0 lead @(subtitleFontSize) @(subtitleColor) @(subtitleOpacity)@(maxWidth)">
-							@Model.Item.GetString("Lead")
-						</p>
-					}
-					@if (!string.IsNullOrEmpty(Model.Item.GetString("Text")))
-					{
-						<div class="mb-0-last-child @textColor @(textOpacity)@(maxWidth)">
-							@Model.Item.GetString("Text")
-						</div>
-					}
-					@if (link1 != null && !string.IsNullOrEmpty(link1.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
-					{
-						<div class="d-flex flex-wrap gap-3@(alignmentClass)">
-							@if (link1 != null && !string.IsNullOrEmpty(link1.Url))
-							{
-								if (!string.IsNullOrEmpty(buttonLabel))
-								{
-									<a href="@link1.Url" @target1 @rel1 class="text-nowrap btn@(buttonStyle)@(buttonSize)@(stretchedLinkClass)">@buttonLabel</a>
-								}
-								else
-								{
-									<a href="@link1.Url" @target1 @rel1 class="@(stretchedLinkClass)">
-										<span class="visually-hidden">@title</span>
-									</a>
-								}
-							}
-							@if (link2 != null && !string.IsNullOrEmpty(link2.Url))
-							{
-								if (!string.IsNullOrEmpty(buttonLabel2))
-								{
-									<a href="@link2.Url" @target2 @rel2 class="text-nowrap btn@(buttonStyle2)@(buttonSize)@(stretchedLinkClass2)">@buttonLabel2</a>
-								}
-								else
-								{
-									<a href="@link2.Url" @target2 @rel2 class="@(stretchedLinkClass)">
-										<span class="visually-hidden">@title</span>
-									</a>
-								}
-							}
-						</div>
-					}
-				</div>
-			}
-			break;
-
 		case "title-top":
 			if (!string.IsNullOrEmpty(Model.Item.GetString("Title")))
 			{
@@ -273,12 +213,14 @@
 					}
 				</div>
 			}
-			@if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
+
+			if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
 			{
-				<figure class="@figureCss">
+				<figure class="@figureCss" @ratioVariable>
 					@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
 				</figure>
 			}
+
 			if (!string.IsNullOrEmpty(Model.Item.GetString("Lead")) || !string.IsNullOrEmpty(Model.Item.GetString("Text")) || link1 != null && !string.IsNullOrEmpty(link1.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
 			{
 				<div class="d-flex flex-column gap-3@(contentPaddingClass)">
@@ -299,29 +241,11 @@
 						<div class="d-flex flex-wrap gap-3@(alignmentClass)">
 							@if (link1 != null && !string.IsNullOrEmpty(link1.Url))
 							{
-								if (!string.IsNullOrEmpty(buttonLabel))
-								{
-									<a href="@link1.Url" @target1 @rel1 class="text-nowrap btn@(buttonStyle)@(buttonSize)@(stretchedLinkClass)">@buttonLabel</a>
-								}
-								else
-								{
-									<a href="@link1.Url" @target1 @rel1 class="@(stretchedLinkClass)">
-										<span class="visually-hidden">@title</span>
-									</a>
-								}
+								<a href="@link1.Url" @target1 @rel1 class="@buttonClasses">@buttonLabel</a>
 							}
 							@if (link2 != null && !string.IsNullOrEmpty(link2.Url))
 							{
-								if (!string.IsNullOrEmpty(buttonLabel2))
-								{
-									<a href="@link2.Url" @target2 @rel2 class="text-nowrap btn@(buttonStyle2)@(buttonSize)@(stretchedLinkClass2)">@buttonLabel2</a>
-								}
-								else
-								{
-									<a href="@link2.Url" @target2 @rel2 class="@(stretchedLinkClass)">
-										<span class="visually-hidden">@title</span>
-									</a>
-								}
+								<a href="@link2.Url" @target2 @rel2 class="@buttonClasses2">@buttonLabel2</a>
 							}
 						</div>
 					}
@@ -339,6 +263,7 @@
 						@title
 						@headingLevelStop
 					}
+
 					@if (!string.IsNullOrEmpty(Model.Item.GetString("Lead")))
 					{
 						<p class="m-0 lead @(subtitleFontSize) @(subtitleColor) @(subtitleOpacity)@(maxWidth)">
@@ -347,12 +272,14 @@
 					}
 				</div>
 			}
-			@if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
+
+			if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
 			{
-				<figure class="@figureCss">
+				<figure class="@figureCss" @ratioVariable>
 					@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
 				</figure>
 			}
+
 			if (!string.IsNullOrEmpty(Model.Item.GetString("Text")) || link1 != null && !string.IsNullOrEmpty(link1.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
 			{
 				<div class="d-flex flex-column gap-3@(contentPaddingClass)">
@@ -362,34 +289,17 @@
 							@Model.Item.GetString("Text")
 						</div>
 					}
+
 					@if (link1 != null && !string.IsNullOrEmpty(link1.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
 					{
 						<div class="d-flex flex-wrap gap-3@(alignmentClass)">
 							@if (link1 != null && !string.IsNullOrEmpty(link1.Url))
 							{
-								if (!string.IsNullOrEmpty(buttonLabel))
-								{
-									<a href="@link1.Url" @target1 @rel1 class="text-nowrap btn@(buttonStyle)@(buttonSize)@(stretchedLinkClass)">@buttonLabel</a>
-								}
-								else
-								{
-									<a href="@link1.Url" @target1 @rel1 class="@(stretchedLinkClass)">
-										<span class="visually-hidden">@title</span>
-									</a>
-								}
+								<a href="@link1.Url" @target1 @rel1 class="@buttonClasses">@buttonLabel</a>
 							}
 							@if (link2 != null && !string.IsNullOrEmpty(link2.Url))
 							{
-								if (!string.IsNullOrEmpty(buttonLabel2))
-								{
-									<a href="@link2.Url" @target2 @rel2 class="text-nowrap btn@(buttonStyle2)@(buttonSize)@(stretchedLinkClass2)">@buttonLabel2</a>
-								}
-								else
-								{
-									<a href="@link2.Url" @target2 @rel2 class="@(stretchedLinkClass)">
-										<span class="visually-hidden">@title</span>
-									</a>
-								}
+								<a href="@link2.Url" @target2 @rel2 class="@buttonClasses2">@buttonLabel2</a>
 							}
 						</div>
 					}
@@ -398,12 +308,13 @@
 			break;
 
 		case "text-center":
-			@if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
+			if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
 			{
-				<figure class="@figureCss">
+				<figure class="@figureCss" @ratioVariable>
 					@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
 				</figure>
 			}
+
 			if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) || !string.IsNullOrEmpty(Model.Item.GetString("Lead")) || !string.IsNullOrEmpty(Model.Item.GetString("Text")) || link1 != null && !string.IsNullOrEmpty(link1.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
 			{
 				<div class="d-flex flex-column gap-3 align-items-center text-center h-100@(contentPaddingClass)">
@@ -413,46 +324,80 @@
 						@title
 						@headingLevelStop
 					}
+
 					@if (!string.IsNullOrEmpty(Model.Item.GetString("Lead")))
 					{
 						<p class="m-0 lead @(subtitleFontSize) @(subtitleColor) @(subtitleOpacity)@(maxWidth)">
 							@Model.Item.GetString("Lead")
 						</p>
 					}
+
 					@if (!string.IsNullOrEmpty(Model.Item.GetString("Text")))
 					{
 						<div class="mb-0-last-child @textColor @(textOpacity)@(maxWidth)">
 							@Model.Item.GetString("Text")
 						</div>
 					}
+
 					@if (link1 != null && !string.IsNullOrEmpty(link1.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
 					{
 						<div class="d-flex flex-wrap gap-3@(alignmentClass)">
 							@if (link1 != null && !string.IsNullOrEmpty(link1.Url))
 							{
-								if (!string.IsNullOrEmpty(buttonLabel))
-								{
-									<a href="@link1.Url" @target1 @rel1 class="text-nowrap btn@(buttonStyle)@(buttonSize)@(stretchedLinkClass)">@buttonLabel</a>
-								}
-								else
-								{
-									<a href="@link1.Url" @target1 @rel1 class="@(stretchedLinkClass)">
-										<span class="visually-hidden">@title</span>
-									</a>
-								}
+								<a href="@link1.Url" @target1 @rel1 class="@buttonClasses">@buttonLabel</a>
 							}
 							@if (link2 != null && !string.IsNullOrEmpty(link2.Url))
 							{
-								if (!string.IsNullOrEmpty(buttonLabel2))
-								{
-									<a href="@link2.Url" @target2 @rel2 class="text-nowrap btn@(buttonStyle2)@(buttonSize)@(stretchedLinkClass2)">@buttonLabel2</a>
-								}
-								else
-								{
-									<a href="@link2.Url" @target2 @rel2 class="@(stretchedLinkClass)">
-										<span class="visually-hidden">@title</span>
-									</a>
-								}
+								<a href="@link2.Url" @target2 @rel2 class="@buttonClasses2">@buttonLabel2</a>
+							}
+						</div>
+					}
+				</div>
+			}
+			break;
+
+		case "image-top":
+			if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
+			{
+				<figure class="@figureCss" @ratioVariable>
+					@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+				</figure>
+			}
+
+			if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) || !string.IsNullOrEmpty(Model.Item.GetString("Lead")) || !string.IsNullOrEmpty(Model.Item.GetString("Text")) || link1 != null && !string.IsNullOrEmpty(link1.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
+			{
+				<div class="d-flex flex-column gap-3 h-100@(contentPaddingClass)">
+					@if (!string.IsNullOrEmpty(title) && !hideTitle)
+					{
+						@headingLevelStart
+						@title
+						@headingLevelStop
+					}
+
+					@if (!string.IsNullOrEmpty(Model.Item.GetString("Lead")))
+					{
+						<p class="m-0 lead @(subtitleFontSize) @(subtitleColor) @(subtitleOpacity)@(maxWidth)">
+							@Model.Item.GetString("Lead")
+						</p>
+					}
+
+					@if (!string.IsNullOrEmpty(Model.Item.GetString("Text")))
+					{
+						<div class="mb-0-last-child @textColor @(textOpacity)@(maxWidth)">
+							@Model.Item.GetString("Text")
+						</div>
+					}
+
+					@if (link1 != null && !string.IsNullOrEmpty(link1.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
+					{
+						<div class="d-flex flex-wrap gap-3@(alignmentClass)">
+							@if (link1 != null && !string.IsNullOrEmpty(link1.Url))
+							{
+								<a href="@link1.Url" @target1 @rel1 class="@buttonClasses">@buttonLabel</a>
+							}
+							@if (link2 != null && !string.IsNullOrEmpty(link2.Url))
+							{
+								<a href="@link2.Url" @target2 @rel2 class="@buttonClasses2">@buttonLabel2</a>
 							}
 						</div>
 					}
@@ -470,54 +415,40 @@
 						@title
 						@headingLevelStop
 					}
+
 					@if (!string.IsNullOrEmpty(Model.Item.GetString("Lead")))
 					{
 						<p class="m-0 lead @(subtitleFontSize) @(subtitleColor) @(subtitleOpacity)@(maxWidth)">
 							@Model.Item.GetString("Lead")
 						</p>
 					}
+
 					@if (!string.IsNullOrEmpty(Model.Item.GetString("Text")))
 					{
 						<div class="mb-0-last-child @textColor @(textOpacity)@(maxWidth)">
 							@Model.Item.GetString("Text")
 						</div>
 					}
+
 					@if (link1 != null && !string.IsNullOrEmpty(link1.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
 					{
 						<div class="d-flex flex-wrap gap-3@(alignmentClass)">
 							@if (link1 != null && !string.IsNullOrEmpty(link1.Url))
 							{
-								if (!string.IsNullOrEmpty(buttonLabel))
-								{
-									<a href="@link1.Url" @target1 @rel1 class="text-nowrap btn@(buttonStyle)@(buttonSize)@(stretchedLinkClass)">@buttonLabel</a>
-								}
-								else
-								{
-									<a href="@link1.Url" @target1 @rel1 class="@(stretchedLinkClass)">
-										<span class="visually-hidden">@title</span>
-									</a>
-								}
+								<a href="@link1.Url" @target1 @rel1 class="@buttonClasses">@buttonLabel</a>
 							}
 							@if (link2 != null && !string.IsNullOrEmpty(link2.Url))
 							{
-								if (!string.IsNullOrEmpty(buttonLabel2))
-								{
-									<a href="@link2.Url" @target2 @rel2 class="text-nowrap btn@(buttonStyle2)@(buttonSize)@(stretchedLinkClass2)">@buttonLabel2</a>
-								}
-								else
-								{
-									<a href="@link2.Url" @target2 @rel2 class="@(stretchedLinkClass)">
-										<span class="visually-hidden">@title</span>
-									</a>
-								}
+								<a href="@link2.Url" @target2 @rel2 class="@buttonClasses2">@buttonLabel2</a>
 							}
 						</div>
 					}
 				</div>
 			}
-			@if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
+
+			if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
 			{
-				<figure class="@figureCss">
+				<figure class="@figureCss" @ratioVariable>
 					@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
 				</figure>
 			}
