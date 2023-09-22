@@ -21,33 +21,191 @@
 		}
 	}
 
+	bool hideTitle = Model.Item?.GetBoolean("HideTitle") ?? false;
+	string title = !hideTitle ? Model.Item.GetString("Title", string.Empty) : string.Empty;
+
+	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-1");
+	string titleColor = Model.Item.GetString("TitleColor", "text-inherit");
+	string titleOpacity = Model.Item.GetString("TitleOpacity", "opacity-100");
+
+	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
+	string subtitleColor = Model.Item.GetString("SubtitleColor", "text-inherit");
+	string subtitleOpacity = Model.Item.GetString("SubtitleOpacity", "opacity-100");
+
+	string headingLevel = Model.Item.GetString("HeadingLevel", "h2");
+	string headingLevelStart = $"<{headingLevel} class=\"{titleFontSize} {titleColor} {titleOpacity} mb-0\">";
+	string headingLevelStop = $"</{headingLevel}>";
+
+	//Link generation
 	Dynamicweb.Frontend.LinkViewModel link = new Dynamicweb.Frontend.LinkViewModel();
 	Dynamicweb.Frontend.LinkViewModel link2 = new Dynamicweb.Frontend.LinkViewModel();
 
-	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : string.Empty;
-	string layout = Model.Item.GetRawValueString("Layout", "align-middle-center-text-center");
-	string alignment = string.Empty;
+	string linkType = Model.Item.GetRawValueString("LinkType", "page");
+	string linkType2 = Model.Item.GetRawValueString("LinkType2", "page2");
 
-	string posterPadding = Model.Item.GetRawValueString("ContentPadding", string.Empty);
-	string posterPaddingClass = string.Empty;
-
-	string posterHeight = Model.Item.GetRawValueString("PosterHeight", "large");
-	string posterSizeBase = posterHeight.Contains("%") || posterHeight.Contains("0") ? "aspect-ratio" : "height";
-	string posterHeightClass = string.Empty;
-
-	switch(posterPadding)
+	if (linkType == "page" && Model.Item.GetLink("ButtonLink") != null)
 	{
-		case "none":
-			posterPaddingClass = " p-3 px-xl-3 py-xl-4";
-			break;
-		case "small":
-			posterPaddingClass = " p-3 p-xl-4";
-			break;
-		case "large":
-			posterPaddingClass = " p-4 p-xl-5";
-			break;
+		link = Model.Item.GetLink("ButtonLink");
 	}
 
+	if (linkType2 == "page2" && Model.Item.GetLink("ButtonLink2") != null)
+	{
+		link2 = Model.Item.GetLink("ButtonLink2");
+	}
+
+	if (linkType == "product-group")
+	{
+		IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
+		IList<string> groupIds = new List<string> { };
+
+		if (selectedGroups != null)
+		{
+			foreach (var fromGroup in selectedGroups)
+			{
+				groupIds.Add(fromGroup.Id);
+			}
+		}
+
+		link = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
+			IsExternal = false
+		};
+	}
+
+	if (linkType2 == "product-group2")
+	{
+		IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink2");
+		IList<string> groupIds = new List<string> { };
+
+		if (selectedGroups != null)
+		{
+			foreach (var fromGroup in selectedGroups)
+			{
+				groupIds.Add(fromGroup.Id);
+			}
+		}
+
+		link2 = new Dynamicweb.Frontend.LinkViewModel()
+		{
+			Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
+			IsExternal = false
+		};
+	}
+
+	if (linkType == "product")
+	{
+		ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink");
+		IList<string> productIds = new List<string> { };
+
+		if (products != null && products.Products.Any())
+		{
+			foreach (var product in products.Products)
+			{
+				productIds.Add(product.Id);
+			}
+			string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
+			string productLink = products.Products?.FirstOrDefault()?.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
+			productLink = productIds.Count != 1 ? "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&" + productParameter + "=" + string.Join(",", productIds).Trim() : productLink;
+
+			link = new Dynamicweb.Frontend.LinkViewModel()
+			{
+				Url = productLink,
+				IsExternal = false
+			};
+		}
+	}
+
+	if (linkType == "product2")
+	{
+		ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink2");
+		IList<string> productIds = new List<string> { };
+
+		if (products != null && products.Products.Any())
+		{
+			foreach (var product in products.Products)
+			{
+				productIds.Add(product.Id);
+			}
+
+			string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
+			string productLink = products.Products?.FirstOrDefault()?.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
+			productLink = productIds.Count != 1 ? "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&" + productParameter + "=" + string.Join(",", productIds).Trim() : productLink;
+
+			link2 = new Dynamicweb.Frontend.LinkViewModel()
+			{
+				Url = productLink,
+				IsExternal = false
+			};
+		}
+	}
+
+	//Buttons setup
+	string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : string.Empty;
+	string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : string.Empty;
+
+	string buttonSize = Model.Item.GetRawValueString("ButtonSize", "regular");
+	buttonSize = buttonSize == "small" ? " btn-sm" : buttonSize;
+	buttonSize = buttonSize == "regular" ? string.Empty : buttonSize;
+	buttonSize = buttonSize == "large" ? " btn-lg" : buttonSize;
+
+	//Button 1
+	string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "primary");
+	buttonStyle = buttonStyle == "primary" ? " btn-primary" : buttonStyle;
+	buttonStyle = buttonStyle == "secondary" ? " btn-secondary" : buttonStyle;
+	buttonStyle = buttonStyle == "link" ? " btn-link" : buttonStyle;
+	string buttonLabel = Model.Item.GetString("ButtonLabel", string.Empty);
+	string stretchedLink = Model.Item.GetRawValueString("StretchedLink", "column-not-clickable");
+	string stretchedLinkClass = stretchedLink == "column-clickable" && string.IsNullOrEmpty(link2.Url) && string.IsNullOrEmpty(buttonLabel) ? " stretched-link" : string.Empty;
+
+	//Button 2
+	string buttonStyle2 = Model.Item.GetRawValueString("ButtonStyle2", "secondary");
+	buttonStyle2 = buttonStyle2 == "primary" ? " btn-primary" : buttonStyle2;
+	buttonStyle2 = buttonStyle2 == "secondary" ? " btn-secondary" : buttonStyle2;
+	buttonStyle2 = buttonStyle2 == "link" ? " btn-link" : buttonStyle2;
+	string buttonLabel2 = Model.Item.GetString("ButtonLabel2", string.Empty);
+	string stretchedLink2 = Model.Item.GetRawValueString("StretchedLink2", "column-not-clickable");
+	string stretchedLinkClass2 = stretchedLink2 == "column-clickable" && string.IsNullOrEmpty(link.Url) && string.IsNullOrEmpty(buttonLabel2) ? " stretched-link" : string.Empty;
+
+	//Image
+	string image = Model.Item.GetString("Image", string.Empty);
+	string imgAltText = Model.Item.GetString("PosterAltText", string.Empty);
+	string imageFilter = Model.Item.GetRawValueString("ImageFilter", string.Empty) == "filter" ? " image-filter" : string.Empty;
+
+	int xPos = Model.Item?.GetFile("Image")?.FocalPositionFromLeft ?? 50;
+	int yPos = Model.Item?.GetFile("Image")?.FocalPositionFromTop ?? 50;
+
+	var parms = new Dictionary<string, object>();
+	parms.Add("columns", Model.GridRowColumnCount);
+	parms.Add("alt", imgAltText);
+	parms.Add("quality", 90);
+
+	//General layout and styling
+	string maxWidth = Model.Item.GetRawValueString("TextReadability", string.Empty) == "max-width-on" ? "mw-75ch d-inline-block" : string.Empty;
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", string.Empty).Trim().ToLower() : string.Empty;
+
+	string posterPaddingClass = string.Empty;
+	string posterPadding = Model.Item.GetRawValueString("ContentPadding", string.Empty);
+	posterPaddingClass = posterPadding == "none" ? " p-3 px-xl-3 py-xl-4" : posterPaddingClass;
+	posterPaddingClass = posterPadding == "small" ? " p-3 p-xl-4" : posterPaddingClass;
+	posterPaddingClass = posterPadding == "large" ? " p-4 p-xl-5" : posterPaddingClass;
+
+	string posterHeightClass = string.Empty;
+	string posterHeight = Model.Item.GetRawValueString("PosterHeight", "large");
+	posterHeightClass = posterHeight == "small" ? " min-vh-25 min-vh-md-50" : posterHeightClass;
+	posterHeightClass = posterHeight == "medium" ? " min-vh-25 min-vh-md-50" : posterHeightClass;
+	posterHeightClass = posterHeight == "large" ? " min-vh-25 min-vh-md-50" : posterHeightClass;
+
+	string posterSizeBase = posterHeight.Contains("%") || posterHeight.Contains("0") ? "aspect-ratio" : "height";
+
+	string ratio = Model.Item.GetRawValueString("PosterHeight", string.Empty);
+	ratio = ratio != "0" ? ratio : string.Empty;
+	string ratioCssClass = ratio != string.Empty ? "ratio" : string.Empty;
+	string ratioVariable = ratio != string.Empty ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : string.Empty;
+
+	string layout = Model.Item.GetRawValueString("Layout", "align-middle-center-text-center");
+
+	string alignment = string.Empty;
 	switch (layout)
 	{
 		case "align-top-left-text-left":
@@ -79,377 +237,113 @@
 			break;
 	}
 
-	switch (posterHeight)
-	{
-		case "small":
-			posterHeightClass = " min-vh-25 min-vh-md-50";
-			break;
-		case "medium":
-			posterHeightClass = " min-vh-50 min-vh-md-75";
-			break;
-		case "large":
-			posterHeightClass = " min-vh-75 min-vh-md-100";
-			break;
-	}
+	//Container classes for each size + if there is an image
+	string noImageRatioCssClass = posterSizeBase == "aspect-ratio" && string.IsNullOrEmpty(Model.Item.GetString("Image")) ? ratioCssClass : "h-100";
+	string noImageRatioVariable = posterSizeBase == "aspect-ratio" && string.IsNullOrEmpty(Model.Item.GetString("Image")) ? ratioVariable : string.Empty;
+
+	string containerCssClasses = posterSizeBase == "height" ? "container-xl px-0" : string.Empty;
+	containerCssClasses = posterSizeBase == "aspect-ratio" && string.IsNullOrEmpty(Model.Item.GetString("Image")) ? $"container-xl px-0 {noImageRatioCssClass}" : containerCssClasses;
+	containerCssClasses = posterSizeBase == "aspect-ratio" && !string.IsNullOrEmpty(Model.Item.GetString("Image")) ? "position-absolute top-0 bottom-0 end-0 start-0" : containerCssClasses;
+
+	string containerInnerCssClasses = posterSizeBase == "height" ? "position-relative" : string.Empty;
+	containerInnerCssClasses = posterSizeBase == "aspect-ratio" && string.IsNullOrEmpty(Model.Item.GetString("Image")) ? "container-xl" : containerInnerCssClasses;
+	containerInnerCssClasses = posterSizeBase == "aspect-ratio" && !string.IsNullOrEmpty(Model.Item.GetString("Image")) ? "container-xl" : containerInnerCssClasses;
 }
 
 <div class="position-relative@(theme)@(movePageBehindClass) item_@Model.Item.SystemName.ToLower()">
 	<div id="@Model.ID" class="user-select-none position-absolute top-0" style="scroll-margin-top:var(--header-height,150px)"></div>
 
-	@if (posterSizeBase == "height")
+	@if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
 	{
-		if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
+		if (!string.IsNullOrEmpty(image))
 		{
-			{@RenderImage(posterSizeBase)}
-		}
+			if (posterSizeBase == "height")
+			{
+				parms.Add("cssClass", "h-100 w-100");
 
-		if (
-			!string.IsNullOrEmpty(Model.Item.GetString("Title")) ||
-			Model.Item?.GetBoolean("HideTitle") == false ||
-			!string.IsNullOrEmpty(Model.Item.GetString("Text")) ||
-			link != null && !string.IsNullOrEmpty(link.Url) ||
-			link2 != null && !string.IsNullOrEmpty(link2.Url))
-		{
-			<div class="container-xl h-100 px-0">
-				<div class="h-100 position-relative d-flex flex-column gap-3 gap-md-4@(posterPaddingClass)@(alignment)@(posterHeightClass)" id="Poster_@Pageview.CurrentParagraph.ID">
-					@{
-						@RenderTitle()
-						@RenderText()
-						@RenderButtons(link, link2)
+				<div class="position-absolute top-0 bottom-0 end-0 start-0@(imageFilter)">
+					@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+				</div>
+			}
+
+			if (posterSizeBase == "aspect-ratio")
+			{
+				if (ratio == string.Empty)
+				{
+					parms.Add("cssClass", "mh-100 mw-100");
+					parms.Add("fullwidth", true);
+				}
+
+				<figure class="m-0 @(imageFilter)@(ratioCssClass)" @ratioVariable>
+					@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+				</figure>
+			}
+		}
+	}
+
+	@if (
+		!string.IsNullOrEmpty(Model.Item.GetString("Title")) ||
+		Model.Item?.GetBoolean("HideTitle") == false ||
+		!string.IsNullOrEmpty(Model.Item.GetString("Text")) ||
+		link != null && !string.IsNullOrEmpty(link.Url) ||
+		link2 != null && !string.IsNullOrEmpty(link2.Url))
+	{
+		<div class="@containerCssClasses" @ratioVariable>
+			<div class="h-100 d-flex flex-column gap-3 gap-md-4@(posterPaddingClass)@(alignment)@(posterHeightClass) @(containerInnerCssClasses)" id="Poster_@Pageview.CurrentParagraph.ID">
+				@if (!string.IsNullOrEmpty(title))
+				{
+					@headingLevelStart
+					<span class="@maxWidth">@title</span>
+					@headingLevelStop
+				}
+				@if (!string.IsNullOrEmpty(Model.Item.GetString("Text")))
+				{
+					<p class="@subtitleFontSize @(subtitleColor) @(subtitleOpacity) lead mb-0">
+						<span class="@maxWidth">@Model.Item.GetString("Text")</span>
+					</p>
+				}
+				@if (link != null && !string.IsNullOrEmpty(link.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
+				{
+					if ((link != null && !string.IsNullOrEmpty(link.Url)) && (link2 != null && !string.IsNullOrEmpty(link2.Url))) { 
+						@:<div class="d-flex flex-wrap gap-3@(alignment)">
 					}
-				</div>
+
+					if (link != null && !string.IsNullOrEmpty(link.Url))
+					{
+						if (!string.IsNullOrEmpty(buttonLabel))
+						{
+							<a href="@link.Url" @target @rel class="text-nowrap btn@(buttonStyle)@(buttonSize)@(stretchedLinkClass)">@buttonLabel</a>
+						}
+						else
+						{
+							<a href="@link.Url" @target @rel class="@(!string.IsNullOrEmpty(stretchedLinkClass) ? "position-absolute top-0 bottom-0 start-0 end-0" : stretchedLinkClass)">
+								<span class="visually-hidden">@Model.Item.GetString("Title")</span>
+							</a>
+						}
+					}
+
+					if (link2 != null && !string.IsNullOrEmpty(link2.Url))
+					{
+						if (!string.IsNullOrEmpty(buttonLabel2))
+						{
+							<a href="@link2.Url" @target @rel class="text-nowrap btn@(buttonStyle2)@(buttonSize)@(stretchedLinkClass2)">@buttonLabel2</a>
+						}
+						else
+						{
+							<a href="@link2.Url" @target @rel class="@(!string.IsNullOrEmpty(stretchedLinkClass2) ? "position-absolute top-0 bottom-0 start-0 end-0" : stretchedLinkClass2)">
+								<span class="visually-hidden">@Model.Item.GetString("Title")</span>
+							</a>
+						}
+					}
+
+					if ((link != null && !string.IsNullOrEmpty(link.Url)) && (link2 != null && !string.IsNullOrEmpty(link2.Url))) { 
+						@:</div>
+					}
+				}
 			</div>
-		}
+		</div>
 	}
-
-	@if (posterSizeBase == "aspect-ratio")
-	{
-		if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
-		{
-			{@RenderImage(posterSizeBase)}
-		}
-
-		if (
-			!string.IsNullOrEmpty(Model.Item.GetString("Title")) ||
-			Model.Item?.GetBoolean("HideTitle") == false ||
-			!string.IsNullOrEmpty(Model.Item.GetString("Text")) ||
-			link != null && !string.IsNullOrEmpty(link.Url) ||
-			link2 != null && !string.IsNullOrEmpty(link2.Url))
-		{
-			if (string.IsNullOrEmpty(Model.Item.GetString("Image")))
-			{
-				string ratio = Model.Item.GetRawValueString("PosterHeight", string.Empty);
-				ratio = ratio != "0" ? ratio : "";
-				string ratioCssClass = ratio != "" ? "ratio" : "";
-				string ratioVariable = ratio != "" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : "";
-
-				<div class="container-xl px-0 @ratioCssClass" @ratioVariable>
-					<div class="h-100 d-flex flex-column gap-3 gap-md-4@(posterPaddingClass)@(alignment)@(posterHeightClass)" id="Poster_@Pageview.CurrentParagraph.ID">
-						@{
-							@RenderTitle()
-							@RenderText()
-							@RenderButtons(link, link2)
-						}
-					</div>
-				</div>
-			}
-			else
-			{
-				<div class="position-absolute top-0 bottom-0 end-0 start-0">
-					<div class="container-xl h-100 d-flex flex-column gap-3 gap-md-4@(posterPaddingClass)@(alignment)@(posterHeightClass)" id="Poster_@Pageview.CurrentParagraph.ID">
-						@{
-							@RenderTitle()
-							@RenderText()
-							@RenderButtons(link, link2)
-						}
-					</div>
-				</div>
-			}
-		}
-	}
-
 </div>
-
-@helper RenderImage(string posterSizeBase)
-{
-string image = Model.Item.GetString("Image", string.Empty);
-string imgAltText = Model.Item.GetString("PosterAltText", string.Empty);
-
-if (!string.IsNullOrEmpty(image))
-{
-	string imageFilter = Model.Item.GetRawValueString("ImageFilter", string.Empty) == "filter" ? " image-filter" : string.Empty;
-
-	string ratio = Model.Item.GetRawValueString("PosterHeight").Contains("%") || Model.Item.GetRawValueString("PosterHeight").Contains("0") ? Model.Item.GetRawValueString("PosterHeight") : string.Empty;
-
-	ratio = ratio != "0" ? ratio : "";
-	string ratioCssClass = ratio != "" ? " ratio" : "";
-	string ratioVariable = ratio != "" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : "";
-	int xPos = Model.Item?.GetFile("Image")?.FocalPositionFromLeft ?? 50;
-	int yPos = Model.Item?.GetFile("Image")?.FocalPositionFromTop ?? 50;
-
-	var parms = new Dictionary<string, object>();
-	parms.Add("columns", Model.GridRowColumnCount);
-	parms.Add("alt", imgAltText);
-	parms.Add("quality", 90);
-
-	if (posterSizeBase == "height")
-	{
-		parms.Add("cssClass", "h-100 w-100");
-
-			<div class="position-absolute top-0 bottom-0 end-0 start-0@(imageFilter)">
-				@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
-			</div>
-		}
-
-		if (posterSizeBase == "aspect-ratio")
-		{
-			if (ratio == string.Empty)
-			{
-				parms.Add("cssClass", "mh-100 mw-100");
-				parms.Add("fullwidth", true);
-			}
-			
-			<figure class="m-0@(imageFilter)@(ratioCssClass)" @ratioVariable>
-				@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
-			</figure>
-		}
-	}
-}
-
-@helper RenderTitle()
-{
-	bool hideTitle = Model.Item?.GetBoolean("HideTitle") ?? false;
-	string title = !hideTitle ? Model.Item.GetString("Title", string.Empty) : string.Empty;
-
-	if (!string.IsNullOrEmpty(title))
-	{
-		string maxWidth = Model.Item.GetRawValueString("TextReadability", string.Empty) == "max-width-on" ? "mw-75ch d-inline-block" : string.Empty;
-		string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-1");
-		string titleColor = Model.Item.GetString("TitleColor", "text-inherit");
-		string titleOpacity = Model.Item.GetString("TitleOpacity", "opacity-100");
-
-		string headingLevel = Model.Item.GetString("HeadingLevel", "h2");
-		string headingLevelStart = $"<{headingLevel} class=\"{titleFontSize} {titleColor} {titleOpacity} mb-0\">";
-		string headingLevelStop = $"</{headingLevel}>";
-
-		@headingLevelStart
-			<span class="@maxWidth">@title</span>
-		@headingLevelStop
-	}
-}
-
-@helper RenderText()
-{
-	if (!string.IsNullOrEmpty(Model.Item.GetString("Text")))
-	{
-		string maxWidth = Model.Item.GetRawValueString("TextReadability", string.Empty) == "max-width-on" ? "mw-75ch d-inline-block" : string.Empty;
-		string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
-		string subtitleColor = Model.Item.GetString("SubtitleColor", "text-inherit");
-		string subtitleOpacity = Model.Item.GetString("SubtitleOpacity", "opacity-100");
-
-		<p class="@subtitleFontSize @(subtitleColor) @(subtitleOpacity) lead mb-0">
-			<span class="@maxWidth">@Model.Item.GetString("Text")</span>
-		</p>
-	}
-}
-
-@helper RenderButtons(Dynamicweb.Frontend.LinkViewModel link, Dynamicweb.Frontend.LinkViewModel link2)
-{
-string linkType = Model.Item.GetRawValueString("LinkType", "page");
-string linkType2 = Model.Item.GetRawValueString("LinkType2", "page2");
-
-if (linkType == "page" && Model.Item.GetLink("ButtonLink") != null)
-{
-	link = Model.Item.GetLink("ButtonLink");
-}
-
-if (linkType2 == "page2" && Model.Item.GetLink("ButtonLink2") != null)
-{
-	link2 = Model.Item.GetLink("ButtonLink2");
-}
-
-if (linkType == "product-group")
-{
-	IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
-	IList<string> groupIds = new List<string> { };
-
-	if (selectedGroups != null)
-	{
-		foreach (var fromGroup in selectedGroups)
-		{
-			groupIds.Add(fromGroup.Id);
-		}
-	}
-
-	link = new Dynamicweb.Frontend.LinkViewModel()
-	{
-		Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
-		IsExternal = false
-	};
-}
-
-if (linkType2 == "product-group2")
-{
-	IList<ProductGroupViewModel> selectedGroups = Model.Item.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink2");
-	IList<string> groupIds = new List<string> { };
-
-	if (selectedGroups != null)
-	{
-		foreach (var fromGroup in selectedGroups)
-		{
-			groupIds.Add(fromGroup.Id);
-		}
-	}
-
-	link2 = new Dynamicweb.Frontend.LinkViewModel()
-	{
-		Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds).Trim(),
-		IsExternal = false
-	};
-}
-
-if (linkType == "product")
-{
-	ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink");
-	IList<string> productIds = new List<string> { };
-
-	if (products != null && products.Products.Any())
-	{
-		foreach (var product in products.Products)
-		{
-			productIds.Add(product.Id);
-		}
-		string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
-		string productLink = products.Products?.FirstOrDefault()?.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
-		productLink = productIds.Count != 1 ? "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&" + productParameter + "=" + string.Join(",", productIds).Trim() : productLink;
-
-		link = new Dynamicweb.Frontend.LinkViewModel()
-		{
-			Url = productLink,
-			IsExternal = false
-		};
-	}
-
-
-}
-
-if (linkType == "product2")
-{
-	ProductListViewModel products = Model.Item.GetValue<ProductListViewModel>("ProductLink2");
-	IList<string> productIds = new List<string> { };
-
-	if (products != null && products.Products.Any())
-	{
-		foreach (var product in products.Products)
-		{
-			productIds.Add(product.Id);
-		}
-
-		string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
-		string productLink = products.Products?.FirstOrDefault()?.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
-		productLink = productIds.Count != 1 ? "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&" + productParameter + "=" + string.Join(",", productIds).Trim() : productLink;
-
-		link2 = new Dynamicweb.Frontend.LinkViewModel()
-		{
-			Url = productLink,
-			IsExternal = false
-		};
-	}
-
-
-}
-
-if (link != null && !string.IsNullOrEmpty(link.Url) || link2 != null && !string.IsNullOrEmpty(link2.Url))
-{
-	string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "primary");
-	buttonStyle = buttonStyle == "primary" ? " btn-primary" : buttonStyle;
-	buttonStyle = buttonStyle == "secondary" ? " btn-secondary" : buttonStyle;
-	buttonStyle = buttonStyle == "link" ? " btn-link" : buttonStyle;
-	string buttonStyle2 = Model.Item.GetRawValueString("ButtonStyle2", "secondary");
-	buttonStyle2 = buttonStyle2 == "primary" ? " btn-primary" : buttonStyle2;
-	buttonStyle2 = buttonStyle2 == "secondary" ? " btn-secondary" : buttonStyle2;
-	buttonStyle2 = buttonStyle2 == "link" ? " btn-link" : buttonStyle2;
-	string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : string.Empty;
-	string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : string.Empty;
-	string buttonLabel = Model.Item.GetString("ButtonLabel", string.Empty);
-	string buttonLabel2 = Model.Item.GetString("ButtonLabel2", string.Empty);
-	string stretchedLink = Model.Item.GetRawValueString("StretchedLink", "column-not-clickable");
-	string stretchedLink2 = Model.Item.GetRawValueString("StretchedLink2", "column-not-clickable");
-	string stretchedLinkClass = stretchedLink == "column-clickable" && string.IsNullOrEmpty(link2.Url) && string.IsNullOrEmpty(buttonLabel2) ? " stretched-link" : string.Empty;
-	string stretchedLinkClass2 = stretchedLink2 == "column-clickable" && string.IsNullOrEmpty(link.Url) && string.IsNullOrEmpty(buttonLabel) ? " stretched-link" : string.Empty;
-	string buttonSize = Model.Item.GetRawValueString("ButtonSize", "regular");
-	buttonSize = buttonSize == "small" ? " btn-sm" : buttonSize;
-	buttonSize = buttonSize == "regular" ? string.Empty : buttonSize;
-	buttonSize = buttonSize == "large" ? " btn-lg" : buttonSize;
-	string alignmentClass = string.Empty;
-
-	switch (Model.Item.GetString("Layout"))
-	{
-		case "align-top-left-text-left":
-			alignmentClass = " justify-content-start";
-			break;
-		case "align-top-center-text-center":
-			alignmentClass = " justify-content-center";
-			break;
-		case "align-top-right-text-right":
-			alignmentClass = " justify-content-end";
-			break;
-		case "align-middle-left-text-left":
-			alignmentClass = " justify-content-start";
-			break;
-		case "align-middle-center-text-center":
-			alignmentClass = " justify-content-center";
-			break;
-		case "align-middle-right-text-right":
-			alignmentClass = " justify-content-end";
-			break;
-		case "align-bottom-left-text-left":
-			alignmentClass = " justify-content-start";
-			break;
-		case "align-bottom-center-text-center":
-			alignmentClass = " justify-content-center";
-			break;
-		case "align-bottom-right-text-right":
-			alignmentClass = " justify-content-end";
-			break;
-	}
-
-	string buttonsWrapperStart = (link != null && !string.IsNullOrEmpty(link.Url)) && (link2 != null && !string.IsNullOrEmpty(link2.Url)) ? $"<div class=\"d-flex flex-wrap gap-3{alignmentClass}\">" : string.Empty;
-	string buttonsWrapperEnd = (link != null && !string.IsNullOrEmpty(link.Url)) && (link2 != null && !string.IsNullOrEmpty(link2.Url))  ? "</div>" : string.Empty;
-
-		@buttonsWrapperStart
-
-			if (link != null && !string.IsNullOrEmpty(link.Url))
-			{
-				if (!string.IsNullOrEmpty(buttonLabel))
-				{
-					<a href="@link.Url" @target @rel class="text-nowrap btn@(buttonStyle)@(buttonSize)@(stretchedLinkClass)">@buttonLabel</a>
-				}
-				else
-				{
-					<a href="@link.Url" @target @rel class="@(!string.IsNullOrEmpty(stretchedLinkClass) ? "position-absolute top-0 bottom-0 start-0 end-0" : stretchedLinkClass)">
-						<span class="visually-hidden">@Model.Item.GetString("Title")</span>
-					</a>
-				}
-			}
-
-			if (link2 != null && !string.IsNullOrEmpty(link2.Url))
-			{
-				if (!string.IsNullOrEmpty(buttonLabel2))
-				{
-					<a href="@link2.Url" @target @rel class="text-nowrap btn@(buttonStyle2)@(buttonSize)@(stretchedLinkClass2)">@buttonLabel2</a>
-				}
-				else
-				{
-					<a href="@link2.Url" @target @rel class="@(!string.IsNullOrEmpty(stretchedLinkClass2) ? "position-absolute top-0 bottom-0 start-0 end-0" : stretchedLinkClass2)">
-						<span class="visually-hidden">@Model.Item.GetString("Title")</span>
-					</a>
-				}
-			}
-
-		@buttonsWrapperEnd
-	}
-}
 
 @if (movePageBehind && isFirstPoster)
 {
