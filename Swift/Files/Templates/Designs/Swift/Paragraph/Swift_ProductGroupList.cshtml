@@ -12,19 +12,219 @@
 	navigationSettings.Parameters.Add("menu-id", "product-group-list");
 
 	var navigationViewModel = Navigation.GetNavigationViewModel(navigationSettings);
+	var navigationTree = new Stack<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel>(navigationViewModel.Nodes);
 }
 
-@if (navigationViewModel.Nodes.Count() > 0)
+@if (navigationViewModel.Nodes.Count() > 0 && !Pageview.IsVisualEditorMode)
 {
-	if (Pageview.IsVisualEditorMode)
+	while (navigationTree.Count > 0)
 	{
-		<div class="alert alert-dark m-0" role="alert">
-			<span><i class="fas fa-info-circle mr-3"></i></span> <span>@Translate("Group list: The selected groups will be shown here, if any")</span>
-		</div>
-	}
-	else
-	{
-		@GetNodes(navigationViewModel.Nodes)
+		var currentNode = navigationTree.Pop();
+
+		if (currentNode.IsActive && currentNode.Nodes.Count() > 0)
+		{
+			string layout = Model.Item.GetRawValueString("Layout", "text-bottom");
+
+			string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", string.Empty).Trim().ToLower() : string.Empty;
+			string groupTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("GroupTheme")) ? " theme " + Model.Item.GetRawValueString("GroupTheme").Replace(" ", string.Empty).Trim().ToLower() : string.Empty;
+
+			string horizontalAlignment = Model.Item.GetRawValueString("HorizontalAlignment", "start");
+			horizontalAlignment = $" justify-content-{horizontalAlignment}";
+
+			string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "0");
+			string ratioCssClass = ratio != "0" ? " ratio" : string.Empty;
+			string ratioVariable = ratio != "0" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : string.Empty;
+
+			int groupsCount = 0;
+			foreach (var subnode in currentNode.Nodes)
+			{
+				IList<FieldValueViewModel> groupFields = subnode.GetProductGroup().GroupFields;
+
+				if (groupFields != null)
+				{
+					foreach (FieldValueViewModel field in groupFields)
+					{
+						if (field.SystemName == "SelectedGroup" && !string.IsNullOrEmpty(field.Value.ToString()))
+						{
+							if (Convert.ToBoolean(field.Value.ToString()))
+							{
+								groupsCount++;
+							}
+						}
+					}
+				}
+			}
+
+			if (groupsCount != 0)
+			{
+				string paddingClass = !string.IsNullOrEmpty(theme) ? " p-3" : " pb-2 pb-lg-0";
+
+				if (layout != "pill-button")
+				{
+					<nav class="swiffy-slider slider-item-reveal slider-item-nosnap slider-item-show6 slider-nav-round@(paddingClass)@(theme)" style="--swiffy-slider-item-count: 10;" aria-label="@Translate("Product groups")">
+						<ul class="slider-container @horizontalAlignment">
+							@foreach (var subnode in currentNode.Nodes)
+							{
+								var group = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(subnode.GroupId);
+								IList<FieldValueViewModel> groupFields = subnode.GetProductGroup().GroupFields;
+								string groupImage = !string.IsNullOrEmpty(subnode.GroupId) && !string.IsNullOrEmpty(group.LargeImage) ? "/Files" + group.LargeImage : string.Empty;
+										
+								bool showGroup = false;
+								if (groupFields != null)
+								{
+									foreach (FieldValueViewModel field in groupFields)
+									{
+										if (field.SystemName == "SelectedGroup" && !string.IsNullOrEmpty(field.Value.ToString()))
+										{
+											if (Convert.ToBoolean(field.Value.ToString()))
+											{
+												showGroup = true;
+											}
+										}
+									}
+								}
+
+								if (showGroup)
+								{
+									string imageRoundedPill = layout == "ball" ? " rounded-pill" : string.Empty;
+
+									<li class="@groupTheme@(string.IsNullOrWhiteSpace(groupImage) && (layout == "ball") ? imageRoundedPill + " overflow-hidden": string.Empty)">
+										<a href="@subnode.Link" tabindex="-1" class="text-decoration-none">
+
+											@if (layout == "text-bottom" || layout == "ball")
+											{
+												<div class="d-flex flex-column justify-content-center align-items-center h-100">
+													@if (!string.IsNullOrWhiteSpace(groupImage))
+													{
+
+														<div class="@ratioCssClass" @ratioVariable>
+															<img loading="lazy" src="/Admin/Public/GetImage.ashx?width=640&crop=0&image=@groupImage" class="overflow-hidden@(imageRoundedPill) img-fluid image-zoom-lg-2-hover" style="object-fit: cover" alt="@subnode.Name">
+														</div>
+													}
+
+													<div class="@(ratioCssClass)" @ratioVariable>
+														<div class="d-flex flex-column align-items-center justify-content-center fs-7 text-center p-2">
+															@subnode.Name
+														</div>
+													</div>
+												</div>
+											}
+
+											@if (layout == "poster")
+											{
+												<div class="d-flex flex-column justify-content-center align-items-center h-100 position-relative">
+													@if (!string.IsNullOrWhiteSpace(groupImage))
+													{
+														<div class="@(ratioCssClass)" @ratioVariable>
+															<img loading="lazy" src="/Admin/Public/GetImage.ashx?width=640&crop=0&image=@groupImage" class="img-fluid image-zoom-lg-2-hover" style="object-fit: cover" alt="@subnode.Name">
+														</div>
+														<div class="position-absolute text-center fs-5">
+															@subnode.Name
+														</div>
+													}
+													else
+													{
+														<div class="@(ratioCssClass)" @ratioVariable>
+															<div class="d-flex flex-column align-items-center justify-content-center text-center fs-5 p-2">
+																@subnode.Name
+															</div>
+														</div>
+													}
+												</div>
+											}
+										</a>
+									</li>
+								}
+							}
+						</ul>
+
+
+						@if (groupsCount > 10)
+						{
+							<button type="button" title="@Translate("Slide to previous")" class="slider-nav"></button>
+							<button type="button" title="@Translate("Slide to next")" class="slider-nav slider-nav-next"></button>
+						}
+
+						<script type="module" src="/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
+						<script type="module">
+							swift.AssetLoader.Load('/Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
+							document.addEventListener('load.swift.assetloader', function () {
+								swiffyslider.init()
+							});
+						</script>
+					</nav>
+				}
+				else
+				{
+					<nav class="d-flex flex-wrap gap-3 align-items-center @horizontalAlignment overflow-x-auto@(paddingClass)@(theme)" aria-label="@Translate("Product groups")">
+						@foreach (var subnode in currentNode.Nodes)
+						{
+							string groupImage = "";
+							IList<FieldValueViewModel> groupFields = subnode.GetProductGroup().GroupFields;
+
+							if (layout == "pill-button" && groupFields != null)
+							{
+								foreach (FieldValueViewModel field in groupFields)
+								{
+									if (field.SystemName == "ProductGroupNavigationImage" && !string.IsNullOrEmpty(field.Value.ToString()))
+									{
+										groupImage = "/Files/Images/" + field.Value.ToString();
+									}
+								}
+							}
+
+							bool showGroup = false;
+							if (groupFields != null)
+							{
+								foreach (FieldValueViewModel field in groupFields)
+								{
+									if (field.SystemName == "SelectedGroup" && !string.IsNullOrEmpty(field.Value.ToString()))
+									{
+										if (Convert.ToBoolean(field.Value.ToString()))
+										{
+											showGroup = true;
+										}
+									}
+								}
+							}
+
+							if (showGroup)
+							{
+								<a href="@subnode.Link" tabindex="-1" class="btn btn-secondary rounded-pill @(groupTheme)">
+									<div class="d-flex flex-row align-items-center">
+										@if (!string.IsNullOrWhiteSpace(groupImage))
+										{
+											if (Path.GetExtension(groupImage).ToLower() == ".svg")
+											{
+												<div class="icon-3 me-2" style="width: 35px">
+													@ReadFile(groupImage)
+												</div>
+											}
+											else
+											{
+												<div class="me-3" style="width: 35px">
+													<div class="@ratioCssClass" @(ratioVariable)>
+														<img loading="lazy" src="/Admin/Public/GetImage.ashx?width=35&crop=0&image=@groupImage" style="object-fit: cover" alt="">
+													</div>
+												</div>
+											}
+										}
+										<div class="fs-7 text-center text-nowrap">
+											@subnode.Name
+										</div>
+									</div>
+								</a>
+							}
+						}
+					</nav>
+				}
+			}
+		}
+
+		foreach (var nextNode in currentNode.Nodes)
+		{
+			navigationTree.Push(nextNode);
+		}
 	}
 }
 else if (Pageview.IsVisualEditorMode)
@@ -33,247 +233,3 @@ else if (Pageview.IsVisualEditorMode)
 		<span><i class="fas fa-info-circle mr-3"></i></span> <span>@Translate("Group list: The selected groups will be shown here, if any")</span>
 	</div>
 }
-
-@helper GetNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
-{
-	foreach (var node in nodes)
-	{
-		if (node.IsActive)
-		{
-			if (node.Nodes.Count() > 0)
-			{
-				@RenderNodes(node.Nodes)
-			}
-		}
-		else
-		{
-			if (node.Nodes.Count() > 0)
-			{
-				@GetNodes(node.Nodes)
-			}
-		}
-	}
-}
-
-@helper RenderNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes)
-{
-	string layout = Model.Item.GetRawValueString("Layout", "text-bottom");
-
-	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
-	string groupTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("GroupTheme")) ? " theme " + Model.Item.GetRawValueString("GroupTheme").Replace(" ", "").Trim().ToLower() : "";
-
-	string horizontalAlignment = Model.Item.GetRawValueString("HorizontalAlignment", "start");
-
-	switch (horizontalAlignment)
-	{
-		case "start":
-			horizontalAlignment = " justify-content-start";
-			break;
-		case "center":
-			horizontalAlignment = " justify-content-center";
-			break;
-		case "end":
-			horizontalAlignment = " justify-content-end";
-			break;
-	}
-
-	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "0");
-	string ratioCssClass = ratio != "0" ? " ratio" : string.Empty;
-	string ratioVariable = ratio != "0" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : string.Empty;
-
-	int groupsCount = 0;
-
-	foreach (var node in nodes)
-	{
-		IList<FieldValueViewModel> groupFields = node.GetProductGroup().GroupFields;
-
-		if (groupFields != null)
-		{
-			foreach (FieldValueViewModel field in groupFields)
-			{
-				if (field.SystemName == "SelectedGroup" && !string.IsNullOrEmpty(field.Value.ToString()))
-				{
-					if (Convert.ToBoolean(field.Value.ToString()))
-					{
-						groupsCount++;
-					}
-				}
-			}
-		}
-	}
-
-	if (groupsCount != 0)
-	{
-		string paddingClass = !string.IsNullOrEmpty(theme) ? " p-3" : " pb-2 pb-lg-0";
-
-		if (layout != "pill-button")
-		{
-
-			<nav class="swiffy-slider slider-item-reveal slider-item-nosnap slider-item-show6 slider-nav-round@(paddingClass)@(theme)" style="--swiffy-slider-item-count: 10;" aria-label="@Translate("Product groups")">
-				<ul class="slider-container @horizontalAlignment">
-					@foreach (var node in nodes)
-					{
-						string groupImage = "";
-						var group = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(node.GroupId);
-						IList<FieldValueViewModel> groupFields = node.GetProductGroup().GroupFields;
-
-						if (!string.IsNullOrEmpty(node.GroupId))
-						{
-							groupImage = !string.IsNullOrEmpty(group.LargeImage) ? "/Files" + group.LargeImage : groupImage;
-						}
-
-						bool showGroup = false;
-
-						if (groupFields != null)
-						{
-							foreach (FieldValueViewModel field in groupFields)
-							{
-								if (field.SystemName == "SelectedGroup" && !string.IsNullOrEmpty(field.Value.ToString()))
-								{
-									if (Convert.ToBoolean(field.Value.ToString()))
-									{
-										showGroup = true;
-									}
-								}
-							}
-						}
-
-						if (showGroup)
-						{
-							string imageRoundedPill = layout == "ball" ? " rounded-pill" : string.Empty;
-
-							<li class="@groupTheme@(string.IsNullOrWhiteSpace(groupImage) && (layout == "ball") ? imageRoundedPill + " overflow-hidden": string.Empty)">
-								<a href="@node.Link" tabindex="-1" class="text-decoration-none">
-
-									@if (layout == "text-bottom" || layout == "ball")
-									{
-
-										<div class="d-flex flex-column justify-content-center align-items-center h-100">
-											@if (!string.IsNullOrWhiteSpace(groupImage))
-											{
-
-												<div class="@ratioCssClass" @ratioVariable>
-													<img loading="lazy" src="/Admin/Public/GetImage.ashx?width=640&crop=0&image=@groupImage" class="overflow-hidden@(imageRoundedPill) img-fluid image-zoom-lg-2-hover" style="object-fit: cover" alt="@node.Name">
-												</div>
-											}
-
-											<div class="@(ratioCssClass)" @ratioVariable>
-												<div class="d-flex flex-column align-items-center justify-content-center fs-7 text-center p-2">
-													@node.Name
-												</div>
-											</div>
-										</div>
-									}
-
-									@if (layout == "poster")
-									{
-										<div class="d-flex flex-column justify-content-center align-items-center h-100 position-relative">
-											@if (!string.IsNullOrWhiteSpace(groupImage))
-											{
-												<div class="@(ratioCssClass)" @ratioVariable>
-													<img loading="lazy" src="/Admin/Public/GetImage.ashx?width=640&crop=0&image=@groupImage" class="img-fluid image-zoom-lg-2-hover" style="object-fit: cover" alt="@node.Name">
-												</div>
-												<div class="position-absolute text-center fs-5">
-													@node.Name
-												</div>
-											}
-											else
-											{
-												<div class="@(ratioCssClass)" @ratioVariable>
-													<div class="d-flex flex-column align-items-center justify-content-center text-center fs-5 p-2">
-														@node.Name
-													</div>
-												</div>
-											}
-										</div>
-									}
-								</a>
-							</li>
-						}
-					}
-				</ul>
-
-
-				@if (groupsCount > 10)
-				{
-					<button type="button" title="Slide to previous" class="slider-nav"></button>
-					<button type="button" title="Slide to next" class="slider-nav slider-nav-next"></button>
-				}
-
-				<script type="module" src="/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
-				<script type="module">
-					swift.AssetLoader.Load('/Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
-					document.addEventListener('load.swift.assetloader', function () {
-						swiffyslider.init()
-					});
-				</script>
-			</nav>
-		}
-		else
-		{
-			<nav class="d-flex flex-wrap gap-3 align-items-center @horizontalAlignment overflow-x-auto@(paddingClass)@(theme)" aria-label="@Translate("Product groups")">
-				@foreach (var node in nodes)
-				{
-					string groupImage = "";
-					IList<FieldValueViewModel> groupFields = node.GetProductGroup().GroupFields;
-
-					if (layout == "pill-button" && groupFields != null)
-					{
-						foreach (FieldValueViewModel field in groupFields)
-						{
-							if (field.SystemName == "ProductGroupNavigationImage" && !string.IsNullOrEmpty(field.Value.ToString()))
-							{
-								groupImage = "/Files/Images/" + field.Value.ToString();
-							}
-						}
-					}
-
-					bool showGroup = false;
-					if (groupFields != null)
-					{
-						foreach (FieldValueViewModel field in groupFields)
-						{
-							if (field.SystemName == "SelectedGroup" && !string.IsNullOrEmpty(field.Value.ToString()))
-							{
-								if (Convert.ToBoolean(field.Value.ToString()))
-								{
-									showGroup = true;
-								}
-							}
-						}
-					}
-
-					if (showGroup)
-					{
-						<a href="@node.Link" tabindex="-1" class="btn btn-secondary rounded-pill @(@groupTheme)">
-							<div class="d-flex flex-row align-items-center">
-								@if (!string.IsNullOrWhiteSpace(groupImage))
-								{
-									if (Path.GetExtension(groupImage).ToLower() == ".svg")
-									{
-										<div class="icon-3 me-2" style="width: 35px">
-											@ReadFile(groupImage)
-										</div>
-									}
-									else
-									{
-										<div class="me-3" style="width: 35px">
-											<div class="@ratioCssClass" @(ratioVariable)>
-												<img loading="lazy" src="/Admin/Public/GetImage.ashx?width=35&crop=0&image=@groupImage" style="object-fit: cover" alt="">
-											</div>
-										</div>
-									}
-								}
-								<div class="fs-7 text-center text-nowrap">
-									@node.Name
-								</div>
-							</div>
-						</a>
-					}
-				}
-			</nav>
-		}
-	}
-}
-
-
