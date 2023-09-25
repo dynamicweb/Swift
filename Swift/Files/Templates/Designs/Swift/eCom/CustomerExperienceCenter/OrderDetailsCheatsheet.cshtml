@@ -1,34 +1,235 @@
 @inherits ViewModelTemplate<OrderViewModel>
-@using System.Globalization
 @using System.Linq
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.Frontend
 @using Dynamicweb.Ecommerce.Orders
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using System.Globalization;
+@using System.Collections.Generic;
+@using System.Text;
+
+@functions {
+
+	string GetPriceLineTitle(string prefix, (string formattedPropertyName, string formattedPropertyValue, string propertyName, double propertyValue) propertyTuple)
+	{
+		var (formattedPropertyName, formattedPropertyValue, propertyName, propertyValue) = propertyTuple;
+		var title = $"{prefix}.{formattedPropertyName} = {formattedPropertyValue}";
+		if (!string.IsNullOrEmpty(propertyName) && propertyValue != default)
+		{
+			title += $"\n{prefix}.{propertyName} = {propertyValue.ToString(CultureInfo.InvariantCulture)}";
+		}
+		return title;
+	}
+
+	List<Dictionary<string, object>> GetPriceLineDictionary(PriceViewModel price, string prefix)
+	{
+		var properties = new List<(string formattedPropertyName, string formattedPropertyValue, string propertyName, double propertyValue)>
+{
+		("ShowPricesWithVat", price.ShowPricesWithVat.ToString(), null, default),
+		("PriceWithoutVatFormatted", price.PriceWithoutVatFormatted, "PriceWithoutVat", price.PriceWithoutVat),
+		("PriceWithVatFormatted", price.PriceWithVatFormatted, "PriceWithVat", price.PriceWithVat),
+		("VatFormatted", price.VatFormatted, "Vat", price.Vat),
+		("VATPercentFormatted", price.VATPercentFormatted, "VATPercent", price.VATPercent)
+		};
+
+		var priceLinesToBeRendered = new List<Dictionary<string, object>>();
+
+		foreach (var property in properties)
+		{
+			var title = GetPriceLineTitle(prefix, property);
+			var dictionary = new Dictionary<string, object>
+	{
+			{"title", title},
+			{"formattedPropertyName", property.formattedPropertyName},
+			{"formattedPropertyValue", property.formattedPropertyValue},
+			{"propertyName", property.propertyName ?? null},
+			{"propertyValue", property.propertyValue != default ? (object)property.propertyValue : null}
+			};
+			priceLinesToBeRendered.Add(dictionary);
+		}
+
+		return priceLinesToBeRendered;
+	}
+
+	string RenderPrices(PriceViewModel price, string prefix)
+	{
+		var isPriceZero = price.Price == 0.00;
+		var priceLineDict = GetPriceLineDictionary(price, prefix);
+
+		StringBuilder pricesHtml = new StringBuilder();
+		string headerTitle = $"Property: {prefix}.*";
+		string headerCssClass = isPriceZero ? "opacity-50" : "";
+		string spanTitle = $"{prefix}.PriceFormatted = {price.PriceFormatted}\n{prefix}.Price = {price.Price}";
+
+		pricesHtml.Append($"<div title=\"{headerTitle}\" class=\"{headerCssClass}\">");
+		pricesHtml.Append($"<span class=\"fw-bold\" title={spanTitle}>{price.PriceFormatted}</span>");
+
+		foreach (var line in priceLineDict)
+		{
+			pricesHtml.Append($"<br/>");
+			var title = line["title"];
+			var formattedPropertyName = line["formattedPropertyName"];
+			var formattedPropertyValue = line["formattedPropertyValue"];
+
+			pricesHtml.Append($"<small title=\"{title}\" class=\"text-muted\">");
+			pricesHtml.Append($"<span class=\"fw-bold\">{formattedPropertyName}:</span> {formattedPropertyValue.ToString()}");
+			pricesHtml.Append("</small>");
+		}
+		pricesHtml.Append("</div>");
+		return pricesHtml.ToString();
+	}
+
+	public static bool IsDiscountOrderline(OrderLineViewModel orderline)
+	{
+		return IsOrderDiscountOrderline(orderline) || IsProductDiscountOrderline(orderline);
+	}
+
+	public static bool IsOrderDiscountOrderline(OrderLineViewModel orderline)
+	{
+		return orderline.OrderLineType == OrderLineType.Discount;
+	}
+
+	public static bool IsProductDiscountOrderline(OrderLineViewModel orderline)
+	{
+		return orderline.OrderLineType == OrderLineType.ProductDiscount;
+	}
+
+	public static bool IsTaxOrderline(OrderLineViewModel orderline)
+	{
+		return orderline.OrderLineType == OrderLineType.Tax;
+	}
+
+	//Static list return functions
+
+	public Dictionary<string, string> GetCustomerDetails()
+	{
+		return new Dictionary<string, string>
+		{
+			{"CustomerName", Model.CustomerName?.ToString() ?? ""},
+			{"CustomerFirstName", Model.CustomerFirstName?.ToString() ?? ""},
+			{"CustomerMiddleName", Model.CustomerMiddleName?.ToString() ?? ""},
+			{"CustomerSurname", Model.CustomerSurname?.ToString() ?? ""},
+			{"CustomerInitials", Model.CustomerInitials?.ToString() ?? ""},
+			{"CustomerTitle", Model.CustomerTitle?.ToString() ?? ""},
+			{"CustomerPrefix", Model.CustomerPrefix?.ToString() ?? ""},
+			{"CustomerAddress", Model.CustomerAddress?.ToString() ?? ""},
+			{"CustomerAddress2", Model.CustomerAddress2?.ToString() ?? ""},
+			{"CustomerHouseNumber", Model.CustomerHouseNumber?.ToString() ?? ""},
+			{"CustomerCity", Model.CustomerCity?.ToString() ?? ""},
+			{"CustomerRegion", Model.CustomerRegion?.ToString() ?? ""},
+			{"CustomerZip", Model.CustomerZip?.ToString() ?? ""},
+			{"CustomerCountry", Model.CustomerCountry?.ToString() ?? ""},
+			{"CustomerCountryCode", Model.CustomerCountryCode?.ToString() ?? ""},
+			{"CustomerCompany", Model.CustomerCompany?.ToString() ?? ""},
+			{"CustomerEmail", Model.CustomerEmail?.ToString() ?? ""},
+			{"CustomerPhone", Model.CustomerPhone?.ToString() ?? ""},
+			{"CustomerCell", Model.CustomerCell?.ToString() ?? ""}
+		};
+	}
+
+	public Dictionary<string, string> GetCustomerDeliveryDetails()
+	{
+		return new Dictionary<string, string>
+		{
+			{"DeliveryName", Model.DeliveryName?.ToString() ?? ""},
+			{"DeliveryFirstName", Model.DeliveryFirstName?.ToString() ?? ""},
+			{"DeliveryMiddleName", Model.DeliveryMiddleName?.ToString() ?? ""},
+			{"DeliverySurname", Model.DeliverySurname?.ToString() ?? ""},
+			{"DeliveryInitials", Model.DeliveryInitials?.ToString() ?? ""},
+			{"DeliveryTitle", Model.DeliveryTitle?.ToString() ?? ""},
+			{"DeliveryPrefix", Model.DeliveryPrefix?.ToString() ?? ""},
+			{"DeliveryAddress", Model.DeliveryAddress?.ToString() ?? ""},
+			{"DeliveryAddress2", Model.DeliveryAddress2?.ToString() ?? ""},
+			{"DeliveryHouseNumber", Model.DeliveryHouseNumber?.ToString() ?? ""},
+			{"DeliveryCity", Model.DeliveryCity?.ToString() ?? ""},
+			{"DeliveryRegion", Model.DeliveryRegion?.ToString() ?? ""},
+			{"DeliveryZip", Model.DeliveryZip?.ToString() ?? ""},
+			{"DeliveryCountry", Model.DeliveryCountry?.ToString() ?? ""},
+			{"DeliveryCountryCode", Model.DeliveryCountryCode?.ToString() ?? ""},
+			{"DeliveryCompany", Model.DeliveryCompany?.ToString() ?? ""},
+			{"DeliveryEmail", Model.DeliveryEmail?.ToString() ?? ""},
+			{"DeliveryPhone", Model.DeliveryPhone?.ToString() ?? ""},
+			{"DeliveryCell", Model.DeliveryCell?.ToString() ?? ""}
+		};
+	}
+
+	public Dictionary<string, string> GetOrderDetails()
+	{
+		return new Dictionary<string, string>
+		{
+			{"Id", Model.Id?.ToString() ?? ""},
+			{"IntegrationOrderId", Model.IntegrationOrderId?.ToString() ?? ""},
+			{"ParentOrderId", Model.ParentOrderId?.ToString() ?? ""},
+			{"CustomerUserId", Model.CustomerUserId.ToString() ?? ""},
+			{"Ecom:Order.Customer.AccessUserUserName", "Missing in ViewModel"},
+			{"SecondaryUserId", Model.SecondaryUserId.ToString() ?? ""},
+			{"SecondaryUserName", Model.SecondaryUserName?.ToString() ?? ""},
+			{"Reference", Model.Reference?.ToString() ?? ""},
+			{"ShopId", Model.ShopId?.ToString() ?? ""},
+			{"StateId", Model.StateId?.ToString() ?? ""},
+			{"StateName", Model.StateName?.ToString() ?? ""},
+			{"StateDescription", Model.StateDescription?.ToString() ?? ""},
+			{"DisplayName", Model.DisplayName?.ToString() ?? ""}
+		};
+	}
+
+	public Dictionary<string, Func<string>> GetOrderDatesDetails()
+	{
+		return new Dictionary<string, Func<string>>
+		{
+			{ "Model.CreatedAt", () => Model.CreatedAt.ToString() ?? "" },
+			{ "Model.Modified", () => Model.Modified.ToString() ?? "" },
+			{ "Model.CompletedDate", () => Model.CompletedDate?.ToString() ?? "" },
+			{ "Model.ShippingDate", () => Model.ShippingDate?.ToString() ?? "" },
+			{ "GetString(\"Ecom:Order.Delivery.isPickupPoint\")", () => "Missing in ViewModel" },
+			{ "Comment", () => Model.CustomerComment?.ToString() ?? "" },
+			{ "GetString(\"Ecom:Order.IsBasedOnRecurringOrder\")", () => "Missing in ViewModel" },
+			{ "GetString(\"Ecom:Order.IsRecurringOrder\")", () => "Missing in ViewModel" },
+			{ "Model.RecurringOrderId", () => Model.RecurringOrderId?.ToString() ?? "" },
+			{ "GetString(\"Ecom:Order.PointsToUse\")", () => "Missing in ViewModel" },
+			{ "GetString(\"Ecom:Order.RewardTotalPoints\")", () => "Missing in ViewModel" },
+			{ "GetString(\"Ecom:Order.TotalPoints\")", () => "Missing in ViewModel" }
+		};
+	}
+
+	public Dictionary<string, string> GetOrderInClosingDetails()
+	{
+		return new Dictionary<string, string>
+		{
+			{ "Model.Volume", Model.Volume.ToString() ?? "" },
+			{ "Model.Weight", Model.Weight.ToString() ?? "" },
+			{ "Model.CustomerAccepted", Model.CustomerAccepted?.ToString() ?? "" },
+			{ "Model.CustomerEan", Model.CustomerEan?.ToString() ?? "" },
+			{ "Model.CustomerRefId", Model.CustomerRefId?.ToString() ?? "" },
+			{ "Model.VoucherCode", Model.VoucherCode?.ToString() ?? "" },
+		};
+	}
+}
+
 
 <section>
 	<h2 class="mt-5">@Translate("Order Details Cheat Sheet")</h2>
 	<h5>@Translate("Hover over text for more details")</h5>
-	
+
 	<h1 class="mt-5">@Translate("Order ID"): @Model.Id</h1>
 	<table class="table table-clean table-hover table-bordered text-break">
 		<thead>
-		<tr>
-			<th rowspan="2">@Translate("Name")</th>
-            <th rowspan="2">@Translate("Qty")</th>
-            <th colspan="3" class="text-center">@Translate("Unit price")</th>
-            <th colspan="3" class="text-center">@Translate("Total price")</th>
-		</tr>
-		<tr>
-			<!--Unit price-->
-            <th>@Translate("Without Discount")</th>
-            <th>@Translate("Discount")</th>
-            <th>@Translate("With Discount / Price")</th>
-            <!--Total price-->
-            <th>@Translate("Without Discount")</th>
-            <th>@Translate("Discount")</th>
-            <th>@Translate("With Discount / Price")</th>
-		</tr>
+			<tr>
+				<th rowspan="2">@Translate("Name")</th>
+				<th rowspan="2">@Translate("Qty")</th>
+				<th colspan="3" class="text-center">@Translate("Unit price")</th>
+				<th colspan="3" class="text-center">@Translate("Total price")</th>
+			</tr>
+			<tr>
+				<!--Unit price-->
+				<th>@Translate("Without Discount")</th>
+				<th>@Translate("Discount")</th>
+				<th>@Translate("With Discount / Price")</th>
+				<!--Total price-->
+				<th>@Translate("Without Discount")</th>
+				<th>@Translate("Discount")</th>
+				<th>@Translate("With Discount / Price")</th>
+			</tr>
 		</thead>
 		@foreach (var orderline in Model.OrderLines)
 		{
@@ -39,25 +240,107 @@
 				CountryCode = Model.DeliveryCountryCode,
 				ShopId = Model.ShopId
 			};
-		
+
 			var isDiscount = IsProductDiscountOrderline(orderline);
 			var rowCssClass = isDiscount ? "bg-secondary text-white" : IsTaxOrderline(orderline) ? "bg-light text-dark" : "bg-primary text-white";
+			var isChildOrderline = !string.IsNullOrEmpty(orderline.ParentLineId);
+			var innerPadding = isChildOrderline ? "ps-4" : "";
 
 			<tr class="@rowCssClass">
-				<td>@RenderOrderlineName(orderline)</td>
+				<td>
+					<div class="@innerPadding">
+						@if (IsDiscountOrderline(orderline))
+						{
+							<span>@Translate("DISCOUNT"): </span>
+						}
+
+						<span>@orderline.ProductName</span>
+						@if (!string.IsNullOrEmpty(orderline.ProductNumber))
+						{
+							var productNumber = orderline.ProductNumber;
+							if (!string.IsNullOrEmpty(orderline.ProductVariantName))
+							{
+								productNumber += $" - {orderline.ProductVariantName}";
+							}
+							<br />
+							<small>@productNumber</small>
+						}
+
+						<br />
+						<small class="text-muted"><span class="fw-bold">@Translate("Orderline Id"):</span> @orderline.Id</small>
+
+						<br />
+						<small class="text-muted"><span class="fw-bold">@Translate("Orderline type"):</span> @orderline.OrderLineType (@orderline.OrderLineType.GetHashCode())</small>
+
+						@if (isChildOrderline)
+						{
+							<br />
+							<small class="text-muted"><span class="fw-bold">@Translate("Parent Orderline Id"):</span> @orderline.ParentLineId</small>
+						}
+					</div>
+
+				</td>
 				<td>@orderline.Quantity</td>
 				<!--Unit price-->
-				<td>@RenderOrderlineUnitPriceWithoutDiscount(orderline)</td>
-				<td>@RenderOrderlineUnitDiscount(orderline)</td>
-				<td>@RenderOrderlineUnitPriceWithDiscount(orderline)</td>
+				<td>
+					@*RenderOrderlineUnitPriceWithoutDiscount*@
+					@if (IsDiscountOrderline(orderline) || IsTaxOrderline(orderline))
+					{
+						<small class="text-muted">@Translate("Same as") <span class="fw-bold">@Translate("With Discount / Price")</span></small>
+					}
+					else
+					{
+						@RenderPrices(orderline.UnitPrice, "OrderLineViewModel orderline.UnitPrice")
+					}
+
+				</td>
+				<td>
+					@*RenderOrderlineUnitDiscount*@
+					@if (IsDiscountOrderline(orderline) || IsTaxOrderline(orderline))
+					{
+						<small class="text-muted">@Translate("Not applicable")</small>
+					}
+					else
+					{
+						@RenderPrices(orderline.UnitDiscount, "OrderLineViewModel orderline.UnitDiscount")
+					}
+				</td>
+				<td>
+					@*RenderOrderlineUnitPriceWithDiscount*@
+					@RenderPrices(orderline.UnitPriceWithProductDiscount, "OrderLineViewModel orderline.UnitPriceWithProductDiscount")
+				</td>
 				<!--Total price-->
-				<td>@RenderOrderlineTotalPriceWithoutDiscount(orderline)</td>
-				<td>@RenderOrderlineTotalDiscount(orderline)</td>
-				<td>@RenderOrderlineTotalPriceWithDiscount(orderline)</td>
+				<td>
+					@*RenderOrderlineTotalPriceWithoutDiscount*@
+					@if (IsDiscountOrderline(orderline) || IsTaxOrderline(orderline))
+					{
+						<small class="text-muted">@Translate("Same as") <span class="fw-bold">@Translate("With Discount / Price")</span></small>
+					}
+					else
+					{
+						@RenderPrices(orderline.Price, "OrderLineViewModel orderline.Price")
+					}
+				</td>
+				<td>
+					@*RenderOrderlineTotalDiscount*@
+					@if (IsDiscountOrderline(orderline) || IsTaxOrderline(orderline))
+					{
+						<small class="text-muted">@Translate("Not applicable")</small>
+					}
+					else
+					{
+						@RenderPrices(orderline.TotalDiscount, "OrderLineViewModel orderline.TotalDiscount")
+					}
+
+				</td>
+				<td>
+					@*RenderOrderlineTotalPriceWithDiscount*@
+					@RenderPrices(orderline.TotalPriceWithProductDiscounts, "OrderLineViewModel orderline.TotalPriceWithProductDiscounts")
+				</td>
 			</tr>
 		}
 		<tr>
-			<td colspan="5">@Translate("Total of original price / Total product discounts / Total with all product discounts*")<br/><small>@Translate("*Price after product discounts, before order discounts, fees and taxes")</small></td>
+			<td colspan="5">@Translate("Total of original price / Total product discounts / Total with all product discounts*")<br /><small>@Translate("*Price after product discounts, before order discounts, fees and taxes")</small></td>
 			<td class="bg-success text-white">@RenderPrices(Model.TotalPriceWithoutDiscountsFeesAndTaxes, "Model.TotalPriceWithoutDiscountsFeesAndTaxes")</td>
 			<td class="bg-danger text-white">@RenderPrices(Model.TotalProductDiscount, "Model.TotalProductDiscount")</td>
 			<td class="bg-success text-white">@RenderPrices(Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes, "Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes")</td>
@@ -66,19 +349,19 @@
 		<tr>
 			<td colspan="6">
 				<span>@Translate("Order discount total")</span>
-				<br/>
+				<br />
 				<small>@Translate("Sum of all order discounts (inclusive and exclusive)")</small>
-				<br/>
-                <small class="text-muted">(Model.TotalOrderDiscount)</small>
+				<br />
+				<small class="text-muted">(Model.TotalOrderDiscount)</small>
 			</td>
 			<td colspan="2" class="bg-warning text-dark" colspan="2">@RenderPrices(Model.TotalOrderDiscount, "Model.TotalOrderDiscount")</td>
 		</tr>
 		<tr>
 			<td colspan="5">
 				<span>@Translate("Sub totals")</span>
-				<br/>
+				<br />
 				<small>@Translate("Sum of all original prices, discounts and discounted price. Before fees and taxes")</small>
-				<br/>
+				<br />
 				<small class="text-muted">(Model.TotalPriceBeforeFeesAndTaxes)</small>
 			</td>
 			<td class="bg-dark text-white">@RenderPrices(Model.TotalPriceWithoutDiscountsFeesAndTaxes, "Model.TotalPriceWithoutDiscountsFeesAndTaxes")</td>
@@ -88,7 +371,7 @@
 		<tr>
 			<td colspan="7">
 				<span>@Translate("Payment")</span>
-				<br/>
+				<br />
 				<small><span class="fw-bold">@Translate("Id"):</span> @(Model.PaymentMethod is object ? Model.PaymentMethod.Id : "")</small>
 			</td>
 			<td>@RenderPrices(Model.PaymentFee, "Model.PaymentFee")</td>
@@ -96,7 +379,7 @@
 		<tr>
 			<td colspan="7">
 				<span>@Translate("Shipping")</span>
-				<br/>
+				<br />
 				<small><span class="fw-bold">@Translate("Id"):</span> @(Model.ShippingMethod is object ? Model.ShippingMethod.Id : "")</small>
 			</td>
 			<td>@RenderPrices(Model.ShippingFee, "Model.ShippingFee")</td>
@@ -104,7 +387,7 @@
 		<tr>
 			<td colspan="7">
 				<span>@Translate("Taxes")</span>
-				<br/>
+				<br />
 				<small class="text-muted">(Model.TotalTaxes)</small>
 			</td>
 			<td>@RenderPrices(Model.TotalTaxes, "Model.TotalTaxes")</td>
@@ -119,83 +402,68 @@
 			<td class="bg-info text-dark">@RenderPrices(Model.Price, "Model.Price")</td>
 		</tr>
 	</table>
-	
+
 	<table class="table table-bordered text-break">
 		<tr>
-        	<td width="12.5%" class="bg-primary text-white"></td>
-        	<td width="12.5%" class="bg-secondary text-white"></td>
-        	<td width="12.5%" class="bg-light text-dark"></td>
-        	<td width="12.5%" class="bg-danger text-white"></td>
-        	<td width="12.5%" class="bg-warning text-dark"></td>
-        	<td width="12.5%" class="bg-success text-white"></td>
-        	<td width="12.5%" class="bg-dark text-white"></td>
-        	<td width="12.5%" class="bg-info text-dark"></td>
-        </tr>
+			<td width="12.5%" class="bg-primary text-white"></td>
+			<td width="12.5%" class="bg-secondary text-white"></td>
+			<td width="12.5%" class="bg-light text-dark"></td>
+			<td width="12.5%" class="bg-danger text-white"></td>
+			<td width="12.5%" class="bg-warning text-dark"></td>
+			<td width="12.5%" class="bg-success text-white"></td>
+			<td width="12.5%" class="bg-dark text-white"></td>
+			<td width="12.5%" class="bg-info text-dark"></td>
+		</tr>
 		<tr>
 			<td>@Translate("Product orderline")</td>
-            <td>@Translate("Discount orderline")</td>
-            <td>@Translate("Tax orderline")</td>
-            <td>@Translate("Product discount price")</td>
-            <td>@Translate("Order discount price")</td>
-            <td>@Translate("Product price - with or without discount")</td>
-            <td>@Translate("Subtotals of product prices, discounts and product prices with discount - before any fees")</td>
-            <td>@Translate("Total order price with discounts, vat, taxes, fees and all.")</td>
+			<td>@Translate("Discount orderline")</td>
+			<td>@Translate("Tax orderline")</td>
+			<td>@Translate("Product discount price")</td>
+			<td>@Translate("Order discount price")</td>
+			<td>@Translate("Product price - with or without discount")</td>
+			<td>@Translate("Subtotals of product prices, discounts and product prices with discount - before any fees")</td>
+			<td>@Translate("Total order price with discounts, vat, taxes, fees and all.")</td>
 		</tr>
 	</table>
-	
+
 	<div class="grid">
 		<div class="g-col-12 g-col-lg-6">
 			<h2 class="mt-5">@Translate("Billing Address")</h2>
 			<table class="table table-clean table-striped table-hover text-break">
-				@RenderTableRow(Model.CustomerName, "Model.CustomerName")
-                @RenderTableRow(Model.CustomerFirstName, "Model.CustomerFirstName")
-                @RenderTableRow(Model.CustomerMiddleName, "Model.CustomerMiddleName")
-                @RenderTableRow(Model.CustomerSurname, "Model.CustomerSurname")
-                @RenderTableRow(Model.CustomerInitials, "Model.CustomerInitials")
-                @RenderTableRow(Model.CustomerTitle, "Model.CustomerTitle")
-                @RenderTableRow(Model.CustomerPrefix, "Model.CustomerPrefix")
-                @RenderTableRow(Model.CustomerAddress, "Model.CustomerAddress")
-                @RenderTableRow(Model.CustomerAddress2, "Model.CustomerAddress2")
-                @RenderTableRow(Model.CustomerHouseNumber, "Model.CustomerHouseNumber")
-                @RenderTableRow(Model.CustomerCity, "Model.CustomerCity")
-                @RenderTableRow(Model.CustomerRegion, "Model.CustomerRegion")
-                @RenderTableRow(Model.CustomerZip, "Model.CustomerZip")
-                @RenderTableRow(Model.CustomerCountry, "Model.CustomerCountry")
-                @RenderTableRow(Model.CustomerCountryCode, "Model.CustomerCountryCode")
-                @RenderTableRow(Model.CustomerCompany, "Model.CustomerCompany")
-                @RenderTableRow(Model.CustomerEmail, "Model.CustomerEmail")
-                @RenderTableRow(Model.CustomerPhone, "Model.CustomerPhone")
-                @RenderTableRow(Model.CustomerCell, "Model.CustomerCell")
-                @RenderTableRow("Customer.Fax")
+				@foreach (var detail in GetCustomerDetails())
+				{
+					<tr>
+						<th>@detail.Key</th>
+						<td>@detail.Value</td>
+					</tr>
+				}
+				<th>
+					<small class="text-danger">@($"GetString(\"Ecom:Order.Customer.Fax\")")</small>
+				</th>
+				<td class="text-danger">@Translate("Missing in ViewModel")</td>
+				</tr>
 			</table>
 		</div>
 		<div class="g-col-12 g-col-lg-6">
 			<h2 class="mt-5">@Translate("Shipping/Delivery Address")</h2>
 			<table class="table table-clean table-striped table-hover text-break">
-				@RenderTableRow(Model.DeliveryName, "Model.DeliveryName")
-				@RenderTableRow(Model.DeliveryFirstName, "Model.DeliveryFirstName")
-				@RenderTableRow(Model.DeliveryMiddleName, "Model.DeliveryMiddleName")
-				@RenderTableRow(Model.DeliverySurname, "Model.DeliverySurname")
-				@RenderTableRow(Model.DeliveryInitials, "Model.DeliveryInitials")
-				@RenderTableRow(Model.DeliveryTitle, "Model.DeliveryTitle")
-				@RenderTableRow(Model.DeliveryPrefix, "Model.DeliveryPrefix")
-				@RenderTableRow(Model.DeliveryAddress, "Model.DeliveryAddress")
-				@RenderTableRow(Model.DeliveryAddress2, "Model.DeliveryAddress2")
-				@RenderTableRow(Model.DeliveryHouseNumber, "Model.DeliveryHouseNumber")
-				@RenderTableRow(Model.DeliveryCity, "Model.DeliveryCity")
-				@RenderTableRow(Model.DeliveryRegion, "Model.DeliveryRegion")
-				@RenderTableRow(Model.DeliveryZip, "Model.DeliveryZip")
-				@RenderTableRow(Model.DeliveryCountry, "Model.DeliveryCountry")
-				@RenderTableRow(Model.DeliveryCountryCode, "Model.DeliveryCountryCode")
-				@RenderTableRow(Model.DeliveryCompany, "Model.DeliveryCompany")
-				@RenderTableRow(Model.DeliveryEmail, "Model.DeliveryEmail")
-				@RenderTableRow(Model.DeliveryPhone, "Model.DeliveryPhone")
-				@RenderTableRow(Model.DeliveryCell, "Model.DeliveryCell")
-				@RenderTableRow("Delivery.Fax")
+				@foreach (var detail in GetCustomerDeliveryDetails())
+				{
+					<tr>
+						<th>@detail.Key</th>
+						<td>@detail.Value</td>
+					</tr>
+				}
+				<tr>
+					<th>
+						<small class="text-danger">@($"GetString(\"Ecom:Order.Delivery.Fax\")")</small>
+					</th>
+					<td class="text-danger">@Translate("Missing in ViewModel")</td>
+				</tr>
 			</table>
 		</div>
 	</div>
-	
+
 	<h2 class="mt-5">@Translate("Payment method")</h2>
 	@if (Model.PaymentMethod is object)
 	{
@@ -213,19 +481,19 @@
 					<td width="100">
 						@if (!string.IsNullOrEmpty(Model.PaymentMethod.Icon) && !Model.PaymentMethod.Icon.Equals("/Files"))
 						{
-							<img width="100" src="@Model.PaymentMethod.Icon"/>
+							<img width="100" src="@Model.PaymentMethod.Icon" />
 						}
 					</td>
 					<td>
 						<h6>@Model.PaymentMethod.Name - @Model.PaymentMethod.Id</h6>
-						<small><span class="fw-bold">@Translate("Description"):</span> @Model.PaymentMethod.Description</small><br/>
+						<small><span class="fw-bold">@Translate("Description"):</span> @Model.PaymentMethod.Description</small><br />
 						<small><span class="fw-bold">@Translate("Code"):</span> @Model.PaymentMethod.Code</small>
 					</td>
 					<td>
 						@RenderPrices(Model.PaymentFee, "Model.PaymentFee")
 					</td>
 					<td>
-						<small><span class="fw-bold">@Translate("Code"):</span> @Model.PaymentMethod.TermsCode</small><br/>
+						<small><span class="fw-bold">@Translate("Code"):</span> @Model.PaymentMethod.TermsCode</small><br />
 						<small><span class="fw-bold">@Translate("Description"):</span> @Model.PaymentMethod.TermsDescription</small>
 					</td>
 				</tr>
@@ -236,7 +504,7 @@
 	{
 		<div class="p-3 mb-2 bg-secondary text-danger">@Translate("PaymentMethodViewModel is NULL")</div>
 	}
-	
+
 	<h2 class="mt-5">@Translate("Shipping method")</h2>
 	@if (Model.ShippingMethod is object)
 	{
@@ -256,12 +524,12 @@
 					<td width="100">
 						@if (!string.IsNullOrEmpty(Model.ShippingMethod.Icon) && !Model.ShippingMethod.Icon.Equals("/Files"))
 						{
-							<img width="100" src="@Model.ShippingMethod.Icon"/>
+							<img width="100" src="@Model.ShippingMethod.Icon" />
 						}
 					</td>
 					<td>
 						<h6>@Model.ShippingMethod.Name - @Model.ShippingMethod.Id</h6>
-						<small><span class="fw-bold">@Translate("Description"):</span> @Model.ShippingMethod.Description</small><br/>
+						<small><span class="fw-bold">@Translate("Description"):</span> @Model.ShippingMethod.Description</small><br />
 						<small><span class="fw-bold">@Translate("Code"):</span> @Model.ShippingMethod.Code</small>
 					</td>
 					<td>
@@ -274,9 +542,9 @@
 						@Model.ShippingMethod.PriceOverMaxWeight
 					</td>
 					<td>
-						<small><span class="fw-bold">@Translate("Name"):</span> @Model.ShippingMethod.AgentName</small><br/>
-						<small><span class="fw-bold">@Translate("Code"):</span> @Model.ShippingMethod.AgentCode</small><br/>
-						<small><span class="fw-bold">@Translate("Service Code"):</span> @Model.ShippingMethod.AgentServiceCode</small><br/>
+						<small><span class="fw-bold">@Translate("Name"):</span> @Model.ShippingMethod.AgentName</small><br />
+						<small><span class="fw-bold">@Translate("Code"):</span> @Model.ShippingMethod.AgentCode</small><br />
+						<small><span class="fw-bold">@Translate("Service Code"):</span> @Model.ShippingMethod.AgentServiceCode</small><br />
 						<small><span class="fw-bold">@Translate("Service Description"):</span> @Model.ShippingMethod.AgentServiceDescription</small>
 					</td>
 				</tr>
@@ -292,108 +560,156 @@
 		<div class="g-col-12 g-col-lg-4">
 			<h2 class="mt-5">@Translate("Payment Transaction Info")</h2>
 			<table class="table table-clean table-striped table-hover text-break">
-				@RenderTableRow(Model.TransactionCardnumber, "Model.TransactionCardnumber")
-				@RenderTableRow(Model.TransactionCardType, "Model.TransactionCardType")
-				@RenderTableRow(Model.TransactionNumber, "Model.TransactionNumber")
-				@RenderTableRow(Model.TransactionStatus, "Model.TransactionStatus")
+				<tr>
+					<th>Model.TransactionCardnumber</th>
+					<td>@(Model.TransactionCardnumber?.ToString() ?? "")</td>
+				</tr>
+				<tr>
+					<th>Model.TransactionCardType</th>
+					<td>@(Model.TransactionCardType?.ToString() ?? "")</td>
+				</tr>
+				<tr>
+					<th>Model.TransactionNumber</th>
+					<td>@(Model.TransactionNumber?.ToString() ?? "")</td>
+				</tr>
+				<tr>
+					<th>Model.TransactionStatus</th>
+					<td>@(Model.TransactionStatus?.ToString() ?? "")</td>
+				</tr>
 			</table>
 		</div>
 		<div class="g-col-12 g-col-lg-8">
-        	<h2 class="mt-5">@Translate("Track & Trace")</h2>
-            <table class="table table-bordered table-clean text-break">
-                <thead>
-	                <tr>
-                		<th>@Translate("TrackTraceName")</th>
-                		<th>@Translate("TrackTraceNumber")</th>
-                		<th>@Translate("TrackTraceUrl")</th>
-	                </tr>
-                </thead>
-                <tbody>
-                	<tr>
-	                    @*<td>@Model.TrackAndTraceName</td>
-	                    <td>@Model.TrackAndTraceNumber</td>
-                		<td>@Model.TrackAndTraceURL</td>*@
-                	</tr>
-                </tbody>
-            </table>		
-        </div>
-	</div>
-	
-	<div class="grid">
-		<div class="g-col-12">
-        	<h2 class="mt-5">@Translate("Standard fields")</h2>
-        </div>
-		<div class="g-col-12 g-col-lg-4">
-        	<table class="table table-clean table-striped table-hover text-break">
-                <tr>
-                    <th>@Translate("SystemName")</th>
-                    <th>@Translate("Value")</th>
-                </tr>
-                @RenderTableRow(Model.Id, "Model.Id")
-                @RenderTableRow(Model.IntegrationOrderId, "Model.IntegrationOrderId")
-                @RenderTableRow(Model.ParentOrderId, "Model.ParentOrderId")
-                @RenderTableRow(Model.CustomerUserId, "Model.CustomerUserId")
-                @RenderTableRow("Customer.AccessUserUserName")
-                @RenderTableRow(Model.SecondaryUserId, "Model.SecondaryUserId")
-                @RenderTableRow(Model.SecondaryUserName, "Model.SecondaryUserName")
-                @RenderTableRow(Model.Reference, "Model.Reference")
-                @RenderTableRow(Model.ShopId, "Model.ShopId")
-                @RenderTableRow(Model.StateId, "Model.StateId")
-                @RenderTableRow(Model.StateName, "Model.StateName")
-                @RenderTableRow(Model.StateDescription, "Model.StateDescription")
-                @RenderTableRow(Model.DisplayName, "Model.DisplayName")
-                @RenderTableRow("SavedCardName")
-            </table>		
-        </div>
-        <div class="g-col-12 g-col-lg-4">
-        	<table class="table table-clean table-striped table-hover text-break">
-                <tr>
-                    <th>@Translate("SystemName")</th>
-                    <th>@Translate("Value")</th>
-                </tr>
-                @RenderTableRow(Model.CreatedAt, "Model.CreatedAt")
-                @RenderTableRow(Model.Modified, "Model.Modified")
-                @RenderTableRow(Model.CompletedDate, "Model.CompletedDate")
-                @RenderTableRow(Model.ShippingDate, "Model.ShippingDate")
-                @RenderTableRow("Delivery.isPickupPoint")
-                @RenderTableRow(Model.CustomerComment, "Comment")
-                @RenderTableRow("IsBasedOnRecurringOrder")
-                @RenderTableRow("IsRecurringOrder")
-                @RenderTableRow(Model.RecurringOrderId, "Model.RecurringOrderId")
-                @RenderTableRow("PointsToUse")
-                @RenderTableRow("RewardTotalPoints")
-                @RenderTableRow("TotalPoints")
-            </table>
-        </div>
-        <div class="g-col-12 g-col-lg-4">
-        	<table class="table table-clean table-striped table-hover text-break">
-                <tr>
-                    <th>@Translate("SystemName")</th>
-                    <th>@Translate("Value")</th>
-                </tr>
-                @RenderTableRow(Model.Volume, "Model.Volume")
-                @RenderTableRow(Model.Weight, "Model.Weight")
-                @RenderTableRow(Model.CustomerAccepted, "Model.CustomerAccepted")
-                @RenderTableRow(Model.CustomerEan, "Model.CustomerEan")
-                @RenderTableRow(Model.CustomerRefId, "Model.CustomerRefId")
-                @RenderTableRow(Model.VoucherCode, "Model.VoucherCode")
-                @RenderTableRow("GiftCardCode")
-            </table>
-        </div>
+			<h2 class="mt-5">@Translate("Track & Trace")</h2>
+			<table class="table table-bordered table-clean text-break">
+				<thead>
+					<tr>
+						<th>@Translate("TrackTraceName")</th>
+						<th>@Translate("TrackTraceNumber")</th>
+						<th>@Translate("TrackTraceUrl")</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						@*<td>@Model.TrackAndTraceName</td>
+							<td>@Model.TrackAndTraceNumber</td>
+							<td>@Model.TrackAndTraceURL</td>*@
+					</tr>
+				</tbody>
+			</table>
+		</div>
 	</div>
 
-	<h2 class="mt-5">@Translate("Custom fields")</h2>
-	<table class="table table-clean table-striped table-hover text-break">
-		<tr>
-			<th>@Translate("Name")</th>
-			<th>@Translate("SystemName")</th>
-			<th>@Translate("Type")</th>
-			<th>@Translate("Value")</th>
-		</tr>
-		@{
-			foreach (var field in Model.OrderFields)
+	<div class="grid">
+		<div class="g-col-12">
+			<h2 class="mt-5">@Translate("Standard fields")</h2>
+		</div>
+		<div class="g-col-12 g-col-lg-4">
+			<table class="table table-clean table-striped table-hover text-break">
+				<tr>
+					<th>@Translate("SystemName")</th>
+					<th>@Translate("Value")</th>
+				</tr>
+				@foreach (var detail in GetOrderDetails())
+				{
+					<tr>
+						<th>
+							@if (detail.Key == "Ecom:Order.Customer.AccessUserUserName")
+							{
+								<small class="text-danger">@detail.Key</small>
+							}
+							else
+							{
+								@detail.Key
+							}
+						</th>
+						<td>
+							@if (detail.Key == "Ecom:Order.Customer.AccessUserUserName")
+							{
+								<span class="text-danger">@detail.Value</span>
+							}
+							else
+							{
+								@detail.Value
+							}
+						</td>
+					</tr>
+				}
+				<tr>
+					<th>
+						<small class="text-danger">@($"GetString(\"Ecom:Order.SavedCardName\")")</small>
+					</th>
+					<td class="text-danger">@Translate("Missing in ViewModel")</td>
+				</tr>
+			</table>
+		</div>
+		<div class="g-col-12 g-col-lg-4">
+			<table class="table table-clean table-striped table-hover text-break">
+				<tr>
+					<th>@Translate("SystemName")</th>
+					<th>@Translate("Value")</th>
+				</tr>
+				<tr>
+					@foreach (var detail in GetOrderDatesDetails())
+					{
+					<tr>
+						<th>
+							@if (detail.Value() == "Missing in ViewModel")
+							{
+								<small class="text-danger">@detail.Key</small>
+							}
+							else
+							{
+								@detail.Key
+							}
+						</th>
+						<td>
+							@if (detail.Value() == "Missing in ViewModel")
+							{
+								<span class="text-danger">@detail.Value()</span>
+							}
+							else
+							{
+								@detail.Value()
+							}
+						</td>
+					</tr>
+				}
+				</table>
+			</div>
+			<div class="g-col-12 g-col-lg-4">
+				<table class="table table-clean table-striped table-hover text-break">
+					<tr>
+						<th>@Translate("SystemName")</th>
+						<th>@Translate("Value")</th>
+					</tr>
+					@foreach (var detail in GetOrderInClosingDetails())
+					{
+						<tr>
+							<th>@detail.Key</th>
+							<td>@detail.Value</td>
+						</tr>
+					}
+					<tr>
+						<th>
+							<small class="text-danger">@($"GetString(\"Ecom:Order.GiftCardCode\")")</small>
+						</th>
+						<td class="text-danger">@Translate("Missing in ViewModel")</td>
+					</tr>
+				</table>
+			</div>
+		</div>
+
+		<h2 class="mt-5">@Translate("Custom fields")</h2>
+		<table class="table table-clean table-striped table-hover text-break">
+			<tr>
+				<th>@Translate("Name")</th>
+				<th>@Translate("SystemName")</th>
+				<th>@Translate("Type")</th>
+				<th>@Translate("Value")</th>
+			</tr>
+			@foreach (var field in Model.OrderFields)
 			{
-				var orderFieldValue = field.Value?.Value?.ToString() ?? ""; 
+				var orderFieldValue = field.Value?.Value?.ToString() ?? "";
 				<tr>
 					<td>@field.Value.Name</td>
 					<td>@field.Value.SystemName</td>
@@ -401,181 +717,5 @@
 					<td>@orderFieldValue</td>
 				</tr>
 			}
-		}
-	</table>
-</section>
-
-@helper RenderPrices(PriceViewModel price, string prefix)
-{
-	var isPriceZero = price.Price == 0.00;
-
-	<div title="Property: @prefix.*" class="@(isPriceZero ? "opacity-50" : "")">
-		<span class="fw-bold" title="@($"{prefix}.PriceFormatted = {price.PriceFormatted}\n{prefix}.Price = {price.Price}")">@price.PriceFormatted</span>
-		
-		@RenderPriceLine(prefix, "ShowPricesWithVat", price.ShowPricesWithVat.ToString())
-		@RenderPriceLine(prefix, "PriceWithoutVatFormatted", price.PriceWithoutVatFormatted, "PriceWithoutVat", price.PriceWithoutVat)
-		@RenderPriceLine(prefix, "PriceWithVatFormatted", price.PriceWithVatFormatted, "PriceWithVat", price.PriceWithVat)
-		@RenderPriceLine(prefix, "VatFormatted", price.VatFormatted, "Vat", price.Vat)
-		@RenderPriceLine(prefix, "VATPercentFormatted", price.VATPercentFormatted, "VATPercent", price.VATPercent)
-	</div>
-}
-
-@helper RenderPriceLine(string prefix, string formattedPropertyName, string formattedPropertyValue, string propertyName = null, double propertyValue = default)
-{
-	var title = $"{prefix}.{formattedPropertyName} = {formattedPropertyValue}";
-	if (!string.IsNullOrEmpty(propertyName) && propertyValue != default)
-	{
-		title += $"\n{prefix}.{propertyName} = {propertyValue.ToString(CultureInfo.InvariantCulture)}";
-	}
-
-	<br />
-	<small title="@title" class="text-muted">
-		<span class="fw-bold">@formattedPropertyName:</span> @formattedPropertyValue
-	</small>
-}
-
-@helper RenderTableRow(object propertyValue, string propertyName)
-{
-	var value = propertyValue != null ? propertyValue.ToString() : "";
-	
-	<tr>
-		<th>@propertyName</th>
-		<td>@value</td>
-	</tr>
-}
-
-@helper RenderPrices(string tag)
-{
-	var title = $"GetString(\'{tag}')";
-	<div>
-        <small title="@title" class="text-danger">@Translate("Missing in ViewModel")</small>
-	</div>
-}
-
-@helper RenderTableRow(string propertyValue)
-{
-	<tr>
-		<th>
-			<small class="text-danger">@($"GetString(\"Ecom:Order.{propertyValue}\")")</small>
-		</th>
-		<td class="text-danger">@Translate("Missing in ViewModel")</td>
-	</tr>
-}
-
-@helper RenderOrderlineName(OrderLineViewModel orderline)
-{
-	var isChildOrderline = !string.IsNullOrEmpty(orderline.ParentLineId); 
-	var innerPadding = isChildOrderline ? "ps-4" : "";
-	
-	<div class="@innerPadding">
-		@if (IsDiscountOrderline(orderline))
-		{
-			<span>@Translate("DISCOUNT"): </span>
-		}
-						
-		<span>@orderline.ProductName</span>
-		@if (!string.IsNullOrEmpty(orderline.ProductNumber))
-		{
-			var productNumber = orderline.ProductNumber;
-			if (!string.IsNullOrEmpty(orderline.ProductVariantName))
-			{
-				productNumber += $" - {orderline.ProductVariantName}";
-			}
-			<br/>
-			<small>@productNumber</small>
-		}
-		
-		<br/>
-		<small class="text-muted"><span class="fw-bold">@Translate("Orderline Id"):</span> @orderline.Id</small>
-		
-		<br/>
-		<small class="text-muted"><span class="fw-bold">@Translate("Orderline type"):</span> @orderline.OrderLineType (@orderline.OrderLineType.GetHashCode())</small>
-		
-		@if (isChildOrderline)
-		{
-			<br/>
-			<small class="text-muted"><span class="fw-bold">@Translate("Parent Orderline Id"):</span> @orderline.ParentLineId</small>
-		}
-	</div>
-}
-
-@helper RenderOrderlineUnitPriceWithoutDiscount(OrderLineViewModel orderline)
-{
-	if (IsDiscountOrderline(orderline) || IsTaxOrderline(orderline))
-	{
-		<small class="text-muted">@Translate("Same as") <span class="fw-bold">@Translate("With Discount / Price")</span></small>
-	}
-	else
-	{
-		@RenderPrices(orderline.UnitPrice, "OrderLineViewModel orderline.UnitPrice")
-	}
-}
-
-@helper RenderOrderlineUnitDiscount(OrderLineViewModel orderline)
-{
-	if (IsDiscountOrderline(orderline) || IsTaxOrderline(orderline))
-	{
-		<small class="text-muted">@Translate("Not applicable")</small>
-	}
-	else
-	{
-		@RenderPrices(orderline.UnitDiscount, "OrderLineViewModel orderline.UnitDiscount")
-	}
-}
-
-@helper RenderOrderlineUnitPriceWithDiscount(OrderLineViewModel orderline)
-{
-	@RenderPrices(orderline.UnitPriceWithProductDiscount, "OrderLineViewModel orderline.UnitPriceWithProductDiscount")
-}
-
-@helper RenderOrderlineTotalPriceWithoutDiscount(OrderLineViewModel orderline)
-{
-	if (IsDiscountOrderline(orderline) || IsTaxOrderline(orderline))
-	{
-		<small class="text-muted">@Translate("Same as") <span class="fw-bold">@Translate("With Discount / Price")</span></small>
-	}
-	else
-	{
-		@RenderPrices(orderline.Price, "OrderLineViewModel orderline.Price")
-	}
-}
-
-@helper RenderOrderlineTotalDiscount(OrderLineViewModel orderline)
-{
-	if (IsDiscountOrderline(orderline) || IsTaxOrderline(orderline))
-	{
-		<small class="text-muted">@Translate("Not applicable")</small>
-	}
-	else
-	{
-		@RenderPrices(orderline.TotalDiscount, "OrderLineViewModel orderline.TotalDiscount")
-	}
-}
-
-@helper RenderOrderlineTotalPriceWithDiscount(OrderLineViewModel orderline)
-{
-	@RenderPrices(orderline.TotalPriceWithProductDiscounts, "OrderLineViewModel orderline.TotalPriceWithProductDiscounts")
-}
-
-@functions
-{
-	public static bool IsDiscountOrderline(OrderLineViewModel orderline)
-	{
-		return IsOrderDiscountOrderline(orderline) || IsProductDiscountOrderline(orderline);
-	}
-	
-	public static bool IsOrderDiscountOrderline(OrderLineViewModel orderline)
-	{
-		return orderline.OrderLineType == OrderLineType.Discount;
-	}
-	
-	public static bool IsProductDiscountOrderline(OrderLineViewModel orderline)
-	{
-		return orderline.OrderLineType == OrderLineType.ProductDiscount;
-	}
-	
-	public static bool IsTaxOrderline(OrderLineViewModel orderline)
-	{
-		return orderline.OrderLineType == OrderLineType.Tax;
-	}
-}
+		</table>
+	</section>
