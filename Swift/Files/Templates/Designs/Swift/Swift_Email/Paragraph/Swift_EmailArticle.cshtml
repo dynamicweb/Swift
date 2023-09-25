@@ -69,7 +69,7 @@
 	var link = new Dynamicweb.Frontend.LinkViewModel();
 	string linkType = block.GetRawValueString("LinkType", "page");
 
-	if (linkType == "page" && block.GetLink("PageLink") != null)
+	if (linkType == "page" && block.GetLink("PageLink") is object)
 	{
 		link = block.GetLink("PageLink");
 	}
@@ -125,37 +125,71 @@
 
 				@if (image is object)
 				{
+					var imageBackgroundColor = blockTheme?.GetColor("BackgroundColor").ToString().Replace("#", string.Empty);
+					var imageRatio = Model.Item.GetRawValueString("ImageAspectRatio", "4-3").ToLower();
+					var parms = new Dictionary<string, object>();
+					parms.Add("alt", Model.Item.GetString("ImageAltText"));
+					parms.Add("columns", Model.GridRowColumnCount);
+					parms.Add("padding", (Dynamicweb.Core.Converter.ToInt32(padding) * 2) * Model.GridRowColumnCount);
+					parms.Add("imageRatio", imageRatio);
+					parms.Add("backgroundColor", imageBackgroundColor);
+
+
 					<div align="left">
 						@if (link is object && !string.IsNullOrEmpty(link.Url))
 						{
-							<a href="@link" target="_blank" style="display:block;">
-								@{ @RenderImage(image, padding, blockTheme) }
-							</a>
+							@:<a href="@link" target="_blank" style="display:block;">
 						}
-						else
+
+						@RenderPartial("Swift_Email/Components/Image.cshtml", image ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+
+						@if (link is object && !string.IsNullOrEmpty(link.Url))
 						{
-							{ @RenderImage(image, padding, blockTheme) }
+							@:</a>
 						}
 					</div>
 				}
 
 				@if (!string.IsNullOrEmpty(title))
 				{
+					string fontStyle = block.GetRawValueString("FontStyle", "header");
+					string fontSize = "font-size:" + block.GetRawValueString("FontSize", "24") + "px;";
+					string textLineHeight = "line-height:" + (Dynamicweb.Core.Converter.ToInt32(block.GetRawValueString("FontSize", "24")) * Dynamicweb.Core.Converter.ToDouble(block.GetRawValueString("LineHeight", "1.5"))).ToString() + "px;";
+					var textRaise = ((Dynamicweb.Core.Converter.ToInt32(block.GetRawValueString("FontSize", "28")) * Dynamicweb.Core.Converter.ToDouble(block.GetRawValueString("LineHeight", "1.5"))) - Dynamicweb.Core.Converter.ToInt32(block.GetRawValueString("FontSize", "28"))) / 2;
+					textRaise = textRaise == 0 ? 11 : textRaise;
+					string startTag = $"<p class=\"{fontStyle}\" style=\"mso-line-height-rule:exactly;mso-text-raise:{textRaise}px;vertical-align:middle;display:block;{GetFontStack()}{fontSize}{lineHeight}\">";
+					string endTag = $"</p>";
+
 					<div style="display:block;padding-top:16px;">
-						@{ @RenderHeading(block, title) }
+						@startTag
+						@title
+						@endTag
 					</div>
 				}
 
 				@if (!string.IsNullOrEmpty(text))
 				{
 					<div style="display:block;padding-top:16px;@(lineHeight)">
-						@{ @RenderText(text, lineHeight) }
+						<div style="mso-line-height-rule:exactly;mso-text-raise:11px;vertical-align:middle;margin-top:0;margin-bottom:0px;@GetFontStack()@lineHeight">
+							@text
+						</div>
 					</div>
 				}
 				@if (link is object && !string.IsNullOrEmpty(link.Url) && !string.IsNullOrEmpty(linkLabel))
 				{
-					<div style="display:block;padding-top:16px;"> 
-						@{ @RenderButton(link, blockTheme, align, linkLabel) }
+					var buttonBackgroundColor = blockTheme?.GetColor("ButtonPrimaryBackgroundColor");
+					var buttonForegroundColor = blockTheme?.GetColor("ButtonPrimaryForegroundColor");
+					var buttonBorderColor = blockTheme?.GetColor("ButtonPrimaryBorderColor");
+
+					var parms = new Dictionary<string, object>();
+					parms.Add("backgroundColor", buttonBackgroundColor);
+					parms.Add("foregroundColor", buttonForegroundColor);
+					parms.Add("borderColor", buttonBorderColor);
+					parms.Add("align", align);
+					parms.Add("title", linkLabel);
+					
+					<div style="display:block;padding-top:16px;">
+						@RenderPartial("Swift_Email/Components/Button.cshtml", link ?? new Dynamicweb.Frontend.LinkViewModel(), parms)
 					</div>
 				}
 				<!--[if mso]><br/><![endif]-->
@@ -164,55 +198,3 @@
 	</tbody>
 </table>
 
-@helper RenderHeading(Dynamicweb.Frontend.ItemViewModel block, string title)
-{
-	string fontStyle = block.GetRawValueString("FontStyle", "header");
-	string fontSize = "font-size:" + block.GetRawValueString("FontSize", "24") + "px;";
-	string lineHeight = "line-height:" + (Dynamicweb.Core.Converter.ToInt32(block.GetRawValueString("FontSize", "24")) * Dynamicweb.Core.Converter.ToDouble(block.GetRawValueString("LineHeight", "1.5"))).ToString() + "px;";
-	var textRaise = ((Dynamicweb.Core.Converter.ToInt32(block.GetRawValueString("FontSize", "28")) * Dynamicweb.Core.Converter.ToDouble(block.GetRawValueString("LineHeight", "1.5"))) - Dynamicweb.Core.Converter.ToInt32(block.GetRawValueString("FontSize", "28"))) / 2;
-	textRaise = textRaise == 0 ? 11 : textRaise;
-	string startTag = $"<p class=\"{fontStyle}\" style=\"mso-line-height-rule:exactly;mso-text-raise:{textRaise}px;vertical-align:middle;display:block;{GetFontStack()}{fontSize}{lineHeight}\">";
-	string endTag = $"</p>";
-
-	@startTag
-	@title
-	@endTag
-}
-
-@helper RenderText(string text, string lineHeight)
-{
-	<div style="mso-line-height-rule:exactly;mso-text-raise:11px;vertical-align:middle;margin-top:0;margin-bottom:0px;@GetFontStack()@lineHeight">
-		@text
-	</div>
-}
-
-@helper RenderButton(Dynamicweb.Frontend.LinkViewModel link, Dynamicweb.Frontend.ItemViewModel theme, string align, string title)
-
-{
-	var backgroundColor = theme?.GetColor("ButtonPrimaryBackgroundColor");
-	var foregroundColor = theme?.GetColor("ButtonPrimaryForegroundColor");
-	var borderColor = theme?.GetColor("ButtonPrimaryBorderColor");
-
-	var parms = new Dictionary<string, object>();
-	parms.Add("backgroundColor", backgroundColor);
-	parms.Add("foregroundColor", foregroundColor);
-	parms.Add("borderColor", borderColor);
-	parms.Add("align", align);
-	parms.Add("title", title);
-
-	@RenderPartial("Swift_Email/Components/Button.cshtml", link ?? new Dynamicweb.Frontend.LinkViewModel(), parms)
-}
-
-@helper RenderImage(Dynamicweb.Frontend.FileViewModel image, string padding, Dynamicweb.Frontend.ItemViewModel theme)
-{
-	var backgroundColor = theme?.GetColor("BackgroundColor").ToString().Replace("#",string.Empty);
-	var imageRatio = Model.Item.GetRawValueString("ImageAspectRatio", "4-3").ToLower();
-	var parms = new Dictionary<string, object>();
-	parms.Add("alt", Model.Item.GetString("ImageAltText"));
-	parms.Add("columns", Model.GridRowColumnCount);
-	parms.Add("padding", (Dynamicweb.Core.Converter.ToInt32(padding) * 2) * Model.GridRowColumnCount);
-	parms.Add("imageRatio", imageRatio);
-	parms.Add("backgroundColor", backgroundColor);
-
-	@RenderPartial("Swift_Email/Components/Image.cshtml", image ?? new Dynamicweb.Frontend.FileViewModel(), parms)
-}
