@@ -60,6 +60,19 @@
 		var arrowsColor = invertColor ? " carousel-dark" : string.Empty;
 		return arrowsColor;
 	}
+
+	Dictionary<string, object> GetVideoParams(MediaViewModel asset, string size)
+	{
+		var videoParams = new Dictionary<string, object>();
+		videoParams.Add("AssetName", asset.Name);
+		videoParams.Add("AssetDisplayName", asset.DisplayName);
+		videoParams.Add("AssetValue", asset.Value);
+		videoParams.Add("OpenVideoInModal", Model.Item.GetString("OpenVideoInModal"));
+		videoParams.Add("VideoAutoPlay", Model.Item.GetBoolean("VideoAutoPlay"));
+		videoParams.Add("Size", size);
+		videoParams.Add("Id", Model.ID);
+		return videoParams;
+	}
 }
 
 @if (product is object)
@@ -151,8 +164,159 @@
 					var assetName = asset.Value;
 					foreach (string format in allSupportedFormats) {
 						if (assetName.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0) {
+							string size = "desktop";
+							string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
+							string assetValue = asset.Value;
+
 							<div class="@GetColumnClass(totalAssets, desktopAssetNumber)">
-								@{@RenderAsset(asset, desktopAssetNumber, totalAssets)}
+								<div class="h-100 @(imageTheme)">
+									@foreach (string imageFormat in supportedImageFormats)
+									{ //Images
+										if (assetValue.IndexOf(imageFormat, StringComparison.OrdinalIgnoreCase) >= 0)
+										{
+											string productName = product.Name;
+											string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+											string imageLinkPath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
+
+											RatioSettings ratioSettings = GetRatioSettings(size);
+
+											var parms = new Dictionary<string, object>();
+											parms.Add("alt", productName);
+											parms.Add("itemprop", "image");
+											if (totalAssets > 1)
+											{
+												parms.Add("columns", 2);
+											}
+											else
+											{
+												parms.Add("columns", 1);
+											}
+											parms.Add("eagerLoadNewImages", Model.Item.GetBoolean("DisableLazyLoading"));
+											parms.Add("doNotUseGetimage", Model.Item.GetBoolean("DisableGetImage"));
+
+											if (!string.IsNullOrEmpty(asset.DisplayName))
+											{
+												parms.Add("title", asset.DisplayName);
+											}
+
+											if (ratioSettings.Ratio == "fill" && galleryLayout != "grid")
+											{
+												parms.Add("cssClass", "w-100 h-100 image-zoom-lg-l-hover");
+											}
+											else
+											{
+												parms.Add("cssClass", "mw-100 mh-100");
+											}
+
+											<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID">
+												<div class="d-flex align-items-center justify-content-center overflow-hidden h-100" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide-to="@desktopAssetNumber">
+													@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+												</div>
+											</a>
+										}
+									}
+									@foreach (string videoFormat in supportedVideoFormats)
+									{ //Videos
+										if (assetValue.IndexOf(videoFormat, StringComparison.OrdinalIgnoreCase) >= 0)
+										{
+											if (Model.Item.GetString("OpenVideoInModal") == "true")
+											{
+												string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+												string videoScreendumpPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : "";
+												string videoId = videoScreendumpPath.Substring(videoScreendumpPath.LastIndexOf('/') + 1);
+												videoScreendumpPath = videoScreendumpPath.IndexOf("youtu.be", StringComparison.OrdinalIgnoreCase) >= 0 || videoScreendumpPath.IndexOf("youtube", StringComparison.OrdinalIgnoreCase) != 0 ? "https://img.youtube.com/vi/" + videoId + "/maxresdefault.jpg" : videoScreendumpPath;
+
+												string vimeoJsClass = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "js-vimeo-video-thumbnail" : "";
+												videoScreendumpPath = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "" : videoScreendumpPath;
+
+												string productName = product.Name;
+												productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
+												string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
+
+												RatioSettings ratioSettings = GetRatioSettings(size);
+
+												<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable); cursor: pointer" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID">
+													<div class="d-flex align-items-center justify-content-center overflow-hidden h-100" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide-to="@desktopAssetNumber">
+														<div class="icon-5 position-absolute" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
+														@if (videoScreendumpPath.IndexOf(".mp4", StringComparison.OrdinalIgnoreCase) < 0)
+														{
+															<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;" onload="CheckIfVideoThumbnailExist(this)">
+														}
+														else
+														{
+															string videoType = Path.GetExtension(asset.Value).ToLower();
+
+															<video preload="auto" class="h-100 w-100" style="object-fit: contain;">
+																<source src="@asset.Value" type="video/@videoType.Replace(".", "")">
+															</video>
+														}
+													</div>
+												</div>
+
+												<script>
+													function CheckIfVideoThumbnailExist(image) {
+														if (image.width == 120) {
+															const lowQualityImage = "https://img.youtube.com/vi/@(videoId)/hqdefault.jpg"
+															image.src = lowQualityImage;
+														}
+													}
+												</script>
+											}
+											else
+											{
+												Dictionary<string, object> videoParams = GetVideoParams(asset, size);
+												@RenderPartial("Components/VideoPlayer.cshtml", new FileViewModel { Path = asset.Value }, videoParams);
+											}
+										}
+									}
+									@foreach (string documentFormat in supportedDocumentFormats)
+									{ //Documents
+										if (assetValue.IndexOf(documentFormat, StringComparison.OrdinalIgnoreCase) >= 0)
+										{
+											string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+											string productName = product.Name;
+											string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+											string imageLinkPath = imagePath;
+
+											RatioSettings ratioSettings = GetRatioSettings(size);
+
+											var parms = new Dictionary<string, object>();
+											parms.Add("alt", productName);
+											parms.Add("itemprop", "image");
+											parms.Add("fullwidth", true);
+											parms.Add("columns", Model.GridRowColumnCount);
+											if (!string.IsNullOrEmpty(asset.DisplayName))
+											{
+												parms.Add("title", asset.DisplayName);
+											}
+
+											if (ratioSettings.Ratio == "fill" && galleryLayout != "grid")
+											{
+												parms.Add("cssClass", "w-100 h-100 image-zoom-lg-l-hover");
+											}
+											else
+											{
+												parms.Add("cssClass", "mw-100 mh-100");
+											}
+
+											<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download title="@Translate("Download")">
+												<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+													<div class="icon-5 position-absolute" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
+													@if (asset.Value.IndexOf(".pdf", StringComparison.OrdinalIgnoreCase) >= 0)
+													{
+														@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+													}
+													else
+													{
+
+													}
+												</div>
+											</a>
+										}
+									}
+								</div>
 							</div>
 							desktopAssetNumber++;
 						}
@@ -176,9 +340,158 @@
 						foreach (string format in allSupportedFormats) {
 							if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0) {
 								string activeSlide = mobileAssetNumber == 0 ? "active" : "";
-
+								string size = "mobile";
+								string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
+								
 								<div class="carousel-item @activeSlide" data-bs-interval="99999">
-									@{@RenderAsset(asset, mobileAssetNumber, totalAssets, "mobile")}
+									<div class="h-100 @(imageTheme)">
+										@foreach (string supportedFormat in supportedImageFormats)
+										{ //Images
+											if (assetValue.IndexOf(supportedFormat, StringComparison.OrdinalIgnoreCase) >= 0)
+											{
+												string productName = product.Name;
+												string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+												string imageLinkPath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
+
+												RatioSettings ratioSettings = GetRatioSettings(size);
+
+												var parms = new Dictionary<string, object>();
+												parms.Add("alt", productName);
+												parms.Add("itemprop", "image");
+												if (totalAssets > 1)
+												{
+													parms.Add("columns", 2);
+												}
+												else
+												{
+													parms.Add("columns", 1);
+												}
+												parms.Add("eagerLoadNewImages", Model.Item.GetBoolean("DisableLazyLoading"));
+												parms.Add("doNotUseGetimage", Model.Item.GetBoolean("DisableGetImage"));
+
+												if (!string.IsNullOrEmpty(asset.DisplayName))
+												{
+													parms.Add("title", asset.DisplayName);
+												}
+
+												if (ratioSettings.Ratio == "fill" && galleryLayout != "grid")
+												{
+													parms.Add("cssClass", "w-100 h-100 image-zoom-lg-l-hover");
+												}
+												else
+												{
+													parms.Add("cssClass", "mw-100 mh-100");
+												}
+
+												<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID">
+													<div class="d-flex align-items-center justify-content-center overflow-hidden h-100" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide-to="@desktopAssetNumber">
+														@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+													</div>
+												</a>
+											}
+										}
+										@foreach (string videoFormat in supportedVideoFormats)
+										{ //Videos
+											if (assetValue.IndexOf(videoFormat, StringComparison.OrdinalIgnoreCase) >= 0)
+											{
+												if (Model.Item.GetString("OpenVideoInModal") == "true")
+												{
+													string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+													string videoScreendumpPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : "";
+													string videoId = videoScreendumpPath.Substring(videoScreendumpPath.LastIndexOf('/') + 1);
+													videoScreendumpPath = videoScreendumpPath.IndexOf("youtu.be", StringComparison.OrdinalIgnoreCase) >= 0 || videoScreendumpPath.IndexOf("youtube", StringComparison.OrdinalIgnoreCase) != 0 ? "https://img.youtube.com/vi/" + videoId + "/maxresdefault.jpg" : videoScreendumpPath;
+
+													string vimeoJsClass = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "js-vimeo-video-thumbnail" : "";
+													videoScreendumpPath = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "" : videoScreendumpPath;
+
+													string productName = product.Name;
+													productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
+													string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
+
+													RatioSettings ratioSettings = GetRatioSettings(size);
+
+													<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable); cursor: pointer" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID">
+														<div class="d-flex align-items-center justify-content-center overflow-hidden h-100" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide-to="@desktopAssetNumber">
+															<div class="icon-5 position-absolute" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
+															@if (videoScreendumpPath.IndexOf(".mp4", StringComparison.OrdinalIgnoreCase) < 0)
+															{
+																<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;" onload="CheckIfVideoThumbnailExist(this)">
+															}
+															else
+															{
+																string videoType = Path.GetExtension(asset.Value).ToLower();
+
+																<video preload="auto" class="h-100 w-100" style="object-fit: contain;">
+																	<source src="@asset.Value" type="video/@videoType.Replace(".", "")">
+																</video>
+															}
+														</div>
+													</div>
+
+													<script>
+														function CheckIfVideoThumbnailExist(image) {
+															if (image.width == 120) {
+																const lowQualityImage = "https://img.youtube.com/vi/@(videoId)/hqdefault.jpg"
+																image.src = lowQualityImage;
+															}
+														}
+													</script>
+												}
+												else
+												{
+													Dictionary<string, object> videoParams = GetVideoParams(asset, size);
+													@RenderPartial("Components/VideoPlayer.cshtml", new FileViewModel { Path = asset.Value }, videoParams);
+												}
+											}
+										}
+										@foreach (string documentFormat in supportedDocumentFormats)
+										{ //Documents
+											if (assetValue.IndexOf(documentFormat, StringComparison.OrdinalIgnoreCase) >= 0)
+											{
+												string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+												string productName = product.Name;
+												string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+												string imageLinkPath = imagePath;
+
+												RatioSettings ratioSettings = GetRatioSettings(size);
+
+												var parms = new Dictionary<string, object>();
+												parms.Add("alt", productName);
+												parms.Add("itemprop", "image");
+												parms.Add("fullwidth", true);
+												parms.Add("columns", Model.GridRowColumnCount);
+												if (!string.IsNullOrEmpty(asset.DisplayName))
+												{
+													parms.Add("title", asset.DisplayName);
+												}
+
+												if (ratioSettings.Ratio == "fill" && galleryLayout != "grid")
+												{
+													parms.Add("cssClass", "w-100 h-100 image-zoom-lg-l-hover");
+												}
+												else
+												{
+													parms.Add("cssClass", "mw-100 mh-100");
+												}
+
+												<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download title="@Translate("Download")">
+													<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+														<div class="icon-5 position-absolute" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
+														@if (asset.Value.IndexOf(".pdf", StringComparison.OrdinalIgnoreCase) >= 0)
+														{
+															@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+														}
+														else
+														{
+
+														}
+													</div>
+												</a>
+											}
+										}
+									</div>
 								</div>
 								mobileAssetNumber++;
 							}
@@ -263,7 +576,10 @@
 
 												@foreach (string videoFormat in supportedVideoFormats) {
 													if (assetValue.IndexOf(videoFormat, StringComparison.OrdinalIgnoreCase) >= 0) {
-														{@RenderVideoPlayer(asset, "modal")}
+														
+														Dictionary<string, object> videoParams = GetVideoParams(asset, "modal");
+														@RenderPartial("Components/VideoPlayer.cshtml", new FileViewModel { Path = asset.Value }, videoParams);
+														
 												}
 											}
 											</div>
@@ -296,220 +612,3 @@
 		</div>
 	}
 }
-
-@helper RenderAsset(MediaViewModel asset, int assetNumber, int totalAssets, string size = "desktop") {
-	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
-	string assetValue = asset.Value;
-
-	<div class="h-100 @(theme)">
-		@foreach (string format in supportedImageFormats) { //Images
-			if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0) {
-				{@RenderImage(asset, assetNumber, totalAssets, size)}
-		}
-	}
-		@foreach (string format in supportedVideoFormats) { //Videos
-			if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0) {
-				if (Model.Item.GetString("OpenVideoInModal") == "true") {
-					{@RenderVideoScreendump(asset, assetNumber, size)}
-			} else {
-				{@RenderVideoPlayer(asset, size)}
-		}
-	}
-}
-		@foreach (string format in supportedDocumentFormats) { //Documents
-			if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0) {
-				{@RenderDocument(asset, assetNumber, size)}
-		}
-	}
-	</div>
-}
-
-@helper RenderImage(MediaViewModel asset, int number, int totalAssets, string size = "desktop") {
-	string productName = product.Name;
-	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
-	string imageLinkPath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
-
-	RatioSettings ratioSettings = GetRatioSettings(size);
-
-	var parms = new Dictionary<string, object>();
-	parms.Add("alt", productName);
-	parms.Add("itemprop", "image");
-	if (totalAssets > 1) {
-		parms.Add("columns", 2);
-	} else {
-		parms.Add("columns", 1);
-	}
-	parms.Add("eagerLoadNewImages", Model.Item.GetBoolean("DisableLazyLoading"));
-	parms.Add("doNotUseGetimage", Model.Item.GetBoolean("DisableGetImage"));
-
-	if (!string.IsNullOrEmpty(asset.DisplayName)) {
-		parms.Add("title", asset.DisplayName);
-	}
-
-	if (ratioSettings.Ratio == "fill" && galleryLayout != "grid") {
-		parms.Add("cssClass", "w-100 h-100 image-zoom-lg-l-hover");
-	} else {
-		parms.Add("cssClass", "mw-100 mh-100");
-	}
-
-	<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID">
-		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide-to="@number">
-			@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
-		</div>
-	</a>
-}
-
-@helper RenderVideoScreendump(MediaViewModel asset, int number, string size = "desktop") {
-	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
-
-	string videoScreendumpPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : "";
-	string videoId = videoScreendumpPath.Substring(videoScreendumpPath.LastIndexOf('/') + 1);
-	videoScreendumpPath = videoScreendumpPath.IndexOf("youtu.be", StringComparison.OrdinalIgnoreCase) >= 0 || videoScreendumpPath.IndexOf("youtube", StringComparison.OrdinalIgnoreCase) != 0 ? "https://img.youtube.com/vi/" + videoId + "/maxresdefault.jpg" : videoScreendumpPath;
-
-	string vimeoJsClass = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "js-vimeo-video-thumbnail" : "";
-	videoScreendumpPath = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "" : videoScreendumpPath;
-
-	string productName = product.Name;
-	productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
-	string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
-
-	RatioSettings ratioSettings = GetRatioSettings(size);
-
-	<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable); cursor: pointer" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID">
-		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide-to="@number">
-			<div class="icon-5 position-absolute" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
-			@if (videoScreendumpPath.IndexOf(".mp4", StringComparison.OrdinalIgnoreCase) < 0)
-			{
-				<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;" onload="CheckIfVideoThumbnailExist(this)">
-			}
-			else
-			{
-				string videoType = Path.GetExtension(asset.Value).ToLower();
-
-				<video preload="auto" class="h-100 w-100" style="object-fit: contain;">
-					<source src="@asset.Value" type="video/@videoType.Replace(".", "")">
-				</video>
-			}
-		</div>
-	</div>
-
-	<script>
-		function CheckIfVideoThumbnailExist(image) {
-			if (image.width == 120) {
-				const lowQualityImage = "https://img.youtube.com/vi/@(videoId)/hqdefault.jpg"
-				image.src = lowQualityImage;
-			}
-		}
-	</script>
-}
-
-@helper RenderVideoPlayer(MediaViewModel asset, string size = "desktop") {
-	string assetName = !string.IsNullOrEmpty(asset.DisplayName) ? asset.DisplayName : asset.Name;
-	string assetValue = asset.Value;
-	string videoId = asset.Value.Substring(asset.Value.LastIndexOf('/') + 1);
-	string type = assetValue.Contains("youtu.be") || assetValue.Contains("youtube") ? "youtube" : "";
-	type = assetValue.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "vimeo" : type;
-	type = assetValue.IndexOf(".mp4", StringComparison.OrdinalIgnoreCase) >= 0 || assetValue.IndexOf(".webm", StringComparison.OrdinalIgnoreCase) >= 0 ? "selfhosted" : type;
-
-	string openInModal = Model.Item.GetString("OpenVideoInModal");
-	bool autoPlay = Model.Item.GetBoolean("VideoAutoPlay");
-
-	<div class="h-100" itemscope itemtype="https://schema.org/VideoObject">
-		<span class="visually-hidden" itemprop="name">@assetName</span>
-		<span class="visually-hidden" itemprop="contentUrl">@asset.Value</span>
-		<span class="visually-hidden" itemprop="thumbnailUrl">@asset.Value</span>
-		@if (type != "selfhosted") {
-			<div
-				 id="player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size"
-				 class="plyr__video-embed"
-				 data-plyr-provider="@(type)"
-				 data-plyr-embed-id="@videoId"
-				 style="--plyr-color-main: var(--swift-foreground-color); height: 100%">
-			</div>
-
-			<script type="module" src="/Files/Templates/Designs/Swift/Assets/js/plyr.js"></script>
-
-			<script type="module">
-				var player = new Plyr('#player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size', {
-					type: 'video',
-					youtube: {
-						noCookie: true,
-						showinfo: 0
-					},
-					fullscreen: {
-						enabled: true,
-						iosNative: true,
-					}
-				});
-
-				@if (autoPlay && openInModal == "false") {
-					<text>
-					player.config.autoplay = true;
-					player.config.muted = true;
-					player.config.volume = 0;
-					player.media.loop = true;
-
-					player.on('ready', function() {
-						if (player.config.autoplay === true) {
-							player.media.play();
-						}
-					});
-					</text>
-				}
-
-				@if (openInModal == "true") {
-					<text>
-					var productDetailsGalleryModal = document.querySelector('#modal_@Model.ID')
-					productDetailsGalleryModal.addEventListener('hidden.bs.modal', function (event) {
-						player.media.pause();
-					})
-					</text>
-                }
-			</script>
-		} else {
-			string autoPlayAttributes = (autoPlay && openInModal == "false") ? "loop autoplay muted playsinline" : "";
-			string videoType = Path.GetExtension(assetValue).ToLower();
-
-			<video preload="auto" @autoPlayAttributes class="h-100 w-100" style="object-fit: cover;" controls>
-				<source src="@assetValue" type="video/@videoType.Replace(".", "")">
-			</video>
-		}
-	</div>
-}
-
-@helper RenderDocument(MediaViewModel asset, int number, string size = "desktop") {
-	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
-
-	string productName = product.Name;
-	string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
-	string imageLinkPath = imagePath;
-
-	RatioSettings ratioSettings = GetRatioSettings(size);
-
-	var parms = new Dictionary<string, object>();
-	parms.Add("alt", productName);
-	parms.Add("itemprop", "image");
-	parms.Add("fullwidth", true);
-	parms.Add("columns", Model.GridRowColumnCount);
-	if (!string.IsNullOrEmpty(asset.DisplayName)) {
-		parms.Add("title", asset.DisplayName);
-	}
-
-	if (ratioSettings.Ratio == "fill" && galleryLayout != "grid") {
-		parms.Add("cssClass", "w-100 h-100 image-zoom-lg-l-hover");
-	} else {
-		parms.Add("cssClass", "mw-100 mh-100");
-	}
-
-	<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download title="@Translate("Download")">
-		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-			<div class="icon-5 position-absolute" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
-			@if (asset.Value.IndexOf(".pdf", StringComparison.OrdinalIgnoreCase) >= 0) {
-				@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
-			} else {
-
-			}
-		</div>
-	</a>
-}
-
