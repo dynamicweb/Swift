@@ -1,8 +1,18 @@
 @inherits ViewModelTemplate<ProductViewModel>
+@using Dynamicweb.Frontend
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		Dynamicweb.Context.Current.Items["ProductDetails"] = Model;
+	}
+	else
+	{
+		Dynamicweb.Context.Current.Items.Add("ProductDetails", Model);
+	}
+
 	string viewType = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ViewType")) ? Dynamicweb.Context.Current.Request.Form.Get("ViewType") : "";
 	bool quantitySelector = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("QuantitySelector")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form.Get("QuantitySelector")) : false;
 
@@ -11,170 +21,40 @@
 	{
 		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
 	}
+
+	//Basic ParagraphViewModel setting
+	var paragraphViewModel = new ParagraphViewModel()
+	{
+		ID = 123456789
+	};
 }
 
 @if (Model.VariantInfo?.VariantInfo != null)
 {
-	string minQty = Model.PurchaseMinimumQuantity != 1 ? "min=\"" + Model.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
-	string stepQty = Model.PurchaseQuantityStep > 1 ? Model.PurchaseQuantityStep.ToString() : "1";
-	string valueQty = Model.PurchaseMinimumQuantity > Model.PurchaseQuantityStep ? Model.PurchaseMinimumQuantity.ToString() : stepQty;
-	string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : "";
-
-	bool isNeverOutOfStock = Model.NeverOutOfstock;
-	bool isDiscontinued = Model.Discontinued;
-
-	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
-	string disableAddToCart = (Model.StockLevel <= 0) ? "disabled" : "";
-	disableAddToCart = isDiscontinued ? "disabled" : disableAddToCart;
-	disableAddToCart = isNeverOutOfStock && !isLazyLoadingForProductInfoEnabled ? "" : disableAddToCart;
-	disableAddToCart = string.IsNullOrEmpty(Model.VariantId) ? "disabled" : disableAddToCart;
-
-	int groupNumber = 1;
-	string[] variantId = Model.VariantId.Split('.');
-
-	bool IsNeverOutOfStock = Model.NeverOutOfstock;
-	bool hasExpectedDelivery = Model.ExpectedDelivery != null && Model.ExpectedDelivery > DateTime.Now;
-	string expectedDeliveryDate = Model.ExpectedDelivery?.ToShortDateString() ?? "";
-
-	string variantSelectorServicePageId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("VariantSelectorServicePage")) ? Dynamicweb.Context.Current.Request.Form.Get("VariantSelectorServicePage") : "";
-	string liveInfoClass = "";
-	string productInfoFeed = "";
-
-	string baseUrl = $"Default.aspx?ID={GetPageIdByNavigationTag("Shop")}&GroupID={Model.PrimaryOrDefaultGroup.Id}&ProductID={Model.Id}";
-	string variantUrl = "";
-	if (!string.IsNullOrEmpty(Model.VariantId))
-	{
-		variantUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl($"Default.aspx?ID={GetPageIdByNavigationTag("Shop")}&GroupID={Model.PrimaryOrDefaultGroup.Id}&ProductID={Model.Id}&VariantID={Model.VariantId}");
-	}
-
-	string getProductInfo = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["getproductinfo"]) ? Dynamicweb.Context.Current.Request.Form["getproductinfo"] : "";
-
 	if (viewType == "ModalContent")
 	{
-		<text>
-			<div class="modal-header">
-				<h5 class="modal-title">@Model.Name</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-			</div>
-			<div class="modal-body">
-		</text>
-	}
+		string minQty = Model.PurchaseMinimumQuantity != 1 ? "min=\"" + Model.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
+		string stepQty = Model.PurchaseQuantityStep > 1 ? Model.PurchaseQuantityStep.ToString() : "1";
+		string valueQty = Model.PurchaseMinimumQuantity > Model.PurchaseQuantityStep ? Model.PurchaseMinimumQuantity.ToString() : stepQty;
+		string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : "";
 
-	<form action="/Default.aspx?ID=@variantSelectorServicePageId" class="js-variant-selector" data-combinations="@string.Join(",", Model.VariantCombinations())" data-response-target-element="DynamicModalContent" data-base-url="@baseUrl" data-friendly-url="@variantUrl">
-		<input type="hidden" name="productId" value="@Model.Id">
-		<input type="hidden" name="variantid" value="@Model.VariantId">
-		<input type="hidden" name="QuantitySelector" value="@quantitySelector.ToString()">
-		<input type="hidden" name="VariantSelectorServicePage" value="@variantSelectorServicePageId">
-		<input type="hidden" name="ViewType" value="ModalContent">
-		@if (!string.IsNullOrEmpty(getProductInfo))
-		{
-			<input type="hidden" name="getproductinfo" value="@getProductInfo">
-		}
+		bool isNeverOutOfStock = Model.NeverOutOfstock;
+		bool isDiscontinued = Model.Discontinued;
 
-		@foreach (var variantGroup in Model.VariantGroups())
-		{
-			VariantGroupViewModel group = variantGroup;
+		bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
+		string disableAddToCart = (Model.StockLevel <= 0) ? "disabled" : "";
+		disableAddToCart = isDiscontinued ? "disabled" : disableAddToCart;
+		disableAddToCart = isNeverOutOfStock && !isLazyLoadingForProductInfoEnabled ? "" : disableAddToCart;
+		disableAddToCart = string.IsNullOrEmpty(Model.VariantId) ? "disabled" : disableAddToCart;
 
-			<h3 class="h6">@group.Name</h3>
-			<div class="mb-3 js-variant-group" data-group-id="@groupNumber">
-				@foreach (var option in group.Options)
-				{
-					string active = variantId.Contains(option.Id) ? "active" : "";
 
-					if (!string.IsNullOrEmpty(option.Color))
-					{
-						<button type="button" class="btn colorbox rounded-circle me-1 mb-2 d-inline-block variant-option js-variant-option @active" style="background-color: @option.Color" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(Model.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID"></button>
-					}
-					else if (!string.IsNullOrEmpty(option.Color) && !string.IsNullOrEmpty(option.Image.Value))
-					{
-						<button type="button" class="btn p-0 d-inline-block mb-2 variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(Model.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
-							<img src="/Admin/Public/GetImage.ashx?image=@(option.Image.Value)&width=42&format=webp">
-						</button>
-					}
-					else
-					{
-						<button type="button" class="btn btn-secondary d-inline-block mb-2 variant-option js-variant-option @active" onclick="swift.VariantSelector.OptionClick(event)" data-variant-id="@option.Id" id="@(Model.Id)_@(option.Id)_@Pageview.CurrentParagraph.ID">
-							@option.Name
-						</button>
-					}
-				}
-			</div>
-
-			groupNumber++;
-		}
-	</form>
-
-	if (isLazyLoadingForProductInfoEnabled)
-	{
-		if (Dynamicweb.Context.Current.Items.Contains("ProductInfoFeed"))
-		{
-			productInfoFeed = Dynamicweb.Context.Current.Items["ProductInfoFeed"]?.ToString();
-			if (!string.IsNullOrEmpty(productInfoFeed))
-			{
-				productInfoFeed = $"data-product-info-feed=\"{productInfoFeed}\"";
-			}
-		}
-		liveInfoClass = "js-live-info";
-	}
-
-	if (!IsNeverOutOfStock)
-	{
-		if (isLazyLoadingForProductInfoEnabled)
-		{
-			string inStockStateLabel = !string.IsNullOrEmpty(Model.StockStatus) ? Model.StockStatus : Translate("In stock");
-			string noStockStateLabel = !string.IsNullOrEmpty(Model.StockStatus) ? Model.StockStatus : Translate("Out of Stock");
-
-			<div class="js-stock-state @liveInfoClass" data-product-id="@Model.Id" data-variant-id="@Model.VariantId" @productInfoFeed>
-				<div class="mt-3 js-stock-state spinner-border">
-					<div class="small text-success d-none" data-show-if="LiveProductInfo.product.StockLevel > 0">
-						<span class="js-text-stock"></span>
-						@inStockStateLabel
-					</div>
-					<div class="small text-danger d-none" data-show-if="LiveProductInfo.product.StockLevel <= 0">@noStockStateLabel</div>
-
-					<div class="d-none" data-show-if="LiveProductInfo.product.ExpectedDelivery != null && new Date(LiveProductInfo.product.ExpectedDelivery) > new Date()">
-						<span>@Translate("Expected back in stock"): </span>
-						<span class="js-text-expected-delivery"></span>
-					</div>
-				</div>
-			</div>
-		}
-		else
-		{
-			string firstUnitId = Model?.UnitOptions?.FirstOrDefault() != null ? Model.UnitOptions.FirstOrDefault().Id : "";
-			string defaultUnitId = !string.IsNullOrEmpty(Model.DefaultUnitId) ? Model.DefaultUnitId : firstUnitId;
-			string unitId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("UnitId")) ? Dynamicweb.Context.Current.Request.Form.Get("UnitId") : defaultUnitId;
-
-			var reserveMode = Dynamicweb.Ecommerce.Frontend.Cart.ProductReserve.Mode;
-			double? reservedAmount = 0;
-			if (reserveMode == Dynamicweb.Ecommerce.Frontend.Cart.ProductReserveMode.AddToCart)
-			{
-				reservedAmount = Dynamicweb.Ecommerce.Frontend.Cart.ProductReserve.GetReservedAmount(Model.Id, Model.VariantId, 0, unitId);
-			}
-			double? currentStockLevel = Model.StockLevel - reservedAmount;
-
-			string stockStateLabel = currentStockLevel > 0 ? Translate("In stock") : Translate("Out of stock");
-			stockStateLabel = !string.IsNullOrEmpty(Model.StockStatus) ? Model.StockStatus : stockStateLabel;
-			string stockStateCss = currentStockLevel > 0 ? "text-success" : "text-danger";
-
-			<div class="js-stock-state">
-				<div class="small @stockStateCss"><span class="js-text-stock">@currentStockLevel</span> @stockStateLabel</div>
-
-				@if (hasExpectedDelivery)
-				{
-					<div>
-						<span>@Translate("Expected in stock"): </span>
-						<span>@expectedDeliveryDate</span>
-					</div>
-				}
-			</div>
-		}
-	}
-
-	if (viewType == "ModalContent")
-	{
-	@:</div>
-	<text>
+		<div class="modal-header">
+			<h5 class="modal-title">@Model.Name</h5>
+			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+		</div>
+		<div class="modal-body">
+			@RenderPartial("Paragraph/Swift_ProductVariantSelector.cshtml", paragraphViewModel)
+		</div>
 		<div class="modal-footer">
 			<form method="post" action="@url">
 				<input type="hidden" name="redirect" value="false">
@@ -210,10 +90,13 @@
 				}
 			</form>
 		</div>
-	</text>
-}
+	}
+	else
+	{
+		@RenderPartial("Paragraph/Swift_ProductVariantSelector.cshtml", paragraphViewModel)
+	}
 
-<script type="module">
-	swift.VariantSelector.init();
-</script>
+	<script type="module">
+		swift.VariantSelector.init();
+	</script>
 }
