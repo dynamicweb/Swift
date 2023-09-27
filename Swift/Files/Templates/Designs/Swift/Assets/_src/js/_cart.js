@@ -289,7 +289,8 @@ const Cart = function () {
 		},
 
 		Debounce: function (func, wait, immediate) {
-			return function () {
+			let timeout;
+return function () {
 				var context = this, args = arguments;
 				var later = function () {
 					timeout = null;
