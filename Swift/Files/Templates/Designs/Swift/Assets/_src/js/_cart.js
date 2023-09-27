@@ -1,4 +1,6 @@
 const Cart = function () {
+	var timeout;
+
 	return {
 		Update: async function (e) {
 			//NP: clickedButton is not always the button. Sometimes it is the qty input field if [enter] is pressed
@@ -141,7 +143,7 @@ const Cart = function () {
 				}
 			};
 
-			swift.Cart.QuantityValidate(e);
+			Cart.Debounce(() => Cart.QuantityValidate(input), 300)()
 		},
 
 		Success: async function (response, clickedButton, formData, reservedAmount = 0) {
@@ -231,7 +233,7 @@ const Cart = function () {
 		},
 
 		QuantityValidate: function (event) {
-			var quantityField = event.currentTarget;
+			var quantityField = event.currentTarget != undefined ? event.currentTarget : event;
 			const form = quantityField.closest("form");
 			const stepQuantityWarning = form.querySelector(".js-step-quantity-warning");
 			const minQuantityWarning = form.querySelector(".js-min-quantity-warning");
@@ -284,6 +286,20 @@ const Cart = function () {
 					cartButton.disabled = false;
 				}
 			}
+		},
+
+		Debounce: function (func, wait, immediate) {
+			return function () {
+				var context = this, args = arguments;
+				var later = function () {
+					timeout = null;
+					if (!immediate) func.apply(context, args);
+				};
+				var callNow = immediate && !timeout;
+				clearTimeout(timeout);
+				timeout = setTimeout(later, wait);
+				if (callNow) func.apply(context, args);
+			};
 		}
 	}
 }();
