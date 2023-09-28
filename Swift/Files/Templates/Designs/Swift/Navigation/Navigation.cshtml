@@ -11,31 +11,24 @@
 	string linkCasing = !string.IsNullOrEmpty(Model.Parameters["LinkCasing"].ToString()) ? Model.Parameters["LinkCasing"].ToString() : string.Empty;
 	string linkFontSize = !string.IsNullOrEmpty(Model.Parameters["LinkFontSize"].ToString()) ? Model.Parameters["LinkFontSize"].ToString() : string.Empty;
 	string layout = !string.IsNullOrEmpty(Model.Parameters["Layout"].ToString()) ? Model.Parameters["Layout"].ToString() : string.Empty;
-	string iconSize = "icon-3";
+	string iconSize = linkFontSize == "fs-7" ? "icon-2" : "icon-3";
+	iconSize = linkFontSize == "fs-5" ? "icon-4" : iconSize;
 
-	if (linkFontSize == "fs-7")
-	{
-		iconSize = "icon-2";
-	}
-	if (linkFontSize == "fs-5")
-	{
-		iconSize = "icon-4";
-	}
+	int currentParagraphId = Pageview.CurrentParagraph.ID;
+
+	bool showOnlyFirstNavLevel = Model.Parameters.ContainsKey("ShowOnlyFirstNavLevel") ? Convert.ToBoolean(Model.Parameters["ShowOnlyFirstNavLevel"].ToString()) : false;
+	string menuId = Model.Parameters.ContainsKey("menu-id") ? $"menu_{Model.Parameters["menu-id"].ToString().ToLower()}" : string.Empty;
+
+	string groupId = Dynamicweb.Context.Current.Request["GroupID"] != null ? Dynamicweb.Context.Current.Request["GroupID"].ToString() : string.Empty;
+	string productId = Dynamicweb.Context.Current.Request["ProductID"] != null ? Dynamicweb.Context.Current.Request["ProductID"].ToString() : string.Empty;
+	string variantId = Dynamicweb.Context.Current.Request["VariantID"] != null ? Dynamicweb.Context.Current.Request["VariantID"].ToString() : string.Empty;
+
+	string navItemVisuallyHidden = layout == "iconsOnly" ? "visually-hidden" : null;
 }
 
 <nav class="d-flex py-0 @navOrientation @navAlignment">
-	@{@RenderFirstLevelNodes(Model.Nodes, theme, navOrientation, linkFontWeight, linkCasing, linkFontSize, iconSize, layout)}
-</nav>
-
-@helper RenderFirstLevelNodes(IEnumerable<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel> nodes, string theme, string navOrientation, string linkFontWeight, string linkCasing, string linkFontSize, string iconSize, string layout)
-{
-	bool showOnlyFirstNavLevel = Model.Parameters.ContainsKey("ShowOnlyFirstNavLevel") ? Convert.ToBoolean(Model.Parameters["ShowOnlyFirstNavLevel"].ToString()) : false;
-	int currentParagraphId = Pageview.CurrentParagraph.ID;
-	string menuId = Model.Parameters.ContainsKey("menu-id") ? $"menu_{Model.Parameters["menu-id"].ToString().ToLower()}" : string.Empty;
-
 	<ul class="nav flex-nowrap @(navOrientation == "vertical" ? "flex-column" : navOrientation)">
-
-		@foreach (var node in nodes)
+		@foreach (var node in Model.Nodes)
 		{
 			var page = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
 			var pageType = !string.IsNullOrEmpty(page.ItemType) ? page.ItemType : "Swift_Page";
@@ -44,104 +37,167 @@
 			{
 				pageIcon = Dynamicweb.Core.Converter.ToString(pageIconValue);
 			}
-			string preferencesLayout = page.Item?["PreferencesLayout"] != null ? page.Item["PreferencesLayout"].ToString() : "";
+			string iconPath = Dynamicweb.Context.Current.Server.MapPath(pageIcon);
+
+			string preferencesLayout = page.Item?["PreferencesLayout"] != null ? page.Item["PreferencesLayout"].ToString() : string.Empty;
 			string preferencesType = "language";
+
 			bool countrySelector = page.Item?["CountrySelector"] != null ? Convert.ToBoolean(page.Item["CountrySelector"].ToString()) : false;
 			bool languageSelector = page.Item?["LanguageSelector"] != null ? Convert.ToBoolean(page.Item["LanguageSelector"].ToString()) : false;
 			bool currencySelector = page.Item?["CurrencySelector"] != null ? Convert.ToBoolean(page.Item["CurrencySelector"].ToString()) : false;
-			string dropdownAttributes = string.Empty;
-			string dropdownClasses = string.Empty;
 
 			var hasChildren = node.Nodes.Count() > 0 || pageType == "Swift_SignIn";
-
-			if (hasChildren && !showOnlyFirstNavLevel)
-			{
-				dropdownAttributes = hasChildren ? " role=\"button\" aria-haspopup=\"true\" aria-expanded=\"false\" data-bs-toggle=\"dropdown\" data-bs-offset=\"0,0\"" : "";
-			}
-
 			string nodeId = !string.IsNullOrEmpty(node.GroupId) ? "Navigation_" + node.GroupId + "_" + currentParagraphId : "Navigation_Page_Desktop_" + node.PageId.ToString() + "_" + currentParagraphId;
+
+			string dropdownAttributes = hasChildren && !showOnlyFirstNavLevel ? " role=\"button\" aria-haspopup=\"true\" aria-expanded=\"false\" data-bs-toggle=\"dropdown\" data-bs-offset=\"0,0\"" : string.Empty;
+			string dropdownClasses = string.Empty;
 
 			if (pageType != "Swift_Preferences")
 			{
-				<li class="nav-item@(hasChildren ? " dropdown" : "")">
+				<li class="nav-item@(hasChildren ? " dropdown" : string.Empty)">
 					@if (node.IsClickable)
 					{
-						<a href="@node.Link" class="p-2 nav-link text-nowrap text-decoration-underline-hover @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : "")" @dropdownAttributes @(node.IsActive ? " aria-current='page'" : "") id="@nodeId">
-							@{@RenderNavigationItem(node, pageType, pageIcon, iconSize, layout)}
-						</a>
+						@:<a href="@node.Link" class="p-2 nav-link text-nowrap text-decoration-underline-hover @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "")@(hasChildren ? " dropdown-toggle" : string.Empty)" @dropdownAttributes @(node.IsActive ? " aria-current='page'" : "") id="@nodeId">
 					}
 					else
 					{
-						<span class="p-2 nav-link text-nowrap @linkFontSize @linkFontWeight @linkCasing@(hasChildren ? " dropdown-toggle " : "")" @dropdownAttributes id="@nodeId">
-							@{@RenderNavigationItem(node, pageType, pageIcon, iconSize, layout)}
-						</span>
+						@:<span class="p-2 nav-link text-nowrap @linkFontSize @linkFontWeight @linkCasing@(hasChildren ? " dropdown-toggle " : string.Empty)" @dropdownAttributes id="@nodeId">
 					}
 
-					@if (hasChildren)
+					@if (pageType == "Swift_Cart") //Mini cart
 					{
-						if (!showOnlyFirstNavLevel)
+						string cartId = page.Item["ContextCart"] != null ? $"ID=\"Cart_{page.Item["ContextCart"].ToString()}\"" : string.Empty;
+						string jsCartClass = string.IsNullOrEmpty(cartId) ? "js-cart-qty" : string.Empty;
+						double totalProducts = 0;
+
+						Dynamicweb.Ecommerce.Common.Context.CartContext = null;
+						if (page.Item["ContextCart"] != null)
 						{
-							<ul class="dropdown-menu @(theme)" aria-labelledby="@nodeId">
-								@foreach (var subnode in node.Nodes)//Standard pages
-								{
-									nodeId = !string.IsNullOrEmpty(subnode.GroupId) ? "Navigation_" + subnode.GroupId + "_" + currentParagraphId : "Navigation_Page_" + subnode.PageId.ToString() + "_" + currentParagraphId;
+							var orderContext = Dynamicweb.Ecommerce.Services.OrderContexts.GetOrderContextById(page.Item["ContextCart"].ToString());
+							Dynamicweb.Ecommerce.Common.Context.CartContext = orderContext;
+						}
 
-									<li>
-										@if (subnode.IsClickable)
-										{
-											<a href="@subnode.Link" class="dropdown-item py-2 text-decoration-underline-hover @linkFontSize @linkFontWeight @linkCasing" @(subnode.IsActive ? " aria-current='page'" : "") id="@nodeId">@subnode.Name</a>
-										}
-										else
-										{
-											<span class="dropdown-item py-2 @linkFontSize @linkFontWeight @linkCasing" @(subnode.IsActive ? " aria-current='page'" : "") id="@nodeId">@subnode.Name</span>
-										}
-									</li>
-								}
-								@if (pageType == "Swift_SignIn") //Sign out link
+						if (Dynamicweb.Ecommerce.Common.Context.Cart != null)
+						{
+							bool renderOrderlineCountInsteadOfProductCount = page.Item["RenderOrderlineCountInsteadOfProductCount"] != null ? Convert.ToBoolean(page.Item["RenderOrderlineCountInsteadOfProductCount"]) : false;
+							if (!renderOrderlineCountInsteadOfProductCount)
+							{
+								totalProducts = Dynamicweb.Ecommerce.Common.Context.Cart.GetParentProductLineQuantityCount(Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines);
+							}
+							else
+							{
+								foreach (var orderline in Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines)
 								{
-									if (Pageview.User != null)
+									if (orderline.HasType(new[] { OrderLineType.Product, OrderLineType.Fixed, OrderLineType.PointProduct, OrderLineType.GiftCard }))
 									{
-										string link = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
-
-										<li><hr class="dropdown-divider"></li>
-										if (Dynamicweb.Security.UserManagement.User.GetCurrentSecondaryUser() != null)
-										{
-											<li>
-												<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item py-2 text-decoration-underline-hover swift_sign-out-as-customer-link @linkFontSize @linkFontWeight @linkCasing" id="SignInButton_@currentParagraphId">@Translate("Sign out as a customer")</a>
-											</li>
-										}
-										<li>
-											<a href="@link" class="dropdown-item py-2 text-decoration-underline-hover swift_sign-out-link @linkFontSize @linkFontWeight @linkCasing">@Translate("Sign out")</a>
-										</li>
+										totalProducts++;
 									}
 								}
-							</ul>
+							}
 						}
+
+						if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+						{
+							<span class="@iconSize">@ReadFile(iconPath)</span>
+						}
+
+						<span class="@(navItemVisuallyHidden)">@node.Name</span>
+						<span class="@jsCartClass mini-cart-quantity" @cartId>(@totalProducts)</span>
+
+						if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+						{
+							<span class="@iconSize">@ReadFile(iconPath)</span>
+						}
+					}
+					else
+					{
+						if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+						{
+							<span class="@iconSize">@ReadFile(iconPath)</span>
+						}
+
+						<span class="@(navItemVisuallyHidden)">@node.Name</span>
+
+						if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+						{
+							<span class="@iconSize">@ReadFile(iconPath)</span>
+						}
+					}
+
+					@if (node.IsClickable)
+					{
+						@:</a>
+					}
+					else
+					{
+						@:</span>
+					}
+
+					@if (hasChildren && !showOnlyFirstNavLevel)
+					{
+						<ul class="dropdown-menu @(theme)" aria-labelledby="@nodeId">
+							@foreach (var subnode in node.Nodes)//Standard pages
+							{
+								nodeId = !string.IsNullOrEmpty(subnode.GroupId) ? "Navigation_" + subnode.GroupId + "_" + currentParagraphId : "Navigation_Page_" + subnode.PageId.ToString() + "_" + currentParagraphId;
+
+								<li>
+									@if (subnode.IsClickable)
+									{
+										<a href="@subnode.Link" class="dropdown-item py-2 text-decoration-underline-hover @linkFontSize @linkFontWeight @linkCasing" @(subnode.IsActive ? " aria-current='page'" : string.Empty) id="@nodeId">@subnode.Name</a>
+									}
+									else
+									{
+										<span class="dropdown-item py-2 @linkFontSize @linkFontWeight @linkCasing" @(subnode.IsActive ? " aria-current='page'" : string.Empty) id="@nodeId">@subnode.Name</span>
+									}
+								</li>
+							}
+							@if (pageType == "Swift_SignIn") //Sign out link
+							{
+								if (Pageview.User != null)
+								{
+									string signOutLink = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
+
+									<li><hr class="dropdown-divider"></li>
+									if (Dynamicweb.Security.UserManagement.User.GetCurrentSecondaryUser() != null)
+									{
+										string customerSignOutLink = $"Default.aspx?ID={Pageview.ID}&DwExtranetRemoveSecondaryUser=1";
+
+										<li>
+											<a href="@customerSignOutLink" class="dropdown-item py-2 text-decoration-underline-hover swift_sign-out-as-customer-link @linkFontSize @linkFontWeight @linkCasing" id="SignInButton_@currentParagraphId">@Translate("Sign out as a customer")</a>
+										</li>
+									}
+									<li>
+										<a href="@signOutLink" class="dropdown-item py-2 text-decoration-underline-hover swift_sign-out-link @linkFontSize @linkFontWeight @linkCasing">@Translate("Sign out")</a>
+									</li>
+								}
+							}
+						</ul>
 					}
 				</li>
 			}
 			else
 			{
+				string name = node.Name;
+
 				if (preferencesLayout == "modal")
 				{
-					string groupId = Dynamicweb.Context.Current.Request["GroupID"] != null ? Dynamicweb.Context.Current.Request["GroupID"].ToString() : "";
-					string productId = Dynamicweb.Context.Current.Request["ProductID"] != null ? Dynamicweb.Context.Current.Request["ProductID"].ToString() : "";
-					string variantId = Dynamicweb.Context.Current.Request["VariantID"] != null ? Dynamicweb.Context.Current.Request["VariantID"].ToString() : "";
-
-					<li class="nav-item@(hasChildren ? " dropdown" : "")">
+					<li class="nav-item@(hasChildren ? " dropdown" : string.Empty)">
 						<form action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
 							<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
 							<input type="hidden" name="GroupID" value="@groupId">
 							<input type="hidden" name="ProductID" value="@productId">
 							<input type="hidden" name="VariantID" value="@variantId">
 							<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link p-2 text-nowrap border-0 swift_open-preferences-modal @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal" id="OpenPreferences_@currentParagraphId">
-								@if (languageSelector)
+								@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
 								{
-									{@RenderNavigationItem(node, pageType, pageIcon, iconSize, layout, "language")}
+									<span class="@iconSize">@ReadFile(iconPath)</span>
 								}
-								else
+
+								<span class="@(navItemVisuallyHidden)">@node.Name</span>
+
+								@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
 								{
-									{@RenderNavigationItem(node, pageType, pageIcon, iconSize, layout)}
+									<span class="@iconSize">@ReadFile(iconPath)</span>
 								}
 							</button>
 						</form>
@@ -151,11 +207,10 @@
 				{
 					var ecomCountries = Dynamicweb.Ecommerce.Services.Countries.GetCountries();
 					var currencies = Dynamicweb.Ecommerce.Services.Currencies.GetAllCurrencies();
+					List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
 
 					if (languageSelector)
 					{
-						List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
-
 						if (Pageview.Page.Area.IsMaster)
 						{
 							languages.Add(Pageview.Page);
@@ -187,195 +242,177 @@
 								}
 							}
 						}
-
-						if (languages.Count > 1)
-						{
-							preferencesType = "language";
-
-							{@RenderPreferencesDropdown(node, preferencesType, linkFontSize, linkFontWeight, linkCasing, theme, pageType, pageIcon, iconSize, layout)}
 					}
-				}
-				if (countrySelector && ecomCountries.Count > 1)
-				{
-					preferencesType = "country";
-					{@RenderPreferencesDropdown(node, preferencesType, linkFontSize, linkFontWeight, linkCasing, theme, pageType, pageIcon, iconSize, layout)}
-			}
-			if (currencySelector && currencies.Count() > 1)
-			{
-				preferencesType = "currency";
-				{@RenderPreferencesDropdown(node, preferencesType, linkFontSize, linkFontWeight, linkCasing, theme, pageType, pageIcon, iconSize, layout)}
-		}
-	}
-}
-}
-	</ul>
-}
 
-@helper RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node, string pageType, string pageIcon, string iconSize, string layout, string preferencesType = "")
-{	
-	var page = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
-	if (pageType == "Swift_Cart") //Mini cart
-	{
-		string cartId = "";
-		if (page.Item["ContextCart"] != null)
-		{
-			cartId = !string.IsNullOrEmpty(page.Item["ContextCart"].ToString()) ? "ID=\"Cart_" + page.Item["ContextCart"].ToString() + "\"" : "";
-		}
-
-		string jsCartClass = string.IsNullOrEmpty(cartId) ? "js-cart-qty" : "";
-		double totalProducts = 0;
-
-
-		Dynamicweb.Ecommerce.Common.Context.CartContext = null;
-		if (page.Item["ContextCart"] != null)
-		{
-			var orderContext = Dynamicweb.Ecommerce.Services.OrderContexts.GetOrderContextById(page.Item["ContextCart"].ToString());
-			Dynamicweb.Ecommerce.Common.Context.CartContext = orderContext;
-		}
-
-		if (Dynamicweb.Ecommerce.Common.Context.Cart != null)
-		{
-			bool renderOrderlineCountInsteadOfProductCount = page.Item["RenderOrderlineCountInsteadOfProductCount"] != null ? Convert.ToBoolean(page.Item["RenderOrderlineCountInsteadOfProductCount"]) : false;
-			if (!renderOrderlineCountInsteadOfProductCount)
-			{
-				totalProducts = Dynamicweb.Ecommerce.Common.Context.Cart.GetParentProductLineQuantityCount(Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines);
-			}
-			else
-			{
-				foreach (var orderline in Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines)
-				{
-					if (orderline.HasType(new[] { OrderLineType.Product, OrderLineType.Fixed, OrderLineType.PointProduct, OrderLineType.GiftCard }))
+					if (languageSelector && languages.Count > 1)
 					{
-						totalProducts++;
+						string iconFolder = "/Files/FlagIcons/";
+						pageIcon = iconFolder + Pageview.Area.CultureInfo.Name.ToLower() + ".svg";
+						Regex reg = new Regex(@"\(([^\)]+)\)");
+						name = reg.Replace(Pageview.Area.CultureInfo.DisplayName, "");
+
+						<li class="nav-item dropdown">
+							<form class="d-none d-lg-block" action="/Default.aspx?ID=@node.PageId" data-response-target-element="@(preferencesType)Dropdown_@currentParagraphId" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+								<input type="hidden" name="Type" value="@preferencesType">
+								<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+								<input type="hidden" name="GroupID" value="@groupId">
+								<input type="hidden" name="ProductID" value="@productId">
+								<input type="hidden" name="VariantID" value="@variantId">
+								<input type="hidden" name="FontSize" value="@linkFontSize">
+								<input type="hidden" name="FontWeight" value="@linkFontWeight">
+								<input type="hidden" name="Casing" value="@linkCasing">
+
+								<a id="@node.PageId" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="nav-link p-2 text-nowrap text-decoration-underline-hover @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : string.Empty) dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(node.IsActive ? " aria-current='page'" : string.Empty)>
+									@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(pageIcon)</span>
+									}
+
+									<span class="@(navItemVisuallyHidden)">@name</span>
+
+									@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(pageIcon)</span>
+									}
+								</a>
+
+								<ul class="dropdown-menu @(theme)" id="@(preferencesType)Dropdown_@currentParagraphId"></ul>
+							</form>
+
+							<form class="d-block d-lg-none" action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+								<input type="hidden" name="Layout" value="modal">
+								<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+								<input type="hidden" name="GroupID" value="@groupId">
+								<input type="hidden" name="ProductID" value="@productId">
+								<input type="hidden" name="VariantID" value="@variantId">
+								<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link p-2 text-nowrap border-0 swift_open-preferences-modal @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+									@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+
+									<span class="@(navItemVisuallyHidden)">@name</span>
+
+									@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+								</button>
+							</form>
+						</li>
+					}
+
+					if (countrySelector && ecomCountries.Count > 1)
+					{
+						name = Translate("Deliver to") + ": " + Dynamicweb.Ecommerce.Common.Context.Country.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID);
+
+						<li class="nav-item dropdown">
+							<form class="d-none d-lg-block" action="/Default.aspx?ID=@node.PageId" data-response-target-element="@(preferencesType)Dropdown_@currentParagraphId" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+								<input type="hidden" name="Type" value="@preferencesType">
+								<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+								<input type="hidden" name="GroupID" value="@groupId">
+								<input type="hidden" name="ProductID" value="@productId">
+								<input type="hidden" name="VariantID" value="@variantId">
+								<input type="hidden" name="FontSize" value="@linkFontSize">
+								<input type="hidden" name="FontWeight" value="@linkFontWeight">
+								<input type="hidden" name="Casing" value="@linkCasing">
+
+								<a id="@node.PageId" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="nav-link p-2 text-nowrap text-decoration-underline-hover @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : string.Empty) dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(node.IsActive ? " aria-current='page'" : string.Empty)>
+									@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+
+									<span class="@(navItemVisuallyHidden)">@name</span>
+
+									@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+								</a>
+
+								<ul class="dropdown-menu @(theme)" id="@(preferencesType)Dropdown_@currentParagraphId"></ul>
+							</form>
+
+							<form class="d-block d-lg-none" action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+								<input type="hidden" name="Layout" value="modal">
+								<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+								<input type="hidden" name="GroupID" value="@groupId">
+								<input type="hidden" name="ProductID" value="@productId">
+								<input type="hidden" name="VariantID" value="@variantId">
+								<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link p-2 text-nowrap border-0 swift_open-preferences-modal @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+									@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+
+									<span>@name</span>
+
+									@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+								</button>
+							</form>
+						</li>
+					}
+
+					if (currencySelector && currencies.Count() > 1)
+					{
+						name = Dynamicweb.Ecommerce.Common.Context.Currency.Code;
+
+						<li class="nav-item dropdown">
+							<form class="d-none d-lg-block" action="/Default.aspx?ID=@node.PageId" data-response-target-element="@(preferencesType)Dropdown_@currentParagraphId" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+								<input type="hidden" name="Type" value="@preferencesType">
+								<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+								<input type="hidden" name="GroupID" value="@groupId">
+								<input type="hidden" name="ProductID" value="@productId">
+								<input type="hidden" name="VariantID" value="@variantId">
+								<input type="hidden" name="FontSize" value="@linkFontSize">
+								<input type="hidden" name="FontWeight" value="@linkFontWeight">
+								<input type="hidden" name="Casing" value="@linkCasing">
+
+								<a id="@node.PageId" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="nav-link p-2 text-nowrap text-decoration-underline-hover @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : string.Empty) dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(node.IsActive ? " aria-current='page'" : string.Empty)>
+									@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+
+									<span class="@(navItemVisuallyHidden)">@name</span>
+
+									@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+								</a>
+
+								<ul class="dropdown-menu @(theme)" id="@(preferencesType)Dropdown_@currentParagraphId"></ul>
+							</form>
+
+							<form class="d-block d-lg-none" action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+								<input type="hidden" name="Layout" value="modal">
+								<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+								<input type="hidden" name="GroupID" value="@groupId">
+								<input type="hidden" name="ProductID" value="@productId">
+								<input type="hidden" name="VariantID" value="@variantId">
+								<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link p-2 text-nowrap border-0 swift_open-preferences-modal @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+									@if (layout == "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+
+									<span>@name</span>
+
+									@if (layout != "linksOnly" && layout != "iconsAndLinks" && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
+									{
+										<span class="@iconSize">@ReadFile(iconPath)</span>
+									}
+								</button>
+							</form>
+						</li>
 					}
 				}
 			}
 		}
-
-
-		switch (layout)
-		{
-			case "linksOnly":
-				<span>@node.Name</span>
-				<span class="@jsCartClass mini-cart-quantity" @cartId>(@totalProducts)</span>
-				break;
-
-			case "iconsOnly":
-				{@RenderIcon(pageIcon, iconSize)}
-				<span class="@jsCartClass mini-cart-quantity" @cartId>(@totalProducts)</span>
-				break;
-			case "iconsAndLinks":
-				{@RenderIcon(pageIcon, iconSize)}
-				<span class="@jsCartClass mini-cart-quantity" @cartId>(@totalProducts)</span>
-				<span>@node.Name</span>
-				break;
-			case "linksAndIcons":
-				<span>@node.Name</span>
-				<span class="@jsCartClass mini-cart-quantity" @cartId>(@totalProducts)</span>
-				{@RenderIcon(pageIcon, iconSize)}
-				break;
-		}
-	}
-	else
-	{
-		string name = node.Name;
-
-		if (preferencesType == "country")
-		{ //Country
-			name = Translate("Deliver to") + ": " + Dynamicweb.Ecommerce.Common.Context.Country.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID);
-		}
-
-		if (preferencesType == "language")
-		{ //Languange
-			string iconFolder = "/Files/FlagIcons/";
-			pageIcon = iconFolder + Pageview.Area.CultureInfo.Name.ToLower() + ".svg";
-			Regex reg = new Regex(@"\(([^\)]+)\)");
-			name = reg.Replace(Pageview.Area.CultureInfo.DisplayName, "");
-
-			layout = layout == "linksOnly" ? "iconsAndLinks" : layout;
-			bool hideIcon = page.Item?["HideIcon"] != null ? Convert.ToBoolean(page.Item["HideIcon"].ToString()) : false;
-			bool hideName = page.Item?["HideName"] != null ? Convert.ToBoolean(page.Item["HideName"].ToString()) : false;
-			layout = hideIcon ? "linksOnly" : layout;
-			layout = hideName ? "iconsOnly" : layout;
-		}
-
-		if (preferencesType == "currency")
-		{ //Country
-			name = Dynamicweb.Ecommerce.Common.Context.Currency.Code;
-		}
-
-		switch (layout)
-		{
-			case "linksOnly":
-				<span>@name</span>
-				break;
-
-			case "iconsOnly":
-				<span class="visually-hidden">@name</span>
-				{@RenderIcon(pageIcon, iconSize)}
-				break;
-			case "iconsAndLinks":
-				{@RenderIcon(pageIcon, iconSize)}
-				<span>@name</span>
-				break;
-			case "linksAndIcons":
-				<span>@name</span>
-				{@RenderIcon(pageIcon, iconSize)}
-				break;
-		}
-	}
-}
-
-@helper RenderPreferencesDropdown(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node, string preferencesType, string linkFontSize, string linkFontWeight, string linkCasing, string theme, string pageType, string pageIcon, string iconSize, string layout)
-{
-	string groupId = Dynamicweb.Context.Current.Request["GroupID"] != null ? Dynamicweb.Context.Current.Request["GroupID"].ToString() : "";
-	string productId = Dynamicweb.Context.Current.Request["ProductID"] != null ? Dynamicweb.Context.Current.Request["ProductID"].ToString() : "";
-	string variantId = Dynamicweb.Context.Current.Request["VariantID"] != null ? Dynamicweb.Context.Current.Request["VariantID"].ToString() : "";
-	int currentParagraphId = Pageview.CurrentParagraph.ID;
-
-	string nodeId = !string.IsNullOrEmpty(node.GroupId) ? "PreferencesLink_" + node.GroupId + "_" + currentParagraphId : "PreferencesLink_" + node.PageId.ToString() + "_" + currentParagraphId;
-
-	<li class="nav-item dropdown">
-		<form class="d-none d-lg-block" action="/Default.aspx?ID=@node.PageId" data-response-target-element="@(preferencesType)Dropdown_@currentParagraphId" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
-			<input type="hidden" name="Type" value="@preferencesType">
-			<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
-			<input type="hidden" name="GroupID" value="@groupId">
-			<input type="hidden" name="ProductID" value="@productId">
-			<input type="hidden" name="VariantID" value="@variantId">
-			<input type="hidden" name="FontSize" value="@linkFontSize">
-			<input type="hidden" name="FontWeight" value="@linkFontWeight">
-			<input type="hidden" name="Casing" value="@linkCasing">
-
-			<a id="@nodeId" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="nav-link p-2 text-nowrap text-decoration-underline-hover @linkFontSize @linkFontWeight @linkCasing@(node.IsActive ? " active" : "") dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(node.IsActive ? " aria-current='page'" : "")>
-				@{@RenderNavigationItem(node, pageType, pageIcon, iconSize, layout, preferencesType)}
-			</a>
-
-			<ul class="dropdown-menu @(theme)" id="@(preferencesType)Dropdown_@currentParagraphId">
-				@* The content here comes from an external request *@
-			</ul>
-		</form>
-
-		<form class="d-block d-lg-none" action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
-			<input type="hidden" name="Layout" value="modal">
-			<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
-			<input type="hidden" name="GroupID" value="@groupId">
-			<input type="hidden" name="ProductID" value="@productId">
-			<input type="hidden" name="VariantID" value="@variantId">
-			<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link p-2 text-nowrap border-0 swift_open-preferences-modal @linkFontSize @linkFontWeight @linkCasing" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
-				@{@RenderNavigationItem(node, pageType, pageIcon, iconSize, layout, preferencesType)}
-			</button>
-		</form>
-	</li>
-}
-
-@helper RenderIcon(string pageIcon, string iconSize)
-{
-	if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase))
-	{
-		string iconPath = Dynamicweb.Context.Current.Server.MapPath(pageIcon);
-
-		<span class="@iconSize">
-			@ReadFile(iconPath)
-		</span>
-	}
-}
+	</ul>
+</nav>
