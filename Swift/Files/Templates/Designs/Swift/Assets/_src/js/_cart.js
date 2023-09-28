@@ -1,6 +1,4 @@
 const Cart = function () {
-	var timeout;
-
 	return {
 		Update: async function (e) {
 			//NP: clickedButton is not always the button. Sometimes it is the qty input field if [enter] is pressed
@@ -53,8 +51,8 @@ const Cart = function () {
 					parentEvent: e
 				}
 			});
-			var globalDispatcher = document.dispatchEvent(event);
-			var localDispatcher = clickedButton.dispatchEvent(event);
+			let globalDispatcher = document.dispatchEvent(event);
+			let localDispatcher = clickedButton.dispatchEvent(event);
 
 			if (globalDispatcher != false && localDispatcher != false) {
 				let reservedAmount = 0;
@@ -96,7 +94,7 @@ const Cart = function () {
 
 				if (getReservedAmount == "false" || ((parseInt(addQuantity) + parseInt(reservedAmount)) <= parseInt(stockQuantity))) {
 					//UI updates
-					var clickedButtonWidth = clickedButton.offsetWidth + "px";
+					const clickedButtonWidth = clickedButton.offsetWidth + "px";
 
 					clickedButton.setAttribute("data-content", clickedButton.innerHTML);
 					clickedButton.style.width = clickedButtonWidth;
@@ -124,7 +122,7 @@ const Cart = function () {
 						form.querySelector('[name="Quantity"]').value = 1;
 					}
 
-					var dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), {
+					let dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), {
 						backdrop: 'static'
 					});
 
@@ -134,7 +132,7 @@ const Cart = function () {
 		},
 
 		UpdateOnEnterKey: async function (e) {
-			var input = e.currentTarget != undefined ? e.currentTarget : e;
+			const input = e.currentTarget != undefined ? e.currentTarget : e;
 			e.preventDefault();
 
 			input.onkeydown = (e) => {
@@ -159,8 +157,8 @@ const Cart = function () {
 					html: html
 				}
 			});
-			var globalDispatcher = document.dispatchEvent(event);
-			var localDispatcher = clickedButton.dispatchEvent(event);
+			let globalDispatcher = document.dispatchEvent(event);
+			let localDispatcher = clickedButton.dispatchEvent(event);
 
 			if (globalDispatcher != false && localDispatcher != false) {
 				//Cleanup
@@ -171,14 +169,14 @@ const Cart = function () {
 				clickedButton.setAttribute("data-content", "");
 
 
-				var removeFocusCssClassTimer = setTimeout(function () {
+				let removeFocusCssClassTimer = setTimeout(function () {
 					Cart.GetMiniCarts(formData.get("minicartid")).forEach(function (el) {
 						el.classList.remove("mini-cart-quantity-added");
 					});
 				}, 200);
 
 				//Replace the markup
-				var totalQuantity = html != undefined ? html : 0;
+				let totalQuantity = html != undefined ? html : 0;
 
 				Cart.GetMiniCarts(formData.get("minicartid")).forEach(function (el) {
 					el.innerHTML = "(" + totalQuantity.trim() + ")";
@@ -202,7 +200,7 @@ const Cart = function () {
 
 		Error: async function (response, clickedButton) {
 			//Cleanup
-			var removeFocusCssClassTimer = setTimeout(function () {
+			let removeFocusCssClassTimer = setTimeout(function () {
 				document.querySelectorAll(".js-cart-qty").forEach(function (el) {
 					el.classList.remove("mini-cart-quantity-added");
 				});
@@ -215,7 +213,7 @@ const Cart = function () {
 		},
 
 		GetMiniCarts: function (miniCartId) {
-			var miniCarts = [];
+			let miniCarts = [];
 
 			if (miniCartId != null) {
 				const miniCartElement = document.querySelector("#Cart_" + miniCartId);
@@ -233,15 +231,15 @@ const Cart = function () {
 		},
 
 		QuantityValidate: function (event) {
-			var quantityField = event.currentTarget != undefined ? event.currentTarget : event;
+			let quantityField = event.currentTarget != undefined ? event.currentTarget : event;
 			const form = quantityField.closest("form");
 			const stepQuantityWarning = form.querySelector(".js-step-quantity-warning");
 			const minQuantityWarning = form.querySelector(".js-min-quantity-warning");
-			var cartButton = quantityField.querySelector(".js-add-to-cart-button");
-			var isValid = quantityField.checkValidity();
+			let cartButton = form.querySelector(".js-add-to-cart-button");
+			let isValid = quantityField.checkValidity();
 
-			var quantity = parseInt(quantityField.value);
-			var minQuantity = parseInt(quantityField.min);
+			const quantity = parseInt(quantityField.value);
+			const minQuantity = parseInt(quantityField.min);
 
 			if (quantity < minQuantity) {
 				isValid = false;
@@ -251,7 +249,7 @@ const Cart = function () {
 				const message = minQuantityWarning.innerHTML;
 				document.querySelector("#DynamicModalContent").innerHTML = message;
 
-				var dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), { });
+				let dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), { });
 
 				if (!document.querySelector('#DynamicModal').classList.contains("show")) {
 					dynamicModal.show();
@@ -266,7 +264,7 @@ const Cart = function () {
 				const message = stepQuantityWarning.innerHTML;
 				document.querySelector("#DynamicModalContent").innerHTML = message;
 
-				var dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), { });
+				const dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), { });
 
 				if (!document.querySelector('#DynamicModal').classList.contains("show")) {
 					dynamicModal.show();
@@ -290,13 +288,13 @@ const Cart = function () {
 
 		Debounce: function (func, wait, immediate) {
 			let timeout;
-return function () {
-				var context = this, args = arguments;
-				var later = function () {
+			return function () {
+				const context = this, args = arguments;
+				let later = function () {
 					timeout = null;
 					if (!immediate) func.apply(context, args);
 				};
-				var callNow = immediate && !timeout;
+				const callNow = immediate && !timeout;
 				clearTimeout(timeout);
 				timeout = setTimeout(later, wait);
 				if (callNow) func.apply(context, args);
