@@ -22,6 +22,22 @@ const Video = function () {
 			.catch(error => {
 				console.log(error);
 			});
+		},
+		getSelfHostedVideoPoster() {
+			var video = event.target;
+
+			video.addEventListener('loadedmetadata', function () {
+				video.currentTime = 0.5;
+			});
+
+			video.addEventListener('seeked', function () {
+				var canvas = document.createElement('canvas');
+				canvas.width = 1920;
+				canvas.height = 1080;
+				var ctx = canvas.getContext('2d');
+				ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+				video.poster = canvas.toDataURL();
+			});
 		}
 	}
 }();
