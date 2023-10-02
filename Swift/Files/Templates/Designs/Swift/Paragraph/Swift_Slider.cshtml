@@ -62,12 +62,42 @@
 
 		return new Dynamicweb.Frontend.LinkViewModel();
 	}
+
+	private string RenderButton(ItemViewModel item, string buttonSize)
+	{
+		var link = GetLink(item);
+		string stretchedLink = item.GetRawValueString("StretchedLink", string.Empty);
+		stretchedLink = stretchedLink == "not-clickable" ? string.Empty : stretchedLink;
+		stretchedLink = stretchedLink == "clickable" ? "stretched-link" : stretchedLink;
+
+		if (link != null && !string.IsNullOrEmpty(item.GetString("ButtonLabel")))
+		{
+			string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : "";
+			string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : "";
+
+			string buttonStyle = item.GetRawValueString("ButtonStyle", "primary");
+			buttonStyle = buttonStyle == "primary" ? "btn-primary" : buttonStyle;
+			buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
+			buttonStyle = buttonStyle == "link" ? "btn-link" : buttonStyle;
+
+			return $"<div class=\"m-0\"><a href=\"{link.Url}\" class=\"btn {buttonStyle}{buttonSize} {stretchedLink}\" {target} {rel}>{item.GetString("ButtonLabel")}</a></div>";
+		}
+		else if (link != null && !string.IsNullOrEmpty(link.Url))
+		{
+			string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : "";
+			string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : "";
+
+			return $"<a href=\"{link.Url}\" class=\"{stretchedLink}\" {target} {rel}><span class=\"visually-hidden\">{item.GetString("Title")}</span></a>";
+		}
+
+		return string.Empty;
+	}
 }
 
 @{
 	bool movePageBehind = false;
 	bool isFirstPoster = false;
-	string movePageBehindClass = "";
+	string movePageBehindClass = string.Empty;
 	if (Pageview.Page.PropertyItem != null)
 	{
 		string headerCssClass = Pageview.Page.PropertyItem["MoveThisPageBehindTheHeader"] != null ? Pageview.Page.PropertyItem["MoveThisPageBehindTheHeader"].ToString() : "sticky-top";
@@ -130,6 +160,10 @@
 	string autoplayInterval = Model.Item.GetRawValueString("AutoplayInterval", string.Empty);
 	bool hideSliderNavigation = false;
 
+	var parms = new Dictionary<string, object>();
+	parms.Add("cssClass", "h-100 w-100");
+	parms.Add("columns", Model.GridRowColumnCount);
+
 	if (navigationStyle == "slider-nav-none")
 	{
 		hideSliderNavigation = true;
@@ -142,13 +176,180 @@
 			<ul class="slider-container">
 				@{
 					bool isFirst = true;
+					parms.Add("alt", string.Empty);
 				}
 
 				@foreach (var item in sliderItems)
 				{
 					isFirst = false;
 
-					{@RenderSlideItem(item, isFirst, buttonSize, titleFontSize, subtitleFontSize, movePageBehindClass)}
+					string itemLayout = item.GetRawValueString("ItemLayout", "poster");
+					string layout = item.GetRawValueString("Layout", "align-middle-center-text-center");
+					string containerWidth = "container-xl";
+					FileViewModel image = item.GetFile("Image");
+					int xPos = image?.FocalPositionFromLeft ?? 50;
+					int yPos = image?.FocalPositionFromTop ?? 50;
+					string active = isFirst ? "active" : "";
+					string alignment = string.Empty;
+					string maxWidth = item.GetRawValueString("TextReadability", "max-width-on");
+					maxWidth = maxWidth == "max-width-on" ? "style=\"grid-template-columns: minmax(auto,75ch);\"" : maxWidth;
+					maxWidth = maxWidth == "max-width-off" ? string.Empty : maxWidth;
+					string titleColor = item.GetString("TitleColor", "text-inherit");
+					string titleOpacity = item.GetString("TitleOpacity", "opacity-100");
+					string subtitleColor = item.GetString("SubtitleColor", "text-inherit");
+					string subtitleOpacity = item.GetString("SubtitleOpacity", "opacity-100");
+					string textColor = item.GetString("TextColor", "text-inherit");
+					string textOpacity = item.GetString("TextOpacity", "opacity-100");
+					theme = !string.IsNullOrWhiteSpace(item.GetRawValueString("Theme")) && item.GetRawValueString("Theme") != "none" ? " theme " + item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : theme;
+					parms["alt"] = !string.IsNullOrEmpty(item.GetString("ImageAlt")) ? item.GetString("ImageAlt") : item.GetString("Title", string.Empty);
+
+					switch (layout)
+					{
+						case "align-top-left-text-left":
+							alignment = "text-start justify-content-start align-items-start";
+							break;
+						case "align-top-center-text-center":
+							alignment = "text-center justify-content-center align-items-start";
+							break;
+						case "align-top-right-text-right":
+							alignment = "text-end justify-content-end align-items-start";
+							break;
+						case "align-middle-left-text-left":
+							alignment = "text-start justify-content-start align-items-center";
+							break;
+						case "align-middle-center-text-center":
+							alignment = "text-center justify-content-center align-items-center";
+							break;
+						case "align-middle-right-text-right":
+							alignment = "text-end justify-content-end align-items-center";
+							break;
+						case "align-bottom-left-text-left":
+							alignment = "text-start justify-content-start align-items-end";
+							break;
+						case "align-bottom-center-text-center":
+							alignment = "text-center justify-content-center align-items-end";
+							break;
+						case "align-bottom-right-text-right":
+							alignment = "text-end justify-content-end align-items-end";
+							break;
+					}
+
+					switch (itemLayout)
+					{
+						case "poster":
+
+						<li class="@(theme)">
+							@RenderPartial("Components/Image.cshtml", image ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+
+							@{string position = image is object ? "position-absolute top-0 bottom-0 start-0 end-0 " : string.Empty;}
+
+							<div class="@(position)h-100 grid grid-1 p-3 px-xl-3 py-xl-4 @(containerWidth) @(alignment)" @(maxWidth)>
+								<div class="grid grid-1 gap-3">
+									@if (!string.IsNullOrEmpty(item.GetString("Title")) && !item.GetBoolean("HideTitle"))
+									{
+										<h2 class="@titleFontSize @titleColor @titleOpacity m-0">@item.GetString("Title")</h2>
+									}
+									@if (!string.IsNullOrEmpty(item.GetString("Subtitle")))
+									{
+										<p class="@subtitleFontSize @subtitleColor @subtitleOpacity lead m-0">@item.GetString("Subtitle")</p>
+									}
+									@if (!string.IsNullOrEmpty(item.GetString("Text")))
+									{
+										<div class="mb-0-last-child @textColor @textOpacity">@item.GetString("Text")</div>
+									}
+										@RenderButton(item, buttonSize)
+									</div>
+							</div>
+						</li>
+
+						break;
+
+					case "story-image-left":
+
+						<li class="@(theme)">
+							<div class="row g-0 h-100">
+								<div class="col-12 col-lg-6 col-xl-7 mh-100">
+									<div class="overflow-hidden h-100 w-100">
+										@RenderPartial("Components/Image.cshtml", image ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+									</div>
+								</div>
+								<div class="col-12 col-lg-6 col-xl-5 mh-100 grid grid-1 p-3 px-xl-3 py-xl-4 @(containerWidth) @(alignment)" @(maxWidth)>
+									<div class="grid grid-1 gap-3">
+										@if (!string.IsNullOrEmpty(item.GetString("Subtitle")))
+										{
+											<p class="@subtitleFontSize @subtitleColor @subtitleOpacity lead m-0">@item.GetString("Subtitle")</p>
+										}
+										@if (!string.IsNullOrEmpty(item.GetString("Title")) && !item.GetBoolean("HideTitle"))
+										{
+											<h2 class="@titleFontSize @titleColor @titleOpacity m-0">@item.GetString("Title")</h2>
+										}
+										@if (!string.IsNullOrEmpty(item.GetString("Text")))
+										{
+											<div class="mb-0-last-child @textColor @textOpacity">@item.GetString("Text")</div>
+										}
+											@RenderButton(item, buttonSize)
+									</div>
+								</div>
+							</div>
+						</li>
+
+						break;
+
+					case "story-image-right":
+
+						<li class="@(theme)">
+							<div class="row g-0 h-100">
+								<div class="col-12 col-lg-6 col-xl-5 mh-100 grid grid-1 p-3 px-xl-3 py-xl-4 @(containerWidth) @(alignment)" @(maxWidth)>
+									<div class="grid grid-1 gap-3">
+
+										@if (!string.IsNullOrEmpty(item.GetString("Subtitle")))
+										{
+											<p class="@subtitleFontSize @subtitleColor @subtitleOpacity lead m-0">@item.GetString("Subtitle")</p>
+										}
+										@if (!string.IsNullOrEmpty(item.GetString("Title")) && !item.GetBoolean("HideTitle"))
+										{
+											 <h2 class="@titleFontSize @titleColor @titleOpacity m-0">@item.GetString("Title")</h2>
+										}
+										@if (!string.IsNullOrEmpty(item.GetString("Text")))
+										{
+											<div class="mb-0-last-child @textColor @textOpacity">@item.GetString("Text")</div>
+										}
+											@RenderButton(item, buttonSize)
+										</div>
+								</div>
+								<div class="col-12 col-lg-6 col-xl-7 mh-100">
+									@RenderPartial("Components/Image.cshtml", image ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+								</div>
+							</div>
+						</li>
+
+						break;
+
+					case "logo":
+
+						<li class="@(theme)">
+							@if (image is object)
+							{
+								var link = GetLink(item);
+
+								if (link is object && !string.IsNullOrEmpty(link.Url))
+								{
+									string target = link.IsExternal ? "target=\"_blank\"" : string.Empty;
+									<a href="@link.Url" class="d-flex h-100 text-center" @(target)>
+										<img src="@image.Path" class="mw-100 mh-100 m-auto" alt="@(!string.IsNullOrEmpty(item.GetString("ImageAlt")) ? item.GetString("ImageAlt") : item.GetString("Title", string.Empty))" loading="lazy" style="object-fit: contain;">
+									</a>
+								}
+								else
+								{
+									<div class="d-flex h-100 text-center">
+										<img src="@image.Path" class="mw-100 mh-100 m-auto" alt="@(!string.IsNullOrEmpty(item.GetString("ImageAlt")) ? item.GetString("ImageAlt") : item.GetString("Title", string.Empty))" loading="lazy" style="object-fit: contain;">
+									</div>
+								}
+							}
+						</li>
+
+						break;
+				}
 			}
 			</ul>
 
@@ -169,7 +370,6 @@
 						string isActive = "active";
 						int slideCount = 1;
 					}
-
 
 					@foreach (var item in sliderItems)
 					{
@@ -195,231 +395,6 @@
 		</script>
 	</div>
 </div>
-
-@helper RenderSlideItem(ItemViewModel item, bool isFirst, string buttonSize, string titleFontSize, string subtitleFontSize, string movePageBehindClass)
-{
-	string itemLayout = item.GetRawValueString("ItemLayout", "poster");
-	string layout = item.GetRawValueString("Layout", "align-middle-center-text-center");
-	string containerWidth = "container-xl";
-	FileViewModel image = item.GetFile("Image");
-	int xPos = image?.FocalPositionFromLeft ?? 50;
-	int yPos = image?.FocalPositionFromTop ?? 50;
-	string theme = !string.IsNullOrWhiteSpace(item.GetRawValueString("Theme")) ? " theme " + item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
-	string active = isFirst ? "active" : "";
-	string alignment = string.Empty;
-	string maxWidth = item.GetRawValueString("TextReadability", "max-width-on");
-	maxWidth = maxWidth == "max-width-on" ? "style=\"grid-template-columns: minmax(auto,75ch);\"" : maxWidth;
-	maxWidth = maxWidth == "max-width-off" ? string.Empty : maxWidth;
-
-	switch (layout)
-	{
-		case "align-top-left-text-left":
-			alignment = "text-start justify-content-start align-items-start";
-			break;
-		case "align-top-center-text-center":
-			alignment = "text-center justify-content-center align-items-start";
-			break;
-		case "align-top-right-text-right":
-			alignment = "text-end justify-content-end align-items-start";
-			break;
-		case "align-middle-left-text-left":
-			alignment = "text-start justify-content-start align-items-center";
-			break;
-		case "align-middle-center-text-center":
-			alignment = "text-center justify-content-center align-items-center";
-			break;
-		case "align-middle-right-text-right":
-			alignment = "text-end justify-content-end align-items-center";
-			break;
-		case "align-bottom-left-text-left":
-			alignment = "text-start justify-content-start align-items-end";
-			break;
-		case "align-bottom-center-text-center":
-			alignment = "text-center justify-content-center align-items-end";
-			break;
-		case "align-bottom-right-text-right":
-			alignment = "text-end justify-content-end align-items-end";
-			break;
-	}
-
-	switch (itemLayout)
-	{
-		case "poster":
-
-			<li class="@(theme)">
-				@{@RenderImage(item, image)}
-
-				@{string position = image is object ? "position-absolute top-0 bottom-0 start-0 end-0 " : string.Empty;}
-
-				<div class="@(position)h-100 grid grid-1 p-3 px-xl-3 py-xl-4 @(containerWidth) @(alignment)" @(maxWidth)>
-					<div class="grid grid-1 gap-3">
-						@{
-							@RenderTitle(item, titleFontSize)
-							@RenderSubtitle(item, subtitleFontSize)
-							@RenderText(item)
-							@RenderButton(item, buttonSize)
-						}
-					</div>
-				</div>
-			</li>
-
-			break;
-
-		case "story-image-left":
-
-			<li class="@(theme)">
-				<div class="row g-0 h-100">
-					<div class="col-12 col-lg-6 col-xl-7 mh-100">
-						<div class="overflow-hidden h-100 w-100">
-							@{@RenderImage(item, image)}
-						</div>
-					</div>
-					<div class="col-12 col-lg-6 col-xl-5 mh-100 grid grid-1 p-3 px-xl-3 py-xl-4 @(containerWidth) @(alignment)" @(maxWidth)>
-						<div class="grid grid-1 gap-3">
-							@{
-								@RenderSubtitle(item, subtitleFontSize)
-								@RenderTitle(item, titleFontSize)
-								@RenderText(item)
-								@RenderButton(item, buttonSize)
-							}
-						</div>
-					</div>
-				</div>
-			</li>
-
-			break;
-
-		case "story-image-right":
-
-			<li class="@(theme)">
-				<div class="row g-0 h-100">
-					<div class="col-12 col-lg-6 col-xl-5 mh-100 grid grid-1 p-3 px-xl-3 py-xl-4 @(containerWidth) @(alignment)" @(maxWidth)>
-						<div class="grid grid-1 gap-3">
-							@{
-								@RenderSubtitle(item, subtitleFontSize)
-								@RenderTitle(item, titleFontSize)
-								@RenderText(item)
-								@RenderButton(item, buttonSize)
-							}
-						</div>
-					</div>
-					<div class="col-12 col-lg-6 col-xl-7 mh-100">
-						@{@RenderImage(item, image)}
-					</div>
-				</div>
-			</li>
-
-			break;
-
-		case "logo":
-
-			<li class="@(theme)">
-				@if (!string.IsNullOrEmpty(item.GetString("Image")))
-				{
-					var altText = !string.IsNullOrEmpty(item.GetString("ImageAlt")) ? item.GetString("ImageAlt") : item.GetString("Title", string.Empty);
-					image = image ?? new Dynamicweb.Frontend.FileViewModel();
-					var link = GetLink(item);
-
-					if (link is object && !string.IsNullOrEmpty(link.Url))
-					{
-						string target = link.IsExternal ? "target=\"_blank\"" : string.Empty;
-						<a href="@link.Url" class="d-flex h-100 text-center" @(target)>
-							<img src="@image.Path" class="mw-100 mh-100 m-auto" alt="@altText" loading="lazy" style="object-fit: contain;">
-						</a>
-					}
-					else
-					{
-						<div class="d-flex h-100 text-center">
-							<img src="@image.Path" class="mw-100 mh-100 m-auto" alt="@altText" loading="lazy" style="object-fit: contain;">
-						</div>
-					}
-				}
-			</li>
-
-			break;
-	}
-}
-
-@helper RenderImage(ItemViewModel item, FileViewModel image)
-{
-	if (image is object)
-	{
-		var altText = !string.IsNullOrEmpty(item.GetString("ImageAlt")) ? item.GetString("ImageAlt") : item.GetString("Title", string.Empty);
-		var parms = new Dictionary<string, object>();
-		parms.Add("cssClass", "h-100 w-100");
-		parms.Add("columns", Model.GridRowColumnCount);
-		parms.Add("alt", altText);
-
-		@RenderPartial("Components/Image.cshtml", image ?? new Dynamicweb.Frontend.FileViewModel(), parms)
-	}
-}
-
-@helper RenderTitle(ItemViewModel item, string titleFontSize)
-{
-	if (!string.IsNullOrEmpty(item.GetString("Title")) && !item.GetBoolean("HideTitle"))
-	{
-		string titleColor = item.GetString("TitleColor", "text-inherit");
-		string titleOpacity = item.GetString("TitleOpacity", "opacity-100");
-
-		<h2 class="@titleFontSize @titleColor @titleOpacity m-0">@item.GetString("Title")</h2>
-	}
-}
-
-@helper RenderSubtitle(ItemViewModel item, string subtitleFontSize)
-{
-	if (!string.IsNullOrEmpty(item.GetString("Subtitle")))
-	{
-		string subtitleColor = item.GetString("SubtitleColor", "text-inherit");
-		string subtitleOpacity = item.GetString("SubtitleOpacity", "opacity-100");
-
-		<p class="@subtitleFontSize @subtitleColor @subtitleOpacity lead m-0">@item.GetString("Subtitle")</p>
-	}
-}
-
-@helper RenderText(ItemViewModel item)
-{
-	if (!string.IsNullOrEmpty(item.GetString("Text")))
-	{
-		string textColor = item.GetString("TextColor", "text-inherit");
-		string textOpacity = item.GetString("TextOpacity", "opacity-100");
-
-		<div class="mb-0-last-child @textColor @textOpacity">
-			@item.GetString("Text")
-		</div>
-	}
-}
-
-@helper RenderButton(ItemViewModel item, string buttonSize)
-{
-	var link = GetLink(item);
-	string stretchedLink = item.GetRawValueString("StretchedLink", string.Empty);
-	stretchedLink = stretchedLink == "not-clickable" ? string.Empty : stretchedLink;
-	stretchedLink = stretchedLink == "clickable" ? "stretched-link" : stretchedLink;
-
-	if (link != null && !string.IsNullOrEmpty(item.GetString("ButtonLabel")))
-	{
-		string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : "";
-		string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : "";
-
-		string buttonStyle = item.GetRawValueString("ButtonStyle", "primary");
-		buttonStyle = buttonStyle == "primary" ? "btn-primary" : buttonStyle;
-		buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
-		buttonStyle = buttonStyle == "link" ? "btn-link" : buttonStyle;
-
-		<div class="m-0">
-			<a href="@link.Url" class="btn @buttonStyle@(buttonSize) @(stretchedLink)" @target @rel>@item.GetString("ButtonLabel")</a>
-		</div>
-	}
-	else if (link != null && !string.IsNullOrEmpty(link.Url))
-	{
-		string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : "";
-		string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : "";
-
-		<a href="@link.Url" class="@(stretchedLink)" @target @rel>
-			<span class="visually-hidden">@item.GetString("Title")</span>
-		</a>
-	}
-}
 
 @if (movePageBehind && isFirstPoster)
 {
