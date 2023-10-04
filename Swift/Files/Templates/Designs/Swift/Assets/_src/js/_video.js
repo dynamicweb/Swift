@@ -6,6 +6,11 @@ const Video = function () {
 				var videoId = thumbnailElement.getAttribute("data-video-id");
 				swift.Video.setVimeoThumbnail(thumbnailElement, videoId);
 			});
+			document.querySelectorAll(".js-selfhosted-video-thumbnail").forEach(function (thumbnailElement) {
+				var videoUrl = thumbnailElement.getAttribute("data-src");
+				thumbnailElement.src = videoUrl;
+				swift.Video.getSelfHostedVideoPoster(thumbnailElement);
+			});
 		},
 
 		setVimeoThumbnail(element, videoId) {
@@ -23,9 +28,8 @@ const Video = function () {
 				console.log(error);
 			});
 		},
-		getSelfHostedVideoPoster() {
-			var video = event.target;
-
+		 getSelfHostedVideoPoster(video) {
+            
 			video.addEventListener('loadedmetadata', function () {
 				video.currentTime = 0.5;
 			});
@@ -36,7 +40,11 @@ const Video = function () {
 				canvas.height = 1080;
 				var ctx = canvas.getContext('2d');
 				ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-				video.poster = canvas.toDataURL();
+				const dataUrl = canvas.toDataURL();
+
+				fetch(dataUrl).then(res => res.blob()).then(blob =>
+					video.poster = URL.createObjectURL(blob)
+				);
 			});
 		}
 	}
