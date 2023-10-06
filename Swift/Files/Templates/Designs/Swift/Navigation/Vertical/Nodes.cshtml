@@ -1,0 +1,76 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel>
+@using Dynamicweb
+@using System.IO
+
+@{
+	bool isSubmenu = GetViewParameterString("IsSubmenu") != null ? GetViewParameterBoolean("IsSubmenu") : false;
+
+	string contentPadding = GetViewParameterString("ContentPadding");
+	string layoutSetting = GetViewParameterString("Layout");
+	bool hideTexts = GetViewParameterBoolean("HideTexts");
+	bool hideIcons = GetViewParameterBoolean("HideIcons");
+	int nodeCount = GetViewParameterInt32("NodeCount");
+	nodeCount++;
+
+	string small = layoutSetting == "small" ? " fs-7" : string.Empty;
+	
+	string linesLayout = layoutSetting == "lines" && isSubmenu == false ? " border-top" : string.Empty;
+	linesLayout = layoutSetting == "lines" && isSubmenu == false && nodeCount == (1) ? string.Empty : linesLayout;
+
+	var nodesParms = new Dictionary<string, object>();
+	nodesParms.Add("IsSubmenu", true);
+	nodesParms.Add("Layout", layoutSetting);
+	nodesParms.Add("ContentPadding", contentPadding);
+	nodesParms.Add("HideTexts", hideTexts);
+	nodesParms.Add("HideIcons", hideIcons);
+	nodesParms.Add("NodeCount", nodeCount);
+
+	var hasChildren = Model.Nodes.Count() > 0;
+	string groupId = !string.IsNullOrEmpty(Model.GroupId) ? Model.GroupId : Model.PageId.ToString();
+
+	var page = Dynamicweb.Content.Services.Pages.GetPage(Model.PageId);
+	string icon = string.Empty;
+	if (page.PropertyItem != null)
+	{
+		icon = page.PropertyItem["Icon"] != null ? page.PropertyItem["Icon"].ToString() : string.Empty;
+	}
+}
+
+<li class="nav-item@(linesLayout)@(Model.IsActive ? " active" : string.Empty)">
+	<div class="d-flex align-items-center">
+		<a class="nav-link flex-fill text-reset@(contentPadding)@(small)" @(Model.IsActive ? "aria-current='page'" : string.Empty) href="@Model.Link">
+			@if (!hideIcons)
+			{
+				if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none"))
+				{
+					<span class="icon-3 me-1">
+						@ReadFile(icon)
+					</span>
+				}
+			}
+			@if (!hideTexts)
+			{
+				<span class="@(Model.IsActive ? "fw-bold" : string.Empty)">@Model.Name</span>
+			}
+		</a>
+		@if (hasChildren)
+		{
+			string collapseCSS = Model.InPath ? string.Empty : "collapsed ";
+			string collapseIconStyle = contentPadding == " px-0 py-2" ? collapseIconStyle = "style=" + "-webkit-mask-position:right;mask-position:right;" : string.Empty;
+			<div class="@(collapseCSS)m-0 collapse-icon@(small)@(contentPadding)" @collapseIconStyle data-bs-toggle="collapse" data-bs-target="#NavigationGroup_@(groupId)_@(nodeCount)" role="button" aria-expanded="true" aria-controls="NavigationGroup_@(groupId)_@(nodeCount)"></div>
+		}
+	</div>
+	@if (hasChildren)
+	{
+		string collapsed = Model.InPath ? "show" : string.Empty;
+
+		<div class="ms-3 collapse @collapsed" id="NavigationGroup_@(groupId)_@(nodeCount)">
+			<ul class="navbar-nav flex-column flex-fill">
+				@foreach (var subnode in Model.Nodes)
+				{
+					@RenderPartial("Navigation/Vertical/Nodes.cshtml", subnode, nodesParms)
+				}
+			</ul>
+		</div>
+	}
+</li>
