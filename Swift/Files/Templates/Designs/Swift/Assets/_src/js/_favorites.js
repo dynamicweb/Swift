@@ -25,7 +25,7 @@ const Favorites = function () {
 
 			var productId = form.getAttribute('data-product-id');
 			var variantId = form.getAttribute('data-variant-id');
-			var productButton = document.querySelector('#FavoriteBtn_' + productId + variantId);
+			var productButton = document.querySelector('#FavoriteBtn_' + productId + variantId.replace('.', ''));
 
 			//The command is used when there is multiple lists to choose from (Change the command + listid on the form)
 			if (clickedButton.getAttribute('data-command') != null) {
@@ -147,9 +147,9 @@ const Favorites = function () {
 									icon.querySelector('.not-in-list').classList.add('d-none');
 								}
 							}
-						}
 
-						productButton.blur();
+							productButton.blur();
+						}
 					}
 				}
 
