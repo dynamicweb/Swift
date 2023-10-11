@@ -15,16 +15,9 @@
 		return product;
 	}
 
-	List<Dictionary<string, List<FieldValueViewModel>>> GetGroupsData(ProductViewModel product)
+	List<FieldGroupViewModel> BuildGroupsData(ProductViewModel product)
 	{
-		List<Dictionary<string, List<FieldValueViewModel>>> groups = BuildGroupsData(product);
-
-		return groups;
-	}
-
-	List<Dictionary<string, List<FieldValueViewModel>>> BuildGroupsData(ProductViewModel product)
-	{
-		var groups = new List<Dictionary<string, List<FieldValueViewModel>>>();
+		var groups = new List<FieldGroupViewModel>();
 		bool showProductCategoryFields = (product.ProductCategories != null && Model.Item.GetBoolean("CategoryFields"));
 		bool showProductFields = Model.Item.GetBoolean("ProductFields") && product.ProductFields != null;
 
@@ -43,48 +36,36 @@
 		return groups;
 	}
 
-	List<Dictionary<string, List<FieldValueViewModel>>> BuildDisplayGroups(ProductViewModel product)
+	List<FieldGroupViewModel> BuildDisplayGroups(ProductViewModel product)
 	{
 
-		var groups = new List<Dictionary<string, List<FieldValueViewModel>>>();
+		var groups = new List<FieldGroupViewModel>();
 
 		bool hideFieldsWithZeroValue = Model.Item.GetBoolean("HideFieldsWithZeroValue");
 		IEnumerable<string> selectedDisplayGroupSystemName = Model.Item.GetRawValueString("DisplayGroups").Split(',').ToList();
 		var displayGroups = product.GetProductDisplayGroupFieldsByGroupSystemNames(selectedDisplayGroupSystemName, hideFieldsWithZeroValue);
-
-		foreach (var displayGroup in displayGroups)
-		{
-			var groupFields = new Dictionary<string, List<FieldValueViewModel>>();
-			string groupName = displayGroup.Name;
-
-			groupFields.Add(groupName, displayGroup.Fields);
-			groups.Add(groupFields);
-		}
-
-		return groups;
+		return displayGroups.ToList();
 	}
 
-	List<Dictionary<string, List<FieldValueViewModel>>> BuildProductGroups(ProductViewModel product)
+	List<FieldGroupViewModel> BuildProductGroups(ProductViewModel product)
 	{
-		var groups = new List<Dictionary<string, List<FieldValueViewModel>>>();
+		var groups = new List<FieldGroupViewModel>();
 
-		foreach (var group in product.ProductFields)
+		foreach (var productGroup in product.ProductFields)
 		{
-			var groupFields = new Dictionary<string, List<FieldValueViewModel>>();
-			string groupName = group.Key;
+			string groupName = productGroup.Key;
 			var productFields = new List<FieldValueViewModel>(product.ProductFields.Values);
-
-			groupFields.Add(groupName, productFields);
-			groups.Add(groupFields);
+			var group = new FieldGroupViewModel { Name = groupName, Fields = productFields };
+			groups.Add(group);
 		}
 
 		return groups;
 	}
 
-	List<Dictionary<string, List<FieldValueViewModel>>> BuildProductCategoryGroups(ProductViewModel product)
+	List<FieldGroupViewModel> BuildProductCategoryGroups(ProductViewModel product)
 	{
 
-		var groups = new List<Dictionary<string, List<FieldValueViewModel>>>();
+		var groups = new List<FieldGroupViewModel>();
 
 		foreach (var categories in product.ProductCategories)
 		{
@@ -96,10 +77,8 @@
 			}
 
 			string groupName = categories.Value.Name;
-			var groupFields = new Dictionary<string, List<FieldValueViewModel>>();
-
-			groupFields.Add(groupName, categoryFields);
-			groups.Add(groupFields);
+			var group = new FieldGroupViewModel { Name = groupName, Fields = categoryFields };
+			groups.Add(group);
 		}
 
 		return groups;
@@ -111,25 +90,7 @@
 		return input[0].ToString().ToUpper() + input.Substring(1);
 	}
 
-	Dictionary<string, object> GetTemplateParams(ProductViewModel product, string size, string gapCss, string tableSizeCss)
-	{
-
-		var templateParams = new Dictionary<string, object>();
-		List<Dictionary<string, List<FieldValueViewModel>>> groups = GetGroupsData(product);
-
-		templateParams.Add("Groups", groups);
-		templateParams.Add("Title", Model.Item.GetString("Title"));
-		templateParams.Add("HideGroupHeaders", Model.Item.GetBoolean("HideGroupHeaders"));
-		templateParams.Add("HideFieldLabels", Model.Item.GetBoolean("HideFieldLabels"));
-		templateParams.Add("HideTitle", Model.Item.GetBoolean("HideTitle"));
-		templateParams.Add("TitleFontSize", Model.Item.GetRawValueString("TitleFontSize", "display-4"));
-		templateParams.Add("Size", size);
-		templateParams.Add("GapCss", gapCss);
-		templateParams.Add("TableSizeCss", tableSizeCss);
-
-		return templateParams;
-	}
-}
+		}
 
 @{
 	ProductViewModel product = GetProduct();
@@ -146,7 +107,13 @@
 		contentPadding = contentPadding == "small" ? " p-2 p-md-3" : contentPadding;
 		contentPadding = contentPadding == "large" ? " p-4 p-md-5" : contentPadding;
 
-		var templateParams = GetTemplateParams(product, size, gapCss, tableSizeCss);
+		var groups = BuildGroupsData(product);
+		var templateParams = new Dictionary<string, object>
+			{
+				{ "Groups", groups },
+				{ "Size", size }
+			};
+
 		string templateLayout = Model.Item.GetRawValueString("Layout", "list");
 		string templateLayoutPath = $"Components/Specifications/{FirstCharToUpper(templateLayout)}.cshtml";
 
@@ -156,7 +123,7 @@
 			</div>
 		</div>
 
-	} else { 
+	} else {
 		<div class="alert alert-warning m-0">@Translate("Product Specification will be shown here if any")</div>
 	}
 }
