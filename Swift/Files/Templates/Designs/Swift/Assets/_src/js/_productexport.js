@@ -82,6 +82,13 @@ const ProductExport = function () {
 			var form = clickedButton.closest('.js-product-export-form');
 			let formData = new FormData(form);
 			const newParams = new URLSearchParams(formData); //Get parameters from the form
+
+			const exportFormat = newParams.get("ExportFormat");
+
+			if (exportFormat == "") {
+				newParams.delete("ExportFormat");
+			}
+
 			var url = new URL(form.action);	//Get the url from the form
 			var newUrl = url.origin + url.pathname + "?" + newParams.toString(); //Create url with the new parameters
 
