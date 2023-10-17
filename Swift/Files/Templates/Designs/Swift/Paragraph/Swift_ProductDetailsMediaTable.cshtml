@@ -55,7 +55,7 @@
 	}
 }
 
-@if (product is object) 
+@if (product is object)
 {
 	@* Supported formats *@
 	supportedImageFormats = new string[] { ".jpg", ".jpeg", ".webp", ".png", ".gif", ".bmp", ".tiff" };
@@ -66,25 +66,25 @@
 
 	@* Collect the assets *@
 	var selectedAssetCategories = Model.Item.GetRawValueString("ImageAssets").Split(',').ToList();
-	bool includeImagePatternImages = Model.Item.GetBoolean("ImagePatternImages"); 
-	
+	bool includeImagePatternImages = Model.Item.GetBoolean("ImagePatternImages");
+
 	@* Needed image data collection to support both DefaultImage, ImagePatterns and Image Assets *@
 	string defaultImage = product.DefaultImage != null ? product.DefaultImage.Value : "";
 	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedAssetCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
 	assetsImages = assetsImages.OrderByDescending(x => x.Value.Equals(defaultImage));
-	IEnumerable<MediaViewModel> assetsList = new MediaViewModel[]{};
+	IEnumerable<MediaViewModel> assetsList = new MediaViewModel[] { };
 
 	assetsList = assetsList.Union(assetsImages);
 	assetsList = includeImagePatternImages ? assetsList.Union(product.ImagePatternImages) : assetsList;
 	assetsList = includeImagePatternImages && assetsList.Count() == 0 ? assetsList.Append(product.DefaultImage) : assetsList;
 
-	bool defaultImageFallback = Model.Item.GetBoolean("DefaultImageFallback"); 
+	bool defaultImageFallback = Model.Item.GetBoolean("DefaultImageFallback");
 	bool showOnlyPrimaryImage = Model.Item.GetBoolean("ShowOnlyPrimaryImage");
 
 	int totalAssets = 0;
 	if (showOnlyPrimaryImage == false) {
 		foreach (MediaViewModel asset in assetsList) {
-			var assetValue = asset.Value; 
+			var assetValue = asset.Value;
 			foreach (string format in allSupportedFormats) {
 				if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0) {
 					totalAssets++;
@@ -93,7 +93,7 @@
 		}
 	}
 
-	if((totalAssets == 0 && product.DefaultImage != null && selectedAssetCategories.Count() == 0) || (showOnlyPrimaryImage == true && product.DefaultImage != null))
+	if ((totalAssets == 0 && product.DefaultImage != null && selectedAssetCategories.Count() == 0) || (showOnlyPrimaryImage == true && product.DefaultImage != null))
 	{
 		assetsList = new List<MediaViewModel>(){ product.DefaultImage };
 		totalAssets = 1;
@@ -115,7 +115,7 @@
 	int modalVideoNumber = 0;
 
 	@* Get assets from selected categories or get all assets *@
-	
+
 	if (totalAssets != 0 && assetsList.Any())
 	{
 		<div class="@spacing@(theme) item_@Model.Item.SystemName.ToLower()">
@@ -227,9 +227,10 @@
 																			else
 																			{
 																				string videoType = Path.GetExtension(asset.Value).ToLower();
+																				string videoPathEncoded = System.Uri.EscapeDataString(assetValue);
 
 																				<video preload="auto" class="h-100 w-100" style="object-fit: contain;">
-																					<source src="@asset.Value" type="video/@videoType.Replace(".", "")">
+																					<source src="@(videoPathEncoded)#t=0.001" type="video/@videoType.Replace(".", "")">
 																				</video>
 																			}
 																		</div>
@@ -286,110 +287,111 @@
 								}
 								else
 								{
-					<tr>
-						@if (!hideThumbnails)
-						{
-							//From @RenderAsset
-							string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
+									<tr>
+										@if (!hideThumbnails)
+										{
+											//From @RenderAsset
+											string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
 
-							<td class="@(imageTheme) px-0">
-								@foreach (string format in supportedImageFormats)
-								{ //Images
-									if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0)
-									{
-										string productName = product.Name;
-										productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
-										string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
-										string imageLinkPath = imagePath;
-										imagePath = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=60&format=webp";
-										imagePath = !imageLinkPath.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? asset.Value : imagePath;
+											<td class="@(imageTheme) px-0">
+												@foreach (string format in supportedImageFormats)
+												{ //Images
+													if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0)
+													{
+														string productName = product.Name;
+														productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
+														string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+														string imageLinkPath = imagePath;
+														imagePath = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=60&format=webp";
+														imagePath = !imageLinkPath.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? asset.Value : imagePath;
 
-										string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
+														string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
 
-										RatioSettings ratioSettings = GetRatioSettings();
+														RatioSettings ratioSettings = GetRatioSettings();
 
-										<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download>
-											<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-												<img loading="lazy" src="@imagePath" class="mw-100 mh-100" alt="@productName" @assetTitle itemprop="image">
-											</div>
-										</a>
-									}
-								}
-								@foreach (string format in supportedVideoFormats)
-								{ //Videos
-									if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0)
-									{
-										string videoScreendumpPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : "";
-										string videoId = videoScreendumpPath.Substring(videoScreendumpPath.LastIndexOf('/') + 1);
-										videoScreendumpPath = videoScreendumpPath.IndexOf("youtu.be", StringComparison.OrdinalIgnoreCase) >= 0 || videoScreendumpPath.IndexOf("youtube", StringComparison.OrdinalIgnoreCase) >= 0 ? "https://img.youtube.com/vi/" + videoId + "/mqdefault.jpg" : videoScreendumpPath;
-
-										string vimeoJsClass = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "js-vimeo-video-thumbnail" : "";
-										videoScreendumpPath = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "" : videoScreendumpPath;
-
-										string productName = product.Name;
-										productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
-										string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
-
-										RatioSettings ratioSettings = GetRatioSettings();
-
-										<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
-											<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-												<div class="icon-2 position-absolute" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
-												@if (videoScreendumpPath.IndexOf(".mp4", StringComparison.OrdinalIgnoreCase) < 0)
-												{
-													<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
+														<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download>
+															<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+																<img loading="lazy" src="@imagePath" class="mw-100 mh-100" alt="@productName" @assetTitle itemprop="image">
+															</div>
+														</a>
+													}
 												}
-												else
-												{
-													string videoType = Path.GetExtension(asset.Value).ToLower();
+												@foreach (string format in supportedVideoFormats)
+												{ //Videos
+													if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0)
+													{
+														string videoScreendumpPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : "";
+														string videoId = videoScreendumpPath.Substring(videoScreendumpPath.LastIndexOf('/') + 1);
+														videoScreendumpPath = videoScreendumpPath.IndexOf("youtu.be", StringComparison.OrdinalIgnoreCase) >= 0 || videoScreendumpPath.IndexOf("youtube", StringComparison.OrdinalIgnoreCase) >= 0 ? "https://img.youtube.com/vi/" + videoId + "/mqdefault.jpg" : videoScreendumpPath;
 
-													<video preload="auto" class="h-100 w-100" style="object-fit: contain;">
-														<source src="@asset.Value" type="video/@videoType.Replace(".", "")">
-													</video>
+														string vimeoJsClass = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "js-vimeo-video-thumbnail" : "";
+														videoScreendumpPath = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "" : videoScreendumpPath;
+
+														string productName = product.Name;
+														productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
+														string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
+
+														RatioSettings ratioSettings = GetRatioSettings();
+
+														<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
+															<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+																<div class="icon-2 position-absolute" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
+																@if (videoScreendumpPath.IndexOf(".mp4", StringComparison.OrdinalIgnoreCase) < 0)
+																{
+																	<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
+																}
+																else
+																{
+																	string videoType = Path.GetExtension(asset.Value).ToLower();
+																	string videoPathEncoded = System.Uri.EscapeDataString(assetValue);
+
+																	<video preload="auto" class="h-100 w-100" style="object-fit: contain;">
+																		<source src="@(videoPathEncoded)#t=0.001" type="video/@videoType.Replace(".", "")">
+																	</video>
+																}
+															</div>
+														</div>
+													}
 												}
-											</div>
-										</div>
-									}
-								}
-								@foreach (string format in supportedDocumentFormats)
-								{ //Documents
-									if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0)
-									{
-										string productName = product.Name;
-										productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
-										string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
-										string imageLinkPath = imagePath;
-										imagePath = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=60&format=webp";
-										string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
+												@foreach (string format in supportedDocumentFormats)
+												{ //Documents
+													if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0)
+													{
+														string productName = product.Name;
+														productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
+														string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+														string imageLinkPath = imagePath;
+														imagePath = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=60&format=webp";
+														string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
 
-										RatioSettings ratioSettings = GetRatioSettings();
+														RatioSettings ratioSettings = GetRatioSettings();
 
-										<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download alt="@productName">
-											@if (asset.Value.IndexOf(".pdf", StringComparison.OrdinalIgnoreCase) >= 0)
-											{
-												<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-													<img loading="lazy" src="@imagePath" class="mw-100 mh-100" alt="@productName" @assetTitle />
-												</div>
-											}
-											else
-											{
-												<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-													<div class="icon-3 position-absolute" style="z-index: 1">@ReadFile(iconPath + "file-text.svg")</div>
-												</div>
-											}
-										</a>
-									}
-								}
-							</td>
-						}
-						<td>
-							<a href="@assetValue" class="text-decoration-none text-break" download="@assetName" title="@assetName">
-								@assetName
-							</a>
-						</td>
-						<td>&nbsp;</td>
-						<td>&nbsp;</td>
-					</tr>
+														<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download alt="@productName">
+															@if (asset.Value.IndexOf(".pdf", StringComparison.OrdinalIgnoreCase) >= 0)
+															{
+																<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+																	<img loading="lazy" src="@imagePath" class="mw-100 mh-100" alt="@productName" @assetTitle />
+																</div>
+															}
+															else
+															{
+																<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+																	<div class="icon-3 position-absolute" style="z-index: 1">@ReadFile(iconPath + "file-text.svg")</div>
+																</div>
+															}
+														</a>
+													}
+												}
+											</td>
+										}
+										<td>
+											<a href="@assetValue" class="text-decoration-none text-break" download="@assetName" title="@assetName">
+												@assetName
+											</a>
+										</td>
+										<td>&nbsp;</td>
+										<td>&nbsp;</td>
+									</tr>
 								}
 							}
 							else
@@ -397,111 +399,112 @@
 								string videoType = asset.Value.IndexOf("youtu.be", StringComparison.OrdinalIgnoreCase) >= 0 || asset.Value.IndexOf("youtube", StringComparison.OrdinalIgnoreCase) >= 0 ? "Youtube" : "";
 								videoType = asset.Value.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "Vimeo" : videoType;
 
-					<tr data-bs-toggle="modal" data-bs-target="#modal_@(Model.ID)_@videoNumber" style="cursor: pointer">
-						@if (!hideThumbnails)
-						{
-							//From @RenderAsset
-							string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
-							
-
-							<td class="@(imageTheme) px-0">
-								@foreach (string format in supportedImageFormats)
-								{ //Images
-									if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0)
+								<tr data-bs-toggle="modal" data-bs-target="#modal_@(Model.ID)_@videoNumber" style="cursor: pointer">
+									@if (!hideThumbnails)
 									{
-										string productName = product.Name;
-										productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
-										string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
-										string imageLinkPath = imagePath;
-										imagePath = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=60&format=webp";
-										imagePath = !imageLinkPath.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? asset.Value : imagePath;
+										//From @RenderAsset
+										string imageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ImageTheme")) ? " theme " + Model.Item.GetRawValueString("ImageTheme").Replace(" ", "").Trim().ToLower() : "";
 
-										string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
 
-										RatioSettings ratioSettings = GetRatioSettings();
-
-										<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download>
-											<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-												<img loading="lazy" src="@imagePath" class="mw-100 mh-100" alt="@productName" @assetTitle itemprop="image">
-											</div>
-										</a>
-									}
-								}
-								@foreach (string format in supportedVideoFormats)
-								{ //Videos
-									if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0)
-									{
-										
-
-										string videoScreendumpPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : "";
-										string videoId = videoScreendumpPath.Substring(videoScreendumpPath.LastIndexOf('/') + 1);
-										videoScreendumpPath = videoScreendumpPath.IndexOf("youtu.be", StringComparison.OrdinalIgnoreCase) >= 0 || videoScreendumpPath.IndexOf("youtube", StringComparison.OrdinalIgnoreCase) >= 0 ? "https://img.youtube.com/vi/" + videoId + "/mqdefault.jpg" : videoScreendumpPath;
-
-										string vimeoJsClass = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "js-vimeo-video-thumbnail" : "";
-										videoScreendumpPath = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "" : videoScreendumpPath;
-
-										string productName = product.Name;
-										productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
-										string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
-
-										RatioSettings ratioSettings = GetRatioSettings();
-
-										<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
-											<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-												<div class="icon-2 position-absolute" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
-												@if (videoScreendumpPath.IndexOf(".mp4", StringComparison.OrdinalIgnoreCase) < 0)
+										<td class="@(imageTheme) px-0">
+											@foreach (string format in supportedImageFormats)
+											{ //Images
+												if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0)
 												{
-													<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
+													string productName = product.Name;
+													productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
+													string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+													string imageLinkPath = imagePath;
+													imagePath = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=60&format=webp";
+													imagePath = !imageLinkPath.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? asset.Value : imagePath;
+
+													string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
+
+													RatioSettings ratioSettings = GetRatioSettings();
+
+													<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download>
+														<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+															<img loading="lazy" src="@imagePath" class="mw-100 mh-100" alt="@productName" @assetTitle itemprop="image">
+														</div>
+													</a>
 												}
-												else
+											}
+											@foreach (string format in supportedVideoFormats)
+											{ //Videos
+												if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0)
 												{
-													string fileExtension = Path.GetExtension(asset.Value).ToLower();
 
-													<video preload="auto" class="h-100 w-100" style="object-fit: contain;">
-														<source src="@asset.Value" type="video/@fileExtension.Replace(".", "")">
-													</video>
+
+													string videoScreendumpPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : "";
+													string videoId = videoScreendumpPath.Substring(videoScreendumpPath.LastIndexOf('/') + 1);
+													videoScreendumpPath = videoScreendumpPath.IndexOf("youtu.be", StringComparison.OrdinalIgnoreCase) >= 0 || videoScreendumpPath.IndexOf("youtube", StringComparison.OrdinalIgnoreCase) >= 0 ? "https://img.youtube.com/vi/" + videoId + "/mqdefault.jpg" : videoScreendumpPath;
+
+													string vimeoJsClass = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "js-vimeo-video-thumbnail" : "";
+													videoScreendumpPath = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "" : videoScreendumpPath;
+
+													string productName = product.Name;
+													productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
+													string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
+
+													RatioSettings ratioSettings = GetRatioSettings();
+
+													<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
+														<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+															<div class="icon-2 position-absolute" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
+															@if (videoScreendumpPath.IndexOf(".mp4", StringComparison.OrdinalIgnoreCase) < 0)
+															{
+																<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
+															}
+															else
+															{
+																string fileExtension = Path.GetExtension(asset.Value).ToLower();
+																string videoPathEncoded = System.Uri.EscapeDataString(assetValue);
+
+																<video preload="auto" class="h-100 w-100" style="object-fit: contain;">
+																	<source src="@(videoPathEncoded)#t=0.001" type="video/@fileExtension.Replace(".", "")">
+																</video>
+															}
+														</div>
+													</div>
 												}
-											</div>
-										</div>
-									}
-								}
-								@foreach (string documentFormat in supportedDocumentFormats)
-								{ //Documents
-									if (assetValue.IndexOf(documentFormat, StringComparison.OrdinalIgnoreCase) >= 0)
-									{
-										string productName = product.Name;
-										productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
-										string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
-										string imageLinkPath = imagePath;
-										imagePath = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=60&format=webp";
-										string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
-
-										RatioSettings ratioSettings = GetRatioSettings();
-
-										<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download alt="@productName">
-											@if (asset.Value.IndexOf(".pdf", StringComparison.OrdinalIgnoreCase) >= 0)
-											{
-												<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-													<img loading="lazy" src="@imagePath" class="mw-100 mh-100" alt="@productName" @assetTitle />
-												</div>
 											}
-											else
-											{
-												<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
-													<div class="icon-3 position-absolute" style="z-index: 1">@ReadFile(iconPath + "file-text.svg")</div>
-												</div>
+											@foreach (string documentFormat in supportedDocumentFormats)
+											{ //Documents
+												if (assetValue.IndexOf(documentFormat, StringComparison.OrdinalIgnoreCase) >= 0)
+												{
+													string productName = product.Name;
+													productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
+													string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+													string imageLinkPath = imagePath;
+													imagePath = $"/Admin/Public/GetImage.ashx?image={imagePath}&width=60&format=webp";
+													string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
+
+													RatioSettings ratioSettings = GetRatioSettings();
+
+													<a href="@imageLinkPath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download alt="@productName">
+														@if (asset.Value.IndexOf(".pdf", StringComparison.OrdinalIgnoreCase) >= 0)
+														{
+															<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+																<img loading="lazy" src="@imagePath" class="mw-100 mh-100" alt="@productName" @assetTitle />
+															</div>
+														}
+														else
+														{
+															<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
+																<div class="icon-3 position-absolute" style="z-index: 1">@ReadFile(iconPath + "file-text.svg")</div>
+															</div>
+														}
+													</a>
+												}
 											}
-										</a>
+										</td>
 									}
-								}
-							</td>
-						}
-						<td>
-							@assetName
-						</td>
-						<td class="d-none d-lg-table-cell">&nbsp;</td>
-						<td align="right">@videoType</td>
-					</tr>
+									<td>
+										@assetName
+									</td>
+									<td class="d-none d-lg-table-cell">&nbsp;</td>
+									<td align="right">@videoType</td>
+								</tr>
 
 								videoNumber++;
 							}
@@ -571,9 +574,10 @@
 												else
 												{
 													string videoType = Path.GetExtension(assetValue).ToLower();
+													string videoPathEncoded = System.Uri.EscapeDataString(assetValue);
 
 													<video preload="auto" class="h-100 w-100" style="object-fit: cover;" controls>
-														<source src="@assetValue" type="video/@videoType.Replace(".", "")">
+														<source src="@(videoPathEncoded)#t=0.001" type="video/@videoType.Replace(".", "")">
 													</video>
 												}
 											</div>
