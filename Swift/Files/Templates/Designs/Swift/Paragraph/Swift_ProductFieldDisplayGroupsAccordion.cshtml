@@ -1,5 +1,6 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using System.Linq
 
 @functions {
 
@@ -15,64 +16,103 @@
 		return product;
 	}
 
+	class ContentSetting
+	{
+		public FieldGroupViewModel FieldDisplayGroup { get; set; }
+		public string LayoutPath { get; set; }
+
+		public ContentSetting(FieldGroupViewModel fieldDisplayGroup, string layoutPath)
+		{
+			FieldDisplayGroup = fieldDisplayGroup;
+			LayoutPath = GetLayoutPathFormatted(layoutPath);
+		}
+	}
+
+	List<ContentSetting> GetContentSettings(ProductViewModel product)
+	{
+		var displayGroups = GetDisplayGroups(product);
+		string defaultLayout = Model.Item.GetRawValueString("Layout", "list");
+		var contentSettings = displayGroups.Select(displayGroup => new ContentSetting(displayGroup, defaultLayout)).ToList();
+		bool layoutsCustomized = Model.Item.GetBoolean("CustomizeLayouts");
+
+		return layoutsCustomized ? GetContentSettingsCustomizedLayoutSelection(contentSettings) : contentSettings;
+	}
+
 	List<FieldGroupViewModel> GetDisplayGroups(ProductViewModel product)
 	{
 
 		bool hideFieldsWithZeroValue = Model.Item.GetBoolean("HideFieldsWithZeroValue");
-		IEnumerable<string> selectedDisplayGroupSystemName = Model.Item.GetRawValueString("DisplayGroups").Split(',').ToList();
+		var selectedDisplayGroupSystemName = Model.Item.GetRawValueString("FieldDisplayGroups").Split(',').ToList();
 		var displayGroups = product.GetProductDisplayGroupFieldsByGroupSystemNames(selectedDisplayGroupSystemName, hideFieldsWithZeroValue);
 
 		return displayGroups.ToList();
 	}
 
-	public static string FirstCharToUpper(string input)
+	List<ContentSetting> GetContentSettingsCustomizedLayoutSelection(List<ContentSetting> contentSettings)
 	{
-		return input[0].ToString().ToUpper() + input.Substring(1);
+		var customizedFieldGroupLayoutSelections = Model.Item.GetItems("FieldDisplayGroupLayoutSelector");
+		string customizedLayout = string.Empty;
+
+		foreach (var fieldGroupLayout in customizedFieldGroupLayoutSelections)
+		{
+			string fieldGroupSystemName = fieldGroupLayout.Fields.First().GetRawValueString();
+			string customizedLayoutPath = fieldGroupLayout.Fields.Last().GetRawValueString();
+
+			foreach (var contentSetting in contentSettings)
+			{
+				if (contentSetting.FieldDisplayGroup.SystemName == fieldGroupSystemName)
+				{
+					contentSetting.LayoutPath = GetLayoutPathFormatted(customizedLayoutPath);
+				}
+			}
+		}
+
+		return contentSettings;
+	}
+
+	public static string GetLayoutPathFormatted(string layout)
+	{
+		string layoutPathInCapitalCase = layout[0].ToString().ToUpper() + layout.Substring(1);
+		return $"Components/Specifications/{layoutPathInCapitalCase}.cshtml";
 	}
 
 }
 
 @{
-	ProductViewModel product = GetProduct();
+	var product = GetProduct();
 
 	if (product is object)
 	{
 
-		string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
-		string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
-		contentPadding = contentPadding == "none" ? string.Empty : contentPadding;
-		contentPadding = contentPadding == "small" ? " p-2 p-md-3" : contentPadding;
-		contentPadding = contentPadding == "large" ? " p-4 p-md-5" : contentPadding;
-
+		var accordionContentSettings = GetContentSettings(product);
 		string title = Model.Item.GetString("Title");
 		bool hideLabels = Model.Item.GetBoolean("HideFieldLabels");
 		bool hideTitle = Model.Item.GetBoolean("HideTitle");
 		string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-4");
-
-		string size = "compact";
-		string gapCss = size == "full" ? " gap-4" : " gap-2";
-
-		var displayGroups = GetDisplayGroups(product);
-		string templateLayout = Model.Item.GetRawValueString("Layout", "list");
-		string templateLayoutPath = $"Components/Specifications/{FirstCharToUpper(templateLayout)}.cshtml";
-
 		var templateParams = new Dictionary<string, object>
-	{
-				{"Size", size },
+			{
+				{"Size", "compact" },
 				//Hide title and group headers only apply to the accordion layout, not its tab content layouts
 				{ "HideGroupHeaders", true },
 				{ "HideTitle", true }
 			};
 
+		string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+		string gapCss = "gap-2";
+		string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
+		contentPadding = contentPadding == "none" ? string.Empty : contentPadding;
+		contentPadding = contentPadding == "small" ? " p-2 p-md-3" : contentPadding;
+		contentPadding = contentPadding == "large" ? " p-4 p-md-5" : contentPadding;
+
 		<div class="h-100@(theme)@(contentPadding) item_@Model.Item.SystemName.ToLower()">
-			<div class="grid@(gapCss)">
+			<div class="grid @(gapCss)">
 				@if (!hideTitle)
 				{
 					<h2 class="g-col-12 @titleFontSize">@Model.Item.GetString("Title")</h2>
 				}
 				<div class="g-col-12">
 					<div class="accordion accordion-flush w-100" id="Specifications_@Model.ID">
-						@foreach (var group in displayGroups)
+						@foreach (var contentSetting in accordionContentSettings)
 						{
 							var id = Guid.NewGuid().ToString();
 							string groupHeadingId = $"SpecificationHeading_{Model.ID}_{id}";
@@ -81,16 +121,17 @@
 							<div class="accordion-item">
 								<h2 class="accordion-header" id="@groupHeadingId">
 									<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@groupItemId" aria-expanded="false" aria-controls="@groupItemId">
-										@group.Name
+										@contentSetting.FieldDisplayGroup.Name
 									</button>
 								</h2>
+
 								<div id="@groupItemId" class="accordion-collapse collapse" aria-labelledby="@groupHeadingId" data-bs-parent="#Specifications_@Model.ID">
 									<div class="accordion-body">
 										<div class="g-col-12">
 											<dl class="grid @(gapCss)">
 												@{
-													templateParams["Groups"] = new List<FieldGroupViewModel> { group };
-													@RenderPartial(templateLayoutPath, Model, templateParams);
+													templateParams["Groups"] = new List<FieldGroupViewModel> { contentSetting.FieldDisplayGroup };
+													@RenderPartial(contentSetting.LayoutPath, Model, templateParams);
 												}
 											</dl>
 										</div>
