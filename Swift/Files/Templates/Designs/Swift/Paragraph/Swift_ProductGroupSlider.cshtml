@@ -136,17 +136,30 @@
 	string autoplayInterval = Model.Item.GetRawValueString("AutoplayInterval", string.Empty);
 	bool hideSliderNavigation = false;
 
-	if(navigationStyle == "slider-nav-none")
+	if (navigationStyle == "slider-nav-none")
 	{
 		hideSliderNavigation = true;
 	}
-}
 
-@if (Pageview.IsVisualEditorMode)
-{
-	<div class="alert alert-dark" role="alert">
-		<span>@Translate("Group slider"): @Translate("Edit this column to configure")</span>
-	</div>
+	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "h3");
+	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
+	string maxWidth = Model.Item.GetRawValueString("TextReadability", string.Empty);
+	maxWidth = maxWidth == "max-width-on" ? " mw-75ch" : maxWidth;
+	maxWidth = maxWidth == "max-width-off" ? string.Empty : maxWidth;
+
+	string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "primary");
+	buttonStyle = buttonStyle == "primary" ? "btn-primary" : buttonStyle;
+	buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
+	buttonStyle = buttonStyle == "link" ? "btn-link" : buttonStyle;
+
+	string buttonSize = Model.Item.GetRawValueString("buttonSize", "regular");
+	buttonSize = buttonSize == "small" ? " btn-sm" : buttonSize;
+	buttonSize = buttonSize == "regular" ? string.Empty : buttonSize;
+	buttonSize = buttonSize == "large" ? " btn-lg" : buttonSize;
+
+	string stretchedLink = Model.Item.GetRawValueString("StretchedLink", string.Empty);
+	stretchedLink = stretchedLink == "not-clickable" ? string.Empty : stretchedLink;
+	stretchedLink = stretchedLink == "clickable" ? "stretched-link" : stretchedLink;
 }
 
 @if (groups is object && groups.Count != 0)
@@ -158,7 +171,15 @@
 		{
 			<div class="g-col-12 pb-2 pb-lg-4">
 				<div class="mb-0-last-child">
-					@{ @RenderHeader(title, subtitle) }
+					@if (!string.IsNullOrEmpty(title))
+					{
+						<h2 class="@titleFontSize@(maxWidth)">@title</h2>
+					}
+
+					@if (!string.IsNullOrEmpty(subtitle))
+					{
+						<p class="@subtitleFontSize@(maxWidth)">@subtitle</p>
+					}
 				</div>
 			</div>
 		}
@@ -180,31 +201,37 @@
 									<img class="card-img rounded-0 h-100" loading="lazy" src="@groupImage" style="object-fit: cover;" alt="@group.Name">
 								}
 								<div class="@(!string.IsNullOrEmpty(sliderRatio) ? "card-img-overlay " : string.Empty)@(string.IsNullOrEmpty(sliderRatio) && string.IsNullOrEmpty(groupImage) ? "h-100 " : string.Empty)rounded-0 d-grid p-xl-4 @alignment">
-									@{ @RenderButton(group) }
+									@if (GetLink(group) != null)
+									{
+										string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal ? "target=\"_blank\"" : "";
+										string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal ? "rel=\"noopener\"" : "";
+
+										<div class="m-0">
+											<a href="@GetLink(group)" class="btn @(buttonSize) @buttonStyle @(stretchedLink)" @target @rel>@group.Name</a>
+										</div>
+									}
 								</div>
 							</div>
 						</li>
 					}
 				</ul>
 
-			@if(!hideSliderNavigation)
-			{
-				<button type="button" title="@Translate("Previous slide")" class="slider-nav" style="z-index:2;">
-					<span class="visually-hidden">@Translate("Previous slide")</span>
-				</button>
-				<button type="button" title="@Translate("Next slide")" class="slider-nav slider-nav-next" style="z-index:2;">
-					<span class="visually-hidden">@Translate("Next slide")</span>
-				</button>
-			}
+				@if (!hideSliderNavigation)
+				{
+					<button type="button" title="@Translate("Previous slide")" class="slider-nav" style="z-index:2;">
+						<span class="visually-hidden">@Translate("Previous slide")</span>
+					</button>
+					<button type="button" title="@Translate("Next slide")" class="slider-nav slider-nav-next" style="z-index:2;">
+						<span class="visually-hidden">@Translate("Next slide")</span>
+					</button>
+				}
 
 				@if (indicatorStyle != "slider-indicators-hidden")
 				{
-					<div class="slider-indicators" style="z-index:2;">
-						@{
-							bool isActive = true;
-							int slideCount = 1;
-						}
+					bool isActive = true;
+					int slideCount = 1;
 
+					<div class="slider-indicators" style="z-index:2;">
 						@foreach (var group in groups)
 						{
 							<button @(isActive ? "class=\"active\"" : string.Empty) type="button" title='@Translate("Go to slide") @slideCount'>
@@ -219,60 +246,22 @@
 
 			</div>
 
-		<script type="module" src="/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
-		<script type="module">
+			<script type="module" src="/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
+			<script type="module">
 			swift.AssetLoader.Load('/Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
 			document.addEventListener('load.swift.assetloader', () => {
 				swiffyslider.initSlider(document.querySelector('#ProductGroupSlider_@Model.ID'));
 				document.querySelector('#ProductGroupSlider_@Model.ID').style.opacity = 1;
 				document.querySelector('#ProductGroupSlider_@Model.ID').style.visibility = "visible";
 			});
-		</script>
+			</script>
 
 		</div>
 	</div>
 }
-
-
-@helper RenderButton(ProductGroupViewModel group)
+else if (Pageview.IsVisualEditorMode)
 {
-	string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "primary");
-	buttonStyle = buttonStyle == "primary" ? "btn-primary" : buttonStyle;
-	buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
-	buttonStyle = buttonStyle == "link" ? "btn-link" : buttonStyle;
-	string buttonSize = Model.Item.GetRawValueString("buttonSize", "regular");
-	buttonSize = buttonSize == "small" ? " btn-sm" : buttonSize;
-	buttonSize = buttonSize == "regular" ? string.Empty : buttonSize;
-	buttonSize = buttonSize == "large" ? " btn-lg" : buttonSize;
-	string stretchedLink = Model.Item.GetRawValueString("StretchedLink", string.Empty);
-	stretchedLink = stretchedLink == "not-clickable" ? string.Empty : stretchedLink;
-	stretchedLink = stretchedLink == "clickable" ? "stretched-link" : stretchedLink;
-
-	if (GetLink(group) != null)
-	{
-		string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal ? "target=\"_blank\"" : "";
-		string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal ? "rel=\"noopener\"" : "";
-
-		<div class="m-0">
-			<a href="@GetLink(group)" class="btn @(buttonSize) @buttonStyle @(stretchedLink)" @target @rel>@group.Name</a>
-		</div>
-	}
-}
-
-@helper RenderHeader(string title, string subtitle)
-{
-	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "h3");
-	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
-	string maxWidth = Model.Item.GetRawValueString("TextReadability", string.Empty);
-	maxWidth = maxWidth == "max-width-on" ? " mw-75ch" : maxWidth;
-	maxWidth = maxWidth == "max-width-off" ? string.Empty : maxWidth;
-
-	if (!string.IsNullOrEmpty(title))
-	{
-		<h2 class="@titleFontSize@(maxWidth)">@title</h2>
-	}
-	if (!string.IsNullOrEmpty(subtitle))
-	{
-		<p class="@subtitleFontSize@(maxWidth)">@subtitle</p>
-	}
+	<div class="alert alert-dark" role="alert">
+		<span>@Translate("Group slider"): @Translate("Edit this column to configure")</span>
+	</div>
 }

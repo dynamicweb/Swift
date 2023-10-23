@@ -1,0 +1,89 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.FileViewModel>
+@using System.IO
+@using Dynamicweb.Frontend
+
+@if (!string.IsNullOrEmpty(Model.Path))
+{
+
+	string assetName = !string.IsNullOrEmpty(GetViewParameterString("AssetDisplayName")) ? GetViewParameterString("AssetDisplayName") : GetViewParameterString("AssetName");
+	string assetValue = GetViewParameterString("AssetValue");
+	string size = GetViewParameterString("Size");
+	string id = GetViewParameterString("Id");
+
+	string videoId = assetValue.Substring(assetValue.LastIndexOf('/') + 1);
+	string type = assetValue.IndexOf("youtu.be", StringComparison.OrdinalIgnoreCase) >= 0 || assetValue.IndexOf("youtube", StringComparison.OrdinalIgnoreCase) >= 0 ? "youtube" : "";
+	type = assetValue.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "vimeo" : type;
+	type = assetValue.IndexOf(".mp4", StringComparison.OrdinalIgnoreCase) >= 0 || assetValue.IndexOf(".webm", StringComparison.OrdinalIgnoreCase) >= 0 ? "selfhosted" : type;
+
+	bool openInModal = GetViewParameterBoolean("OpenVideoInModal");
+	bool autoPlay = GetViewParameterBoolean("VideoAutoPlay");
+
+	<div class="h-100" itemscope itemtype="https://schema.org/VideoObject">
+		<span class="visually-hidden" itemprop="name">@assetName</span>
+		<span class="visually-hidden" itemprop="contentUrl">@assetValue</span>
+		<span class="visually-hidden" itemprop="thumbnailUrl">@assetValue</span>
+
+		@if (type != "selfhosted")
+		{
+			<div id="player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size"
+				 class="plyr__video-embed"
+				 data-plyr-provider="@(type)"
+				 data-plyr-embed-id="@videoId"
+				 style="--plyr-color-main: var(--swift-foreground-color); height: 100%">
+			</div>
+
+			<script type="module" src="/Files/Templates/Designs/Swift/Assets/js/plyr.js"></script>
+
+			<script type="module">
+					var player = new Plyr('#player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size', {
+						type: 'video',
+						youtube: {
+							noCookie: true,
+							showinfo: 0
+						},
+						fullscreen: {
+							enabled: true,
+							iosNative: true,
+						}
+					});
+
+					@if (autoPlay && !openInModal)
+					{
+						<text>
+						player.config.autoplay = true;
+						player.config.muted = true;
+						player.config.volume = 0;
+						player.media.loop = true;
+
+						player.on('ready', function() {
+							if (player.config.autoplay === true) {
+								player.media.play();
+							}
+						});
+						</text>
+					}
+
+					@if (openInModal)
+					{
+						<text>
+						var productDetailsGalleryModal = document.querySelector('#modal_@id')
+						productDetailsGalleryModal.addEventListener('hidden.bs.modal', function (event) {
+							player.media.pause();
+						})
+						</text>
+					}
+			</script>
+		}
+		else
+		{
+			string autoPlayAttributes = (autoPlay && !openInModal) ? "loop autoplay muted playsinline" : "";
+			string videoType = Path.GetExtension(assetValue).ToLower();
+			string videoPathEncoded = System.Uri.EscapeDataString(assetValue);
+
+			<video preload="auto" @autoPlayAttributes class="h-100 w-100" style="object-fit: cover;" controls>
+				<source src="@(videoPathEncoded)#t=0.001" type="video/@videoType.Replace(".", "")">
+			</video>
+		}
+	</div>
+}
+

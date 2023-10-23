@@ -74,6 +74,17 @@
 	string text = block.GetString("Text", string.Empty);
 	var layoutColumns = Dynamicweb.Core.Converter.ToInt32(block.GetRawValueString("Layout", "2"));
 
+	int layout = Dynamicweb.Core.Converter.ToInt32(Model.Item.GetRawValueString("Layout", "2"));
+	var imageRatio = Model.Item.GetRawValueString("ImageAspectRatio", "4-3").ToLower();
+
+	var imageParms = new Dictionary<string, object>();
+	imageParms.Add("alt", "");
+	imageParms.Add("columns", layout);
+	imageParms.Add("gridColumns", Model.GridRowColumnCount);
+	imageParms.Add("nested", Model.GridRowColumnCount > 1);
+	imageParms.Add("padding", (padding * 2) + (8 * (layout - 1)));
+	imageParms.Add("imageRatio", imageRatio);
+
 	ProductListViewModel selectedProducts = block?.GetValue("Products") as ProductListViewModel;
 	IList<ProductViewModel> products = selectedProducts?.Products;
 }
@@ -92,17 +103,80 @@
 							int totalProducts = products.Count();
 							foreach (var product in products)
 							{
+								var cellForegroundColor = blockTheme?.GetColor("ForegroundColor");
+
+								string link = product.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
+
+								var uri = Dynamicweb.Context.Current.Request.Url;
+								var hostname = uri.Scheme + Uri.SchemeDelimiter + uri.Host;
+
+								bool hideProductPrice = Model.Item?.GetBoolean("HideProductPrice") ?? false;
+								bool hideProductNumber = Model.Item?.GetBoolean("HideProductNumber") ?? false;
+
 								<td valign="top" style="@GetTableReset()@GetFontStack()">
-									@{ @RenderProduct(product, blockTheme, align) }
+									<table style="border-collapse:collapse;table-layout:fixed;@GetTableReset()" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+										<tbody>
+											<tr style="@GetTableReset()">
+												<td style="@GetTableReset()">
+
+													<div align="center" style="font-size:2px;">
+														<a style="text-decoration:none;" href="@link" target="_blank">
+															@if (product.DefaultImage is object)
+															{
+																imageParms["alt"] = product.Name;
+																@RenderPartial("Swift_Email/Components/Image.cshtml", new Dynamicweb.Frontend.FileViewModel() { Name = product.Name, Path = product.DefaultImage.Value }, imageParms);
+															}
+														</a>
+													</div>
+
+													<table style="border-collapse:collapse;table-layout:fixed;@GetTableReset()" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+														<tbody>
+															<tr style="@GetTableReset()">
+																<td style="@GetTableReset()padding-top:8px;text-align:@align;line-height:18px;font-size:13px;text-decoration:none;color:@cellForegroundColor;">
+																	<a style="text-decoration:none;color:@cellForegroundColor;@GetTableReset()@GetFontStack()" href="@link" target="_blank">
+																		@product.Name
+																	</a>
+																</td>
+															</tr>
+
+															@if (!hideProductNumber)
+															{
+																<tr>
+																	<td style="@GetTableReset()@GetFontStack()padding-top:8px;text-align:@align;line-height:18px;font-size:11px;color:@(GetMutedColor(cellForegroundColor.Hex, 20));">
+																		@product.Number
+																	</td>
+																</tr>
+															}
+
+															@if (!hideProductPrice)
+															{
+																<tr>
+																	<td style="@GetTableReset()@GetFontStack()padding-top:8px;text-align:@align;line-height:13px;font-size:13px;break-inside:avoid;word-break:keep-all;white-space:nowrap;color:@(cellForegroundColor);">
+																		@product.Price.PriceFormatted
+
+																		@if (product.Discount.Price > 0)
+																		{
+																			<span style="line-height:13px;font-size:13px;text-decoration:line-through;break-inside:avoid;word-break:keep-all;white-space:nowrap;color:@(GetMutedColor(cellForegroundColor.Hex, 20));">@product.PriceBeforeDiscount.PriceFormatted</span>
+																		}
+																	</td>
+																</tr>
+															}
+															<tr><td height="24" style="padding-top:24px;"></td></tr>
+														</tbody>
+													</table>
+												</td>
+											</tr>
+										</tbody>
+									</table>
 								</td>
 
 								if (index % layoutColumns == 0 && !(index == totalProducts))
 								{
-								@:</tr>
-								@:<tr style="@GetTableReset()">
-									@:<td style="@GetTableReset()" colspan="100%" height="@(cellSpacing * 4)">&nbsp;</td>
-								@:</tr>
-								@:<tr style="@GetTableReset()">
+									@:</tr>
+									@:<tr style="@GetTableReset()">
+										@:<td style="@GetTableReset()" colspan="100%" height="@(cellSpacing * 4)">&nbsp;</td>
+									@:</tr>
+									@:<tr style="@GetTableReset()">
 								}
 								else
 								{
@@ -126,99 +200,9 @@
 							}
 						}
 					</tbody>
-
 				</table>
 				<!--[if mso]><br/><![endif]-->
 			</td>
 		</tr>
-		
 	</tbody>
 </table>
-
-@helper RenderImage(ProductViewModel product, Dynamicweb.Frontend.ItemViewModel theme)
-{
-	int layout = Dynamicweb.Core.Converter.ToInt32(Model.Item.GetRawValueString("Layout", "2"));
-	int padding = Convert.ToInt32(Model.Item.GetRawValueString("Padding", "0"));
-	var imageRatio = Model.Item.GetRawValueString("ImageAspectRatio", "4-3").ToLower();
-		
-	var parms = new Dictionary<string, object>();
-	parms.Add("alt", product.Name);
-	parms.Add("columns", layout);
-	parms.Add("gridColumns", Model.GridRowColumnCount);
-	parms.Add("nested", Model.GridRowColumnCount > 1);
-	parms.Add("padding", (padding * 2) + (8 * (layout - 1)));
-	parms.Add("imageRatio", imageRatio);
-
-	if(product.DefaultImage is object)
-    {
-		@RenderPartial("Swift_Email/Components/Image.cshtml", new Dynamicweb.Frontend.FileViewModel() {Name = product.Name, Path = product.DefaultImage.Value }, parms);
-    }
-}
-
-@helper RenderProduct(ProductViewModel product, Dynamicweb.Frontend.ItemViewModel theme, string align)
-{
-	var backgroundColor = theme?.GetColor("BackgroundColor");
-	var foregroundColor = theme?.GetColor("ForegroundColor");
-	var borderColor = theme?.GetColor("BorderColor");
-
-	string link = product.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
-
-	var uri = Dynamicweb.Context.Current.Request.Url;
-	var hostname = uri.Scheme + Uri.SchemeDelimiter + uri.Host;
-
-	bool hideProductPrice = Model.Item?.GetBoolean("HideProductPrice") ?? false;
-	bool hideProductNumber = Model.Item?.GetBoolean("HideProductNumber") ?? false;
-
-	<table style="border-collapse:collapse;table-layout:fixed;@GetTableReset()" cellpadding="0" cellspacing="0" width="100%" role="presentation">
-		<tbody>
-			<tr style="@GetTableReset()">
-				<td style="@GetTableReset()">
-
-					<div align="center" style="font-size:2px;">
-						<a style="text-decoration:none;" href="@link" target="_blank">
-							@{ @RenderImage(product, theme) }
-						</a>
-					</div>
-						
-					<table style="border-collapse:collapse;table-layout:fixed;@GetTableReset()" cellpadding="0" cellspacing="0" width="100%" role="presentation">
-						<tbody>
-							<tr style="@GetTableReset()">
-								<td style="@GetTableReset()padding-top:8px;text-align:@align;line-height:18px;font-size:13px;text-decoration:none;color:@foregroundColor;">
-									<a style="text-decoration:none;color:@foregroundColor;@GetTableReset()@GetFontStack()" href="@link" target="_blank">
-										@product.Name
-									</a>
-								</td>
-							</tr>
-
-							@if (!hideProductNumber)
-							{
-								<tr>
-									<td style="@GetTableReset()@GetFontStack()padding-top:8px;line-height:18px;font-size:11px;color:@(GetMutedColor(foregroundColor.Hex, 20));">
-										@product.Number
-									</td>
-								</tr>
-							}
-
-							@if (!hideProductPrice)
-							{
-								<tr>
-									<td style="@GetTableReset()@GetFontStack()padding-top:8px;line-height:13px;font-size:13px;break-inside:avoid;word-break:keep-all;white-space:nowrap;color:@(foregroundColor);">
-										@product.Price.PriceFormatted
-
-										@if (product.Discount.Price > 0)
-										{
-											<span style="line-height:13px;font-size:13px;text-decoration:line-through;break-inside:avoid;word-break:keep-all;white-space:nowrap;color:@(GetMutedColor(foregroundColor.Hex, 20));">@product.PriceBeforeDiscount.PriceFormatted</span>
-										}
-									</td>
-								</tr>
-							}
-							<tr><td height="24" style="padding-top:24px;"></td></tr>
-						</tbody>
-					</table>
-
-				</td>
-			</tr>
-			
-		</tbody>
-	</table>
-}

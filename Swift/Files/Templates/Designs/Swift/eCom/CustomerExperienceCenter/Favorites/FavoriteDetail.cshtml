@@ -6,6 +6,12 @@
 @using Dynamicweb.Environment
 
 @functions {
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
+	string liveInfoClass = string.Empty;
+	string productInfoFeed = string.Empty;
+
+	bool allowTracking = true;
+
 	public string GetRepositoryName()
 	{
 		return GetIndexValue();
@@ -24,31 +30,18 @@
 		var productCatalogParagraph = Dynamicweb.Content.Services.Paragraphs.GetParagraphsByPageId(pageId).OrderBy(p => p.Sort).FirstOrDefault(p => p.ModuleSystemName == "eCom_ProductCatalog" && Dynamicweb.Content.Services.Grids.GetGridRowById(p.GridRowId).Active);
 		if (productCatalogParagraph == null) return defaultValue;
 
-		var indexQuery = productCatalogParagraph.ModuleProperties["IndexQuery"].Split(new[] {'/'}, StringSplitOptions.RemoveEmptyEntries);
+		var indexQuery = productCatalogParagraph.ModuleProperties["IndexQuery"].Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
 		if (indexQuery.Length <= 1) return defaultValue;
-			
+
 		var result = isQuery ? indexQuery[indexQuery.Length - 1].Replace(".query", "") : indexQuery[indexQuery.Length - 2];
-		
+
 		return string.IsNullOrEmpty(result) ? defaultValue : result;
 	}
 }
 
-@functions
-{
-	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
-	string liveInfoClass = "";
-	string productInfoFeed = "";
-	string showPricesWithVat = "";
-	bool neverShowVat = false;
-
-	string googleTagManagerID = "";
-	string googleAnalyticsMeasurementID = "";
-	bool allowTracking = true;
-}
-
 @{
-	googleTagManagerID = Pageview.AreaSettings.GetString("GoogleTagManagerID");
-	googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
+	string googleTagManagerID = Pageview.AreaSettings.GetString("GoogleTagManagerID");
+	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
 
 	if (CookieManager.IsCookieManagementActive)
 	{
@@ -57,45 +50,11 @@
 	}
 
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
-	string theme = !string.IsNullOrEmpty(themeRaw) ? " h-100 theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " h-100 theme " + themeRaw.Replace(" ", string.Empty).Trim().ToLower() : string.Empty;
 
-	showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
-	neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
+	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 
-	if (isLazyLoadingForProductInfoEnabled)
-	{
-		string productIds = string.Join("&ProductIds=", Model.ProductList.Products.Select(p => p.Id).Distinct());
-		string priceFilledProperties = $"Price,PriceFormatted{(showPricesWithVat == "false" && !neverShowVat ? ",PriceWithVat,PriceWithVatFormatted" : "")}";
-		productInfoFeed = $@"/dwapi/ecommerce/products/?RepositoryName={GetRepositoryName()}&QueryName={GetQueryName()}
-					&ProductIds={productIds}
-					&PageSize={Model.ProductList.PageSize}
-					&UserId={Dynamicweb.Core.Converter.ToString(Pageview.User?.ID)}
-					&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
-					&ProductSettings.FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel,VariantInfo,NeverOutOfstock
-					&ProductSettings.PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
-					&PriceSettings.FilledProperties={priceFilledProperties}
-					&getproductinfo=true";
-		productInfoFeed = $"data-product-info-feed=\"{productInfoFeed}\"";
-		liveInfoClass = "js-live-info";
-
-		<script type="module">
-			swift.LiveProductInfo.init();
-		</script>
-	}
-}
-
-@if (theme != "") {
-	<div class="@(theme)" @productInfoFeed>
-		@{ @RenderContent() }
-	</div>
-} else {
-	<div @productInfoFeed>
-		@{ @RenderContent() }
-	</div>
-}
-
-@helper RenderContent()
-{
 	int favoriteListId = Model.Id;
 	bool isErpConnectionDown = !Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsWebServiceConnectionAvailable"]);
 	bool hideAddToCart = Pageview.AreaSettings.GetBoolean("ErpDownHideAddToCart") && isErpConnectionDown;
@@ -114,8 +73,8 @@
 		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
 	}
 
-	string priceMin = "";
-	string priceMax = "";
+	string priceMin = string.Empty;
+	string priceMax = string.Empty;
 
 	var favoriteParameters = new Dictionary<string, object>();
 	int defaultFavoriteListId = 0;
@@ -130,7 +89,30 @@
 	}
 
 	favoriteParameters.Add("ListId", defaultFavoriteListId);
+}
 
+@if (isLazyLoadingForProductInfoEnabled)
+{
+	string productIds = string.Join("&ProductIds=", Model.ProductList.Products.Select(p => p.Id).Distinct());
+	string priceFilledProperties = $"Price,PriceFormatted{(showPricesWithVat == "false" && !neverShowVat ? ",PriceWithVat,PriceWithVatFormatted" : string.Empty)}";
+	productInfoFeed = $@"/dwapi/ecommerce/products/?RepositoryName={GetRepositoryName()}&QueryName={GetQueryName()}
+&ProductIds={productIds}
+&PageSize={Model.ProductList.PageSize}
+&UserId={Dynamicweb.Core.Converter.ToString(Pageview.User?.ID)}
+&LanguageId={Pageview.Area.EcomLanguageId}&CurrencyCode={Pageview.Area.EcomCurrencyId}&CountryCode={Pageview.Area.EcomCountryCode}&ShopId={Pageview.Area.EcomShopId}
+&ProductSettings.FilledProperties=Id,Price,PriceBeforeDiscount,StockLevel,VariantInfo,NeverOutOfstock
+&ProductSettings.PriceSettings.ShowPricesWithVat={Pageview.Area.EcomPricesWithVat}
+&PriceSettings.FilledProperties={priceFilledProperties}
+&getproductinfo=true";
+	productInfoFeed = $"data-product-info-feed=\"{productInfoFeed}\"";
+	liveInfoClass = "js-live-info";
+
+	<script type="module">
+		swift.LiveProductInfo.init();
+	</script>
+}
+
+<div class="@(theme)" @productInfoFeed>
 	<header class="p-3 border-bottom">
 		<div class="d-flex flex-row align-items-center gap-3">
 			<h1 class="h6 m-0 flex-fill opacity-75">
@@ -140,12 +122,12 @@
 		</div>
 	</header>
 
-	if (Model?.ProductList != null)
+	@if (Model?.ProductList != null)
 	{
 		<div class="grid grid-2 grid-lg-3 grid-xxl-4 p-3">
 			@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
 			{
-			<script>
+				<script>
 				gtag("event", "view_item_list", {
 					item_list_id: "favourite_detail",
 					item_list_name: "Favourite List",
@@ -161,29 +143,30 @@
 						}
 					]
 				});
-			</script>
+				</script>
 			}
 
 			@foreach (var product in Model.ProductList.Products)
 			{
 				string link = product.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
 
-				string priceId = "ProductPrice_" + product.Id + product.VariantId;
+				string priceId = "ProductPrice_" + product.Id + product.VariantId.Replace(".", "_");
 
 				string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
 				string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
 				string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
-				string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : "";
+				string qtyValidCheck = stepQty != "1" ? "onkeyup=\"swift.Cart.QuantityValidate(event)\"" : string.Empty;
 
 				string productImage = "/Admin/Public/GetImage.ashx?Image=" + @product.DefaultImage.Value + "&Format=webp&Width=450&Height=450";
+				productImage = !product.DefaultImage.Value.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? product.DefaultImage.Value : productImage;
 				string productName = product.Name;
-				productName += !string.IsNullOrEmpty(product.VariantName) ? " - " + product.VariantName : "";
+				productName += !string.IsNullOrEmpty(product.VariantName) ? " - " + product.VariantName : string.Empty;
 
 				bool isDiscontinued = product.Discontinued;
 				bool isNeverOutOfStock = product.NeverOutOfstock;
-				string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : "";
+				string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : string.Empty;
 				disableAddToCart = isDiscontinued ? "disabled" : disableAddToCart;
-				disableAddToCart = isNeverOutOfStock && !isLazyLoadingForProductInfoEnabled ? "" : disableAddToCart;
+				disableAddToCart = isNeverOutOfStock && !isLazyLoadingForProductInfoEnabled ? string.Empty : disableAddToCart;
 
 				<article class="position-relative d-flex flex-column gap-3 @liveInfoClass" data-product-id="@product.Id" data-variant-id="@product.VariantId">
 					<div class="image">
@@ -363,32 +346,32 @@
 											<input type="hidden" name="VariantId" value="@product.VariantId">
 										}
 										<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" type="hidden">
-										<button 
-											type="button" 
-											onclick="swift.Cart.Update(event)" 
-											class="d-none d-sm-block btn btn-primary w-100 js-add-to-cart-button @disableAddToCart" 
-											title="@Translate("Add to cart")" 
-											id="AddToCartButton@(product.Id)" 
-											@disableAddToCart
-											data-referer="favourite_detail"
-											data-product-id="@product.Id"
-											data-variant-id="@product.VariantId"
-											data-product-name="@product.Name"
-											data-product-price="@product.Price.Price"
-											data-product-currency="@product.Price.CurrencyCode">@Translate("Add to cart")</button>
-										<button 
-											type="button" 
-											onclick="swift.Cart.Update(event)" 
-											class="d-sm-none btn btn-primary js-add-to-cart-button p-0 @disableAddToCart" 
-											title="@Translate("Add to cart")" 
-											id="AddToCartButton@(product.Id)" 
-											@disableAddToCart
-											data-referer="favourite_detail"
-											data-product-id="@product.Id"
-											data-variant-id="@product.VariantId"
-											data-product-name="@product.Name"
-											data-product-price="@product.Price.Price"
-											data-product-currency="@product.Price.CurrencyCode">
+										<button type="button"
+												onclick="swift.Cart.Update(event)"
+												class="d-none d-sm-block btn btn-primary w-100 js-add-to-cart-button @disableAddToCart"
+												title="@Translate("Add to cart")"
+												id="AddToCartButton@(product.Id)"
+												@disableAddToCart
+												data-referer="favourite_detail"
+												data-product-id="@product.Id"
+												data-variant-id="@product.VariantId"
+												data-product-name="@product.Name"
+												data-product-price="@product.Price.Price"
+												data-product-currency="@product.Price.CurrencyCode">
+											@Translate("Add to cart")
+										</button>
+										<button type="button"
+												onclick="swift.Cart.Update(event)"
+												class="d-sm-none btn btn-primary js-add-to-cart-button p-0 @disableAddToCart"
+												title="@Translate("Add to cart")"
+												id="AddToCartButton@(product.Id)"
+												@disableAddToCart
+												data-referer="favourite_detail"
+												data-product-id="@product.Id"
+												data-variant-id="@product.VariantId"
+												data-product-name="@product.Name"
+												data-product-price="@product.Price.Price"
+												data-product-currency="@product.Price.CurrencyCode">
 											<span class="icon-2 p-3">
 												@ReadFile(iconPath + "shopping-cart.svg")
 											</span>
@@ -407,25 +390,22 @@
 
 		if (listItemsCount > pageSize)
 		{
+			string pageHrefTemplate = string.Format("<a class=\"page-link\" href=\"{0}&PageNum={{0}}&PageSize={{1}}\">{{0}}</a>", currentPageUrl);
+
 			<div class="p-3">
-				@RenderPagination(currentPageUrl, Model.ProductList.PageCount, Model.ProductList.CurrentPage, Model.ProductList.PageSize)
+				<ul class="pagination m-0">
+					@for (int i = 1; i <= Model.ProductList.PageCount; i++)
+					{
+						var css = i == Model.ProductList.CurrentPage
+							? "page-item active"
+							: "page-item";
+
+						<li class="@css">
+							@string.Format(pageHrefTemplate, i, Model.ProductList.PageSize)
+						</li>
+					}
+				</ul>
 			</div>
 		}
 	}
-}
-
-@helper RenderPagination(string currentPageLink, int pageCount, int currentPage, int pageSize)
-{
-	<ul class="pagination m-0">
-		@{string pageHrefTemplate = string.Format("<a class=\"page-link\" href=\"{0}&PageNum={{0}}&PageSize={{1}}\">{{0}}</a>", currentPageLink);}
-		@for (int i = 1; i <= pageCount; i++)
-		{
-			var css = i == currentPage
-				? "page-item active"
-				: "page-item";
-			<li class="@css">
-				@string.Format(pageHrefTemplate, i, pageSize)
-			</li>
-		}
-	</ul>
-}
+</div>

@@ -242,46 +242,54 @@
 				{
 					if (Path.GetExtension(coverImagePath).ToLower() == ".svg")
 					{
-						if (!renderContentWrapper)
-						{
-							coverImageWrapperClass = "d-flex justify-content-center align-items-center h-100 w-100 ";
-						}
-						else
-						{
-							coverImageWrapperClass = "w-100 ";
-						}
+						coverImageWrapperClass = !renderContentWrapper ? "d-flex justify-content-center align-items-center h-100 w-100 " : "w-100 ";
 
-					<a class="@(coverImageWrapperClass)@(orderReverseClass)" title="@title" href="@link" tabindex="-1">
-						<div class="d-flex justify-content-center align-items-center overflow-hidden@(ratioCssClass)" @ratioVariable>
-							@ReadFile(coverImagePath)
-						</div>
-					</a>
-				}
-				else
-				{
-					if (articleItemLayout == "image-top")
-					{
-						<a class="position-relative" title="@title" href="@link" tabindex="-1">
-							<figure class="overflow-hidden m-0 mx-auto@(ratioCssClass)" @ratioVariable>
-								@RenderImage(coverImagePath, title, cssPosition, articleItemLayout, imageObjectFit, gridSettings, carouselSettings)
-							</figure>
+						<a class="@(coverImageWrapperClass)@(orderReverseClass)" title="@title" href="@link" tabindex="-1">
+							<div class="d-flex justify-content-center align-items-center overflow-hidden@(ratioCssClass)" @ratioVariable>
+								@ReadFile(coverImagePath)
+							</div>
 						</a>
 					}
 					else
 					{
-						if (renderContentWrapper)
-						{
-							coverImageWrapperClass = "col-lg-5";
-						}
+						coverImageWrapperClass = articleItemLayout == "image-top" ? "position-relative" : $"col {orderReverseClass}";
+						coverImageWrapperClass += renderContentWrapper && articleItemLayout != "image-top" ? " col-lg-5" : string.Empty;
 
-						<a class="col @(coverImageWrapperClass)@(orderReverseClass)" title="@title" href="@link" tabindex="-1">
-							<figure class="h-lg-100 overflow-hidden m-0 mx-auto ratio ratio-16x9">
-								@RenderImage(coverImagePath, title, cssPosition, articleItemLayout, imageObjectFit, gridSettings, carouselSettings)
+						string figureClass = articleItemLayout == "image-top" ? ratioCssClass : "h-lg-100 ratio ratio-16x9";
+						ratioVariable = articleItemLayout == "image-top" ? ratioVariable : string.Empty; 
+
+						<a class="@coverImageWrapperClass" title="@title" href="@link" tabindex="-1">
+							<figure class="overflow-hidden m-0 mx-auto @(figureClass)" @ratioVariable>
+								@{
+									coverImagePath = Dynamicweb.Context.Current.Server.UrlEncode(coverImagePath);
+									imageObjectFit = articleItemLayout != "image-top" ? "object-fit: cover" : imageObjectFit;
+
+									string imgSizeSelector = "50vw";
+									imgSizeSelector = gridSettings == "1" || carouselSettings == "1" ? "100vw" : imgSizeSelector;
+									imgSizeSelector = gridSettings == "2" || carouselSettings == "2" ? "50vw" : imgSizeSelector;
+									imgSizeSelector = gridSettings == "3" || carouselSettings == "3" ? "33vw" : imgSizeSelector;
+									imgSizeSelector = gridSettings == "4" || carouselSettings == "4" ? "25vw" : imgSizeSelector;
+									imgSizeSelector = gridSettings == "5" || carouselSettings == "5" ? "17vw" : imgSizeSelector;
+
+									string coverImagePathM = $"/Admin/Public/GetImage.ashx?image={coverImagePath}&width=640&format=webp";
+									string coverImagePathL = $"/Admin/Public/GetImage.ashx?image={coverImagePath}&width=960&format=webp";
+									string imagePathFallBack = coverImagePathM;
+
+									<img srcset="
+											@coverImagePathM   640w,
+											@coverImagePathL   960w"
+										src="@imagePathFallBack"
+										sizes="(min-width: 992px) @imgSizeSelector, 100vw"
+										loading="lazy"
+										decoding="async"
+										class="img-fluid image-zoom-lg-1-hover"
+										style="@imageObjectFit; object-position: @cssPosition;"
+										alt="@title">
+								}
 							</figure>
 						</a>
 					}
 				}
-			}
 
 				@if (renderContentWrapper)
 				{
@@ -338,10 +346,10 @@
 									{
 										int authorID = item.GetInteger("ItemPublisher:Item.Author");
 										var author = Dynamicweb.Security.UserManagement.User.GetUserByID(authorID);
-										string authorImage = !string.IsNullOrEmpty(author.Image) ? author.Image : string.Empty;
-										string authorImagePath = !string.IsNullOrEmpty(author.Image) ? $"/Admin/Public/GetImage.ashx?image={author.Image}&width=24&height=24&Crop=0&format=webp" : string.Empty;
-										string authorName = !string.IsNullOrEmpty(author.Name) ? authorName = author.Name : string.Empty;
-										string authorJobTitle = !string.IsNullOrEmpty(author.JobTitle) ? authorJobTitle = author.JobTitle : string.Empty;
+										string authorImage = !string.IsNullOrEmpty(author?.Image) ? author.Image : string.Empty;
+										string authorImagePath = !string.IsNullOrEmpty(author?.Image) ? $"/Admin/Public/GetImage.ashx?image={author.Image}&width=24&height=24&Crop=0&format=webp" : string.Empty;
+										string authorName = !string.IsNullOrEmpty(author?.Name) ? authorName = author.Name : string.Empty;
+										string authorJobTitle = !string.IsNullOrEmpty(author?.JobTitle) ? authorJobTitle = author.JobTitle : string.Empty;
 
 										<div class="d-flex align-items-center gap-2 fs-8 opacity-75">
 
@@ -383,16 +391,12 @@
 											<time datetime="@articleDateTime" itemprop="datePublished">@publishedDate</time>
 										</div>
 									}
-
-
 								</div>
 							</div>
 						}
 					</div>
 				}
-
 			</article>
-
 		}
 	}
 
@@ -514,52 +518,4 @@
 			form.dispatchEvent(new window.Event('change', { bubbles: true }))
 		}
 	</script>
-}
-
-@helper RenderImage(string coverImagePath, string title, string cssPosition, string articleItemLayout, string imageObjectFit, string gridSettings, string carouselSettings)
-{
-    coverImagePath = Dynamicweb.Context.Current.Server.UrlEncode(coverImagePath);
-
-    if (articleItemLayout != "image-top")
-    {
-        imageObjectFit = "object-fit: cover";
-    }
-
-    string imgSizeSelector = "50vw";
-
-    if (gridSettings == "1" || carouselSettings == "1")
-    {
-        imgSizeSelector = "100vw";
-    }
-    else if (gridSettings == "2" || carouselSettings == "2")
-    {
-        imgSizeSelector = "50vw";
-    }
-    else if (gridSettings == "3" || carouselSettings == "3")
-    {
-        imgSizeSelector = "33vw";
-    }
-    else if (gridSettings == "4" || carouselSettings == "4")
-    {
-        imgSizeSelector = "25vw";
-    }
-    else if (gridSettings == "5" || carouselSettings == "5")
-    {
-        imgSizeSelector = "17vw";
-    }
-
-    string coverImagePathM = $"/Admin/Public/GetImage.ashx?image={coverImagePath}&width=640&format=webp";
-    string coverImagePathL = $"/Admin/Public/GetImage.ashx?image={coverImagePath}&width=960&format=webp";
-    string imagePathFallBack = coverImagePathM;
-
-    <img srcset="
-			@coverImagePathM   640w,
-			@coverImagePathL   960w"
-         src="@imagePathFallBack"
-         sizes="(min-width: 992px) @imgSizeSelector, 100vw"
-         loading="lazy"
-         decoding="async"
-         class="img-fluid image-zoom-lg-1-hover"
-         style="@imageObjectFit; object-position: @cssPosition;"
-         alt="@title">
 }

@@ -1,97 +1,114 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 @using System
 @using System.Collections.Generic
 @using System.Linq
+@using System.Text
 @using System.Text.RegularExpressions
 @using Dynamicweb.Ecommerce.International
 
-@helper RenderUserProfileEdit()
-{
-	string currentCountry = GetString("UserManagement:User.CountryCode");
-	List<List<string>> addressFormat = Dynamicweb.Ecommerce.International.Country.GetEditAddress(currentCountry);
-	CountryCollection regions = Dynamicweb.Ecommerce.Services.Countries.GetRegions(currentCountry);
-
-	if (!addressFormat.Any())
-	{
-		/* If the current country is not setup in address format, use the site country's address format */
-		addressFormat = Dynamicweb.Ecommerce.International.Country.GetEditAddress(Dynamicweb.Ecommerce.Common.Context.Country.Code2);
-	}
-	
-	foreach (var addressLine in addressFormat)
-	{
-		string columnSize = GetBootstrapColumnSizeForUserProfileAddress(addressLine);
-		
-		for (var i = 0; i < addressLine.Count; i++)
-		{
-			addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i], "{name}", "UserManagement_Form_Name", GetString("UserManagement:User.Name"), Translate("Name"), GetString("UserManagement:User.Name.Input.Error"), columnSize);
-			addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i],"{firstname}", "UserManagement_Form_FirstName", GetString("UserManagement:User.FirstName"), Translate("First Name"), GetString("UserManagement:User.FirstName.Input.Error"), columnSize);
-			addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i],"{lastname}", "UserManagement_Form_LastName", GetString("UserManagement:User.LastName"), Translate("Last Name"), GetString("UserManagement:User.LastName.Input.Error"), columnSize);
-			addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i],"{company}", "UserManagement_Form_Company", GetString("UserManagement:User.Company"), Translate("Company"), GetString("UserManagement:User.Company.Input.Error"), columnSize, false);
-			addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i],"{address}", "UserManagement_Form_Address", GetString("UserManagement:User.Address"), Translate("Street & number"),  GetString("UserManagement:User.Address.Input.Error"), columnSize);
-			addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i],"{address1}", "UserManagement_Form_Address", GetString("UserManagement:User.Address"), Translate("Street & number"),  GetString("UserManagement:User.Address.Input.Error"), columnSize);
-			addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i],"{address2}", "UserManagement_Form_Address2", GetString("UserManagement:User.Address2"), Translate("Additional address"), GetString("UserManagement:User.Address2.Input.Error"), columnSize, false);
-			addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i],"{zip}", "UserManagement_Form_Zip", GetString("UserManagement:User.Zip"), Translate("Zip"), GetString("UserManagement:User.Zip.Input.Error"), columnSize, true);
-			addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i],"{city}", "UserManagement_Form_City", GetString("UserManagement:User.City"), Translate("Town / City"), GetString("UserManagement:User.City.Input.Error"), columnSize);
-			addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i],"{regionCode}", RenderUserProfileRegionField(currentCountry, regions, columnSize).ToString());
-			addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i],"{region}", RenderUserProfileRegionField(currentCountry, regions, columnSize).ToString());
-			addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i],"{country}", RenderUserProfileCountryField(currentCountry, columnSize).ToString());
-			
-			@* Remove any bad placeholders the user may have submitted *@
-			addressLine[i] = Regex.Replace(addressLine[i], "{phone}", "", RegexOptions.IgnoreCase); 
-			addressLine[i] = Regex.Replace(addressLine[i], "{email}", "", RegexOptions.IgnoreCase);
-			
-		}
-		@(string.Join(string.Empty, addressLine.ToArray()))
-	}
-}
-
-@helper RenderUserProfileRegionField(string currentCountry, CountryCollection regions, string wrapperClass)
-{
-	string regionLabel = currentCountry == "CA" ? Translate("Province") : currentCountry == "US" ? Translate("State") : Translate("Region");
-	
-	if (regions.Any())
-	{
-		<div class="@wrapperClass">
-			<div class="form-floating">
-				@{
-					string regionCode = GetString("UserManagement:User.State");
-
-					<select class="form-select" name="UserManagement_Form_State" id="UserManagement_Form_State">
-						@foreach (var region in regions)
-						{
-							string selected = region.RegionCode == regionCode ? "selected" : "";
-							<option value="@region.RegionCode" @selected>@region.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID)</option>
-						}
-					</select>
-				}
-				<label for="UserManagement_Form_State">@regionLabel</label>
-			</div>
-		</div>
-	} 
-	else
-	{
-		@RenderUserProfileField("UserManagement_Form_State", GetString("UserManagement:User.State"), regionLabel, GetString("UserManagement:User.Region.Input.Error"), wrapperClass, false)
-	}
-}
-
-@helper RenderUserProfileCountryField(string currentCountry, string wrapperClass)
-{
-	<div class="@wrapperClass">
-		<div class="form-floating">
-			<select class="form-select" id="UserManagement_Form_CountryCode" name="UserManagement_Form_CountryCode" onchange="submitForm()">
-				@foreach (var country in GetLoop("UserManagement.CountryList"))
-				{
-					string selected = country.GetString("Country.Code2") == currentCountry ? "selected" : "";
-
-					<option value="@country.GetString("Country.Code2")" @selected>@country.GetString("Country.Name")</option>
-				}
-			</select>
-			<label for="UserManagement_Form_CountryCode" class="form-label">@Translate("Country")</label>
-		</div>
-	</div>
-}
-
 @functions
 {
+	public string RenderUserProfileEdit()
+	{
+		string currentCountry = GetString("UserManagement:User.CountryCode");
+		List<List<string>> addressFormat = Dynamicweb.Ecommerce.International.Country.GetEditAddress(currentCountry);
+		CountryCollection regions = Dynamicweb.Ecommerce.Services.Countries.GetRegions(currentCountry);
+
+		if (!addressFormat.Any())
+		{
+			/* If the current country is not set up in address format, use the site country's address format */
+			addressFormat = Dynamicweb.Ecommerce.International.Country.GetEditAddress(Dynamicweb.Ecommerce.Common.Context.Country.Code2);
+		}
+
+		StringBuilder result = new StringBuilder();
+
+		foreach (var addressLine in addressFormat)
+		{
+			string columnSize = GetBootstrapColumnSizeForUserProfileAddress(addressLine);
+			StringBuilder addressLineBuilder = new StringBuilder();
+
+			for (var i = 0; i < addressLine.Count; i++)
+			{
+				addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i], "{name}", "UserManagement_Form_Name", GetString("UserManagement:User.Name"), Translate("Name"), GetString("UserManagement:User.Name.Input.Error"), columnSize);
+				addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i], "{firstname}", "UserManagement_Form_FirstName", GetString("UserManagement:User.FirstName"), Translate("First Name"), GetString("UserManagement:User.FirstName.Input.Error"), columnSize);
+				addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i], "{lastname}", "UserManagement_Form_LastName", GetString("UserManagement:User.LastName"), Translate("Last Name"), GetString("UserManagement:User.LastName.Input.Error"), columnSize);
+				addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i], "{company}", "UserManagement_Form_Company", GetString("UserManagement:User.Company"), Translate("Company"), GetString("UserManagement:User.Company.Input.Error"), columnSize, false);
+				addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i], "{address}", "UserManagement_Form_Address", GetString("UserManagement:User.Address"), Translate("Street & number"), GetString("UserManagement:User.Address.Input.Error"), columnSize);
+				addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i], "{address1}", "UserManagement_Form_Address", GetString("UserManagement:User.Address"), Translate("Street & number"), GetString("UserManagement:User.Address.Input.Error"), columnSize);
+				addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i], "{address2}", "UserManagement_Form_Address2", GetString("UserManagement:User.Address2"), Translate("Additional address"), GetString("UserManagement:User.Address2.Input.Error"), columnSize, false);
+				addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i], "{zip}", "UserManagement_Form_Zip", GetString("UserManagement:User.Zip"), Translate("Zip"), GetString("UserManagement:User.Zip.Input.Error"), columnSize, true);
+				addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i], "{city}", "UserManagement_Form_City", GetString("UserManagement:User.City"), Translate("Town / City"), GetString("UserManagement:User.City.Input.Error"), columnSize);
+				addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i], "{regionCode}", RenderUserProfileRegionField(currentCountry, regions, columnSize).ToString());
+				addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i], "{region}", RenderUserProfileRegionField(currentCountry, regions, columnSize).ToString());
+				addressLine[i] = ReplaceUserProfileAddressPlaceholder(addressLine[i], "{country}", RenderUserProfileCountryField(currentCountry, columnSize).ToString());
+
+				// Remove any bad placeholders the user may have submitted
+				addressLine[i] = Regex.Replace(addressLine[i], "{phone}", string.Empty, RegexOptions.IgnoreCase);
+				addressLine[i] = Regex.Replace(addressLine[i], "{email}", string.Empty, RegexOptions.IgnoreCase);
+
+				addressLineBuilder.Append(addressLine[i]);
+			}
+
+			result.Append(addressLineBuilder.ToString());
+		}
+
+		return result.ToString();
+	}
+
+	public string RenderUserProfileRegionField(string currentCountry, CountryCollection regions, string wrapperClass)
+	{
+		StringBuilder result = new StringBuilder();
+		string regionLabel = currentCountry == "CA" ? Translate("Province") : currentCountry == "US" ? Translate("State") : Translate("Region");
+
+		if (regions.Any())
+		{
+			result.Append($"<div class=\"{wrapperClass}\">");
+			result.Append("<div class=\"form-floating\">");
+			string regionCode = GetString("UserManagement:User.State");
+
+			result.Append($"<select class=\"form-select\" name=\"UserManagement_Form_State\" id=\"UserManagement_Form_State\">");
+
+			foreach (var region in regions)
+			{
+				string selected = region.RegionCode == regionCode ? "selected" : string.Empty;
+				result.Append($"<option value=\"{region.RegionCode}\" {selected}>{region.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID)}</option>");
+			}
+
+			result.Append("</select>");
+			result.Append($"<label for=\"UserManagement_Form_State\">{regionLabel}</label>");
+			result.Append("</div>");
+			result.Append("</div>");
+		}
+		else
+		{
+			result.Append(RenderUserProfileField("UserManagement_Form_State", GetString("UserManagement:User.State"), regionLabel, GetString("UserManagement:User.Region.Input.Error"), wrapperClass, false).ToString());
+		}
+
+		return result.ToString();
+	}
+
+	public string RenderUserProfileCountryField(string currentCountry, string wrapperClass)
+	{
+		StringBuilder result = new StringBuilder();
+
+		result.Append($"<div class=\"{wrapperClass}\">");
+		result.Append("<div class=\"form-floating\">");
+		result.Append($"<select class=\"form-select\" id=\"UserManagement_Form_CountryCode\" name=\"UserManagement_Form_CountryCode\" onchange=\"submitForm()\">");
+
+		foreach (var country in GetLoop("UserManagement.CountryList"))
+		{
+			string selected = country.GetString("Country.Code2") == currentCountry ? "selected" : "";
+			result.Append($"<option value=\"{country.GetString("Country.Code2")}\" {selected}>{country.GetString("Country.Name")}</option>");
+		}
+
+		result.Append("</select>");
+		result.Append($"<label for=\"UserManagement_Form_CountryCode\" class=\"form-label\">@Translate(\"Country\")</label>");
+		result.Append("</div>");
+		result.Append("</div>");
+
+		return result.ToString();
+	}
+
 	public string GetBootstrapColumnSizeForUserProfileAddress(List<string> addressLineArray)
 	{
 		string combinedLine = string.Join(",", addressLineArray);
@@ -99,30 +116,30 @@
 
 		int addressLinePlaceholderCount = combinedLine.Count(s => s.Equals('{'));
 		if (addressLinePlaceholderCount <= 0) return prefix + "12";
-		
+
 		double columnSize = (double)12 / addressLinePlaceholderCount;
 		return prefix + Math.Ceiling(columnSize);
 	}
-	
+
 	public string ReplaceUserProfileAddressPlaceholder(string addressLine, string pattern, string replacement)
 	{
 		return Regex.Replace(addressLine, pattern, replacement, RegexOptions.IgnoreCase);
 	}
-	
+
 	public string ReplaceUserProfileAddressPlaceholder(string addressLine, string placeholder, string fieldName, string fieldValue, string fieldLabel, string fieldError, string wrapperClass, bool required = true, string fieldType = "text")
 	{
 		if (addressLine.IndexOf(placeholder, StringComparison.OrdinalIgnoreCase) < 0) return addressLine;
-		
+
 		string fieldHtml = RenderUserProfileField(fieldName, fieldValue, fieldLabel, fieldError, wrapperClass, required, fieldType);
 		return Regex.Replace(addressLine, placeholder, fieldHtml, RegexOptions.IgnoreCase);
 	}
-	
+
 	public string RenderUserProfileField(string fieldName, string fieldValue, string fieldLabel, string fieldError, string wrapperClass, bool isRequired = true, string fieldType = "text")
 	{
-		string markup = "";
+		string markup = string.Empty;
 		fieldType = string.IsNullOrEmpty(fieldType) ? "text" : fieldType;
 		fieldLabel = isRequired ? fieldLabel : $"{fieldLabel} ({Translate("optional")})";
-		string required = isRequired ? "required=\"required\"" : "";
+		string required = isRequired ? "required=\"required\"" : string.Empty;
 
 		markup += $"<div class=\"{wrapperClass}\">";
 		markup += $"<div class=\"form-floating\">";

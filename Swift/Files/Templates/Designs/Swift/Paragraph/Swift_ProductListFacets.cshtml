@@ -7,7 +7,6 @@
 
 @{
 	ProductListViewModel productList = new ProductListViewModel();
-
 	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
 	{
 		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
@@ -53,52 +52,49 @@
 		}
 	}
 
-	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
-	contentPadding = Model.Item.GetRawValueString("ContentPadding", "") == "none" ? " px-0 py-2" : contentPadding;
-	contentPadding = Model.Item.GetRawValueString("ContentPadding", "") == "small" ? " px-3 py-2" : contentPadding;
-
 	bool enableSorting = Model.Item.GetBoolean("SortByNameAZ");
 	enableSorting = Model.Item.GetBoolean("SortByNameZA") || enableSorting == true ? true : false;
 	enableSorting = Model.Item.GetBoolean("SortByNewest") || enableSorting == true ? true : false;
 	enableSorting = Model.Item.GetBoolean("SortByLowestPrice") || enableSorting == true ? true : false;
 	enableSorting = Model.Item.GetBoolean("SortByHighestPrice") || enableSorting == true ? true : false;
 
+	string contentPadding = Model.Item.GetRawValueString("ContentPadding", string.Empty);
+	contentPadding = contentPadding == "none" ? " px-0 py-2" : contentPadding;
+	contentPadding = contentPadding == "small" ? " px-3 py-2" : contentPadding;
+
 	string layout = Model.Item.GetRawValueString("Layout", "vertical");
+
+	var formFieldsParms = new Dictionary<string, object>();
+	formFieldsParms.Add("DeviceType", "desktop");
 }
 
 @if (productList.TotalProductsCount > 0 && (facetsFound || Model.Item.GetBoolean("EnableGroupNavigation") || enableSorting))
 {
-	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
-	string modalTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ModalTheme")) ? " theme " + Model.Item.GetRawValueString("ModalTheme").Replace(" ", "").Trim().ToLower() : "";
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : string.Empty;
+	string modalTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ModalTheme")) ? " theme " + Model.Item.GetRawValueString("ModalTheme").Replace(" ", "").Trim().ToLower() : string.Empty;
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
-	string selectedFacetsLabel = selectedFacetsCount > 0 ? "(" + selectedFacetsCount + ")" : "";
+	string selectedFacetsLabel = selectedFacetsCount > 0 ? "(" + selectedFacetsCount + ")" : string.Empty;
+	string formContainerCss = layout == "horizontal" ? $"d-lg-flex gap-3 flex-row flex-wrap {theme}" : $"d-lg-block h-100 {theme}";
 
 	//Desktop
-	if (layout == "vertical")
-	{
-		<form method="post" action="@url" data-response-target-element="content" id="FacetsForm_Desktop_@Model.ID" class="d-none d-lg-block h-100 @theme item_@Model.Item.SystemName.ToLower()">
-			@{
-				@RenderForm(productList, "desktop", enableSorting, layout)
-			}
-		</form>
-	}
 	if (layout == "horizontal")
 	{
-		contentPadding = Model.Item.GetRawValueString("ContentPadding", "") == "small" ? " p-3" : contentPadding;
+		contentPadding = contentPadding == "small" ? " p-3" : contentPadding;
+		@:<div class="@theme @contentPadding h-100">
+	}
 
+	<form method="post" action="@url" data-response-target-element="content" id="FacetsForm_Desktop_@Model.ID" class="d-none @formContainerCss item_@Model.Item.SystemName.ToLower()">
+		@RenderPartial("Paragraph/ProductListFacets/FormFields.cshtml", Model, formFieldsParms)
 
-		<div class="@theme @contentPadding h-100">
-			<form method="post" action="@url" data-response-target-element="content" id="FacetsForm_Desktop_@Model.ID" class="d-none d-lg-flex gap-3 flex-row flex-wrap item_@Model.Item.SystemName.ToLower()">
-				@{
-					@RenderForm(productList, "desktop", enableSorting, layout)
-				}
+		@if (layout == "horizontal" && selectedFacetsCount > 0)
+		{
+			<button type="button" class="btn btn-sm me-sm-1 me-lg-2" onclick="swift.ProductList.ResetFacets(event)"><span class="icon-2">@ReadFile(iconPath + "rotate-ccw.svg")</span> @Translate("Clear filters")</button>
+		}
+	</form>
 
-				@if (selectedFacetsCount > 0)
-				{
-					<button type="button" class="btn btn-sm me-sm-1 me-lg-2" onclick="swift.ProductList.ResetFacets(event)"><span class="icon-2">@ReadFile(iconPath + "rotate-ccw.svg")</span> @Translate("Clear filters")</button>
-				}
-			</form>
-		</div>
+	if (layout == "horizontal")
+	{
+		@:</div>
 	}
 
 	//Mobile
@@ -123,8 +119,9 @@
 					</div>
 					<div class="modal-body@(modalTheme)">
 						@{
-							@RenderForm(productList, "mobile", enableSorting, productList.SortBy)
+							formFieldsParms["DeviceType"] = "mobile";
 						}
+						@RenderPartial("Paragraph/ProductListFacets/FormFields.cshtml", Model, formFieldsParms)
 					</div>
 					<div class="modal-footer d-flex@(modalTheme)">
 						@if (selectedFacetsCount != 0)
@@ -152,350 +149,4 @@ else
 			@Translate("No filters are available")
 		</div>
 	}
-}
-
-@helper RenderForm(ProductListViewModel productList, string deviceType, bool enableSorting, string layout = "vertical")
-{
-
-	string settingsSortby = "";
-	if (!string.IsNullOrEmpty(productList.SortBy))
-	{
-		settingsSortby = productList.SortOrder.Equals("desc", StringComparison.OrdinalIgnoreCase) ? $"-{productList.SortBy.ToLower()}" : $"{productList.SortBy.ToLower()}";
-	}
-	
-	string groupId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("GroupID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") : "";
-
-	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
-	string pageSize = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("PageSize")) ? Dynamicweb.Context.Current.Request.QueryString.Get("PageSize") : productList.PageSize.ToString();
-
-	string searchQuery = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("q")) ? Dynamicweb.Context.Current.Request.QueryString.Get("q") : "";
-	string searchLayout = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SearchLayout") : "";
-
-	string groupsTheme = "";
-	string extraBottomMargin = "";
-	if (deviceType != "mobile")
-	{
-		groupsTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("FacetGroupsTheme")) ? " theme " + Model.Item.GetRawValueString("FacetGroupsTheme").Replace(" ", "").Trim().ToLower() : "";
-		extraBottomMargin = !string.IsNullOrEmpty(groupsTheme) ? "mb-3" : "";
-	}
-
-	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
-	contentPadding = contentPadding == "none" ? " px-0 py-2" : contentPadding;
-	contentPadding = contentPadding == "small" ? " px-3 py-2" : contentPadding;
-
-	<input type="hidden" name="PageSize" value="@pageSize">
-
-	if (!string.IsNullOrEmpty(searchQuery))
-	{
-		<input type="hidden" name="q" value="@searchQuery">
-		<input type="hidden" name="SearchLayout" value="@searchLayout">
-	}
-
-	if (Model.Item.GetBoolean("EnableGroupNavigation") && layout == "vertical")
-	{
-		int startLevel = Convert.ToInt32(Model.Item.GetRawValueString("GroupNavigationStartLevel", "2"));
-		int stopLevel = Convert.ToInt32(Model.Item.GetRawValueString("GroupNavigationStopLevel", "9"));
-
-		var navigationSettings = new NavigationSettings();
-		navigationSettings.StartLevel = startLevel;
-		navigationSettings.StopLevel = stopLevel;
-		navigationSettings.ExpandMode = ExpandMode.All;
-		navigationSettings.Parameters.Add("menu-id", "product-list-facets");
-		navigationSettings.Parameters.Add("ContentPadding", contentPadding);
-		navigationSettings.Parameters.Add("ID", deviceType);
-		navigationSettings.Parameters.Add("HideTexts", false);
-		navigationSettings.Parameters.Add("HideIcons", true);
-
-		<div class="border-bottom py-2@(@groupsTheme)">
-			<div class="d-flex@(contentPadding)" data-bs-toggle="collapse" data-bs-target="#ProductGroupNavigation_@(deviceType)_@Model.ID" role="button" aria-expanded="true" aria-controls="ProductGroupNavigation_@(deviceType)_@Model.ID">
-				<h2 class="opacity-85 m-0 flex-fill h6">@Translate("Navigation")</h2>
-				<div class="my-auto collapse-chevron-icon"></div>
-			</div>
-			<div class="collapse show" id="ProductGroupNavigation_@(deviceType)_@Model.ID">
-				@Navigation.RenderNavigation("Navigation/Vertical.cshtml", navigationSettings)
-			</div>
-		</div>
-	}
-
-	if (enableSorting)
-	{
-		if (layout == "vertical")
-		{
-			<div class="border-bottom@(contentPadding)@(groupsTheme)">
-				<h2 class="opacity-85 m-0 my-2 flex-fill h6">@Translate("Sort by")</h2>
-				<div class="d-flex flex-column gap-2" id="SortBy_@(deviceType)_@Model.ID">
-					@{
-						@RenderSorting(deviceType, settingsSortby)
-					}
-				</div>
-			</div>
-		}
-		if (layout == "horizontal")
-		{
-			<button class="btn @(groupsTheme) dropdown-toggle" type="button" id="SortBy_@(deviceType)_@Model.ID" data-bs-toggle="dropdown" aria-expanded="false">
-				@Translate("Sort by")
-			</button>
-			<div class="dropdown-menu p-3 @(groupsTheme)" aria-labelledby="SortBy_@(deviceType)_@Model.ID" style="min-width: 280px">
-				<div class="d-flex flex-column gap-2">
-					@{
-						@RenderSorting(deviceType, settingsSortby)
-					}
-				</div>
-			</div>
-		}
-	}
-
-	int groupCount = 0;
-	int maxGroups = 8;
-	int totalGroups = productList?.FacetGroups != null ? productList.FacetGroups.Count() : 0;
-
-	if (productList.FacetGroups != null)
-	{
-		foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
-		{
-			string border = groupCount != totalGroups ? "border-bottom" : "";
-
-			foreach (FacetViewModel facet in facetGroup.Facets)
-			{
-				string collapseClass = string.Empty;
-				string showClass = " show";
-				string ariaExpanded = "true";
-				var expandedFacetGroups = Model.Item.GetRawValueString("ExpandFacetGroups", "all");
-				string facetGroupId = Regex.Replace(Convert.ToBase64String(Guid.NewGuid().ToByteArray()), "[/+=]", "");
-
-				if (expandedFacetGroups != "all" && System.Text.RegularExpressions.Regex.IsMatch(expandedFacetGroups, "([0-9])"))
-				{
-					if (groupCount >= Dynamicweb.Core.Converter.ToInt32(expandedFacetGroups) && !facet.Options.Any(f => f.Selected))
-					{
-						collapseClass = " collapsed";
-						showClass = string.Empty;
-						ariaExpanded = "false";
-					}
-				}
-
-				if (facet.Options.Count() > 0)
-				{
-					if (layout == "vertical")
-					{
-						<div class="@border@(contentPadding)@(@groupsTheme)">
-							<div class="d-flex@(collapseClass)" data-bs-toggle="collapse" data-bs-target="#FacetGroup_@facetGroupId" role="button" aria-expanded="@ariaExpanded" aria-controls="FacetGroup_@facetGroupId">
-								<h2 class="opacity-85 m-0 flex-fill h6 my-2">@Translate(facet.Name)</h2>
-								<div class="my-auto collapse-chevron-icon"></div>
-							</div>
-							<div class="collapse@(showClass)" id="FacetGroup_@facetGroupId">
-								@foreach (FacetOptionViewModel facetOption in facet.Options)
-								{
-									string renderType = facet.RenderType;
-
-									if (renderType == "Colors")
-									{
-										@RenderColorOption(facet, facetOption)
-									}
-									else
-									{
-										@RenderCheckboxOption(facet, facetOption)
-									}
-								}
-							</div>
-						</div>
-					}
-					if (layout == "horizontal")
-					{
-						string hideSelector = groupCount < maxGroups ? "" : "d-none";
-						int selectedFacetsInGroup = 0;
-
-						foreach (FacetOptionViewModel option in facet.Options)
-						{
-							if (option.Selected)
-							{
-								selectedFacetsInGroup++;
-							}
-						}
-
-						string label = selectedFacetsInGroup > 0 ? @Translate(facet.Name) + "<span class=\"badge bg-dark opacity-50 text-white ms-2\">" + selectedFacetsInGroup + "</span>" : @Translate(facet.Name);
-
-						<div class="dropdown @hideSelector js-facets-selector">
-							<button class="btn @(groupsTheme) dropdown-toggle" type="button" id="FacetGroup_@facetGroupId" data-bs-toggle="dropdown" aria-expanded="false">
-								@label
-							</button>
-							<div class="dropdown-menu p-3 @(groupsTheme)" aria-labelledby="FacetGroup_@facetGroupId" style="min-width: 280px">
-								@foreach (FacetOptionViewModel facetOption in facet.Options)
-								{
-									string renderType = facet.RenderType;
-
-									if (renderType == "Colors")
-									{
-										@RenderColorOption(facet, facetOption)
-									}
-									else
-									{
-										@RenderCheckboxOption(facet, facetOption)
-									}
-								}
-							</div>
-						</div>
-					}
-
-					groupCount++;
-				}
-			}
-		}
-	}
-
-	if ((groupCount > maxGroups) && layout == "horizontal")
-	{
-		<button type="button" class="btn @(groupsTheme)" onclick="this.closest('form').querySelectorAll('.js-facets-selector').forEach(function (selector) { selector.classList.remove('d-none'); }); this.classList.add('d-none');"><span class="icon-2">@ReadFile(iconPath + "sliders.svg")</span> @Translate("All filters")</button>
-	}
-}
-
-@helper RenderSorting(string deviceType, string settingsSortby)
-{
-	string sortBySelection = settingsSortby;
-	sortBySelection = Dynamicweb.Context.Current.Request?.Form["SortBy"] ?? settingsSortby;
-	sortBySelection = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("SortBy")) ? Dynamicweb.Context.Current.Request.QueryString.Get("SortBy") : sortBySelection;
-	string sortNameSelectedRelevance = sortBySelection.ToLower() == "" || sortBySelection.ToLower() == "relevance" ? "checked" : "";
-	string sortNameSelectedAZ = sortBySelection.ToLower() == "nameforsort" ? "checked" : "";
-	string sortNameSelectedZA = sortBySelection.ToLower() == "-nameforsort" ? "checked" : "";
-	string sortPriceLowSelected = sortBySelection.ToLower() == "price" ? "checked" : "";
-	string sortPriceHighSelected = sortBySelection.ToLower() == "-price" ? "checked" : "";
-	string sortNewSelected = sortBySelection.ToLower() == "-created" ? "checked" : "";
-	string sortMostSoldSelected = sortBySelection.ToLower() == "-ordercount" ? "checked" : "";
-
-	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
-	bool anonymousUser = Pageview.User == null;
-	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
-
-	if (Model.Item.GetBoolean("SortByRelevance"))
-	{
-		<div class="form-check">
-			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="" id="SortByRelevance_@(deviceType)_@Model.ID" @sortNameSelectedRelevance>
-			<label class="form-check-label" for="SortByRelevance_@(deviceType)_@Model.ID">
-				@Translate("Relevance")
-			</label>
-		</div>
-	}
-	if (Model.Item.GetBoolean("SortByNameAZ"))
-	{
-		<div class="form-check">
-			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="NameForSort" id="SortByNameAZ_@(deviceType)_@Model.ID" @sortNameSelectedAZ>
-			<label class="form-check-label" for="SortByNameAZ_@(deviceType)_@Model.ID">
-				@Translate("Name (A-Z)")
-			</label>
-		</div>
-	}
-	if (Model.Item.GetBoolean("SortByNameZA"))
-	{
-		<div class="form-check">
-			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-NameForSort" id="SortByNameZA_@(deviceType)_@Model.ID" @sortNameSelectedZA>
-			<label class="form-check-label" for="SortByNameZA_@(deviceType)_@Model.ID">
-				@Translate("Name (Z-A)")
-			</label>
-		</div>
-	}
-	if (Model.Item.GetBoolean("SortByNewest"))
-	{
-		<div class="form-check">
-			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-created" id="SortByNew_@(deviceType)_@Model.ID" @sortNewSelected>
-			<label class="form-check-label" for="SortByNew_@(deviceType)_@Model.ID">
-				@Translate("Newest")
-			</label>
-		</div>
-	}
-	if (!hidePrice)
-	{
-		if (Model.Item.GetBoolean("SortByLowestPrice"))
-		{
-			<div class="form-check">
-				<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="Price" id="SortByPriceLow_@(deviceType)_@Model.ID" @sortPriceLowSelected>
-				<label class="form-check-label" for="SortByPriceLow_@(deviceType)_@Model.ID">
-					@Translate("Lowest price")
-				</label>
-			</div>
-		}
-		if (Model.Item.GetBoolean("SortByHighestPrice"))
-		{
-			<div class="form-check">
-				<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-Price" id="SortByPriceHigh_@(deviceType)_@Model.ID" @sortPriceHighSelected>
-				<label class="form-check-label" for="SortByPriceHigh_@(deviceType)_@Model.ID">
-					@Translate("Highest price")
-				</label>
-			</div>
-		}
-	}
-	if (Model.Item.GetBoolean("SortByMostSold"))
-	{
-		<div class="form-check">
-			<input class="form-check-input" onchange="swift.ProductList.Update(event)" type="radio" name="SortBy" value="-OrderCount" id="SortByMostSold_@(deviceType)_@Model.ID" @sortMostSoldSelected>
-			<label class="form-check-label" for="SortByMostSold_@(deviceType)_@Model.ID">
-				@Translate("Most sold")
-			</label>
-		</div>
-	}
-}
-
-@helper RenderCheckboxOption(FacetViewModel facet, FacetOptionViewModel facetOption)
-{
-	string facetLabel = HtmlEncoder.HtmlEncode(facetOption.Label);
-	string disabled = facetOption.Count <= 0 ? "disabled" : "";
-	string selected = facetOption.Selected ? "checked" : "";
-
-	if (facetLabel.ToLower() == "true")
-	{
-		facetLabel = Translate("Yes");
-	}
-
-	if (facetLabel.ToLower() == "false")
-	{
-		facetLabel = Translate("No");
-	}
-
-	var optionValue = facetOption.Value.Contains(",") ? $"[{facetOption.Value}]" : facetOption.Value;
-
-	<label class="form-check mt-1" @disabled>
-		<input type="checkbox" onclick="swift.ProductList.Update(event)" class="form-check-input" name="@facet.QueryParameter" value="@optionValue" data-filter-value="@facetLabel" @selected>
-		<span class="form-check-label d-flex align-items-center">
-			<span class="flex-fill">@facetLabel </span>
-			@if (facet.FacetType.ToLower() == "field")
-			{
-				<small class="opacity-85">@facetOption.Count</small>
-			}
-		</span>
-	</label>
-}
-
-@helper RenderColorOption(FacetViewModel facet, FacetOptionViewModel facetOption)
-{
-	string facetLabel = HtmlEncoder.HtmlEncode(facetOption.Label);
-	string disabled = facetOption.Count <= 0 ? "disabled" : "";
-	string selected = facetOption.Selected ? "checked" : "";
-
-	string image = facetOption.Value;
-	string colorCode = facetOption.Value;
-
-	var variantOption = Dynamicweb.Ecommerce.Services.VariantOptions.GetVariantOption(facetOption.Value.ToString());
-	if (variantOption != null)
-	{
-		image = variantOption.LargeImage;
-		colorCode = variantOption.Color;
-	}
-
-	var optionValue = facetOption.Value.Contains(",") ? $"[{facetOption.Value}]" : facetOption.Value;
-
-	<div class="colorbox">
-		<label>
-			<input type="checkbox" onclick="swift.ProductList.Update(event)" class="@disabled @selected" name="@facet.QueryParameter" value="@optionValue" data-filter-value="@facetLabel" @selected title="@facetOption.Label">
-			@if (colorCode.Contains("#"))
-			{
-				<span class="colorbox-background" style="background-color: @colorCode"></span>
-				<span class="visually-hidden">@facetOption.Label</span>
-			}
-			else
-			{
-		<span class="colorbox-background">
-			<img src="/Admin/Public/GetImage.ashx?width=25&height=25&image=@image">
-			<span class="visually-hidden">@facetOption.Label</span>
-		</span>
-			}
-		</label>
-	</div>
 }
