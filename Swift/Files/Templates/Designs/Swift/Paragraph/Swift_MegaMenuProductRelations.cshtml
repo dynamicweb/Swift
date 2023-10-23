@@ -2,62 +2,6 @@
 @using Dynamicweb.Frontend.Navigation
 @using Dynamicweb.Ecommerce.ProductCatalog
 
-<style>
-	.mega-menu-custom {
-		width: 100%;
-		left: 0;
-		top: 0;
-		box-shadow: 0 0.5rem 0.5rem rgba(0,0,0,.08);
-	}
-
-	.hover-underline-bold:hover {
-		text-decoration: underline;
-	}
-
-	.megamenu-item {
-		transition: opacity 0.2s ease, color 0.2s ease;
-	}
-
-		.megamenu-item:hover {
-			color: red;
-			opacity: 80%;
-		}
-
-	.nav-link:hover {
-		color: red;
-	}
-
-	.hover-underline-animation {
-		display: inline-block;
-		position: relative;
-		color: #0087ca;
-	}
-
-		.hover-underline-animation::after {
-			content: '';
-			position: absolute;
-			width: 100%;
-			transform: scaleX(0);
-			height: 2px;
-			bottom: 0;
-			left: 0;
-			background-color: red;
-			transform-origin: bottom right;
-			transition: transform 0.25s ease-out;
-		}
-
-		.hover-underline-animation:hover::after {
-			transform: scaleX(1);
-			transform-origin: bottom left;
-		}
-
-	.non-clickable {
-		pointer-events: none;
-		cursor: default;
-	}
-</style>
-
-
 @functions {
 
 	NavigationTreeViewModel GetNavigationTreeFromPageId(int pageId = 0, int startLevel = 1, int stopLevel = 9)
@@ -97,7 +41,6 @@
 			default:
 				return false;
 		}
-
 	}
 
 	bool NavigationTreeHasChildren(NavigationTreeNodeViewModel rootNode)
@@ -145,7 +88,6 @@
 	}
 }
 
-
 @{
 	// Page settings
 	int navigationRootPageId = !string.IsNullOrEmpty(Model.Item.GetString("NavigationRoot")) ? Model.Item.GetLink("NavigationRoot").PageId : 0;
@@ -172,92 +114,88 @@
 	megaMenuAlignment = megaMenuAlignment == "center" ? "text-center" : megaMenuAlignment;
 	megaMenuAlignment = megaMenuAlignment == "end" ? "text-end" : megaMenuAlignment;
 
-	string itemCss = "nav-link megamenu-item text-decoration-none fs-6 " + spacing;
+	string headerLinkAnimation = Model.Item.GetString("HeaderLinkAnimation", "left");
+	headerLinkAnimation = headerLinkAnimation == "left" ? "hover-underline-animation-left" : headerLinkAnimation;
+	headerLinkAnimation = headerLinkAnimation == "right" ? "hover-underline-animation-right" : headerLinkAnimation;
+	headerLinkAnimation = headerLinkAnimation == "center" ? "hover-underline-animation-center" : headerLinkAnimation;
+	headerLinkAnimation = headerLinkAnimation == "none" ? string.Empty : headerLinkAnimation;
 
+	string itemCss = $"nav-link megamenu-item text-decoration-none fs-6 {spacing}";
 }
 
-<nav class="navbar-expand-lg">
-	<div class="container-xl">
-		<button class="navbar-toggler px-0" type="button" data-bs-toggle="collapse" aria-expanded="true" aria-label="Toggle navigation">
-		</button>
-		<div class="collapse navbar-collapse fs-5 @navigationLinkAlignment pt-2">
-			<div class="navbar-nav gap-4">
-				@foreach (NavigationTreeNodeViewModel rootNode in rootNavigation.Nodes)
-				{
-					string submenuType = GetSubmenuType(rootNode);
-					bool isDropDown = IsDropDownMenu(rootNode, submenuType);
+<div class="nav-wrapper megamenu-wrapper">
+	<div class="@theme">
+		<nav class="d-flex gap-2 @navigationLinkAlignment">
+			@foreach (NavigationTreeNodeViewModel rootNode in rootNavigation.Nodes)
+			{
+				string submenuType = GetSubmenuType(rootNode);
+				bool isDropDown = IsDropDownMenu(rootNode, submenuType);
+				string submenuTypeCss = isDropDown ? "" : "position-static";
 
-					string submenuTypeCss = isDropDown ? "" : "position-static";
+				string relatedContentNavigationRoot = GetGroupFieldValue("ProductGroupRelatedContent", rootNode);
+				int relatedContentNavigationRootPageId = !string.IsNullOrEmpty(relatedContentNavigationRoot) ? GetPageIdFromLink(relatedContentNavigationRoot) : 0;
+				bool nodeHasRelatedContent = relatedContentNavigationRootPageId != 0;
 
-					string relatedContentNavigationRoot = GetGroupFieldValue("ProductGroupRelatedContent", rootNode);
-					int relatedContentNavigationRootPageId = !string.IsNullOrEmpty(relatedContentNavigationRoot) ? GetPageIdFromLink(relatedContentNavigationRoot) : 0;
-					bool nodeHasRelatedContent = relatedContentNavigationRootPageId != 0;
+				<div class="nav-item dropdown @submenuTypeCss">
+					<a class="nav-link p-2 @headerLinkAnimation fs-6 fw-bold text-uppercase" role="button" data-bs-toggle="dropdown" data-bs-offset="0,0" aria-expanded="false">
+						@rootNode.Name
+					</a>
+					@if (isDropDown)
+					{
+						<ul class="dropdown-menu border-0 rounded-0 @megaMenuAlignment">
 
-					<div class="nav-item dropdown @theme @submenuTypeCss">
-						<a class="nav-link hover-underline-animation fs-6 fw-bold text-uppercase" id="navbarDropdown" role="button" data-bs-toggle="dropdown" data-bs-offset="0,0" aria-expanded="true">
-							@rootNode.Name
-						</a>
-
-						@if (IsDropDownMenu(rootNode, submenuType))
-						{
-							<ul class="dropdown-menu border-0 rounded-0 @megaMenuAlignment" aria-labelledby="navbarDropdown">
-
-								@if (nodeHasRelatedContent)
+							@if (nodeHasRelatedContent)
+							{
+								foreach (NavigationTreeNodeViewModel relatedContentNode in GetNavigationTreeFromPageId(relatedContentNavigationRootPageId).Nodes)
 								{
-									foreach (NavigationTreeNodeViewModel relatedContentNode in GetNavigationTreeFromPageId(relatedContentNavigationRootPageId).Nodes)
-									{
-
-										<li class="dropdown-item">
-											<a class="@itemCss @titleCss @(ClickableCss(relatedContentNode))" href="@relatedContentNode.Link">
-												@relatedContentNode.Name
-											</a>
-
-										</li>
-									}
-
-									<div class="dropdown-divider"></div>
-								}
-
-								@foreach (NavigationTreeNodeViewModel subNode in rootNode.Nodes)
-								{
-									var page = Dynamicweb.Content.Services.Pages.GetPage(subNode.PageId);
 									<li class="dropdown-item">
-										<a class="@itemCss @titleCss @(ClickableCss(subNode))" href="@subNode.Link">
-											@subNode.Name
+										<a class="@itemCss @titleCss @(ClickableCss(relatedContentNode))" href="@relatedContentNode.Link">
+											@relatedContentNode.Name
 										</a>
 									</li>
-
 								}
-							</ul>
-						}
-						else
-						{
 
-							<div class="dropdown-menu border-0 mega-menu-custom" aria-labelledby="navbarDropdown">
-								<div class="container-xl">
-									<div class="grid grid-12 p-2">
+								<li class="dropdown-divider"></li>
+							}
 
-										@if (nodeHasRelatedContent)
-										{
+							@foreach (NavigationTreeNodeViewModel subNode in rootNode.Nodes)
+							{
+								var page = Dynamicweb.Content.Services.Pages.GetPage(subNode.PageId);
+								<li class="dropdown-item">
+									<a class="@itemCss @titleCss @(ClickableCss(subNode))" href="@subNode.Link">
+										@subNode.Name
+									</a>
+								</li>
 
-											<div class="nav flex-column g-col-2 @megaMenuAlignment">
+							}
+						</ul>
+					}
+					else
+					{
+						<div class="dropdown-menu border-0 megamenu-content-wrapper">
+							<div class="container-xl">
+								<div class="grid grid-12 py-2">
 
-												@foreach (NavigationTreeNodeViewModel relatedContentNode in GetNavigationTreeFromPageId(relatedContentNavigationRootPageId).Nodes)
-												{
+									@if (nodeHasRelatedContent)
+									{
+										<div class="flex-column g-col-2 @megaMenuAlignment">
 
-													<a class="@itemCss @titleCss @(ClickableCss(relatedContentNode))" href="@relatedContentNode.Link">
-														@relatedContentNode.Name
-													</a>
+											@foreach (NavigationTreeNodeViewModel relatedContentNode in GetNavigationTreeFromPageId(relatedContentNavigationRootPageId).Nodes)
+											{
+												<a class="@itemCss @titleCss @(ClickableCss(relatedContentNode))" href="@relatedContentNode.Link">
+													@relatedContentNode.Name
+												</a>
 
-												}
+											}
 
-											</div>
-										}
+										</div>
+									}
+
+									<div class="d-flex flex-wrap g-col-10 gap-4">
 
 										@foreach (NavigationTreeNodeViewModel subNode in rootNode.Nodes)
 										{
-
-											<div class="nav flex-column g-col-2 @megaMenuAlignment">
+											<div class="g-col-2 px-4 @megaMenuAlignment">
 												<a class="@itemCss @titleCss @(ClickableCss(subNode))" href="@subNode.Link">
 													@subNode.Name
 												</a>
@@ -269,57 +207,36 @@
 
 													if (!maxEndNodesExceeded)
 													{
-
 														<a class="@itemCss @(ClickableCss(endNode))" href="@endNode.Link">
 															@endNode.Name
 														</a>
-
 													}
 													else
 													{
 														if (!string.IsNullOrWhiteSpace(maxEndNodesText))
 														{
-														<a class="@itemCss" href="@subNode.Link">
-															@Translate(maxEndNodesText)
-															
-														</a>
+															<a class="@itemCss" href="@subNode.Link">
+																@Translate(maxEndNodesText)
+
+															</a>
 														}
 
 														break;
 													}
 												}
-
 											</div>
-										}
-
-										@if (renderPromoImage)
-										{
-											//TODO: render promo image implementation
-											<div class="g-col-2 g-start-11 align-self-center">
-												<div class="promo-image position-relative">
-													<a>
-														<img src="Admin/Public/GetImage.ashx?width=10000&height=10000&donotupscale=1&image=/Files/Images%2fSwift%20Demo%20Content%2fkenny-eliason-tokYjYqaPB0-unsplash.jpg&modified=204"
-															 style="aspect-ratio:16/9; object-fit:cover"
-															 class="h-100 w-100" />
-
-														<div class="position-absolute ps-3 pb-2" style="bottom:0">
-															<span class="text-white fs-xl-5 fs-lg-5 fs-md-6">Equipment</span>
-														</div>
-													</a>
-												</div>
-											</div>
-
 										}
 									</div>
 								</div>
 							</div>
-						}
-					</div>
-				}
-			</div>
-		</div>
+						</div>
+					}
+				</div>
+			}
+		</nav>
 	</div>
-</nav>
+</div>
+
 
 
 
