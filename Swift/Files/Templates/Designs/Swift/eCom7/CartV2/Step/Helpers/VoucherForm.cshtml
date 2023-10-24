@@ -2,47 +2,51 @@
 @using Dynamicweb.Ecommerce.Orders
 
 @{ 
-	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	string voucherFormIconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 	string voucherCode = GetString("Ecom:Order.Customer.VoucherCode");
 	string voucherCodeError = GetString("Ecom:Cart.ValidationError.EcomOrderVoucherCode.ErrorMessage");
-	var errors = new List<string>();
-	string validState = "";
+	string validState = string.Empty;
 	bool vouchersAppliedAsDiscounts = false;
-	IEnumerable<string> codes = new List<string>();
+
+	IEnumerable<string> voucherCodes = new List<string>();
 	Order order = new OrderService().GetById(GetString("Ecom:Order.ID"));
+
 
 	if (!string.IsNullOrWhiteSpace(voucherCode))
 	{
 		if (order.VoucherUseType.HasFlag(VoucherUseCategoryType.Discount))
 		{
-			codes = voucherCode.Split(new string[] { ",", ";", " " }, StringSplitOptions.RemoveEmptyEntries);
+			voucherCodes = voucherCode.Split(new string[] { ",", ";", " " }, StringSplitOptions.RemoveEmptyEntries);
 			vouchersAppliedAsDiscounts = true;
 		}
 		else
 		{
-			codes = new string[] { voucherCode.Trim() };
+			voucherCodes = new string[] { voucherCode.Trim() };
 		}
     }
 		
+	var voucherErrors = new List<string>();
 	if(!vouchersAppliedAsDiscounts)
     {
-		foreach (string code in codes)
+		foreach (string code in voucherCodes)
 		{
 			Dynamicweb.Ecommerce.Orders.Vouchers.Voucher vouch = Dynamicweb.Ecommerce.Services.Vouchers.GetVoucherByCode(code);
 			if (vouch == null)
 			{
 				validState = "is-invalid";
-				errors.Add(Translate("Voucher") + " <span class='fw-bold'>" + code + "</span> " + Translate("not found"));
+				voucherErrors.Add(Translate("Voucher") + " <span class='fw-bold'>" + code + "</span> " + Translate("not found"));
 				continue;
 			}
 			if (vouch.DateUsed.HasValue)
 			{
 				validState = "is-invalid";
-				errors.Add(Translate("Voucher") + " <span class='fw-bold'>" + code + "</span> " + Translate("already used"));
+				voucherErrors.Add(Translate("Voucher") + " <span class='fw-bold'>" + code + "</span> " + Translate("already used"));
 				continue;
 			}
 		}
 	}
+
+	var voucherErrorMessage = string.Join(",", voucherErrors);
 
 	<div class="py-3 border-top" id="orderVoucherForm">
 		
@@ -54,11 +58,7 @@
 				</button>
 
 				<div class="invalid-feedback">
-					@{
-						var errorMessage = string.Join(",", errors);
-
-					}
-					@errorMessage
+					@voucherErrorMessage
 				</div>
 			</div>
 			<input type="hidden" name="EcomOrderVoucherCode" id="EcomOrderVoucherCode" value="@voucherCode">
@@ -69,7 +69,7 @@
 		{
 			<div class="d-flex flex-wrap gap-2 pt-3">
 
-				@foreach (string code in codes)
+				@foreach (string code in voucherCodes)
 				{
 				<form method="post">
 					<input type="hidden" name="EcomOrderVoucherCode" value="@voucherCode.Replace(code+",", "").Replace(","+code, "").Replace(code, "")">
@@ -89,6 +89,5 @@
 			</div>
 		}
 		@voucherCodeError
-
 	</div>
 }
