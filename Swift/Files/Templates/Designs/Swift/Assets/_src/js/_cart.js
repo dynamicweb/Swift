@@ -1,4 +1,16 @@
 const Cart = function () {
+	let productId;
+	let productVariantId;
+	let productUnitId;
+	let productName;
+	let productVariantName;
+	let productCurrency;
+	let productReferer;
+	let productPrice;
+	let addQuantity;
+	let stockQuantity;
+	let isAmountReservation = false;
+
 	return {
 		Update: async function (e) {
 			//NP: clickedButton is not always the button. Sometimes it is the qty input field if [enter] is pressed
@@ -6,42 +18,21 @@ const Cart = function () {
 
 			//Setup the form data
 			const form = clickedButton.closest("form");
+
 			let formData = new FormData(form);
-			const fetchOptions = {
-				method: 'POST',
-				body: formData
-			};
+			productId = formData.get("ProductId");
+			productVariantId = formData.get("VariantId");
+			productUnitId = formData.get("UnitID");
+			productName = formData.get("ProductName");
+			productVariantName = formData.get("ProductVariantName");
+			productCurrency = formData.get("ProductCurrency");
+			productReferer = formData.get("ProductReferer");
+			productPrice = formData.get("ProductPrice");
+			addQuantity = formData.get("Quantity") ? formData.get("Quantity") : 1;
+			stockQuantity = formData.get("Stock") ? formData.get("Stock") : 9999999;
+			isAmountReservation = formData.get("GetReservedAmount") ? formData.get("GetReservedAmount") : "false";
 
-			const productId = formData.get("ProductId");
-			const productVariantId = formData.get("VariantId");
-			const productUnitId = formData.get("UnitID");
-			const productName = formData.get("ProductName");
-			const productVariantName = formData.get("ProductVariantName");
-			const productCurrency = formData.get("ProductCurrency");
-			const productReferer = formData.get("ProductReferer");
-			const productPrice = formData.get("ProductPrice");
-			const addQuantity = formData.get("Quantity") ? formData.get("Quantity") : 1;
-			const stockQuantity = formData.get("Stock") ? formData.get("Stock") : 9999999;
-			const getReservedAmount = formData.get("GetReservedAmount") ? formData.get("GetReservedAmount") : "false";
-
-			// Push data to Google Analytics
-			if (typeof gtag !== "undefined") {
-				gtag("event", "add_to_cart", {
-					currency: productCurrency,
-					value: productPrice,
-					items: [
-						{
-							item_id: productId,
-							item_name: productName,
-							item_variant: productVariantName,
-							currency: productCurrency,
-							item_list_id: productReferer,
-							price: productPrice,
-							quantity: addQuantity
-						}
-					]
-				});
-			}
+			this.PushDataToGoogleAnalytics();
 
 			let event = new CustomEvent("update.swift.cart", {
 			//Fire the 'update' event
@@ -53,46 +44,21 @@ const Cart = function () {
 			});
 			let globalDispatcher = document.dispatchEvent(event);
 			let localDispatcher = clickedButton.dispatchEvent(event);
-
+			
 			if (globalDispatcher != false && localDispatcher != false) {
-				let reservedAmount = 0;
-
-				if (getReservedAmount == "true" && stockQuantity != 9999999) {
-					const getReservedFormData = new FormData();
-					getReservedFormData.append("GetReservedAmount", true);
-					getReservedFormData.append("ProductId", productId);
-
-					if (addQuantity != null) {
-						getReservedFormData.append("Quantity", addQuantity);
-					}
-
-					if (productUnitId != null) {
-						getReservedFormData.append("UnitId", productUnitId);
-					}
-
-					if (productVariantId != null) {
-						getReservedFormData.append("VariantId", productVariantId);
-					}
-
-					const getReservedAmountfetchOptions = {
-						method: 'POST',
-						body: getReservedFormData
-					};
-
-					let response = await fetch(form.action, getReservedAmountfetchOptions);
-
-					if (response.ok) {
-						let amount = await response.text().then(function (text) {
-							return text;
-						});
-
-						reservedAmount = amount;
-					} else {
-						Cart.Error(response, clickedButton);
-					}
+				//Remove reserved amount from the form data, so that we only use it for the special reserved amount call
+				if (isAmountReservation == "true") {
+					formData.delete("GetReservedAmount");
 				}
 
-				if (getReservedAmount == "false" || ((parseInt(addQuantity) + parseInt(reservedAmount)) <= parseInt(stockQuantity))) {
+				//Special call to get only the reserved amount
+				let reservedAmount = 0;				
+				if (isAmountReservation == "true" && stockQuantity != 9999999) {
+					reservedAmount = await this.GetReservedAmount(form);
+				}
+
+				//The actual cart call (add to cart)
+				if (isAmountReservation == "false" || ((parseInt(addQuantity) + parseInt(reservedAmount)) <= parseInt(stockQuantity))) {
 					//UI updates
 					const clickedButtonWidth = clickedButton.offsetWidth + "px";
 
@@ -107,6 +73,11 @@ const Cart = function () {
 					});
 
 					//Fetch
+					const fetchOptions = {
+						method: 'POST',
+						body: formData
+					};
+
 					let response = await fetch(form.action, fetchOptions);
 
 					if (response.ok) {
@@ -131,7 +102,7 @@ const Cart = function () {
 			}
 		},
 
-		UpdateOnEnterKey: async function (e) {
+		UpdateOnEnterKey: function (e) {
 			const input = e.currentTarget != undefined ? e.currentTarget : e;
 			e.preventDefault();
 
@@ -183,7 +154,7 @@ const Cart = function () {
 				});
 
 				//Update stock
-				if (formData.get("GetReservedAmount") == "true") {
+				if (isAmountReservation == "true") {
 					const stockLevelElement = clickedButton.closest(".js-product") ? clickedButton.closest(".js-product").querySelector(".js-text-stock") : clickedButton.closest("#content").querySelector(".js-text-stock");
 
 					if (stockLevelElement) {
@@ -212,6 +183,26 @@ const Cart = function () {
 			clickedButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512"><title>circle-notch</title><g fill="#ffffff"><path d="M288 24.103v8.169a11.995 11.995 0 0 0 9.698 11.768C396.638 63.425 472 150.461 472 256c0 118.663-96.055 216-216 216-118.663 0-216-96.055-216-216 0-104.534 74.546-192.509 174.297-211.978A11.993 11.993 0 0 0 224 32.253v-8.147c0-7.523-6.845-13.193-14.237-11.798C94.472 34.048 7.364 135.575 8.004 257.332c.72 137.052 111.477 246.956 248.531 246.667C393.255 503.711 504 392.789 504 256c0-121.187-86.924-222.067-201.824-243.704C294.807 10.908 288 16.604 288 24.103z"></path></g></svg>';
 		},
 
+		PushDataToGoogleAnalytics: function() {
+			if (typeof gtag !== "undefined") {
+				gtag("event", "add_to_cart", {
+					currency: productCurrency,
+					value: productPrice,
+					items: [
+						{
+							item_id: productId,
+							item_name: productName,
+							item_variant: productVariantName,
+							currency: productCurrency,
+							item_list_id: productReferer,
+							price: productPrice,
+							quantity: addQuantity
+						}
+					]
+				});
+			}
+		},
+
 		GetMiniCarts: function (miniCartId) {
 			let miniCarts = [];
 
@@ -228,6 +219,43 @@ const Cart = function () {
 			}
 
 			return miniCarts;
+		},
+
+		GetReservedAmount: async function (form) {
+			const getReservedFormData = new FormData();
+			getReservedFormData.append("GetReservedAmount", true);
+			getReservedFormData.append("ProductId", productId);
+
+			if (addQuantity != null) {
+				getReservedFormData.append("Quantity", addQuantity);
+			}
+
+			if (productUnitId != null) {
+				getReservedFormData.append("UnitId", productUnitId);
+			}
+
+			if (productVariantId != null) {
+				getReservedFormData.append("VariantId", productVariantId);
+			}
+
+			const getReservedAmountfetchOptions = {
+				method: 'POST',
+				body: getReservedFormData
+			};
+
+			let response = await fetch(form.action, getReservedAmountfetchOptions);
+
+			if (response.ok) {
+				let amount = await response.text().then(function (text) {
+					return text;
+				});
+
+				return amount;
+			} else {
+				Cart.Error(response, clickedButton);
+
+				return 0;
+			}
 		},
 
 		QuantityValidate: function (event) {
