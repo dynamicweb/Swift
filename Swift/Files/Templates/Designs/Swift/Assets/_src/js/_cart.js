@@ -15,7 +15,7 @@ const Cart = function () {
 		Update: async function (e) {
 			//NP: clickedButton is not always the button. Sometimes it is the qty input field if [enter] is pressed
 			const clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
-
+			const quantityField = clickedButton.closest("form").querySelector('[name="Quantity"]');
 			//Setup the form data
 			const form = clickedButton.closest("form");
 
@@ -57,8 +57,12 @@ const Cart = function () {
 					reservedAmount = await this.GetReservedAmount(form);
 				}
 
+				const isMinQuantityValid = this.ValidateMinQuantity(quantityField);
+				const isStepQuantityValid = this.ValidateStepQuantity(quantityField);
+				const isValid = isMinQuantityValid && isStepQuantityValid;
+
 				//The actual cart call (add to cart)
-				if (isAmountReservation == "false" || ((parseInt(addQuantity) + parseInt(reservedAmount)) <= parseInt(stockQuantity))) {
+				if (isValid && (isAmountReservation == "false" || ((parseInt(addQuantity) + parseInt(reservedAmount)) <= parseInt(stockQuantity)))) {
 					//UI updates
 					const clickedButtonWidth = clickedButton.offsetWidth + "px";
 
@@ -85,6 +89,8 @@ const Cart = function () {
 					} else {
 						Cart.Error(response, clickedButton);
 					}
+				} else if (!isValid) {
+					this.AddToCartValidate(quantityField);
 				} else {
 					const outOfStockMessage = form.querySelector(".js-out-of-stock-notice").innerHTML;
 					document.querySelector("#DynamicModalContent").innerHTML = outOfStockMessage;
@@ -111,8 +117,6 @@ const Cart = function () {
 					Cart.Update(e);
 				}
 			};
-
-			Cart.Debounce(() => Cart.QuantityValidate(input), 300)()
 		},
 
 		Success: async function (response, clickedButton, formData, reservedAmount = 0) {
@@ -139,32 +143,21 @@ const Cart = function () {
 				clickedButton.innerHTML = clickedButton.getAttribute("data-content");
 				clickedButton.setAttribute("data-content", "");
 
-
 				let removeFocusCssClassTimer = setTimeout(function () {
 					Cart.GetMiniCarts(formData.get("minicartid")).forEach(function (el) {
 						el.classList.remove("mini-cart-quantity-added");
 					});
 				}, 200);
 
-				//Replace the markup
+				//Replace the markup (Update min carts counters)
 				let totalQuantity = html != undefined ? html : 0;
-
 				Cart.GetMiniCarts(formData.get("minicartid")).forEach(function (el) {
 					el.innerHTML = "(" + totalQuantity.trim() + ")";
 				});
 
 				//Update stock
 				if (isAmountReservation == "true") {
-					const stockLevelElement = clickedButton.closest(".js-product") ? clickedButton.closest(".js-product").querySelector(".js-text-stock") : clickedButton.closest("#content").querySelector(".js-text-stock");
-
-					if (stockLevelElement) {
-						const stockQuantity = formData.get("Stock") ? formData.get("Stock") : 9999999;
-						const addQuantity = formData.get("Quantity");
-
-						if (stockQuantity != 9999999) {
-							stockLevelElement.innerHTML = (parseInt(stockQuantity) - parseInt(addQuantity) - parseInt(reservedAmount));
-						}
-					}
+					this.UpdateStock(reservedAmount, clickedButton)
 				}
 			}
 		},
@@ -258,22 +251,49 @@ const Cart = function () {
 			}
 		},
 
-		QuantityValidate: function (event) {
-			let quantityField = event.currentTarget != undefined ? event.currentTarget : event;
-			const form = quantityField.closest("form");
-			const stepQuantityWarning = form.querySelector(".js-step-quantity-warning");
-			const minQuantityWarning = form.querySelector(".js-min-quantity-warning");
-			let cartButton = form.querySelector(".js-add-to-cart-button");
-			let isValid = quantityField.checkValidity();
+		UpdateStock: function (reservedAmount, clickedButton) {
+			const stockLevelElement = clickedButton.closest(".js-product") ? clickedButton.closest(".js-product").querySelector(".js-text-stock") : clickedButton.closest("#content").querySelector(".js-text-stock");
 
-			const quantity = parseInt(quantityField.value);
-			const minQuantity = parseInt(quantityField.min);
+			if (stockLevelElement) {
+				if (stockQuantity != 9999999) {
+					stockLevelElement.innerHTML = (parseInt(stockQuantity) - parseInt(addQuantity) - parseInt(reservedAmount));
+				}
+			}
+		},
 
-			if (quantity < minQuantity) {
-				isValid = false;
+		ValidateMinQuantity: function (quantityField) {
+			let isValid = true;
+
+			if (quantityField != null) {
+				const quantity = parseInt(quantityField.value);
+				const minQuantity = parseInt(quantityField.min);
+				isValid = quantity < minQuantity ? false : isValid;
 			}
 
-			if (quantity < minQuantity && minQuantityWarning) {
+			return isValid;
+		},
+		
+		ValidateStepQuantity: function (quantityField) {
+			let isValid = true;
+
+			if (quantityField != null) {
+				isValid = quantityField.checkValidity();
+			}
+
+			return isValid;
+		},
+		
+		AddToCartValidate: function (event) {
+			let quantityField = event.currentTarget != undefined ? event.currentTarget : event;
+			const form = quantityField.closest("form");
+
+			const minQuantityWarning = form.querySelector(".js-min-quantity-warning");
+			const stepQuantityWarning = form.querySelector(".js-step-quantity-warning");
+
+			const isMinQuantityValid = this.ValidateMinQuantity(quantityField);
+			const isStepQuantityValid = this.ValidateStepQuantity(quantityField);
+
+			if (!isMinQuantityValid && minQuantityWarning) {
 				const message = minQuantityWarning.innerHTML;
 				document.querySelector("#DynamicModalContent").innerHTML = message;
 
@@ -288,7 +308,7 @@ const Cart = function () {
 				}
 			}
 
-			if (!quantityField.checkValidity() && stepQuantityWarning) {
+			if (!isStepQuantityValid && stepQuantityWarning) {
 				const message = stepQuantityWarning.innerHTML;
 				document.querySelector("#DynamicModalContent").innerHTML = message;
 
@@ -299,34 +319,11 @@ const Cart = function () {
 				}
 			}
 
-			if (!isValid) {
+			if (!isMinQuantityValid || !isStepQuantityValid) {
 				quantityField.classList.add("is-invalid");
-
-				if (cartButton) {
-					cartButton.disabled = true;
-				}
 			} else {
 				quantityField.classList.remove("is-invalid");
-
-				if (cartButton) {
-					cartButton.disabled = false;
-				}
 			}
-		},
-
-		Debounce: function (func, wait, immediate) {
-			let timeout;
-			return function () {
-				const context = this, args = arguments;
-				let later = function () {
-					timeout = null;
-					if (!immediate) func.apply(context, args);
-				};
-				const callNow = immediate && !timeout;
-				clearTimeout(timeout);
-				timeout = setTimeout(later, wait);
-				if (callNow) func.apply(context, args);
-			};
 		}
 	}
 }();
