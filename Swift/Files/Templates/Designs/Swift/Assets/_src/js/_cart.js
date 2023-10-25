@@ -60,6 +60,7 @@ const Cart = function () {
 				const isMinQuantityValid = this.ValidateMinQuantity(quantityField);
 				const isStepQuantityValid = this.ValidateStepQuantity(quantityField);
 				const isValid = isMinQuantityValid && isStepQuantityValid;
+				quantityField.classList.remove("is-invalid");
 
 				//The actual cart call (add to cart)
 				if (isValid && (isAmountReservation == "false" || ((parseInt(addQuantity) + parseInt(reservedAmount)) <= parseInt(stockQuantity)))) {
@@ -292,12 +293,14 @@ const Cart = function () {
 
 			const isMinQuantityValid = this.ValidateMinQuantity(quantityField);
 			const isStepQuantityValid = this.ValidateStepQuantity(quantityField);
+			const isValid = isMinQuantityValid && isStepQuantityValid;
+
+			const dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), { });
 
 			if (!isMinQuantityValid && minQuantityWarning) {
 				const message = minQuantityWarning.innerHTML;
+				const minQuantity = parseInt(quantityField.min);
 				document.querySelector("#DynamicModalContent").innerHTML = message;
-
-				let dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), { });
 
 				if (!document.querySelector('#DynamicModal').classList.contains("show")) {
 					dynamicModal.show();
@@ -312,14 +315,14 @@ const Cart = function () {
 				const message = stepQuantityWarning.innerHTML;
 				document.querySelector("#DynamicModalContent").innerHTML = message;
 
-				const dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), { });
-
 				if (!document.querySelector('#DynamicModal').classList.contains("show")) {
 					dynamicModal.show();
 				}
 			}
 
-			if (!isMinQuantityValid || !isStepQuantityValid) {
+			console.log(isValid);
+
+			if (!isValid) {
 				quantityField.classList.add("is-invalid");
 			} else {
 				quantityField.classList.remove("is-invalid");
