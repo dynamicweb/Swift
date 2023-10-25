@@ -10,6 +10,7 @@ const Cart = function () {
 	let addQuantity;
 	let stockQuantity;
 	let isAmountReservation = false;
+	let isPendingQuote = "false";
 
 	return {
 		Update: async function (e) {
@@ -31,6 +32,7 @@ const Cart = function () {
 			addQuantity = formData.get("Quantity") ? formData.get("Quantity") : 1;
 			stockQuantity = formData.get("Stock") ? formData.get("Stock") : 9999999;
 			isAmountReservation = formData.get("GetReservedAmount") ? formData.get("GetReservedAmount") : "false";
+			isPendingQuote = formData.get("PendingQuote") ? formData.get("PendingQuote") : "false";
 
 			this.PushDataToGoogleAnalytics();
 
@@ -63,7 +65,17 @@ const Cart = function () {
 				quantityField.classList.remove("is-invalid");
 
 				//The actual cart call (add to cart)
-				if (isValid && (isAmountReservation == "false" || ((parseInt(addQuantity) + parseInt(reservedAmount)) <= parseInt(stockQuantity)))) {
+				if (isPendingQuote == "true") {
+					const pendingQuoteMessage = form.querySelector(".js-pending-quote-notice").innerHTML;
+					document.querySelector("#DynamicModalContent").innerHTML = pendingQuoteMessage;
+
+					let dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), {
+						backdrop: 'static'
+					});
+
+					dynamicModal.show();
+				}
+				else if (isValid && (isAmountReservation == "false" || ((parseInt(addQuantity) + parseInt(reservedAmount)) <= parseInt(stockQuantity)))) {
 					//UI updates
 					const clickedButtonWidth = clickedButton.offsetWidth + "px";
 
