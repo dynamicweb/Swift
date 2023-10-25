@@ -7,163 +7,166 @@
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
 	string theme = !string.IsNullOrEmpty(themeRaw) ? " h-100 theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
 	int userId = Pageview?.User?.ID != null ? Pageview.User.ID : 0;
+
+	string listPageLink = Pageview.CurrentParagraph.Item["ProductListPage"] != null ? Pageview.CurrentParagraph.Item["ProductListPage"].ToString() : "";
+	string currentPageUrl = "/Default.aspx?ID=" + Pageview.Page.ID;
+	int listsCount = Model.TotalFavoriteListsCount;
+	int pageSize = Model.PageSize;
 }
 
 @if (Pageview?.User?.ID != null)
 {
-	if (theme != "")
-	{
-		<div class="@(theme)">
-			@{ @RenderContent() }
-		</div>
-	}
-	else
-	{
-		@RenderContent()
-	}
+	<div class="@(theme)">
+		<header class="d-flex flex-wrap align-items-center gap-3 p-3 border-bottom">
+			<h1 class="h6 m-0 flex-fill">@Translate("Favorite lists")</h1>
+			@if (Model.FavoriteLists != null)
+			{
+				if (Model.FavoriteLists.Count > 0)
+				{
+					<button type="button" class="btn btn-link p-0 border-0" data-bs-toggle="modal" data-bs-target="#createFavoriteListModal" id="AddNewFavoriteList">+ @Translate("Add new favorite list")</button>
+				}
+			}
+		</header>
+
+		@if (Model.FavoriteLists == null || Model.FavoriteLists.Count < 1)
+		{
+			<div class="grid">
+				<div class="g-col-12 g-start-lg-3 g-col-lg-8 d-flex flex-column gap-3 text-center py-3">
+					<h2 class="h5 m-0">@Translate("It looks like you do not have any favorites yet")</h2>
+					<p class="m-0">@Translate("Save and arrange the best things here until you are ready for them")</p>
+
+					<div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+						@if (!string.IsNullOrEmpty(listPageLink))
+						{
+							<a href="@listPageLink" class="btn btn-secondary">@Translate("Go exploring")</a>
+						}
+						<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createFavoriteListModal" id="CreateNewFavoriteList">@Translate("Create favorite list")</button>
+					</div>
+				</div>
+			</div>
+		}
+		else
+		{
+			foreach (var theList in Model.FavoriteLists)
+			{
+				int listItemsCount = theList.ProductList.Products.Count;
+				string productCountLabel = listItemsCount > 1 ? Translate("products") : Translate("product");
+				string favoriteListLink = currentPageUrl + "&amp;FavoriteListId=" + theList.Id;
+				string listName = !string.IsNullOrEmpty(theList.Name) ? theList.Name : Translate("Favorites");
+
+				<article class="d-flex flex-column gap-3 p-3 border-bottom">
+
+					<header class="d-flex flex-row align-items-baseline lh-1">
+						<h3 class="flex-fill h6 m-0">
+							<a href="@favoriteListLink" class="text-decoration-none opacity-75">@listName</a>
+						</h3>
+						<span class="small text-end">@listItemsCount @productCountLabel <span class="d-none d-sm-inline">@Translate("in this list")</span></span>
+					</header>
+
+					<div class="d-md-none grid grid-2">
+						@if (listItemsCount > 0)
+						{
+							foreach (var item in theList.ProductList.Products.Take(2))
+							{
+								string productImage = "/Admin/Public/GetImage.ashx?Image=" + item.DefaultImage.Value + "&Format=webp&Width=350&Height=350";
+								productImage = !item.DefaultImage.Value.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? item.DefaultImage.Value : productImage;
+
+								<div class="ratio ratio-1x1">
+									<a href="@favoriteListLink" class="d-flex justify-content-center align-items-center">
+										<img src="@productImage"
+												loading="lazy"
+												decoding="async"
+												class="mw-100 mh-100"
+												alt="@item.Name">
+									</a>
+								</div>
+							}
+						}
+						else
+						{
+							<div class="g-col-12 py-5 text-center border">
+								<a href="@listPageLink">@Translate("This list is empty. Click here to be inspired")</a>
+							</div>
+						}
+					</div>
+
+					<div class="d-none d-md-grid d-print-grid grid grid-2 grid-md-5">
+						@if (listItemsCount > 0)
+						{
+							foreach (var item in theList.ProductList.Products.Take(5))
+							{
+								string productImage = "/Admin/Public/GetImage.ashx?Image=" + item.DefaultImage.Value + "&Format=webp&Width=350&Height=350";
+								productImage = !item.DefaultImage.Value.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? item.DefaultImage.Value : productImage;
+
+								<div class="ratio ratio-1x1">
+									<a href="@favoriteListLink" class="d-flex justify-content-center align-items-center">
+										<img src="@productImage"
+												loading="lazy"
+												decoding="async"
+												class="mw-100 mh-100"
+												alt="@item.Name">
+									</a>
+								</div>
+							}
+						}
+						else
+						{
+							<div class="g-col-12 py-6 text-center border">
+								<a href="@listPageLink">@Translate("This list is empty. Click here to be inspired")</a>
+							</div>
+						}
+					</div>
+
+					<footer class="d-flex flex-row gap-3 align-items-center justify-content-end">
+						<button type="button"
+								class="btn btn-link p-0 renameFavoriteListModal"
+							id="RenameFavoriteList" 
+								data-bs-toggle="modal"
+								data-bs-target="#renameFavoriteListModal"
+								data-list-id="@theList.Id"
+								data-list-name="@listName">
+							@Translate("Rename")
+							</button>
+							<button type="button"
+									class="btn btn-link p-0 deleteFavoriteNameButton"
+							id="DeleteFavoriteList" 
+									data-bs-toggle="modal"
+									data-bs-target="#deleteFavoriteListModal"
+									data-list-id="@theList.Id"
+									data-list-name="@listName">
+								@Translate("Delete")
+								</button>
+							</footer>
+						</article>
+					}
+				}
+
+				@if (listsCount > pageSize)
+				{
+					string pageHrefTemplate = string.Format("<a class=\"page-link\" href=\"{0}&PageNum={{0}}&PageSize={{1}}\">{{0}}</a>", currentPageUrl);
+
+					<div class="p-3">
+						<ul class="pagination m-0">
+							@for (int i = 1; i <= Model.PageCount; i++)
+							{
+								var css = i == Model.CurrentPage
+									? "page-item active"
+									: "page-item";
+								<li class="@css">
+									@string.Format(pageHrefTemplate, i, Model.PageSize)
+								</li>
+							}
+						</ul>
+					</div>
+				}
+			}
+	</div>
 }
 else if (Pageview.IsVisualEditorMode)
 {
 	<div class="alert alert-dark" role="alert">
 		@Translate("To work on this page, you must be signed in, in the frontend")
 	</div>
-}
-
-@helper RenderContent()
-{
-	string listPageLink = Pageview.CurrentParagraph.Item["ProductListPage"] != null ? Pageview.CurrentParagraph.Item["ProductListPage"].ToString() : "";
-	string currentPageUrl = "/Default.aspx?ID=" + Pageview.Page.ID;
-	int listsCount = Model.TotalFavoriteListsCount;
-	int pageSize = Model.PageSize;
-
-	<header class="d-flex flex-wrap align-items-center gap-3 p-3 border-bottom">
-		<h1 class="h6 m-0 flex-fill">@Translate("Favorite lists")</h1>
-		@if (Model.FavoriteLists != null)
-		{
-			if (Model.FavoriteLists.Count > 0)
-			{
-				<button type="button" class="btn btn-link p-0 border-0" data-bs-toggle="modal" data-bs-target="#createFavoriteListModal" id="AddNewFavoriteList">+ @Translate("Add new favorite list")</button>
-			}
-		}
-	</header>
-
-	if (Model.FavoriteLists == null || Model.FavoriteLists.Count < 1)
-	{
-		<div class="grid">
-			<div class="g-col-12 g-start-lg-3 g-col-lg-8 d-flex flex-column gap-3 text-center py-3">
-				<h2 class="h5 m-0">@Translate("It looks like you do not have any favorites yet")</h2>
-				<p class="m-0">@Translate("Save and arrange the best things here until you are ready for them")</p>
-
-				<div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
-					@if (!string.IsNullOrEmpty(listPageLink))
-					{
-						<a href="@listPageLink" class="btn btn-secondary">@Translate("Go exploring")</a>
-					}
-					<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createFavoriteListModal" id="CreateNewFavoriteList">@Translate("Create favorite list")</button>
-				</div>
-			</div>
-		</div>
-	}
-	else
-	{
-		foreach (var theList in Model.FavoriteLists)
-		{
-			int listItemsCount = theList.ProductList.Products.Count;
-			string productCountLabel = listItemsCount > 1 ? Translate("products") : Translate("product");
-			string favoriteListLink = currentPageUrl + "&amp;FavoriteListId=" + theList.Id;
-			string listName = !string.IsNullOrEmpty(theList.Name) ? theList.Name : Translate("Favorites");
-
-			<article class="d-flex flex-column gap-3 p-3 border-bottom">
-
-				<header class="d-flex flex-row align-items-baseline lh-1">
-					<h3 class="flex-fill h6 m-0">
-						<a href="@favoriteListLink" class="text-decoration-none opacity-75">@listName</a>
-					</h3>
-					<span class="small text-end">@listItemsCount @productCountLabel <span class="d-none d-sm-inline">@Translate("in this list")</span></span>
-				</header>
-
-				<div class="d-md-none grid grid-2">
-					@if (listItemsCount > 0)
-					{
-						foreach (var item in theList.ProductList.Products.Take(2))
-						{
-							string productImage = "/Admin/Public/GetImage.ashx?Image=" + item.DefaultImage.Value + "&Format=webp&Width=350&Height=350";
-
-							<div class="ratio ratio-1x1">
-								<a href="@favoriteListLink" class="d-flex justify-content-center align-items-center">
-									<img src="@productImage"
-										 loading="lazy"
-										 decoding="async"
-										 class="mw-100 mh-100"
-										 alt="@item.Name">
-								</a>
-							</div>
-						}
-					}
-					else
-					{
-						<div class="g-col-12 py-5 text-center border">
-							<a href="@listPageLink">@Translate("This list is empty. Click here to be inspired")</a>
-						</div>
-					}
-				</div>
-
-				<div class="d-none d-md-grid d-print-grid grid grid-2 grid-md-5">
-					@if (listItemsCount > 0)
-					{
-						foreach (var item in theList.ProductList.Products.Take(5))
-						{
-							string productImage = "/Admin/Public/GetImage.ashx?Image=" + item.DefaultImage.Value + "&Format=webp&Width=350&Height=350";
-
-							<div class="ratio ratio-1x1">
-								<a href="@favoriteListLink" class="d-flex justify-content-center align-items-center">
-									<img src="@productImage"
-										 loading="lazy"
-										 decoding="async"
-										 class="mw-100 mh-100"
-										 alt="@item.Name">
-								</a>
-							</div>
-						}
-					}
-					else
-					{
-						<div class="g-col-12 py-6 text-center border">
-							<a href="@listPageLink">@Translate("This list is empty. Click here to be inspired")</a>
-						</div>
-					}
-				</div>
-
-				<footer class="d-flex flex-row gap-3 align-items-center justify-content-end">
-					<button type="button"
-							class="btn btn-link p-0 renameFavoriteListModal"
-						id="RenameFavoriteList" 
-							data-bs-toggle="modal"
-							data-bs-target="#renameFavoriteListModal"
-							data-list-id="@theList.Id"
-							data-list-name="@listName">
-						@Translate("Rename")
-						</button>
-						<button type="button"
-								class="btn btn-link p-0 deleteFavoriteNameButton"
-						id="DeleteFavoriteList" 
-								data-bs-toggle="modal"
-								data-bs-target="#deleteFavoriteListModal"
-								data-list-id="@theList.Id"
-								data-list-name="@listName">
-							@Translate("Delete")
-							</button>
-						</footer>
-					</article>
-				}
-			}
-
-			if (listsCount > pageSize)
-			{
-				<div class="p-3">
-					@RenderPagination(currentPageUrl, Model.PageCount, Model.CurrentPage, Model.PageSize)
-				</div>
-			}
 }
 
 <div class="modal fade" tabindex="-1" id="createFavoriteListModal">
@@ -287,20 +290,3 @@ else if (Pageview.IsVisualEditorMode)
 		}
 	});
 </script>
-
-
-@helper RenderPagination(string currentPageLink, int pageCount, int currentPage, int pageSize)
-{
-	<ul class="pagination m-0">
-		@{string pageHrefTemplate = string.Format("<a class=\"page-link\" href=\"{0}&PageNum={{0}}&PageSize={{1}}\">{{0}}</a>", currentPageLink);}
-		@for (int i = 1; i <= pageCount; i++)
-		{
-			var css = i == currentPage
-				? "page-item active"
-				: "page-item";
-			<li class="@css">
-				@string.Format(pageHrefTemplate, i, pageSize)
-			</li>
-		}
-	</ul>
-}

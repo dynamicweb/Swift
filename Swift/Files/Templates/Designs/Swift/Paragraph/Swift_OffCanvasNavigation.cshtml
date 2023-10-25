@@ -4,16 +4,17 @@
 
 @{ 
 	string paragraphId = Model.ID.ToString();
-
 	string horizontalAlign = !string.IsNullOrEmpty(Model.Item.GetRawValueString("HorizontalAlignment")) ? "justify-content-" + Model.Item.GetRawValueString("HorizontalAlignment") : "";
 	string offcanvasDirection = !string.IsNullOrEmpty(Model.Item.GetRawValueString("OffCanvasDirection")) ? Model.Item.GetRawValueString("OffCanvasDirection") : "start";
 	string productGroupPromotionImageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductGroupPromotionImageTheme")) ? " theme " + Model.Item.GetRawValueString("ProductGroupPromotionImageTheme").Replace(" ", "").Trim().ToLower() : "";
 	string productGroupImageShape = Model.Item.GetRawValueString("ProductGroupImageShape", "");
 	productGroupImageShape = productGroupImageShape == "image-square" ? "" : productGroupImageShape;
 	productGroupImageShape = productGroupImageShape == "image-rounded" ? "rounded-circle" : productGroupImageShape;
-
 	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
-
+	string title = Model.Item.GetString("Title", string.Empty);
+	string icon = Model.Item.GetRawValueString("Icon", string.Empty);
+	string iconLayout = Model.Item.GetRawValueString("IconLayout", "iconOnly");
+	string iconLayoutCss = iconLayout == "iconRight" ? "flex-row-reverse" : "flex-row";
 	var mainNavigationSettings = new NavigationSettings();
 	mainNavigationSettings.StartLevel = 1;
 	mainNavigationSettings.StopLevel = 10;
@@ -25,13 +26,18 @@
 	mainNavigationSettings.Parameters.Add("ShowProductGroupPromotionImage", Model.Item.GetBoolean("ShowProductGroupPromotionImage"));
 	mainNavigationSettings.Parameters.Add("ImageAspectRatio", ratio);
 
+	string menuLabelFontWeight = $"fw-{Model.Item.GetRawValueString("MenuLabelFontWeight", "normal")}";
+	string menuLabelFontCasing = $"text-{Model.Item.GetRawValueString("MenuLabelFontCasing", "regular")}";
+	string menuLabelFontSize = Model.Item.GetRawValueString("MenuLabelFontSize", "regular");
+	menuLabelFontSize = menuLabelFontSize == "small" ? "fs-7" : menuLabelFontSize == "large" ? "fs-5" : "fs-6";
+
 	if (!string.IsNullOrEmpty(Model.Item.GetString("MainNavigationRoot"))) {
 		string root = Model.Item.GetString("MainNavigationRoot");
 
 		if (root.Contains("=")) {
 			int rootPageId = Convert.ToInt32(root.Substring(root.LastIndexOf('=') + 1));
 			mainNavigationSettings.RootPageId = rootPageId;
-			
+
 			var page = Dynamicweb.Content.Services.Pages.GetPage(rootPageId);
 			if (page != null && !string.IsNullOrEmpty(page.NavigationTag))
 			{
@@ -57,7 +63,7 @@
 		if (root.Contains("=")) {
 			int rootPageId = Convert.ToInt32(root.Substring(root.LastIndexOf('=') + 1));
 			secondaryNavigationSettings.RootPageId = rootPageId;
-			
+
 			var page = Dynamicweb.Content.Services.Pages.GetPage(rootPageId);
 			if (page != null && !string.IsNullOrEmpty(page.NavigationTag))
 			{
@@ -87,7 +93,7 @@
 		if (root.Contains("=")) {
 			int rootPageId = Convert.ToInt32(root.Substring(root.LastIndexOf('=') + 1));
 			utilityNavigationSettings.RootPageId = rootPageId;
-			
+
 			var page = Dynamicweb.Content.Services.Pages.GetPage(rootPageId);
 			if (page != null && !string.IsNullOrEmpty(page.NavigationTag))
 			{
@@ -103,35 +109,34 @@
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 	string themeSidebarNavigation = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ThemeOffCanvasNavigation")) ? " theme " + Model.Item.GetRawValueString("ThemeOffCanvasNavigation").Replace(" ", "").Trim().ToLower() : "";
 }
-
-
 <div class="nav-wrapper d-flex @(horizontalAlign)@(theme) item_@Model.Item.SystemName.ToLower()">
 
 	<button class="btn lh-1 p-2 text-reset" type="button" data-bs-toggle="offcanvas" data-bs-target="#navigation_@(paragraphId)" aria-controls="navigation_@(paragraphId)" aria-label="@Translate("Navigation open button")">
-		@{
-			if (Model.Item.GetString("Icon") != null)
-			{
-				string imagePath = Model.Item.GetRawValueString("Icon", "");
-
-				if (!imagePath.ToLower().Contains("none") && imagePath != "")
+		<span class="d-flex gap-2 align-items-center @iconLayoutCss">			
+			@{
+				if (!string.IsNullOrEmpty(icon) && iconLayout != "titleOnly")
 				{
-					if (Path.GetExtension(imagePath).ToLower() == ".svg")
+					if (icon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
 					{
 						<span class="icon-3 pe-none">
-							@ReadFile(imagePath)
+							@ReadFile(icon)
 						</span>
 					}
 					else
 					{
-						imagePath = "/Admin/Public/GetImage.ashx?width=" + 24 + "&height=" + 24 + "&image=" + imagePath + "&format=webp";
+						icon = "/Admin/Public/GetImage.ashx?width=" + 24 + "&height=" + 24 + "&image=" + icon + "&format=webp";
 
-						<div class="mx-auto d-block pe-none" width="24" height="24">
-							<img loading="lazy" decoding="async" src="@imagePath" alt="@Model.Item.GetString("Title")">
-						</div>
+						<span class="mx-auto d-block pe-none" width="24" height="24">
+							<img loading="lazy" decoding="async" src="@icon" alt="@title">
+						</span>
 					}
 				}
-			}
-		}
+				if(!string.IsNullOrEmpty(title) && iconLayout != "iconOnly")
+				{
+				<span class="text-nowrap @menuLabelFontWeight @menuLabelFontCasing @menuLabelFontSize">@title</span>
+				}
+			}			
+		</span>
 	</button>
 
 	@*Moving offcanvas to Master for optimal rendering*@

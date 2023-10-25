@@ -17,7 +17,7 @@
 	int frontPageId = Dynamicweb.Content.Services.Pages.GetFirstPageForArea(Pageview.AreaID).ID;
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
 	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
-	
+
 	bool isStandardSwiftTemplates = Pageview.AreaSettings.GetString("AddressFieldsBasedOn", "swift") == "swift";
 }
 
@@ -100,35 +100,47 @@
 
 					<div class="list-group-item py-2">
 						<div class="grid">
-							<dt class="g-col-4 lh-base fw-normal text-nowrap">@Translate("Delivery address")</dt>
+							<dt class="g-col-4 lh-base fw-normal text-nowrap">@Translate("Delivery")</dt>
 							<dd class="g-col-12 g-col-md-8 mb-0">
+
 								@{
 									if (isStandardSwiftTemplates)
 									{
+										List<string> shippingDetails = new List<string>();
+
 										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Company")))
 										{
-											<span>@GetString("Ecom:Order.Delivery.Company"),</span>
+											shippingDetails.Add(GetString("Ecom:Order.Delivery.Company"));
 										}
+
 										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Name")))
 										{
-											<span>@GetString("Ecom:Order.Delivery.Name"),</span>
+											if (GetString("Ecom:Order.Delivery.Company") != GetString("Ecom:Order.Delivery.Name"))
+											{
+												shippingDetails.Add(GetString("Ecom:Order.Delivery.Name"));
+											}
 										}
+
 										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Address")))
 										{
-											<span>@GetString("Ecom:Order.Delivery.Address"), </span>
+											shippingDetails.Add(GetString("Ecom:Order.Delivery.Address"));
 										}
+
 										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Address2")))
 										{
-											<span>@GetString("Ecom:Order.Delivery.Address2"), </span>
+											shippingDetails.Add(GetString("Ecom:Order.Delivery.Address2"));
 										}
+
 										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Zip")))
 										{
-											<span>@GetString("Ecom:Order.Delivery.Zip")</span>
+											shippingDetails.Add(GetString("Ecom:Order.Delivery.Zip"));
 										}
+
 										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.City")))
 										{
-											<span>@GetString("Ecom:Order.Delivery.City"),</span>
+											shippingDetails.Add(GetString("Ecom:Order.Delivery.City"));
 										}
+
 										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Region")))
 										{
 											string regionName = GetString("Ecom:Order.Delivery.Region");
@@ -139,30 +151,116 @@
 													regionName = region.GetString("Ecom:DeliveryRegion.Name");
 												}
 											}
-
-											<span>@regionName,</span>
+											shippingDetails.Add(regionName);
 										}
+
 										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Country")))
 										{
-											<span>@GetString("Ecom:Order.Delivery.Country")</span>
+											shippingDetails.Add(GetString("Ecom:Order.Delivery.Country"));
 										}
+
+										if (GetBoolean("Ecom:Order.Delivery.isPickupPoint"))
+										{
+											shippingDetails.Clear();
+											var order = Dynamicweb.Ecommerce.Services.Orders.GetById(GetString("Ecom:Order.ID"));
+											if (order.ShippingProviderValues.ContainsKey("ShipmondoServicePointId"))
+											{
+												//Shipmondo provider
+												if (order.ShippingProviderValues.TryGetValue("ServiceSelectedDataCarrierName", out object CarrierName))
+												{
+													shippingDetails.Add((string)CarrierName);
+												}
+												if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCompanyName", out object CompanyName))
+												{
+													shippingDetails.Add((string)CompanyName);
+												}
+												if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataAddress", out object Address))
+												{
+													shippingDetails.Add((string)Address);
+												}
+												if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataZipcode", out object Zipcode))
+												{
+													shippingDetails.Add((string)Zipcode);
+												}
+												if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCity", out object City))
+												{
+													shippingDetails.Add((string)City);
+												}
+												if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCountry", out object Country))
+												{
+													shippingDetails.Add((string)Country);
+												}
+												if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataAddress2", out object Address2) && !string.IsNullOrEmpty((string)Address2))
+												{
+													shippingDetails.Add((string)Address2);
+												}
+
+											}
+
+											if (order.ShippingProviderValues.ContainsKey("ParcelShopNumber"))
+											{
+												//GLS Provider
+												if (order.ShippingProviderValues.TryGetValue("parcelShop", out object parcelShop))
+												{
+													if (parcelShop is System.Collections.Generic.Dictionary<System.String, System.Object>)
+													{
+														var selectedShop = (System.Collections.Generic.Dictionary<System.String, System.Object>)parcelShop;
+
+														if (selectedShop.TryGetValue("CompanyName", out object CompanyName))
+														{
+															shippingDetails.Add((string)CompanyName);
+														}
+														if (selectedShop.TryGetValue("Streetname", out object Streetname))
+														{
+															shippingDetails.Add((string)Streetname);
+														}
+														if (selectedShop.TryGetValue("ZipCode", out object ZipCode))
+														{
+															shippingDetails.Add((string)ZipCode);
+														}
+														if (selectedShop.TryGetValue("CityName", out object CityName))
+														{
+															shippingDetails.Add((string)CityName);
+														}
+														if (selectedShop.TryGetValue("CountryCodeISO3166A2", out object Country))
+														{
+															shippingDetails.Add((string)Country);
+														}
+														if (selectedShop.TryGetValue("Streetname2", out object Streetname2) && !string.IsNullOrEmpty((string)Streetname2))
+														{
+															shippingDetails.Add((string)Streetname2);
+														}
+													}
+												}
+											}
+										}
+
+										string shippingDetailsString = (string.Join(", ", shippingDetails.Select(x => x).ToArray()));
+
+										@shippingDetailsString
 									}
 									else
 									{
-										@RenderDeliveryAddressInline()
+										@:@RenderDeliveryAddressInline()
 									}
 								}
+								<div class="opacity-75 fs-8">@GetString("Ecom:Order.ShippingMethod")</div>
 							</dd>
 						</div>
 					</div>
 
 					<div class="list-group-item py-2">
 						<div class="grid">
-							<dt class="g-col-4 lh-base fw-normal text-nowrap">@Translate("Billing address")</dt>
+							<dt class="g-col-4 lh-base fw-normal text-nowrap">@Translate("Billing")</dt>
 							<dd class="g-col-12 g-col-md-8 mb-0">
 								@{
 									if (isStandardSwiftTemplates)
 									{
+
+										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Customer.Company")))
+										{
+											<span> @GetString("Ecom:Order.Customer.Company"),</span>
+										}
 										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Customer.Name")))
 										{
 											<span>@GetString("Ecom:Order.Customer.Name"),</span>
@@ -210,7 +308,7 @@
 						</div>
 					</div>
 
-					@if (!string.IsNullOrEmpty(GetString("Ecom:Order.ShippingMethod")))
+					@*@if (!string.IsNullOrEmpty(GetString("Ecom:Order.ShippingMethod")))
 					{
 						<div class="list-group-item py-2">
 							<div class="grid">
@@ -224,7 +322,7 @@
 								</dd>
 							</div>
 						</div>
-					}
+					}*@
 
 					@if (!string.IsNullOrEmpty(GetString("Ecom:Order.ShippingDate")))
 					{
@@ -242,7 +340,7 @@
 
 						<div class="list-group-item py-2">
 							<div class="grid">
-								<dt class="g-col-4 lh-base fw-normal text-nowrap">@Translate("Payment method")</dt>
+								<dt class="g-col-4 lh-base fw-normal text-nowrap">@Translate("Payment")</dt>
 								<dd class="g-col-12 g-col-md-8 mb-0">@paymentLabel</dd>
 							</div>
 						</div>

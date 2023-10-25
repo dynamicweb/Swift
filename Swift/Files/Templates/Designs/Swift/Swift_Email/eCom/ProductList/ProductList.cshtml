@@ -42,6 +42,7 @@
 
 @{
 	var page = Dynamicweb.Content.Services.Pages.GetPage(Pageview.ID);
+	var item = Pageview.CurrentParagraph.Item;
 	var settings = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page?.Parent).Item;
 	var block = Pageview.CurrentParagraph.Item;
 
@@ -59,7 +60,11 @@
 	var blockThemeId = block["Theme"].ToString();
 	var blockThemeParagraph = blockThemeId != null && blockThemeId != string.Empty ? Dynamicweb.Content.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(blockThemeId)) : null;
 	var blockTheme = blockThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph)?.Item : rowTheme is object ? rowTheme : emailContentTheme;
-	
+
+	var foregroundColor = blockTheme?.GetColor("ForegroundColor");
+
+	bool hideProductNumber = Dynamicweb.Core.Converter.ToBoolean(item["HideProductNumber"].ToString());
+
 	int cellSpacing = 8;
 	string align = block["Align"].ToString();
 	var layoutColumns = Dynamicweb.Core.Converter.ToInt32(block["Layout"].ToString());
@@ -75,17 +80,94 @@
 	int totalProducts = products.Count();
 	foreach (var product in products)
 	{
+		string variantId = product.GetString("Ecom:Product.VariantID");
+		string defaultVariantId = product.GetString("Ecom:Product.DefaultVariantComboID");
+
+		string variantIdForLink = !string.IsNullOrEmpty(variantId) ? $"&VariantID={variantId}" : string.Empty;
+		variantIdForLink = string.IsNullOrEmpty(variantIdForLink) && !string.IsNullOrEmpty(defaultVariantId) ? $"&VariantID={defaultVariantId}" : variantIdForLink;
+
+		string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
+		link += $"&GroupID={product.GetString("Ecom:Product.PrimaryGroupID")}";
+		link += $"&ProductID={product.GetString("Ecom:Product.ID")}";
+		link += variantIdForLink;
+		link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link);
+
+		string imagePath = product.GetString("Ecom:Product.PrimaryImage");
+
 		<td valign="top" style="@GetTableReset()">
-			@RenderProduct(product, blockTheme, align)
+			<table style="border-collapse:collapse;table-layout:fixed;@GetTableReset()" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+				<tbody>
+					<tr style="@GetTableReset()">
+						<td style="@GetTableReset()">
+							<div align="center" style="font-size:2px;">
+								<a style="text-decoration:none;@GetTableReset()" href="@link" target="_blank">
+									@if (!string.IsNullOrEmpty(imagePath))
+									{
+										imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
+
+										int columnWidth = 640;
+										int columnCount = Dynamicweb.Core.Converter.ToInt32(Pageview.CurrentParagraph.Item["Layout"] != null ? Pageview.CurrentParagraph.Item["Layout"].ToString() : "2");
+										int padding = Dynamicweb.Core.Converter.ToInt32(Pageview.CurrentParagraph.Item["Padding"] != null ? Pageview.CurrentParagraph.Item["Padding"].ToString() : "0");
+										padding = (padding * 2) + (8 * (columnCount - 1));
+
+										var imageWidth = (columnWidth - padding) / columnCount;
+										string image = $"/Admin/Public/GetImage.ashx?width={imageWidth}";
+
+										string crop = "7";
+
+										var ratio = Pageview.CurrentParagraph.Item["ImageAspectRatio"] != null ? Pageview.CurrentParagraph.Item["ImageAspectRatio"].ToString() : "4-3";
+										if (ratio != "original")
+										{
+											if (!string.IsNullOrEmpty(ratio))
+											{
+												image += $"&height={GetImageHeight(ratio, imageWidth)}";
+												image += $"&fillcanvas=true";
+											}
+										}
+
+										image += $"&crop={crop}&image={imagePath}&format=webp";
+
+										string alt = product.GetString("Ecom:Product.Name");
+
+										<img src="@image" align="center" style="display:block;border-collapse:separate;border-spacing:0;border:0;margin:0;outline:0;padding:0;height:auto;width:100%;max-width:@(imageWidth)px;" alt="@alt" width="@(imageWidth)">
+									}
+								</a>
+							</div>
+
+							<table style="border-collapse:collapse;table-layout:fixed;@GetTableReset()" cellpadding="0" cellspacing="0" width="100%" role="presentation">
+								<tbody>
+									<tr style="@GetTableReset()">
+										<td style="@GetTableReset()padding-top:8px;text-align:@align;line-height:18px;font-size:13px;text-decoration:none;color:@foregroundColor;">
+											<a style="text-decoration:none;color:@foregroundColor;@GetTableReset()" href="@link" target="_blank">
+												@product.GetString("Ecom:Product.Name")
+											</a>
+										</td>
+									</tr>
+
+									@if (!hideProductNumber)
+									{
+										<tr>
+											<td style="@GetTableReset()padding-top:8px;line-height:18px;font-size:11px;color:@(GetMutedColor(foregroundColor?.Hex, 20));">
+												@product.GetString("Ecom:Product.Number")
+											</td>
+										</tr>
+									}
+									<tr><td height="24" style="padding-top:24px;"></td></tr>
+								</tbody>
+							</table>
+						</td>
+					</tr>
+				</tbody>
+			</table>
 		</td>
 
 		if (index % layoutColumns == 0 && !(index == totalProducts))
 		{
-		@:</tr>
-		@:<tr style="@GetTableReset()">
-			@:<td style="@GetTableReset()" colspan="100%" height="@(cellSpacing * 4)">&nbsp;</td>
-		@:</tr>
-		@:<tr style="@GetTableReset()">
+			@:</tr>
+			@:<tr style="@GetTableReset()">
+				@:<td style="@GetTableReset()" colspan="100%" height="@(cellSpacing * 4)">&nbsp;</td>
+			@:</tr>
+			@:<tr style="@GetTableReset()">
 		}
 		else
 		{
@@ -98,98 +180,4 @@
 		index++;
 	}
 	@:</tr>
-}
-
-@helper RenderProduct(LoopItem product, Dynamicweb.Frontend.ItemViewModel theme, string align)
-{
-	var item = Pageview.CurrentParagraph.Item;
-	
-	var foregroundColor = theme?.GetColor("ForegroundColor");
-
-	string variantId = product.GetString("Ecom:Product.VariantID");
-	string defaultVariantId = product.GetString("Ecom:Product.DefaultVariantComboID");
-
-	string variantIdForLink = !string.IsNullOrEmpty(variantId) ? $"&VariantID={variantId}" : "";
-	variantIdForLink = string.IsNullOrEmpty(variantIdForLink) && !string.IsNullOrEmpty(defaultVariantId) ? $"&VariantID={defaultVariantId}" : variantIdForLink;
-
-	string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
-	link += $"&GroupID={product.GetString("Ecom:Product.PrimaryGroupID")}";
-	link += $"&ProductID={product.GetString("Ecom:Product.ID")}";
-	link += variantIdForLink;
-	link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(link);
-
-	bool hideProductNumber = Dynamicweb.Core.Converter.ToBoolean(item["HideProductNumber"].ToString());
-
-	<table style="border-collapse:collapse;table-layout:fixed;@GetTableReset()" cellpadding="0" cellspacing="0" width="100%" role="presentation">
-		<tbody>
-			<tr style="@GetTableReset()">
-				<td style="@GetTableReset()">
-
-					<div align="center" style="font-size:2px;">
-						<a style="text-decoration:none;@GetTableReset()" href="@link" target="_blank">
-							@RenderImage(product)
-						</a>
-					</div>
-						
-					<table style="border-collapse:collapse;table-layout:fixed;@GetTableReset()" cellpadding="0" cellspacing="0" width="100%" role="presentation">
-						<tbody>
-							<tr style="@GetTableReset()">
-								<td style="@GetTableReset()padding-top:8px;text-align:@align;line-height:18px;font-size:13px;text-decoration:none;color:@foregroundColor;">
-									<a style="text-decoration:none;color:@foregroundColor;@GetTableReset()" href="@link" target="_blank">
-										@product.GetString("Ecom:Product.Name")
-									</a>
-								</td>
-							</tr>
-
-							@if (!hideProductNumber)
-                            {
-                            	<tr>
-                            		<td style="@GetTableReset()padding-top:8px;line-height:18px;font-size:11px;color:@(GetMutedColor(foregroundColor?.Hex, 20));">
-                            			@product.GetString("Ecom:Product.Number")
-                            		</td>
-                            	</tr>
-                            }
-						<tr><td height="24" style="padding-top:24px;"></td></tr>
-						</tbody>
-					</table>
-				</td>
-			</tr>
-		</tbody>
-	</table>
-}
-
-@helper RenderImage(LoopItem product)
-{
-	string imagePath = product.GetString("Ecom:Product.PrimaryImage");
-
-	if (!string.IsNullOrEmpty(imagePath))
-	{
-		imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
-
-		int columnWidth = 640;
-		int columnCount = Dynamicweb.Core.Converter.ToInt32(Pageview.CurrentParagraph.Item["Layout"] != null ? Pageview.CurrentParagraph.Item["Layout"].ToString() : "2");
-		int padding = Dynamicweb.Core.Converter.ToInt32(Pageview.CurrentParagraph.Item["Padding"] != null ? Pageview.CurrentParagraph.Item["Padding"].ToString() : "0");
-		padding = (padding * 2) + (8 * (columnCount - 1));
-		
-		var imageWidth = (columnWidth - padding) / columnCount;
-		string image = $"/Admin/Public/GetImage.ashx?width={imageWidth}";
-	
-		string crop = "7";
-
-		var ratio = Pageview.CurrentParagraph.Item["ImageAspectRatio"] != null ? Pageview.CurrentParagraph.Item["ImageAspectRatio"].ToString() : "4-3";
-		if (ratio != "original")
-		{
-			if (!string.IsNullOrEmpty(ratio))
-			{
-				image += $"&height={GetImageHeight(ratio, imageWidth)}";
-				image += $"&fillcanvas=true";
-			}
-		}
-	
-		image += $"&crop={crop}&image={imagePath}&format=webp";
-		
-		string alt = product.GetString("Ecom:Product.Name");
-
-		<img src="@image" align="center" style="display:block;border-collapse:separate;border-spacing:0;border:0;margin:0;outline:0;padding:0;height:auto;width:100%;max-width:@(imageWidth)px;" alt="@alt" width="@(imageWidth)">
-	}
 }

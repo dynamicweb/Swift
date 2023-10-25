@@ -1,0 +1,58 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel>
+@using Dynamicweb
+@using System.IO
+
+@{ 
+	bool parentIsActive = !string.IsNullOrEmpty(GetViewParameterString("ParentIsActive")) ? GetViewParameterBoolean("ParentIsActive") : false;
+
+	var nodesParms = new Dictionary<string, object>();
+	nodesParms.Add("ParentIsActive", false);
+}
+
+@foreach (var node in Model.Nodes)
+{
+	var hasChildren = node.Nodes.Count() > 0;
+	bool endLevel = node.IsActive && !hasChildren;
+	nodesParms["ParentIsActive"] = node.IsActive;
+
+	if (!endLevel) //Handle the layout on all levels, except the end level
+	{
+		if ((node.IsActive || parentIsActive))
+		{
+			<li class="nav-item">
+				<a class="nav-link text-reset py-1" @(node.IsActive ? "aria-current='page'" : string.Empty) href="@node.Link">
+					@if (node.IsActive)
+					{
+						<h2 class="h6">@node.Name</h2>
+					}
+					else
+					{
+						@node.Name
+					}
+				</a>
+
+				@if (hasChildren)
+				{
+					<ul class="navbar-nav ps-3">
+						@RenderPartial("Navigation/VerticalAndBreadcrumb/DesktopNodes.cshtml", node, nodesParms)
+					</ul>
+				}
+			</li>
+		}
+		else if (hasChildren)
+		{
+			@RenderPartial("Navigation/VerticalAndBreadcrumb/DesktopNodes.cshtml", node, nodesParms)
+		}
+	}
+	else //Handle the special layout at the end level
+	{
+		foreach (var endNode in Model.Nodes)
+		{
+			<li class="nav-item@(endNode.IsActive ? " active" : string.Empty)">
+				<a class="nav-link text-reset py-1" @(endNode.IsActive ? "aria-current='page'" : string.Empty) href="@endNode.Link">
+					<span class="@(endNode.IsActive ? "fw-bold" : string.Empty)">@endNode.Name</span>
+				</a>
+			</li>
+		}
+	}
+}
