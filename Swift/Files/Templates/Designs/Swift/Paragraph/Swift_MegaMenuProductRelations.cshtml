@@ -18,6 +18,45 @@
 		return Navigation.GetNavigationViewModel(navigationSettings);
 	}
 
+	string GetGroupFieldValue(string fieldSystemName, NavigationTreeNodeViewModel node)
+	{
+
+		ProductGroupViewModel productGroup = node.GetProductGroup();
+		string fieldValue = string.Empty;
+		IList<FieldValueViewModel> groupFields = productGroup.GroupFields != null ? productGroup.GroupFields : null;
+		if (groupFields != null)
+		{
+			foreach (FieldValueViewModel field in groupFields)
+			{
+
+				if (field.SystemName == fieldSystemName)
+				{
+					fieldValue = field != null ? field.Value.ToString() : string.Empty;
+				}
+			}
+		}
+
+		return fieldValue;
+	}
+
+	bool NavigationTreeHasChildren(NavigationTreeNodeViewModel rootNode)
+	{
+		foreach (var subNode in rootNode.Nodes)
+		{
+			if (subNode.Nodes.Any())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	int GetPageIdFromLink(string pageLink)
+	{
+		return !string.IsNullOrEmpty(pageLink) ? Convert.ToInt32(pageLink.Substring(pageLink.LastIndexOf('=') + 1)) : 0;
+
+	}
+
 	string GetSubmenuType(NavigationTreeNodeViewModel rootNode)
 	{
 		string submenuType = string.Empty;
@@ -43,57 +82,19 @@
 		}
 	}
 
-	bool NavigationTreeHasChildren(NavigationTreeNodeViewModel rootNode)
-	{
-		foreach (var subNode in rootNode.Nodes)
-		{
-			if (subNode.Nodes.Any())
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-
-	string GetGroupFieldValue(string fieldSystemName, NavigationTreeNodeViewModel node)
-	{
-
-		ProductGroupViewModel productGroup = node.GetProductGroup();
-		string fieldValue = string.Empty;
-		IList<FieldValueViewModel> groupFields = productGroup.GroupFields != null ? productGroup.GroupFields : null;
-		if (groupFields != null)
-		{
-			foreach (FieldValueViewModel field in groupFields)
-			{
-
-				if (field.SystemName == fieldSystemName)
-				{
-					fieldValue = field != null ? field.Value.ToString() : string.Empty;
-				}
-			}
-		}
-
-		return fieldValue;
-	}
-
-	int GetPageIdFromLink(string pageLink)
-	{
-		return !string.IsNullOrEmpty(pageLink) ? Convert.ToInt32(pageLink.Substring(pageLink.LastIndexOf('=') + 1)) : 0;
-
-	}
-
 	string ClickableCss(NavigationTreeNodeViewModel node)
 	{
 		return node.IsClickable ? string.Empty : "pe-0";
 	}
+
 }
 
 @{
 	// Page settings
 	int navigationRootPageId = !string.IsNullOrEmpty(Model.Item.GetString("NavigationRoot")) ? Model.Item.GetLink("NavigationRoot").PageId : 0;
 	var rootNavigation = GetNavigationTreeFromPageId(navigationRootPageId);
-	int maxEndNodes = Model.Item.GetInt32("LinkLimit");
-	string maxEndNodesText = Model.Item.GetString("LinkText");
+	int maxEndNodes = Model.Item.GetInt32("ThirdLevelNodeLimit");
+	string maxEndNodesText = Model.Item.GetString("ShowAllLinkLabel");
 
 	//CSS Settings
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? "theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
@@ -119,37 +120,44 @@
 	headerLinkAnimation = headerLinkAnimation == "none" ? string.Empty : headerLinkAnimation;
 
 	string itemCss = $"nav-link megamenu-item text-decoration-none fs-6 {spacing}";
+
 }
 
 <div class="nav-wrapper megamenu-wrapper">
 	<div class="@theme">
 		<nav class="d-flex gap-2 @navigationLinkAlignment">
-			@foreach (NavigationTreeNodeViewModel rootNode in rootNavigation.Nodes)
+			@foreach (var rootNode in rootNavigation.Nodes)
 			{
+
 				string submenuType = GetSubmenuType(rootNode);
 				bool isMegaMenu = IsMegaMenu(rootNode, submenuType);
 				string submenuTypeCss = isMegaMenu ? "position-static" : string.Empty;
 
 				string relatedContentNavigationRoot = GetGroupFieldValue("ProductGroupRelatedContent", rootNode);
-				int relatedContentNavigationRootPageId = !string.IsNullOrEmpty(relatedContentNavigationRoot) ? GetPageIdFromLink(relatedContentNavigationRoot) : 0;
-				bool nodeHasRelatedContent = relatedContentNavigationRootPageId != 0;
+				int relatedContentPageId = !string.IsNullOrEmpty(relatedContentNavigationRoot) ? GetPageIdFromLink(relatedContentNavigationRoot) : 0;
+				var relatedContentNodes = GetNavigationTreeFromPageId(relatedContentPageId).Nodes;
+				bool hasRelatedContent = relatedContentNodes.Any() && relatedContentPageId != 0;
+				bool nodesExist = rootNode.Nodes.Any() || hasRelatedContent;
 
 				<div class="nav-item dropdown @submenuTypeCss">
 					<a class="nav-link p-2 @headerLinkAnimation fs-6 fw-bold text-uppercase" role="button" data-bs-toggle="dropdown" data-bs-offset="0,0" aria-expanded="false">
 						@rootNode.Name
 					</a>
 
-					@if (isMegaMenu)
+				@if(nodesExist)
+				{
+					if (isMegaMenu)
 					{
+						
 						<div class="dropdown-menu border-0 megamenu-content-wrapper">
 							<div class="container-xl">
 								<div class="grid grid-12 py-2">
-
-									@if (nodeHasRelatedContent)
+							
+									@if (hasRelatedContent)
 									{
 										<div class="flex-column g-col-2 @megaMenuAlignment">
 
-											@foreach (NavigationTreeNodeViewModel relatedContentNode in GetNavigationTreeFromPageId(relatedContentNavigationRootPageId).Nodes)
+											@foreach (var relatedContentNode in relatedContentNodes)
 											{
 												<a class="@itemCss @(ClickableCss(relatedContentNode))" href="@relatedContentNode.Link">
 													<strong>@relatedContentNode.Name</strong>
@@ -158,11 +166,11 @@
 										</div>
 									}
 
-									<div class="d-flex flex-wrap g-col-10 gap-4">
+									<div class="g-col-10 grid grid-8 gap-4">
 
-										@foreach (NavigationTreeNodeViewModel subNode in rootNode.Nodes)
+										@foreach (var subNode in rootNode.Nodes)
 										{
-											<div class="g-col-2 px-4 @megaMenuAlignment">
+											<div class="g-col-2 @megaMenuAlignment">
 												<a class="@itemCss @(ClickableCss(subNode))" href="@subNode.Link">
 													<strong>@subNode.Name</strong>
 												</a>
@@ -180,7 +188,7 @@
 
 													if (!string.IsNullOrWhiteSpace(maxEndNodesText))
 													{
-														<a class="@itemCss" href="@subNode.Link">
+														<a class="@itemCss text-decoration-underline" href="@subNode.Link">
 															@Translate(maxEndNodesText)
 														</a>
 													}
@@ -194,14 +202,16 @@
 								</div>
 							</div>
 						</div>
+						
 					}
 					else
 					{
+						
 						<ul class="dropdown-menu border-0 rounded-0 @megaMenuAlignment">
 
-							@if (nodeHasRelatedContent)
+							@if (hasRelatedContent)
 							{
-								foreach (NavigationTreeNodeViewModel relatedContentNode in GetNavigationTreeFromPageId(relatedContentNavigationRootPageId).Nodes)
+								foreach (var relatedContentNode in relatedContentNodes)
 								{
 									<li class="dropdown-item">
 										<a class="@itemCss @(ClickableCss(relatedContentNode))" href="@relatedContentNode.Link">
@@ -213,9 +223,8 @@
 								<li class="dropdown-divider"></li>
 							}
 
-							@foreach (NavigationTreeNodeViewModel subNode in rootNode.Nodes)
+							@foreach (var subNode in rootNode.Nodes)
 							{
-								var page = Dynamicweb.Content.Services.Pages.GetPage(subNode.PageId);
 								<li class="dropdown-item">
 									<a class="@itemCss @(ClickableCss(subNode))" href="@subNode.Link">
 										<strong>@subNode.Name</strong>
@@ -225,6 +234,7 @@
 							}
 						</ul>
 					}
+				}
 				</div>
 			}
 		</nav>
