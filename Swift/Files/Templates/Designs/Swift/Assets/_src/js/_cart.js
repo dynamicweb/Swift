@@ -319,9 +319,7 @@ const Cart = function () {
 					dynamicModal.show();
 				}
 			}
-
-			console.log(isValid);
-
+			
 			if (!isValid) {
 				quantityField.classList.add("is-invalid");
 			} else {
