@@ -2,16 +2,10 @@
 @using Dynamicweb
 @using Dynamicweb.Environment
 
-@functions {
-	string googleTagManagerID = "";
-	string googleAnalyticsMeasurementID = "";
-	bool allowTracking = true;
-}
-
 @{
-	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
-	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
-
+	string googleTagManagerID = string.Empty;
+	string googleAnalyticsMeasurementID = string.Empty;
+	bool allowTracking = true;
 	googleTagManagerID = Pageview.AreaSettings.GetString("GoogleTagManagerID");
 	googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
 
@@ -20,14 +14,27 @@
 		var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
 		allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
 	}
+
+	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", string.Empty).Trim().ToLower() : string.Empty;
+
+	bool anonymousUser = Pageview.User == null;
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	int currentUserId = Dynamicweb.Core.Converter.ToInt32(GetGlobalValue("Global:Extranet.UserID"));
+	var shopPageId = GetPageIdByNavigationTag("Shop");
+	var cart = Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(Pageview.CurrentParagraph)?.Item ?? null;
+	var checkoutAnonymousLink = cart.GetLink("CheckoutAnonymousPageLink") is object ? cart.GetLink("CheckoutAnonymousPageLink").Url : string.Empty;
+	var checkoutSignedInLink = cart.GetLink("CheckoutSignedInPageLink") is object ? cart.GetLink("CheckoutSignedInPageLink").Url : string.Empty;
+	string checkoutLink = currentUserId == 0 ? checkoutAnonymousLink : checkoutSignedInLink;
+	var quoteCheckoutLink = cart.GetLink("QuoteCheckoutPageLink") is object ? cart.GetLink("QuoteCheckoutPageLink").Url : string.Empty;
 }
 
 <div class="grid gap-0" id="Cart">
-
 	<header class="g-col-12">
-		@{
-			@RenderPageHeader()
-		}
+		<div class="pb-3 pb-lg-0 pt-3 pt-lg-5">
+			<h1 class="h3 mb-2">@Translate("Shopping Cart")</h1>
+			<p class="mb-0"><span>@Translate("Items in your shopping cart"):</span> <span>@GetString("Ecom:Order.OrderLines.TotalProductQuantity")</span></p>
+		</div>
 	</header>
 
 	<div class="g-col-12 g-col-lg-8 pe-lg-5 pb-md-5">
@@ -46,16 +53,65 @@
 				</div>
 			</header>
 
-			@{
-				@RenderOrderLinesForTracking()
+			@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
+			{
+				<script>
+					gtag("event", "view_cart", {
+						currency: "@GetString("Ecom:Order.Currency.Code")",
+						value: @GetDouble("Ecom:Order.Price.PriceWithVAT.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+						items: [
+							@foreach (LoopItem orderline in GetLoop("OrderLines"))
+							{
+								<text>
+								{
+									item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
+									item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(orderline.GetString("Ecom:Order:OrderLine.ProductName"))",
+									currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
+									price: @orderline.GetDouble("Ecom:Order:OrderLine.UnitPrice.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+									quantity: @orderline.GetDouble("Ecom:Order:OrderLine.Quantity").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+								},</text>
+							}
+						]
+					});
+				</script>
 			}
 
-			@{
-				@RenderOrderLines()
-			}
+			@Include("Helpers/OrderLineItem.cshtml")
+
+			<script>
+				function debounce(func, wait, immediate) {
+					var timeout;
+					return function () {
+						var context = this, args = arguments;
+						var later = function () {
+							timeout = null;
+							if (!immediate) func.apply(context, args);
+						};
+						var callNow = immediate && !timeout;
+						clearTimeout(timeout);
+						timeout = setTimeout(later, wait);
+						if (callNow) func.apply(context, args);
+					};
+				};
+
+				var UpdateQuantity = debounce(function (input, stock) {
+					var inputValue = parseFloat(input.value);
+					var stock = parseFloat(stock);
+
+					if (inputValue <= stock) {
+						input.classList.remove("is-invalid");
+						input.closest(".js-input-group").querySelector(".js-not-enough-stock").classList.add("d-none");
+						document.querySelector("#ordersubmit").submit();
+					} else {
+						input.value = stock;
+						input.classList.add("is-invalid");
+						input.closest(".js-input-group").querySelector(".js-not-enough-stock").classList.remove("d-none");
+					}
+				}, 300);
+			</script>
 
 			<div class="d-none d-lg-block">
-				@{@RenderCartNavigation()}
+				@Include("Helpers/CartNavigation.cshtml")
 			</div>
 
 		</form>
@@ -66,140 +122,12 @@
 			<header>
 				<h4 class="fs-6 fw-normal mb-2">@Translate("Order summary")</h4>
 			</header>
+
 			@Include("Helpers/OrderSummary.cshtml")
+
 			<div class="d-block d-lg-none">
-				@{
-					@RenderCartNavigation()
-				}
+				@Include("Helpers/CartNavigation.cshtml")
 			</div>
 		</div>
-
 	</aside>
-
 </div>
-
-@helper RenderPageHeader()
-{
-	<div class="pb-3 pb-lg-0 pt-3 pt-lg-5">
-		<h1 class="h3 mb-2">@Translate("Shopping Cart")</h1>
-		<p class="mb-0"><span>@Translate("Items in your shopping cart"):</span> <span>@GetString("Ecom:Order.OrderLines.TotalProductQuantity")</span></p>
-	</div>
-}
-
-@helper RenderOrderLinesForTracking()
-{
-	if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
-	{
-		<script>
-			gtag("event", "view_cart", {
-				currency: "@GetString("Ecom:Order.Currency.Code")",
-				value: @GetDouble("Ecom:Order.Price.PriceWithVAT.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
-				items: [
-					@foreach (LoopItem orderline in GetLoop("OrderLines"))
-					{
-						<text>
-						{
-							item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
-							item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(orderline.GetString("Ecom:Order:OrderLine.ProductName"))",
-							currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
-							price: @orderline.GetDouble("Ecom:Order:OrderLine.UnitPrice.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
-							quantity: @orderline.GetDouble("Ecom:Order:OrderLine.Quantity").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
-						},</text>
-					}
-				]
-			});
-		</script>
-	}
-}
-
-@helper RenderOrderLines()
-{
-	<text>
-		@foreach (LoopItem orderline in GetLoop("OrderLines"))
-		{
-			@RenderOrderLineItem(orderline)
-		}
-	</text>
-
-	<script>
-		function debounce(func, wait, immediate) {
-			var timeout;
-			return function () {
-				var context = this, args = arguments;
-				var later = function () {
-					timeout = null;
-					if (!immediate) func.apply(context, args);
-				};
-				var callNow = immediate && !timeout;
-				clearTimeout(timeout);
-				timeout = setTimeout(later, wait);
-				if (callNow) func.apply(context, args);
-			};
-		};
-
-		var UpdateQuantity = debounce(function (input, stock) {
-			var inputValue = parseFloat(input.value);
-			var stock = parseFloat(stock);
-
-			if (inputValue <= stock) {
-				input.classList.remove("is-invalid");
-				input.closest(".js-input-group").querySelector(".js-not-enough-stock").classList.add("d-none");
-				document.querySelector("#ordersubmit").submit();
-			} else {
-				input.value = stock;
-				input.classList.add("is-invalid");
-				input.closest(".js-input-group").querySelector(".js-not-enough-stock").classList.remove("d-none");
-			}
-		}, 300);
-	</script>
-}
-
-@helper RenderCartNavigation()
-{
-	bool anonymousUser = Pageview.User == null;
-	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
-	int currentUserId = Dynamicweb.Core.Converter.ToInt32(GetGlobalValue("Global:Extranet.UserID"));
-	var shopPageId = GetPageIdByNavigationTag("Shop");
-	var cart = Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(Pageview.CurrentParagraph)?.Item ?? null;
-	var checkoutAnonymousLink = cart.GetLink("CheckoutAnonymousPageLink") is object ? cart.GetLink("CheckoutAnonymousPageLink").Url : string.Empty;
-	var checkoutSignedInLink = cart.GetLink("CheckoutSignedInPageLink") is object ? cart.GetLink("CheckoutSignedInPageLink").Url : string.Empty;
-	string checkoutLink = currentUserId == 0 ? checkoutAnonymousLink : checkoutSignedInLink;
-	var quoteCheckoutLink = cart.GetLink("QuoteCheckoutPageLink") is object ? cart.GetLink("QuoteCheckoutPageLink").Url : string.Empty;
-
-	<div class="align-items-center d-grid d-lg-flex gap-2 justify-content-lg-end mt-lg-4">
-
-		<a href="Default.aspx?ID=@shopPageId" class="btn btn-link link-secondary text-decoration-none me-lg-3 order-last order-lg-first swift_cartbackbutton">
-			<span class="d-flex align-items-center justify-content-center position-relative">
-				<span class="icon-2 me-1 position-absolute position-lg-static start-0">
-					@ReadFile(iconPath + "chevron-left.svg")
-				</span>
-				<span>@Translate("Continue shopping")</span>
-			</span>
-		</a>
-
-		@if (!string.IsNullOrEmpty(quoteCheckoutLink) && !anonymousUser)
-		{
-			<a href="@quoteCheckoutLink" class="btn btn-secondary">
-				<span class="d-flex align-items-center justify-content-center position-relative">
-					<span>@Translate("Request quote")</span>
-					<span class="icon-2 ms-1 position-absolute position-lg-static end-0">
-						@ReadFile(iconPath + "chevron-right.svg")
-					</span>
-				</span>
-			</a>
-		}
-
-		<a href="@checkoutLink" class="btn btn-primary" id="GoToCheckoutButton">
-			<span class="d-flex align-items-center justify-content-center position-relative">
-				<span>@Translate("Checkout")</span>
-				<span class="icon-2 ms-1 position-absolute position-lg-static end-0">
-					@ReadFile(iconPath + "chevron-right.svg")
-				</span>
-			</span>
-		</a>
-
-	</div>
-}
-
-
-@Include("Helpers/OrderLineItem.cshtml")
