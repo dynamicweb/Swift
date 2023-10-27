@@ -1,0 +1,232 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend.Navigation
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@functions {
+
+	public abstract class ImageSettings
+	{
+		protected const string ImageBasePath = "/Admin/Public/GetImage.ashx?Image=";
+		protected const string ImageFolder = "Files/Images/";
+
+		public string Id { get; protected set; }
+		public string GroupName { get; protected set; }
+		public string Description { get; protected set; }
+		public string RatioCssClass { get; protected set; }
+		public string RatioStyleCss { get; protected set; }
+		public string MaxSizeCss { get; protected set; }
+		public string ImagePath { get; protected set; }
+		public bool ImagePathExists { get; protected set; }
+		public string ImageParams { get; protected set; }
+
+		public ImageSettings(NavigationTreeNodeViewModel node, string ratio)
+		{
+			InitializeRatioProperties(ratio);
+			PopulateFromGroupFields(node);
+		}
+
+		protected abstract void PopulateFromGroupFields(NavigationTreeNodeViewModel node);
+
+		public string GetGroupFieldValue(string systemName, IList<FieldValueViewModel> imageGroupFields)
+		{
+			return imageGroupFields.FirstOrDefault(field => field.SystemName == systemName)?.Value?.ToString();
+		}
+
+		private void InitializeRatioProperties(string ratio)
+		{
+			ratio = ratio != "0" ? ratio : string.Empty;
+			RatioCssClass = !string.IsNullOrEmpty(ratio) ? "ratio" : string.Empty;
+			RatioStyleCss = !string.IsNullOrEmpty(ratio) ? $"--bs-aspect-ratio: {ratio};" : string.Empty;
+		}
+
+		protected void SetImagePath(string image)
+		{
+			if (string.IsNullOrEmpty(image)) return;
+
+			string imageSrc = Dynamicweb.Context.Current.Server.UrlEncode(ImageFolder + image);
+			ImagePath = $"{ImageBasePath}{imageSrc}{ImageParams}";
+			ImagePathExists = true;
+		}
+	}
+
+	public class PromotionImageSettings : ImageSettings
+	{
+		private const string MaxWidth = "max-width: 25vw;";
+		private const string Params = "&Width=1000&Crop=0";
+
+		public string LinkLabel { get; set; }
+		public string Link { get; set; }
+
+		public PromotionImageSettings(NavigationTreeNodeViewModel node, string ratio)
+			: base(node, ratio) { }
+
+		protected override void PopulateFromGroupFields(NavigationTreeNodeViewModel node)
+		{
+			var imageGroup = node.GetProductGroup();
+			if (imageGroup?.GroupFields == null) return;
+
+			Id = imageGroup.Id;
+			GroupName = imageGroup.Name;
+			MaxSizeCss = MaxWidth;
+			ImageParams = Params;
+			Description = GetGroupFieldValue("ProductGroupPromotionDescription", imageGroup.GroupFields);
+			Link = GetGroupFieldValue("ProductGroupPromotionLink", imageGroup.GroupFields) ?? node.Link;
+			LinkLabel = GetGroupFieldValue("ProductGroupPromotionLinkLabel", imageGroup.GroupFields);
+			SetImagePath(GetGroupFieldValue("ProductGroupPromotionImage", imageGroup.GroupFields));
+		}
+	}
+
+	public class NavigationImageSettings : ImageSettings
+	{
+		private const string MaxWidth = "max-width: 10vw;";
+		private const string Params = "&Width=480&Crop=0";
+
+		public NavigationImageSettings(NavigationTreeNodeViewModel node, string ratio)
+			: base(node, ratio) { }
+
+		protected override void PopulateFromGroupFields(NavigationTreeNodeViewModel node)
+		{
+			var imageGroup = node.GetProductGroup();
+			if (imageGroup?.GroupFields == null) return;
+
+			Id = imageGroup.Id;
+			GroupName = imageGroup.Name;
+			MaxSizeCss = MaxWidth;
+			ImageParams = Params;
+			Description = GetGroupFieldValue("ProductGroupPromotionDescription", imageGroup.GroupFields);
+			SetImagePath(GetGroupFieldValue("ProductGroupNavigationImage", imageGroup.GroupFields));
+		}
+	}
+
+	NavigationTreeViewModel GetNavigationTreeFromPageId(int pageId = 0, int startLevel = 1, int stopLevel = 9)
+	{
+
+		var navigationSettings = new NavigationSettings()
+		{
+			StartLevel = startLevel,
+			StopLevel = stopLevel,
+			RootPageId = pageId,
+			ExpandMode = ExpandMode.All,
+		};
+
+		return Navigation.GetNavigationViewModel(navigationSettings);
+	}
+
+}
+
+@{
+
+	// Page settings
+	int navigationRootPageId = !string.IsNullOrEmpty(Model.Item.GetString("NavigationRoot")) ? Model.Item.GetLink("NavigationRoot").PageId : 0;
+	var rootNavigation = GetNavigationTreeFromPageId(navigationRootPageId);
+
+	//CSS Settings
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? "theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+
+	string navigationLinkAlignment = Model.Item.GetString("NavAlignment", "justify-content-start text-start");
+	navigationLinkAlignment = navigationLinkAlignment == "start" ? "justify-content-start text-start" : navigationLinkAlignment;
+	navigationLinkAlignment = navigationLinkAlignment == "center" ? "justify-content-center text-center" : navigationLinkAlignment;
+	navigationLinkAlignment = navigationLinkAlignment == "end" ? "justify-content-end text-end" : navigationLinkAlignment;
+
+	string megaMenuAlignment = Model.Item.GetString("MegaMenuAlignment");
+	megaMenuAlignment = megaMenuAlignment == "start" ? "text-start" : megaMenuAlignment;
+	megaMenuAlignment = megaMenuAlignment == "center" ? "text-center" : megaMenuAlignment;
+	megaMenuAlignment = megaMenuAlignment == "end" ? "text-end" : megaMenuAlignment;
+
+	string headerLinkAnimation = Model.Item.GetString("HeaderLinkAnimation", "left");
+	headerLinkAnimation = headerLinkAnimation == "left" ? "hover-underline-animation-left" : headerLinkAnimation;
+	headerLinkAnimation = headerLinkAnimation == "right" ? "hover-underline-animation-right" : headerLinkAnimation;
+	headerLinkAnimation = headerLinkAnimation == "center" ? "hover-underline-animation-center" : headerLinkAnimation;
+	headerLinkAnimation = headerLinkAnimation == "none" ? string.Empty : headerLinkAnimation;
+
+	bool showProductGroupPromotionImage = Model.Item.GetBoolean("ShowProductGroupPromotionImage");
+	bool showProductGroupImages = Model.Item.GetBoolean("ShowProductGroupImages");
+
+	string promotionImageRatio = Model.Item.GetString("ProductGroupPromotionImageRatio");
+	string navigationImageRatio = Model.Item.GetString("ProductGroupImageRatio");
+
+}
+
+<div class="nav-wrapper megamenu-wrapper">
+	<div class="@theme">
+		<nav class="d-flex gap-2 @navigationLinkAlignment">
+			@foreach (var rootNode in rootNavigation.Nodes)
+			{
+				
+				if (rootNode.ShowInMenu)
+				{
+					<div class="nav-item dropdown position-static">
+						<a class="nav-link p-2 @headerLinkAnimation fw-bold text-uppercase" role="button" data-bs-toggle="dropdown" data-bs-offset="0,0" aria-expanded="false">
+							@rootNode.Name
+						</a>
+
+						@if (rootNode.Nodes.Any())
+						{
+							<div class="dropdown-menu border-0 megamenu-content-wrapper">
+								<div class="container-xl">
+									<div class="grid pt-2 pb-2">
+										<div class="g-col-lg-6 g-col-md-12">
+											<div class="grid grid-3">
+												@foreach (var subNode in rootNode.Nodes)
+												{
+													if (subNode.ShowInMenu)
+													{
+
+														var navigationImage = new NavigationImageSettings(subNode, navigationImageRatio);
+
+														<a href="@subNode.Link" class="text-dark text-decoration-none">
+
+															@if (showProductGroupImages && navigationImage.ImagePathExists)
+															{
+																<div class="@navigationImage.RatioCssClass" style="@navigationImage.RatioStyleCss">
+																	<img src="@navigationImage.ImagePath"
+																		 style="object-fit:cover;"
+																		 class="rounded-2" alt="@navigationImage.GroupName" />
+																</div>
+															}
+															<div class="pt-2 text-uppercase text-center">
+																@(subNode.Name)
+															</div>
+														</a>
+													}
+												}
+											</div>
+										</div>
+										
+										@{ 
+											var promotionImage = new PromotionImageSettings(rootNode, promotionImageRatio);
+										}
+										
+										@if (promotionImage.ImagePathExists)
+										{
+											<div class="g-col-6 position-relative d-none d-lg-block">
+												<figure class="float-end m-0 @promotionImage.RatioCssClass" style="@promotionImage.RatioStyleCss @promotionImage.MaxSizeCss">
+													<a href="@promotionImage.Link" class="@promotionImage.RatioCssClass" title="@promotionImage.GroupName" id="NavGroupPromoFigureLink_@(promotionImage.Id)">
+														<img class="img-fluid rounded-2" src="@promotionImage.ImagePath" alt="@promotionImage.GroupName" style="object-fit:cover;">
+													</a>
+													<figcaption>
+														<div class="position-absolute bottom-0 p-2">
+															<a href="@promotionImage.Link" title="@promotionImage.LinkLabel" class="btn btn-primary rounded-0 text-center">@promotionImage.LinkLabel</a>
+														</div>
+													</figcaption>
+												</figure>
+											</div>
+										}
+									</div>
+								</div>
+							</div>
+						}
+					</div>
+				}
+			}
+		</nav>
+	</div>
+</div>
+
+
+
+
+
+
+
+
