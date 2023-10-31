@@ -16,7 +16,7 @@
 
 	int frontPageId = Dynamicweb.Content.Services.Pages.GetFirstPageForArea(Pageview.AreaID).ID;
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
-	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", string.Empty).Trim().ToLower() : string.Empty;
 
 	bool isStandardSwiftTemplates = Pageview.AreaSettings.GetString("AddressFieldsBasedOn", "swift") == "swift";
 }
@@ -38,7 +38,24 @@
 		<form name="ordersubmit" id="ordersubmit" method="post" autocomplete="off">
 
 			<header>
-				@{ @RenderPageHeader() }
+				<div class="mt-3 mt-md-4">
+					@Include("Helpers/Logo.cshtml")
+				</div>
+				<div class="border-bottom mt-4 pb-3">
+					<div class="d-flex justify-content-between mb-2">
+						<div class="flex-fill">
+							<h1 class="fs-1 fs-md-3 m-0">@Translate("Thank you for your order")</h1>
+						</div>
+						<div>
+							<div class="d-flex d-print-none justify-content-end align-items-center d-none d-lg-block">
+								<button type="button" class="btn btn-secondary text-uppercase" onclick='window.print()'>@Translate("Print")</button>
+							</div>
+						</div>
+					</div>
+
+					<p class="d-block mb-0">@Translate("We are processing your order now, here are the details")</p>
+
+				</div>
 
 				@if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Email")))
 				{
@@ -102,147 +119,144 @@
 						<div class="grid">
 							<dt class="g-col-4 lh-base fw-normal text-nowrap">@Translate("Delivery")</dt>
 							<dd class="g-col-12 g-col-md-8 mb-0">
+								@if (isStandardSwiftTemplates)
+								{
+									List<string> shippingDetails = new List<string>();
 
-								@{
-									if (isStandardSwiftTemplates)
+									if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Company")))
 									{
-										List<string> shippingDetails = new List<string>();
+										shippingDetails.Add(GetString("Ecom:Order.Delivery.Company"));
+									}
 
-										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Company")))
+									if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Name")))
+									{
+										if (GetString("Ecom:Order.Delivery.Company") != GetString("Ecom:Order.Delivery.Name"))
 										{
-											shippingDetails.Add(GetString("Ecom:Order.Delivery.Company"));
+											shippingDetails.Add(GetString("Ecom:Order.Delivery.Name"));
 										}
+									}
 
-										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Name")))
+									if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Address")))
+									{
+										shippingDetails.Add(GetString("Ecom:Order.Delivery.Address"));
+									}
+
+									if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Address2")))
+									{
+										shippingDetails.Add(GetString("Ecom:Order.Delivery.Address2"));
+									}
+
+									if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Zip")))
+									{
+										shippingDetails.Add(GetString("Ecom:Order.Delivery.Zip"));
+									}
+
+									if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.City")))
+									{
+										shippingDetails.Add(GetString("Ecom:Order.Delivery.City"));
+									}
+
+									if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Region")))
+									{
+										string regionName = GetString("Ecom:Order.Delivery.Region");
+										foreach (LoopItem region in GetLoop("DeliveryRegions"))
 										{
-											if (GetString("Ecom:Order.Delivery.Company") != GetString("Ecom:Order.Delivery.Name"))
+											if (region.GetString("Ecom:DeliveryRegion.IsDeliveryRegion") == "true")
 											{
-												shippingDetails.Add(GetString("Ecom:Order.Delivery.Name"));
+												regionName = region.GetString("Ecom:DeliveryRegion.Name");
 											}
 										}
+										shippingDetails.Add(regionName);
+									}
 
-										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Address")))
-										{
-											shippingDetails.Add(GetString("Ecom:Order.Delivery.Address"));
-										}
+									if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Country")))
+									{
+										shippingDetails.Add(GetString("Ecom:Order.Delivery.Country"));
+									}
 
-										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Address2")))
+									if (GetBoolean("Ecom:Order.Delivery.isPickupPoint"))
+									{
+										shippingDetails.Clear();
+										var order = Dynamicweb.Ecommerce.Services.Orders.GetById(GetString("Ecom:Order.ID"));
+										if (order.ShippingProviderValues.ContainsKey("ShipmondoServicePointId"))
 										{
-											shippingDetails.Add(GetString("Ecom:Order.Delivery.Address2"));
-										}
-
-										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Zip")))
-										{
-											shippingDetails.Add(GetString("Ecom:Order.Delivery.Zip"));
-										}
-
-										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.City")))
-										{
-											shippingDetails.Add(GetString("Ecom:Order.Delivery.City"));
-										}
-
-										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Region")))
-										{
-											string regionName = GetString("Ecom:Order.Delivery.Region");
-											foreach (LoopItem region in GetLoop("DeliveryRegions"))
+											//Shipmondo provider
+											if (order.ShippingProviderValues.TryGetValue("ServiceSelectedDataCarrierName", out object CarrierName))
 											{
-												if (region.GetString("Ecom:DeliveryRegion.IsDeliveryRegion") == "true")
-												{
-													regionName = region.GetString("Ecom:DeliveryRegion.Name");
-												}
+												shippingDetails.Add((string)CarrierName);
 											}
-											shippingDetails.Add(regionName);
-										}
-
-										if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Country")))
-										{
-											shippingDetails.Add(GetString("Ecom:Order.Delivery.Country"));
-										}
-
-										if (GetBoolean("Ecom:Order.Delivery.isPickupPoint"))
-										{
-											shippingDetails.Clear();
-											var order = Dynamicweb.Ecommerce.Services.Orders.GetById(GetString("Ecom:Order.ID"));
-											if (order.ShippingProviderValues.ContainsKey("ShipmondoServicePointId"))
+											if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCompanyName", out object CompanyName))
 											{
-												//Shipmondo provider
-												if (order.ShippingProviderValues.TryGetValue("ServiceSelectedDataCarrierName", out object CarrierName))
-												{
-													shippingDetails.Add((string)CarrierName);
-												}
-												if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCompanyName", out object CompanyName))
-												{
-													shippingDetails.Add((string)CompanyName);
-												}
-												if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataAddress", out object Address))
-												{
-													shippingDetails.Add((string)Address);
-												}
-												if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataZipcode", out object Zipcode))
-												{
-													shippingDetails.Add((string)Zipcode);
-												}
-												if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCity", out object City))
-												{
-													shippingDetails.Add((string)City);
-												}
-												if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCountry", out object Country))
-												{
-													shippingDetails.Add((string)Country);
-												}
-												if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataAddress2", out object Address2) && !string.IsNullOrEmpty((string)Address2))
-												{
-													shippingDetails.Add((string)Address2);
-												}
-
+												shippingDetails.Add((string)CompanyName);
+											}
+											if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataAddress", out object Address))
+											{
+												shippingDetails.Add((string)Address);
+											}
+											if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataZipcode", out object Zipcode))
+											{
+												shippingDetails.Add((string)Zipcode);
+											}
+											if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCity", out object City))
+											{
+												shippingDetails.Add((string)City);
+											}
+											if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCountry", out object Country))
+											{
+												shippingDetails.Add((string)Country);
+											}
+											if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataAddress2", out object Address2) && !string.IsNullOrEmpty((string)Address2))
+											{
+												shippingDetails.Add((string)Address2);
 											}
 
-											if (order.ShippingProviderValues.ContainsKey("ParcelShopNumber"))
+										}
+
+										if (order.ShippingProviderValues.ContainsKey("ParcelShopNumber"))
+										{
+											//GLS Provider
+											if (order.ShippingProviderValues.TryGetValue("parcelShop", out object parcelShop))
 											{
-												//GLS Provider
-												if (order.ShippingProviderValues.TryGetValue("parcelShop", out object parcelShop))
+												if (parcelShop is System.Collections.Generic.Dictionary<System.String, System.Object>)
 												{
-													if (parcelShop is System.Collections.Generic.Dictionary<System.String, System.Object>)
+													var selectedShop = (System.Collections.Generic.Dictionary<System.String, System.Object>)parcelShop;
+
+													if (selectedShop.TryGetValue("CompanyName", out object CompanyName))
 													{
-														var selectedShop = (System.Collections.Generic.Dictionary<System.String, System.Object>)parcelShop;
-
-														if (selectedShop.TryGetValue("CompanyName", out object CompanyName))
-														{
-															shippingDetails.Add((string)CompanyName);
-														}
-														if (selectedShop.TryGetValue("Streetname", out object Streetname))
-														{
-															shippingDetails.Add((string)Streetname);
-														}
-														if (selectedShop.TryGetValue("ZipCode", out object ZipCode))
-														{
-															shippingDetails.Add((string)ZipCode);
-														}
-														if (selectedShop.TryGetValue("CityName", out object CityName))
-														{
-															shippingDetails.Add((string)CityName);
-														}
-														if (selectedShop.TryGetValue("CountryCodeISO3166A2", out object Country))
-														{
-															shippingDetails.Add((string)Country);
-														}
-														if (selectedShop.TryGetValue("Streetname2", out object Streetname2) && !string.IsNullOrEmpty((string)Streetname2))
-														{
-															shippingDetails.Add((string)Streetname2);
-														}
+														shippingDetails.Add((string)CompanyName);
+													}
+													if (selectedShop.TryGetValue("Streetname", out object Streetname))
+													{
+														shippingDetails.Add((string)Streetname);
+													}
+													if (selectedShop.TryGetValue("ZipCode", out object ZipCode))
+													{
+														shippingDetails.Add((string)ZipCode);
+													}
+													if (selectedShop.TryGetValue("CityName", out object CityName))
+													{
+														shippingDetails.Add((string)CityName);
+													}
+													if (selectedShop.TryGetValue("CountryCodeISO3166A2", out object Country))
+													{
+														shippingDetails.Add((string)Country);
+													}
+													if (selectedShop.TryGetValue("Streetname2", out object Streetname2) && !string.IsNullOrEmpty((string)Streetname2))
+													{
+														shippingDetails.Add((string)Streetname2);
 													}
 												}
 											}
 										}
-
-										string shippingDetailsString = (string.Join(", ", shippingDetails.Select(x => x).ToArray()));
-
-										@shippingDetailsString
 									}
-									else
-									{
-										@:@RenderDeliveryAddressInline()
-									}
+
+									string shippingDetailsString = (string.Join(", ", shippingDetails.Select(x => x).ToArray()));
+
+									@shippingDetailsString
+								}
+								else
+								{
+									@:@RenderDeliveryAddressInline()
 								}
 								<div class="opacity-75 fs-8">@GetString("Ecom:Order.ShippingMethod")</div>
 							</dd>
@@ -380,13 +394,10 @@
 				<div class="list-group">
 					<div class="list-group-item p-3">
 						<div class="grid grid-1 py-3 pt-md-0">
-							@foreach (LoopItem orderline in GetLoop("OrderLines"))
-							{
-								@RenderOrderSummaryOrderLineItem(orderline)
-							}
+							@Include("Helpers/OrderSummaryOrderLineItem.cshtml")
 						</div>
 						<div class="sticky-receipt bottom-0 theme">
-							@{ @RenderOrderSummary(false) }
+							@Include("Helpers/OrderSummary.cshtml")
 
 							<section class="py-3 d-print-none">
 								<div class="d-flex justify-content-end align-items-center">
@@ -429,38 +440,5 @@
 	</script>
 }
 
-@helper RenderPageHeader()
-{
-	<div class="mt-3 mt-md-4">
-		@{ @RenderLogo() }
-	</div>
-	<div class="border-bottom mt-4 pb-3">
-		<div class="d-flex justify-content-between mb-2">
-			<div class="flex-fill">
-				<h1 class="fs-1 fs-md-3 m-0">@Translate("Thank you for your order")</h1>
-			</div>
-			<div>
-				@{ @RenderPrintButton() }
-			</div>
-		</div>
-
-		<p class="d-block mb-0">@Translate("We are processing your order now, here are the details")</p>
-
-	</div>
-}
-
-@helper RenderPrintButton()
-{
-	<div class="d-flex d-print-none justify-content-end align-items-center d-none d-lg-block">
-		<button type="button" class="btn btn-secondary text-uppercase" onclick='window.print()'>@Translate("Print")</button>
-	</div>
-}
-
-@Include("Helpers/Logo.cshtml")
-@Include("Helpers/StepsNavigation.cshtml")
-@Include("Helpers/StepsBreadcrumbs.cshtml")
-@Include("Helpers/OrderSummaryOrderLineItem.cshtml")
-@Include("Helpers/OrderSummary.cshtml")
-@Include("Helpers/VoucherForm.cshtml")
 @Include("../Helpers/CustomerAddressDisplayFormatted.cshtml")
 @Include("../Helpers/DeliveryAddressDisplayFormatted.cshtml")
