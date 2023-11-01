@@ -15,10 +15,10 @@ const Cart = function () {
 		Update: async function (e) {
 			//NP: clickedButton is not always the button. Sometimes it is the qty input field if [enter] is pressed
 			const clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
-			const quantityField = clickedButton.closest("form").querySelector('[name="Quantity"]');
-			//Setup the form data
 			const form = clickedButton.closest("form");
+			const quantityField = form.querySelector('[name="Quantity"]');
 
+			//Setup the form data
 			let formData = new FormData(form);
 			productId = formData.get("ProductId");
 			productVariantId = formData.get("VariantId");
@@ -96,8 +96,12 @@ const Cart = function () {
 					const outOfStockMessage = form.querySelector(".js-out-of-stock-notice").innerHTML;
 					document.querySelector("#DynamicModalContent").innerHTML = outOfStockMessage;
 
-					if (form.querySelector('[name="Quantity"]')) {
-						form.querySelector('[name="Quantity"]').value = 1;
+					if (quantityField != null) {
+						if (quantityField.min != null) {
+							quantityField.value = quantityField.min > 0 ? quantityField.min : 1;
+						} else {
+							quantityField.value = 1;
+						}
 					}
 
 					let dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), {
