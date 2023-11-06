@@ -10,6 +10,7 @@
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
 	string theme = !string.IsNullOrEmpty(themeRaw) ? " h-100 theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
 	string selectedState = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FilterOrderStateId")) ? Dynamicweb.Context.Current.Request.QueryString.Get("FilterOrderStateId") : "";
+	bool userHasPendingOrder = Dynamicweb.Ecommerce.Common.Context.Cart != null && !Dynamicweb.Ecommerce.Common.Context.Cart.IsQuote;
 }
 
 <div class="@(contentPadding)@(theme)">
@@ -65,8 +66,9 @@
 					{
 					string orderLink = $"/Default.aspx?ID={Pageview.Page.ID}&amp;OrderId={order.Id}";
 					string orderDate = "";
-					string orderStateType = order.StateId == "OS9" ? "PriceGiven" : "New";
-					string badgeColor = orderStateType == "New" ? "bg-dark text-white opacity-75" : "bg-success text-white";
+					var orderState = Dynamicweb.Ecommerce.Services.OrderStates.GetStateById(order.StateId);
+					bool stateAllowsOrder = orderState?.AllowOrder == true;
+					string badgeColor = !stateAllowsOrder ? "bg-dark text-white opacity-75" : "bg-success text-white";
 
 					if (order.CreatedAt != null) {
 						orderDate = order.CreatedAt.TimeOfDay.Ticks > 0 ? order.CreatedAt.ToString() : order.CreatedAt.ToString(Pageview.Area.CultureInfo.DateTimeFormat.ShortDatePattern);
@@ -98,18 +100,27 @@
 							</a>
 						</td>
 						<td style="vertical-align: middle">
-							@if (orderStateType == "PriceGiven")
+							@if (stateAllowsOrder)
 							{
-								string cartPageId = Pageview.CurrentParagraph.Item["CartPage"] != null ? Pageview.CurrentParagraph.Item["CartPage"].ToString() : "";
+								if (!userHasPendingOrder)
+								{
+									string cartPageId = Pageview.CurrentParagraph.Item["CartPage"] != null ? Pageview.CurrentParagraph.Item["CartPage"].ToString() : "";
 
-								<div class="d-block text-end">
-									<form method="post">
-										<input type="hidden" name="QuoteID" id="QuoteID" value="@order.Id">
-										<input type="hidden" name="CustomerCenterCmd" value="AcceptQuote">
-										<input type="hidden" name="redirect" value="/@cartPageId">
-										<button type="submit" class="btn btn-link">@Translate("Accept quote")</button>
-									</form>
-								</div>
+									<div class="d-block text-end">
+										<form method="post">
+											<input type="hidden" name="QuoteID" id="QuoteID" value="@order.Id">
+											<input type="hidden" name="CustomerCenterCmd" value="AcceptQuote">
+											<input type="hidden" name="redirect" value="/@cartPageId">
+											<button type="submit" class="btn btn-link">@Translate("Accept quote")</button>
+										</form>
+									</div>
+								}
+								else
+								{
+									<button type="button" class="btn btn-link" onclick="@($"alert('{Translate("You need to complete your current order or empty the cart before accepting this quote")}')")">
+                                      @Translate("Accept quote")
+                                    </button>
+								}
 							}
 						</td>
 					</tr>
@@ -122,8 +133,9 @@
 				{
 				string orderLink = $"/Default.aspx?ID={Pageview.Page.ID}&amp;OrderId={order.Id}";
 				string orderDate = "";
-				string orderStateType = order.StateId == "OS9" ? "PriceGiven" : "New";
-				string badgeColor = orderStateType == "New" ? "bg-dark text-white opacity-75" : "bg-success text-white";
+					var orderState = Dynamicweb.Ecommerce.Services.OrderStates.GetStateById(order.StateId);
+					bool stateAllowsOrder = orderState?.AllowOrder == true;
+					string badgeColor = !stateAllowsOrder ? "bg-dark text-white opacity-75" : "bg-success text-white";
 
 				if (order.CreatedAt != null)
 					{
@@ -185,17 +197,26 @@
 					</tr>
 					<tr>
 						<td colspan="2" class="p-3">
-							@if (orderStateType == "PriceGiven")
+							@if (stateAllowsOrder)
 							{
-								<form method="post" class="text-center">
-									<input type="hidden" name="QuoteID" id="QuoteID" value="@order.Id">
-									<input type="hidden" name="CustomerCenterCmd" value="AcceptQuote">
-									<button type="submit" class="btn w-100 m-0" tabindex="-1">
-										<div class="d-grid">
-											<span class="btn btn-primary">@Translate("Accept quote")</span>
-										</div>
+								if (!userHasPendingOrder)
+								{
+									<form method="post" class="text-center">
+										<input type="hidden" name="QuoteID" id="QuoteID" value="@order.Id">
+										<input type="hidden" name="CustomerCenterCmd" value="AcceptQuote">
+										<button type="submit" class="btn w-100 m-0" tabindex="-1">
+											<div class="d-grid">
+												<span class="btn btn-primary">@Translate("Accept quote")</span>
+											</div>
+										</button>
+									</form>
+								}
+								else
+								{
+									<button type="button" class="btn btn-link" onclick="@($"alert('{Translate("You need to complete your current order or empty the cart before accepting this quote")}')")">
+										@Translate("Accept quote")
 									</button>
-								</form>
+								}
 							}
 							<a href="@orderLink" class="d-block text-decoration-none" tabindex="-1">
 								<div class="d-grid">
