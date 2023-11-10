@@ -1,6 +1,7 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using System.Globalization
 @using System.Drawing
+@using Dynamicweb.Core
 
 @functions{
 	// Get Hex Color from color picker and translate to RGB color
@@ -113,6 +114,131 @@
 		string colorString = variantHslColor.h + ", " + variantHslColor.s + "%, " + variantHslColor.l + "%";
 		return colorString;
 	}
+
+	private class ThemeDatabaseUsage
+	{
+		public string TableName { get; set; }
+		public string ColumnName { get; set; }
+	}
+
+	private class ThemeUsage
+	{
+		public string Id { get; set; }
+		public List<int> WebsiteUsages { get; set; } = new List<int>();
+		public List<int> PageUsages { get; set; } = new List<int>();
+		public List<int> PagePropertyUsages { get; set; } = new List<int>();
+		public List<int> GridRowUsages { get; set; } = new List<int>();
+		public List<int> ParagraphUsages { get; set; } = new List<int>();
+		public int AllUsages { get; set; } = 0;
+	}
+
+	private List<ThemeDatabaseUsage> GetThemeColumnsFromSchema()
+	{
+		string cacheKey = "ThemesFromDatabase";
+		if (Dynamicweb.Context.Current.Items.Contains(cacheKey))
+		{
+			return (List<ThemeDatabaseUsage>)Dynamicweb.Context.Current.Items[cacheKey];
+		}
+		var schema = Dynamicweb.Data.Database.CreateDataReader("SELECT table_name, column_name FROM information_schema.columns WHERE column_name LIKE '%Theme%'");
+
+		var rawData = new List<ThemeDatabaseUsage>();
+		while (schema.Read()) {
+			rawData.Add(new ThemeDatabaseUsage {TableName = schema["table_name"].ToString(), ColumnName = schema["column_name"].ToString() });
+		}
+		Dynamicweb.Context.Current.Items[cacheKey] = rawData;
+		return rawData;
+	}
+
+	private List<ThemeUsage> GetAllThemeUsages()
+	{
+		string cacheKey = "ThemeUsages";
+		if (Dynamicweb.Context.Current.Items.Contains(cacheKey))
+		{
+			return (List<ThemeUsage>)Dynamicweb.Context.Current.Items[cacheKey];
+		}
+		
+		var rawData = GetThemeColumnsFromSchema();
+		var themeUsages = new List<ThemeUsage>();
+		
+		var sqlQuery = "";
+		foreach (var row in rawData)
+		{
+			if (!string.IsNullOrEmpty(sqlQuery)) { sqlQuery += " UNION ALL "; }
+			sqlQuery += $"SELECT '{row.TableName}' AS TableName, '{row.ColumnName}' AS ColumnName, {row.ColumnName} AS ColumnValue, Id, AreaId, Page.PageId, PageProperties.PageId as 'PagePropertiesId', GridRowId, ParagraphId" +
+			            $" FROM [{row.TableName}]" +
+			            $" LEFT JOIN Area ON AreaItemType = '{row.TableName.Replace("ItemType_","")}' AND AreaItemId = Id" +
+			            $" LEFT JOIN Page ON PageItemType = '{row.TableName.Replace("ItemType_","")}' AND PageItemId = Id" +
+			            $" LEFT JOIN Page as PageProperties ON AreaItemTypePageProperty = '{row.TableName.Replace("ItemType_","")}' AND PageProperties.PagePropertyItemId = Id" +
+			            $" LEFT JOIN GridRow ON GridRowItemType = '{row.TableName.Replace("ItemType_","")}' AND GridRowItemId = Id" +
+			            $" LEFT JOIN Paragraph ON ParagraphItemType = '{row.TableName.Replace("ItemType_","")}' AND ParagraphItemId = Id" +
+			            $" WHERE {row.ColumnName} != '' AND {row.ColumnName} IS NOT NULL" +
+			            $"	AND (AreaId IS NULL OR AreaId = {Pageview.AreaID})" +
+			            $"	AND (Page.PageId IS NULL OR Page.PageAreaId = {Pageview.AreaID})" +
+			            $"	AND (PageProperties.PageId IS NULL OR PageProperties.PageAreaId = {Pageview.AreaID})" +
+			            $"	AND (GridRowId IS NULL OR GridRowPageId IN (SELECT value From string_split(@pageIds, ',')))" +
+			            $"	AND (ParagraphId IS NULL OR ParagraphPageId IN (SELECT value From string_split(@pageIds, ',')))";
+			
+			var maxMsSqlServerCharLimit = 60000;
+			if (sqlQuery.Length > maxMsSqlServerCharLimit)
+			{
+				UpdateThemeUsages(sqlQuery, themeUsages);
+				sqlQuery = "";
+			}
+		}
+		
+		if (!string.IsNullOrEmpty(sqlQuery))
+		{
+			UpdateThemeUsages(sqlQuery, themeUsages);
+		}
+		UpdateAllUsages(themeUsages);
+	
+		Dynamicweb.Context.Current.Items[cacheKey] = themeUsages;
+		return themeUsages;
+	}
+
+	private void UpdateThemeUsages(string sqlQuery, List<ThemeUsage> themeUsages)
+	{
+		sqlQuery = $"DECLARE @pageIds NVARCHAR(max) = (SELECT STRING_AGG(PageId,',') FROM Page WHERE PageAreaId = {Pageview.AreaID}) " + sqlQuery;
+		var rawData = Dynamicweb.Data.Database.CreateDataReader(sqlQuery);
+		while (rawData.Read())
+		{
+			var themeId = rawData["ColumnValue"].ToString();
+			var themeUsageExists = themeUsages.FirstOrDefault(t => t.Id == themeId) != null;
+			if (!themeUsageExists)
+			{
+				themeUsages.Add(new ThemeUsage { Id = themeId });
+			}
+
+			var themeUsage = themeUsages.FirstOrDefault(t => t.Id == themeId);
+			if (themeUsage == null) continue;
+
+			if (Converter.ToInt32(rawData["AreaId"].ToString()) > 0) { themeUsage.WebsiteUsages.Add(Converter.ToInt32(rawData["AreaId"].ToString())); }
+			if (Converter.ToInt32(rawData["PageId"].ToString()) > 0) { themeUsage.PageUsages.Add(Converter.ToInt32(rawData["PageId"].ToString())); }
+			if (Converter.ToInt32(rawData["PagePropertiesId"].ToString()) > 0) { themeUsage.PagePropertyUsages.Add(Converter.ToInt32(rawData["PagePropertiesId"].ToString())); }
+			if (Converter.ToInt32(rawData["GridRowId"].ToString()) > 0) { themeUsage.GridRowUsages.Add(Converter.ToInt32(rawData["GridRowId"].ToString())); }
+			if (Converter.ToInt32(rawData["ParagraphId"].ToString()) > 0) { themeUsage.ParagraphUsages.Add(Converter.ToInt32(rawData["ParagraphId"].ToString())); }
+		}
+	}
+
+	private void UpdateAllUsages(List<ThemeUsage> themeUsages)
+	{
+		foreach (var themeUsage in themeUsages)
+		{
+			int websiteUsages = themeUsage?.WebsiteUsages.Count ?? 0;
+			int pageUsages = themeUsage?.PageUsages.Count ?? 0;
+			int pagePropertyUsages = themeUsage?.PagePropertyUsages.Count ?? 0;
+			int gridRowUsages = themeUsage?.GridRowUsages.Count ?? 0;
+			int paragraphUsages = themeUsage?.ParagraphUsages.Count ?? 0;
+			themeUsage.AllUsages = websiteUsages + pageUsages + pagePropertyUsages + gridRowUsages + paragraphUsages;
+		}
+	}
+
+	private ThemeUsage GetThemeUsageById(string themeId)
+	{
+		var themeUsages = GetAllThemeUsages();
+		return themeUsages.FirstOrDefault(t => t.Id == themeId);
+	}
+
 }
 
 @{
@@ -484,6 +610,161 @@
 					</tr>
 				</table>
 			</div>
+			@{
+				bool hasUsageData = Converter.ToBoolean(Dynamicweb.Context.Current.Request["auditUsages"]);
+				if (hasUsageData)
+				{
+					var themeUsage = GetThemeUsageById(themeClassName);
+					int allUsages = themeUsage?.AllUsages ?? 0;
+					string buttonAttributes = allUsages > 0 ? $"data-bs-toggle=\"modal\" data-bs-target=\"#themeUsage_{Model.ID}\"" : string.Empty;
+					string badgeStyle = allUsages > 0 ? "bg-success" : "bg-danger";
+					
+					<div class="g-col-12 g-col-lg-9 position-relative">
+						<button type="button" class="btn btn-primary btn-sm position-absolute end-0" @buttonAttributes>
+		                  Usages
+		                  <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-white @badgeStyle">@allUsages</span>
+		                </button>
+		            
+						@if (allUsages > 0)
+						{
+							int websiteUsages = themeUsage?.WebsiteUsages.Count ?? 0;
+							int pageUsages = themeUsage?.PageUsages.Count ?? 0;
+							int pagePropertyUsages = themeUsage?.PagePropertyUsages.Count ?? 0;
+							int gridRowUsages = themeUsage?.GridRowUsages.Count ?? 0;
+							int paragraphUsages = themeUsage?.ParagraphUsages.Count ?? 0;
+							
+			                <!-- Modal -->
+			                <div class="modal fade" id="themeUsage_@(Model.ID)" tabindex="-1" aria-labelledby="usagesModelLabel" aria-hidden="true">
+				                <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+					                <div class="modal-content">
+						                <div class="modal-header">
+							                <h5 class="modal-title" id="usagesModelLabel">@allUsages Usages of '@(themeName)' (@(themeClassName))</h5>
+							                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						                </div>
+						                <div class="modal-body">
+							                <div class="accordion" id="accordionWrapper">
+								                @if(websiteUsages > 0)
+								                {
+									                <div class="accordion-item">
+										                <h2 class="accordion-header" id="headingWebsites">
+											                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWebsites" aria-expanded="true" aria-controls="collapseWebsites">
+												                <span class="pe-2">Websites</span><span class="badge rounded-pill bg-secondary text-light">@websiteUsages</span>
+											                </button>
+										                </h2>
+										                <div id="collapseWebsites" class="accordion-collapse collapse show" aria-labelledby="headingWebsites" data-bs-parent="#accordionWrapper">
+											                <div class="accordion-body">
+												                <ul>
+													                @foreach (var usage in themeUsage.WebsiteUsages)
+													                {
+														                var website = Dynamicweb.Content.Services.Areas.GetArea(usage);
+														                <li><span class="fw-bold">@website.Name</span>@($" (ID: {usage})")</li>
+													                }
+												                </ul>
+											                </div>
+										                </div>
+									                </div>
+								                }
+								                @if (pageUsages > 0)
+								                {
+													var pages = Dynamicweb.Content.Services.Pages.GetPages(themeUsage.PageUsages.ToArray());
+									                
+									                <div class="accordion-item">
+										                <h2 class="accordion-header" id="headingPages">
+											                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePages" aria-expanded="false" aria-controls="collapsePages">
+												                <span class="pe-2">Pages</span><span class="badge rounded-pill bg-secondary text-light">@pageUsages</span>
+											                </button>
+										                </h2>
+										                <div id="collapsePages" class="accordion-collapse collapse" aria-labelledby="headingPages" data-bs-parent="#accordionWrapper">
+											                <div class="accordion-body">
+												                <ul>
+													                @foreach (var usage in themeUsage.PageUsages)
+													                {
+														                <li><span class="fw-bold">@pages.FirstOrDefault(p => p.ID == usage).GetDisplayName()</span>@($" (ID: {usage})")</li>
+													                }
+												                </ul>
+											                </div>
+										                </div>
+									                </div>
+								                }
+								                @if (pagePropertyUsages > 0)
+								                {
+													var pages = Dynamicweb.Content.Services.Pages.GetPages(themeUsage.PageUsages.ToArray());
+									                
+									                <div class="accordion-item">
+										                <h2 class="accordion-header" id="headingPageProperties">
+											                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePageProperties" aria-expanded="false" aria-controls="collapsePageProperties">
+												                <span class="pe-2">Page Properties</span><span class="badge rounded-pill bg-secondary text-light">@pagePropertyUsages</span>
+											                </button>
+										                </h2>
+										                <div id="collapsePageProperties" class="accordion-collapse collapse" aria-labelledby="headingPageProperties" data-bs-parent="#accordionWrapper">
+											                <div class="accordion-body">
+												                <ul>
+													                @foreach (var usage in themeUsage.PagePropertyUsages)
+													                {
+														                <li><span class="fw-bold">@pages.FirstOrDefault(p => p.ID == usage).GetDisplayName()</span>@($" (ID: {usage})")</li>
+													                }
+												                </ul>
+											                </div>
+										                </div>
+									                </div>
+								                }
+								                @if (gridRowUsages > 0)
+								                {
+													var rows = Dynamicweb.Content.Services.Grids.GetGridRows().Where(r => themeUsage.GridRowUsages.Contains(r.ID)).ToList();
+									                
+									                <div class="accordion-item">
+										                <h2 class="accordion-header" id="headingRows">
+											                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRows" aria-expanded="false" aria-controls="collapseRows">
+												                <span class="pe-2">Rows</span><span class="badge rounded-pill bg-secondary text-light">@gridRowUsages</span>
+											                </button>
+										                </h2>
+										                <div id="collapseRows" class="accordion-collapse collapse" aria-labelledby="headingRows" data-bs-parent="#accordionWrapper">
+											                <div class="accordion-body">
+												                <ul>
+													                @foreach (var usage in themeUsage.GridRowUsages)
+													                {
+														                var row = rows.FirstOrDefault(r => r.ID == usage);
+														                var page = Dynamicweb.Content.Services.Pages.GetPage(row.PageId);
+														                <li>Page: <span class="fw-bold">@(page.GetDisplayName())</span>@($"( ID: {page.ID}) - Row: ")<span class="fw-bold">@(row.DefinitionId)</span>@($" (ID: {usage})")</li>
+													                }
+												                </ul>
+											                </div>
+										                </div>
+									                </div>
+								                }
+								                @if (paragraphUsages > 0)
+								                {
+													var paragraphs = Dynamicweb.Content.Services.Paragraphs.GetParagraphs().Where(p => themeUsage.ParagraphUsages.Contains(p.ID)).ToList();
+									                
+									                <div class="accordion-item">
+										                <h2 class="accordion-header" id="headingParagraphs">
+											                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseParagraphs" aria-expanded="false" aria-controls="collapseParagraphs">
+												                <span class="pe-2">Paragraphs</span><span class="badge rounded-pill bg-secondary text-light">@paragraphUsages</span>
+											                </button>
+										                </h2>
+										                <div id="collapseParagraphs" class="accordion-collapse collapse" aria-labelledby="headingParagraphs" data-bs-parent="#accordionWrapper">
+											                <div class="accordion-body">
+												                <ul>
+													                @foreach (var usage in themeUsage.ParagraphUsages)
+	                                                                {
+	                                                                    var paragraph = paragraphs.FirstOrDefault(p => p.ID == usage);
+	                                                                    var page = Dynamicweb.Content.Services.Pages.GetPage(paragraph.PageID);
+	                                                                    <li>Page: <span class="fw-bold">@(page.GetDisplayName())</span>@($"( ID: {page.ID}) - Paragraph: ")<span class="fw-bold">@paragraph.Header</span>@($" (ID: {usage})")</li>
+	                                                                }
+												                </ul>
+											                </div>
+										                </div>
+									                </div>
+								                }
+							                </div>
+						                </div>
+					                </div>
+				                </div>
+			                </div>
+						}
+					</div>
+				}
+			}
 		</div>
 	</div>
 }
