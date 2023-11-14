@@ -112,6 +112,48 @@
 		return Navigation.GetNavigationViewModel(navigationSettings);
 	}
 
+	string GetSubmenuType(NavigationTreeNodeViewModel rootNode)
+	{
+		string submenuType = string.Empty;
+		var page = Dynamicweb.Content.Services.Pages.GetPage(rootNode.PageId);
+		var pageType = !string.IsNullOrEmpty(page.ItemType) ? page.ItemType : "Swift_Page";
+		if (page.PropertyItem is object && page.PropertyItem.TryGetValue("SubmenuType", out object submenuTypeValue))
+		{
+			submenuType = Dynamicweb.Core.Converter.ToString(submenuTypeValue);
+		}
+		return submenuType;
+	}
+
+	bool IsMegaMenu(NavigationTreeNodeViewModel rootNode, string submenuType)
+	{
+		switch (submenuType)
+		{
+			case "dropdown":
+				return false;
+			case "auto":
+				return NavigationTreeHasChildren(rootNode);
+			default:
+				return true;
+		}
+	}
+
+	bool NavigationTreeHasChildren(NavigationTreeNodeViewModel rootNode)
+	{
+		foreach (var subNode in rootNode.Nodes)
+		{
+			if (subNode.Nodes.Any())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	string GetClickableCss(NavigationTreeNodeViewModel node)
+	{
+		return node.IsClickable ? string.Empty : "pe-none";
+	}
+
 }
 
 @{
@@ -122,6 +164,7 @@
 
 	//CSS Settings
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? "theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	string itemCss = "nav-link text-decoration-underline-hover text-decoration-accent-hover";
 
 	string headerAlignment = Model.Item.GetRawValueString("HeaderAlignment", "start");
 	headerAlignment = $"justify-content-{headerAlignment} text-{headerAlignment}";
@@ -145,12 +188,17 @@
 		<nav class="d-flex gap-2 @headerAlignment">
 			@foreach (var rootNode in rootNavigation.Nodes.Where(node => node.ShowInMenu))
 			{
-					<div class="nav-item dropdown position-static">
-						<a class="nav-link p-2 @headerLinkAnimation fw-bold text-uppercase" role="button" data-bs-toggle="dropdown" data-bs-offset="0,0" aria-expanded="false">
-							@rootNode.Name
-						</a>
+				string submenuType = GetSubmenuType(rootNode);
+				bool isMegaMenu = IsMegaMenu(rootNode, submenuType);
+				string submenuTypeCss = isMegaMenu ? "position-static" : string.Empty;
 
-						@if (rootNode.Nodes.Any())
+				<div class="nav-item dropdown position-static">
+					<a class="nav-link p-2 @headerLinkAnimation fw-bold text-uppercase" role="button" data-bs-toggle="dropdown" data-bs-offset="0,0" aria-expanded="false">
+						@rootNode.Name
+					</a>
+					@if (rootNode.Nodes.Any())
+					{
+						if (isMegaMenu)
 						{
 							<div class="dropdown-menu border-0 megamenu-content-wrapper">
 								<div class="container-xl">
@@ -159,35 +207,35 @@
 											<div class="grid grid-3">
 												@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
 												{
-														var navigationImage = new NavigationImageSettings(subNode, navigationImageRatio);
+													var navigationImage = new NavigationImageSettings(subNode, navigationImageRatio);
 
-														<a href="@subNode.Link" class="text-dark text-decoration-none">
+													<a href="@subNode.Link" class="text-dark text-decoration-none @(GetClickableCss(subNode))">
 
-															@if (showProductGroupImages && navigationImage.ImagePathExists)
-															{
-																<div class="@navigationImage.RatioCssClass" style="@navigationImage.RatioStyleCss">
-																	<img src="@navigationImage.ImagePath"
-																		 style="object-fit:cover;"
-																		 class="rounded-2" alt="@navigationImage.GroupName" />
-																</div>
-															}
-
-															<div class="pt-2 text-uppercase text-decoration-accent-hover text-decoration-underline-hover @textAlignment">
-																@(subNode.Name)
+														@if (showProductGroupImages && navigationImage.ImagePathExists)
+														{
+															<div class="@navigationImage.RatioCssClass" style="@navigationImage.RatioStyleCss">
+																<img src="@navigationImage.ImagePath"
+																	 style="object-fit:cover;"
+																	 class="rounded-2" alt="@navigationImage.GroupName" />
 															</div>
-														</a>
+														}
+
+														<div class="pt-2 @itemCss @textAlignment">
+															@(subNode.Name)
+														</div>
+													</a>
 												}
 											</div>
 										</div>
-										
-										@{ 
+
+										@{
 											var promotionImage = new PromotionImageSettings(rootNode, promotionImageRatio);
 										}
-										
+
 										@if (promotionImage.ImagePathExists)
 										{
 											<div class="g-col-6 position-relative d-none d-lg-block">
-												<figure class="float-end m-0 @promotionImage.RatioCssClass" style="@promotionImage.RatioStyleCss @promotionImage.MaxSizeCss">
+												<figure class="float-end m-0 @promotionImage.RatioCssClass position-relative" style="@promotionImage.RatioStyleCss @promotionImage.MaxSizeCss">
 													<a href="@promotionImage.Link" class="@promotionImage.RatioCssClass" title="@promotionImage.GroupName" id="NavGroupPromoFigureLink_@(promotionImage.Id)">
 														<img class="img-fluid rounded-2" src="@promotionImage.ImagePath" alt="@promotionImage.GroupName" style="object-fit:cover;">
 													</a>
@@ -203,7 +251,22 @@
 								</div>
 							</div>
 						}
-					</div>
+						else
+						{
+							<ul class="dropdown-menu dropdown-menu-shadow rounded-0 @textAlignment">
+
+								@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
+								{
+									<li class="dropdown-item">
+										<a class="pb-1 @itemCss @(GetClickableCss(subNode))" href="@subNode.Link">
+											<strong>@subNode.Name</strong>
+										</a>
+									</li>
+								}
+							</ul>
+						}
+					}
+				</div>
 			}
 		</nav>
 	</div>
