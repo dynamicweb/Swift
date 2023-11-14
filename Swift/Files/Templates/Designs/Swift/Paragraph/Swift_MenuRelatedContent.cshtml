@@ -1,0 +1,267 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend.Navigation
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@functions {
+
+	NavigationTreeViewModel GetNavigationTreeFromPageId(int pageId = 0, bool includeFolders = false, int startLevel = 1, int stopLevel = 9)
+	{
+		var navigationSettings = new NavigationSettings()
+		{
+			StartLevel = startLevel,
+			StopLevel = stopLevel,
+			RootPageId = pageId,
+			IncludeFoldersAndHidden = includeFolders,
+			ExpandMode = ExpandMode.All,
+		};
+
+		return Navigation.GetNavigationViewModel(navigationSettings);
+	}
+
+	string GetGroupFieldValue(string fieldSystemName, NavigationTreeNodeViewModel node)
+	{
+		ProductGroupViewModel productGroup = node.GetProductGroup();
+		string fieldValue = string.Empty;
+		IList<FieldValueViewModel> groupFields = productGroup.GroupFields != null ? productGroup.GroupFields : null;
+		if (groupFields != null)
+		{
+			foreach (FieldValueViewModel field in groupFields)
+			{
+
+				if (field.SystemName == fieldSystemName)
+				{
+					fieldValue = field != null ? field.Value.ToString() : string.Empty;
+				}
+			}
+		}
+
+		return fieldValue;
+	}
+
+	bool NavigationTreeHasChildren(NavigationTreeNodeViewModel rootNode)
+	{
+		foreach (var subNode in rootNode.Nodes)
+		{
+			if (subNode.Nodes.Any())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	int GetPageIdFromLink(string pageLink)
+	{
+		return !string.IsNullOrEmpty(pageLink) ? Convert.ToInt32(pageLink.Substring(pageLink.LastIndexOf('=') + 1)) : 0;
+
+	}
+
+	string GetSubmenuType(NavigationTreeNodeViewModel rootNode)
+	{
+		string submenuType = string.Empty;
+		var page = Dynamicweb.Content.Services.Pages.GetPage(rootNode.PageId);
+		var pageType = !string.IsNullOrEmpty(page.ItemType) ? page.ItemType : "Swift_Page";
+		if (page.PropertyItem is object && page.PropertyItem.TryGetValue("SubmenuType", out object submenuTypeValue))
+		{
+			submenuType = Dynamicweb.Core.Converter.ToString(submenuTypeValue);
+		}
+		return submenuType;
+	}
+
+	bool IsMegaMenu(NavigationTreeNodeViewModel rootNode, string submenuType)
+	{
+		switch (submenuType)
+		{
+			case "dropdown":
+				return false;
+			case "auto":
+				return NavigationTreeHasChildren(rootNode);
+			default:
+				return true;
+		}
+	}
+
+	string GetClickableCss(NavigationTreeNodeViewModel node)
+	{
+		return node.IsClickable ? string.Empty : "pe-none";
+	}
+
+	bool GetRelatedContentStructure(IEnumerable<NavigationTreeNodeViewModel> relatedContentNodes)
+	{
+		bool relatedContentIsNested = false;
+
+		foreach (var relatedContentNode in relatedContentNodes.Where(node => node.ShowInMenu))
+		{
+			if (relatedContentNode.Nodes.Any())
+			{
+				return relatedContentIsNested = true;
+			}
+		}
+
+		return relatedContentIsNested;
+	}
+
+}
+
+@{
+	// Page settings
+	int navigationRootPageId = !string.IsNullOrEmpty(Model.Item.GetString("NavigationRoot")) ? Model.Item.GetLink("NavigationRoot").PageId : 0;
+	var rootNavigation = GetNavigationTreeFromPageId(navigationRootPageId);
+	int maxEndNodes = Model.Item.GetInt32("MaxEndNodes");
+	string maxEndNodesText = Model.Item.GetString("ShowAllLinkLabel");
+
+	//CSS Settings
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? "theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	string spacing = Model.Item.GetRawValueString("Spacing", "compact");
+	spacing = spacing == "compact" ? "p-0" : spacing;
+	spacing = spacing == "normal" ? "p-2" : spacing;
+	spacing = spacing == "wide" ? "p-3" : spacing;
+
+	string headerAlignment = Model.Item.GetRawValueString("HeaderAlignment", "start");
+	headerAlignment = $"justify-content-{headerAlignment} text-{headerAlignment}";
+
+	string textAlignment = Model.Item.GetRawValueString("TextAlignment", "start");
+	textAlignment = $"text-{textAlignment}";
+
+	string headerLinkAnimation = Model.Item.GetRawValueString("HeaderLinkAnimation", "left");
+	headerLinkAnimation = headerLinkAnimation == "none" ? "text-decoration-underline-hover" : $"hover-underline-animation-{headerLinkAnimation}";
+
+	string menuAlignment = Model.Item.GetRawValueString("MenuAlignment", "start");
+	menuAlignment = $"justify-content-{menuAlignment}";
+
+	string itemCss = $"nav-link text-decoration-underline-hover text-decoration-accent-hover {spacing}";
+
+}
+
+<div class="nav-wrapper megamenu-wrapper">
+	<div class="@theme">
+		<nav class="d-flex gap-2 @headerAlignment">
+			@foreach (var rootNode in rootNavigation.Nodes.Where(node => node.ShowInMenu))
+			{
+				string submenuType = GetSubmenuType(rootNode);
+				bool isMegaMenu = IsMegaMenu(rootNode, submenuType);
+				string submenuTypeCss = isMegaMenu ? "position-static" : string.Empty;
+
+				string relatedContentNavigationRoot = GetGroupFieldValue("ProductGroupRelatedContent", rootNode);
+				int relatedContentPageId = !string.IsNullOrEmpty(relatedContentNavigationRoot) ? GetPageIdFromLink(relatedContentNavigationRoot) : 0;
+				var relatedContentNodes = GetNavigationTreeFromPageId(relatedContentPageId, true).Nodes;
+				bool hasRelatedContent = relatedContentNodes.Any() && relatedContentPageId != 0;
+				bool nodesExist = rootNode.Nodes.Any() || hasRelatedContent;
+				bool relatedContentIsNested = hasRelatedContent ? GetRelatedContentStructure(relatedContentNodes) : false;
+
+				<div class="nav-item dropdown @submenuTypeCss">
+					<a class="nav-link p-2 @headerLinkAnimation fw-bold text-uppercase" role="button" data-bs-toggle="dropdown" data-bs-offset="0,0" aria-expanded="false">
+						@rootNode.Name
+					</a>
+
+					@if (nodesExist)
+					{
+						if (isMegaMenu)
+						{
+							<div class="dropdown-menu border-0 megamenu-content-wrapper">
+								<div class="container-xl">
+									<div class="d-flex py-2 gap-3">
+
+										@if (hasRelatedContent)
+										{
+											<div class="col-auto megamenu-col flex-column gap-3 @textAlignment @menuAlignment">
+												@foreach (var relatedContentNode in relatedContentNodes.Where(node => node.ShowInMenu))
+												{
+													<div class="col-auto @(relatedContentIsNested ? "pb-3" : "pb-1")">
+
+														<a class="@itemCss @(GetClickableCss(relatedContentNode)) pb-1" href="@relatedContentNode.Link">
+															<strong>@relatedContentNode.Name</strong>
+														</a>
+
+														@foreach (var relatedContentSubNode in relatedContentNode.Nodes.Where(node => node.ShowInMenu))
+														{
+															<a class="@itemCss @(GetClickableCss(relatedContentSubNode))" href="@relatedContentSubNode.Link">
+																<span>@relatedContentSubNode.Name</span>
+															</a>
+														}
+													</div>
+												}
+											</div>
+
+											<div class="megamenu-divider"></div>
+										}
+
+										<div class="col d-flex flex-wrap gap-3 @menuAlignment @textAlignment @(hasRelatedContent ? "ps-4" : string.Empty)">
+
+											@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
+											{
+												<div class="col-auto megamenu-col @textAlignment">
+													<a class="pb-1 @itemCss @(GetClickableCss(subNode))" href="@subNode.Link">
+														<strong>@subNode.Name</strong>
+													</a>
+													@foreach (var (endNode, index) in subNode.Nodes.Select((node, i) => (node, i)))
+													{
+														if (index < maxEndNodes && endNode.ShowInMenu)
+														{
+															<a class="@itemCss @(GetClickableCss(endNode))" href="@endNode.Link">
+																@endNode.Name
+															</a>
+
+															continue;
+														}
+
+														if (!string.IsNullOrWhiteSpace(maxEndNodesText))
+														{
+															<a class="text-decoration-underline pt-1 @itemCss" href="@subNode.Link">
+																@Translate(maxEndNodesText)
+															</a>
+														}
+
+														break;
+													}
+												</div>
+
+											}
+										</div>
+									</div>
+								</div>
+							</div>
+						}
+						else
+						{
+							<ul class="dropdown-menu dropdown-menu-shadow rounded-0 @textAlignment">
+
+								@if (hasRelatedContent)
+								{
+									foreach (var relatedContentNode in relatedContentNodes)
+									{
+										<li class="dropdown-item">
+											<a class="pb-1 @itemCss @(GetClickableCss(relatedContentNode))" href="@relatedContentNode.Link">
+												<strong>@relatedContentNode.Name</strong>
+											</a>
+										</li>
+
+										foreach (var relatedContentSubNode in relatedContentNode.Nodes.Where(node => node.ShowInMenu))
+										{
+											<li class="dropdown-item">
+												<a class="pb-1 @itemCss @(GetClickableCss(relatedContentSubNode))" href="@relatedContentSubNode.Link">
+													<strong>@relatedContentSubNode.Name</strong>
+												</a>
+											</li>
+										}
+									}
+
+									<li class="dropdown-divider"></li>
+								}
+
+								@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
+								{
+									<li class="dropdown-item">
+										<a class="pb-1 @itemCss @(GetClickableCss(subNode))" href="@subNode.Link">
+											<strong>@subNode.Name</strong>
+										</a>
+									</li>
+								}
+							</ul>
+						}
+					}
+				</div>
+			}
+		</nav>
+	</div>
+</div>
