@@ -9,8 +9,11 @@
 	bool hideProductInformationForm = Pageview.CurrentParagraph.Item["HideProductInformationForm"] != null ? Convert.ToBoolean(Pageview.CurrentParagraph.Item["HideProductInformationForm"].ToString()) : false;
 
 	string shopPageId = Pageview.CurrentParagraph.Item["ShopPageLink"] != null ? Pageview.CurrentParagraph.Item["ShopPageLink"].ToString() : "";
+	string uniqueId = $"{Pageview.CurrentParagraph.ID}";
 
 	var ecomLanguages = Dynamicweb.Ecommerce.Services.Languages.GetLanguages();
+	var currencies = Dynamicweb.Ecommerce.Services.Currencies.GetAllCurrencies();
+	var languageId = Dynamicweb.Ecommerce.Common.Context.LanguageID;
 	var assetGroups = Dynamicweb.Ecommerce.Services.DetailsGroups.GetGroups();
 
 	List<string> productIds = new List<string>();
@@ -111,7 +114,7 @@
 			@if (selectedCatalogsCount > 0 && !hidePublicationForm)
 			{
 				<div class="p-3 p-lg-5 pb-lg-4 mb-4@(theme)">
-					<form target="_blank" action="/Default.aspx" method="post" class="sticky-receipt">
+					<form target="_blank" action="/Default.aspx?ID=@selectedCatalogs.FirstOrDefault()" method="post" class="sticky-receipt" id="DownloadPublicationModalForm@(uniqueId)">
 						<input type="hidden" name="ShopId" value="@Pageview.Area.EcomShopId">
 						<input type="hidden" name="mainproductid" value="@string.Join(",", productIds.ToArray())">
 						<input type="hidden" name="print" value="true">
@@ -120,6 +123,33 @@
 							<h3 class="h5">@Translate("Publication")</h3>
 							<div>@Translate("Configure your publication setup")</div>
 						</div>
+
+						@if (Convert.ToBoolean(Pageview.CurrentParagraph.Item["ShowLanguageSelector"]) && ecomLanguages.Count() > 1) 
+						{ 
+							<div class="mb-4">
+								<label class="form-label">@Translate("Language")</label>
+								<select name="RequestLanguageID" class="form-select" aria-label="@Translate("Language")">
+									@foreach (var language in ecomLanguages)
+									{
+										<option value="@language.LanguageId">@language.GetDisplayName()</option>
+									}
+								</select>
+							</div>
+						}
+
+
+						@if (Convert.ToBoolean(Pageview.CurrentParagraph.Item["ShowCurrencySelector"]))
+						{
+							<div class="mb-4" id="CurrencySelector@(uniqueId)">
+								<label class="form-label">@Translate("Currency")</label>
+								<select name="RequestCurrencyCode" class="form-select" aria-label="@Translate("Currency")">
+									@foreach (var currency in currencies)
+									{
+										<option value="@currency.Code">@currency.GetName(languageId)</option>
+									}
+								</select>
+							</div>
+						}
 
 						@if (Convert.ToBoolean(Pageview.CurrentParagraph.Item["ShowPriceSelector"]))
 						{
@@ -149,7 +179,7 @@
 							string imagePath = page.Item["Thumbnail"] != null ? $"/Admin/Public/GetImage.ashx?image={page.Item["Thumbnail"].ToString()}&width=200&format=webp" : $"https://placehold.co/235x300?text={@Translate(page.GetDisplayName())}";
 
 							<div class="form-thumb">
-								<input class="form-thumb-input visually-hidden" type="radio" name="ID" value="@catalog" id="@radioId" @selected>
+								<input class="form-thumb-input visually-hidden" type="radio" name="ID" value="@catalog" id="@radioId" onclick="document.querySelector('#DownloadPublicationModalForm@(uniqueId)').action='/Default.aspx?ID=@(catalog)'" @selected>
 								<label class="form-thumb-label d-flex flex-column" for="@radioId" role="button">
 									<span class="d-block p-1">
 										<img class="rounded-2 w-100" style="object-fit:cover" src="@imagePath" />
