@@ -1,7 +1,43 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
 
+@functions
+{
+	private string RenderCustomCSS(IEnumerable<string> decorations)
+	{
+		var cssClasses = new List<string>();
+
+		foreach (var itemId in decorations)
+		{
+			var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
+			item.TryGetValue("Class", out object classes);
+
+			if (classes is null)
+			{
+				continue;
+			}
+
+			var cssString = (string)classes;
+
+			if (cssString.StartsWith("["))
+			{
+				var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+				cssClasses.AddRange(cssArray);
+			}
+			else
+			{
+				cssClasses.Add(cssString.Replace(",", " "));
+			}
+		}
+
+		return string.Join(" ", cssClasses).Trim();
+	}
+}
+
 @{
+	var decorations = Model.Item?.GetList("CssDecorations")?.SelectedValues ?? Enumerable.Empty<string>();
+	string css = RenderCustomCSS(decorations);
+	
 	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", string.Empty);
 	string ratioCssClass = ratio != "0" && ratio != "fill" ? " ratio" : string.Empty;
 	string ratioVariable = ratio != "0" && ratio != "fill" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : string.Empty;
@@ -75,7 +111,7 @@
 
 @if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))
 {
-	<div id="@Model.ID" class="user-select-none" style="scroll-margin-top:var(--header-height,150px)"></div>
+	<div id="@Model.ID" class="user-select-none @(css)" style="scroll-margin-top:var(--header-height,150px)"></div>
 	if (link != null && !string.IsNullOrEmpty(link.Url))
 	{
 		string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : "";

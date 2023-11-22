@@ -1,10 +1,47 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+
+@functions
+{
+	private string RenderCustomCSS(IEnumerable<string> decorations)
+	{
+		var cssClasses = new List<string>();
+
+		foreach (var itemId in decorations)
+		{
+			var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
+			item.TryGetValue("Class", out object classes);
+
+			if (classes is null)
+			{
+				continue;
+			}
+
+			var cssString = (string)classes;
+
+			if (cssString.StartsWith("["))
+			{
+				var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+				cssClasses.AddRange(cssArray);
+			}
+			else
+			{
+				cssClasses.Add(cssString.Replace(",", " "));
+			}
+		}
+
+		return string.Join(" ", cssClasses).Trim();
+	}
+}
+
 @{
 	string shopPage = $"/Default.aspx?ID={GetPageIdByNavigationTag("Shop")}";
 
 	string layout = Model.Item.GetRawValueString("Layout", "field");
 	string horizontalAlign = !string.IsNullOrEmpty(Model.Item.GetRawValueString("HorizontalAlignment")) ? " justify-content-" + Model.Item.GetRawValueString("HorizontalAlignment") : "";
 	string paragraphId = Model.ID.ToString();
+
+	var decorations = Model.Item?.GetList("CssDecorations")?.SelectedValues ?? Enumerable.Empty<string>();
+	string css = RenderCustomCSS(decorations);
 
 	string searchLayout = Model.Item.GetRawValueString("Layout", "");
 	searchLayout = searchLayout == "icon" ? "nav-wrapper" : searchLayout;
@@ -28,7 +65,7 @@
 
 }
 
-<div class="d-flex align-items-center h-100 my-auto search-modal @searchLayout@(horizontalAlign) item_@Model.Item.SystemName.ToLower()">
+<div class="d-flex align-items-center h-100 my-auto search-modal @searchLayout@(horizontalAlign) @(css) item_@Model.Item.SystemName.ToLower()">
 	@if (layout != "icon")
 	{
 		<div class="js-async-fetch-placeholder" @width>

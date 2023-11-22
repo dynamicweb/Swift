@@ -1,5 +1,38 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 
+@functions
+{
+	private string RenderCustomCSS(IEnumerable<string> decorations)
+	{
+		var cssClasses = new List<string>();
+
+		foreach (var itemId in decorations)
+		{
+			var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
+			item.TryGetValue("Class", out object classes);
+
+			if (classes is null)
+			{
+				continue;
+			}
+
+			var cssString = (string)classes;
+
+			if (cssString.StartsWith("["))
+			{
+				var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+				cssClasses.AddRange(cssArray);
+			}
+			else
+			{
+				cssClasses.Add(cssString.Replace(",", " "));
+			}
+		}
+
+		return string.Join(" ", cssClasses).Trim();
+	}
+}
+
 @{
 	string name = Model.Item.GetRawValueString("Name", string.Empty);
 	string jobTitle = Model.Item.GetRawValueString("Title", string.Empty);
@@ -19,6 +52,8 @@
 	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
 	string contentPaddingClass = string.Empty;
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : string.Empty;
+	var decorations = Model.Item?.GetList("CssDecorations")?.SelectedValues ?? Enumerable.Empty<string>();
+	string css = RenderCustomCSS(decorations);
 	var informationItems = Model.Item?.GetItems("InformationItems") ?? Enumerable.Empty<Dynamicweb.Frontend.ItemViewModel>().ToList();
 	Dynamicweb.Frontend.FileViewModel image = Model.Item.GetFile("Image");
 	string imagePath = image?.PathUrlEncoded ?? string.Empty;
@@ -106,7 +141,7 @@
 }
 
 <div class="h-100 position-relative@(layoutClass)@(contentPaddingClass)@(theme)" itemscope itemtype="https://schema.org/Person">
-	<div id="@Model.ID" class="user-select-none position-absolute" style="scroll-margin-top:var(--header-height,150px)"></div>
+	<div id="@Model.ID" class="user-select-none position-absolute @(css)" style="scroll-margin-top:var(--header-height,150px)"></div>
 
 	@if (!string.IsNullOrEmpty(imagePath))
 	{
@@ -128,7 +163,7 @@
 			}
 
 			@if (!string.IsNullOrEmpty(description))
-			{ 
+			{
 				<div class="fs-6 mt-2">@description</div>
 			}
 
