@@ -14,7 +14,7 @@
 
 	@* Supported formats *@
 	supportedImageFormats = new string[] { ".jpg", ".jpeg", ".webp", ".png", ".gif", ".bmp", ".tiff", ".pdf" };
-	supportedDocumentFormats = new string[] { ".docx", ".xlsx", ".ppt", "pptx" };
+	supportedDocumentFormats = new string[] { ".docx", ".xlsx", ".ppt", ".pptx" };
 	allSupportedFormats = supportedImageFormats.Concat(supportedDocumentFormats).ToArray();
 
 	string url = Dynamicweb.Context.Current.Request.RawUrl;
@@ -26,10 +26,14 @@
 	int totalFacetGroups = facetGroups.Count();
 
 	int facetOptionsCount = 0;
+
+	int defaultPageSize = 12;
+	int pageSizeSetting = Convert.ToInt32(Pageview.CurrentParagraph.ModuleProperties["PageSize"]) > 0 ? Convert.ToInt32(Pageview.CurrentParagraph.ModuleProperties["PageSize"]) : defaultPageSize;
+	int pageSize = GetInteger("DwPaging.PageSize");
 }
 
 <form method="post" action="@url" data-response-target-element="content" class="w-100 mb-3">
-	<input type="hidden" name="PageSize" value="12">
+	<input type="hidden" name="PageSize" value="@defaultPageSize">
 	<input type="hidden" name="RequestType" value="UpdateList">
 	<input type="hidden" name="Search" value="@searchQuery">
 
@@ -128,9 +132,6 @@
 		<div class="g-col-12 g-col-lg-9">
 			@if (assetsList.Count > 0)
 			{
-				int pageSizeSetting = 12;
-				int pageSize = GetInteger("DwPaging.PageSize");
-
 				int totalAssets = GetInteger("DwPaging.TotalItems");
 				int loadedAssets = pageSize > totalAssets ? totalAssets : pageSize;
 
@@ -142,7 +143,7 @@
 							string fileName = asset.GetString("FileName");
 							bool imageFound = false;
 
-							if (fileName.Contains(format))
+							if (fileName.EndsWith(format, StringComparison.OrdinalIgnoreCase))
 							{
 								int servicePageId = GetPageIdByNavigationTag("AssetInfoService");
 
@@ -150,7 +151,7 @@
 									<div class="d-flex justify-content-center align-items-center position-relative w-100 p-2 mb-3" style="background-color: hsl(0, 0%, 93%); aspect-ratio:1/1;">
 										@foreach (string imageFormat in supportedImageFormats)
 										{
-											if (fileName.Contains(imageFormat))
+											if (fileName.EndsWith(imageFormat, StringComparison.OrdinalIgnoreCase))
 											{
 												string imagePath = !string.IsNullOrEmpty(asset.GetString("DirectoryRelativePath")) ? "/Admin/Public/GetImage.ashx?image=/Files" + asset.GetString("DirectoryRelativePath") + "/" + fileName + "&width=640&format=webp" : "";
 												<img class="mw-100 mh-100 align-self-center" src="@imagePath" loading="lazy">
@@ -206,12 +207,14 @@
 </form>
 
 
-<script type="text/javascript">
-	if (document.querySelector("#AssetsSearchField")) {
-		const input = document.querySelector("#AssetsSearchField");
-		const end = input.value.length;
+@if (pageSize == pageSizeSetting) {
+	<script type="text/javascript">
+		if (document.querySelector("#AssetsSearchField")) {
+			const input = document.querySelector("#AssetsSearchField");
+			const end = input.value.length;
 
-		input.setSelectionRange(end, end);
-		input.focus();
-	}
-</script>
+			input.setSelectionRange(end, end);
+			input.focus();
+		}
+	</script>
+}

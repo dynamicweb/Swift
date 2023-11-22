@@ -80,15 +80,31 @@
 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 
-	var decorations = Model.Item?.GetRawValueString("CssDecorations")?.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+	var decorations = Model.Item?.GetList("CssDecorations")?.SelectedValues ?? Enumerable.Empty<string>();
 	var css = string.Empty;
+	var cssClasses = new List<string> { };
 
 	foreach (var itemId in decorations)
 	{
 		var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
-		item.TryGetValue("Class", out object cssString);
-		css += $"{cssString.ToString().Replace(",", " ")} ";
+		item.TryGetValue("Class", out object classes);
+		if (classes is null)
+		{
+			continue;
+		}
+
+		var cssString = (string)classes;
+		if (cssString.StartsWith("["))
+		{
+			var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+			cssClasses.AddRange(cssArray);
+		}
+		else
+		{
+			cssClasses.Add(cssString.Replace(",", " "));
+		}
 	}
+	css = string.Join(" ", cssClasses).Trim();
 
 	string columnOne = Model.Column(1).Output().Trim();
 	string columnTwo = Model.Column(2).Output().Trim();
@@ -97,7 +113,7 @@
 
 	if (Pageview.IsVisualEditorMode || !string.IsNullOrWhiteSpace(columnOne) || !string.IsNullOrWhiteSpace(columnTwo) || !string.IsNullOrWhiteSpace(columnThree) || !string.IsNullOrWhiteSpace(columnFour))
 	{
-		<div class="@(theme)@(pushDown) @(css)item_@Model.Item.SystemName.ToLower()">
+		<div class="@(theme)@(pushDown) @(css) item_@Model.Item.SystemName.ToLower()">
 			<div class="d-flex flex-row @rowClass @columnPosition @sectionClass">
 				@if (!string.IsNullOrEmpty(columnOne))
 				{

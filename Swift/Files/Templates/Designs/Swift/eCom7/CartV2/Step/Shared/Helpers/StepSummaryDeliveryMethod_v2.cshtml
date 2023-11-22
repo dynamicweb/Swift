@@ -1,50 +1,151 @@
-@helper RenderStepSummaryDeliveryMethod() {
-	string shippingMethod = GetString("Ecom:Order.ShippingMethod"),
-	editStep = "CartV2.GotoStep1";
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@{
+	string shippingMethod = GetString("Ecom:Order.ShippingMethod");
 
-	if (!string.IsNullOrEmpty(shippingMethod)) {
-		
+	if (!string.IsNullOrEmpty(shippingMethod))
+	{
+
 		List<string> shippingDetails = new List<string>();
-		
-		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Company"))) {
-			shippingDetails.Add(@GetString("Ecom:Order.Delivery.Company"));
+
+		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Company")))
+		{
+			shippingDetails.Add(GetString("Ecom:Order.Delivery.Company"));
 		}
-		
-		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Name"))) {
-			shippingDetails.Add(@GetString("Ecom:Order.Delivery.Name"));
+
+		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Name")))
+		{
+			if (GetString("Ecom:Order.Delivery.Company") != GetString("Ecom:Order.Delivery.Name"))
+			{
+				shippingDetails.Add(GetString("Ecom:Order.Delivery.Name"));
+			}
 		}
-		
-		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Address"))) {
-			shippingDetails.Add(@GetString("Ecom:Order.Delivery.Address"));
+
+		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Address")))
+		{
+			shippingDetails.Add(GetString("Ecom:Order.Delivery.Address"));
 		}
-		
-		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Address2"))) {
-			shippingDetails.Add(@GetString("Ecom:Order.Delivery.Address2"));
+
+		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Address2")))
+		{
+			shippingDetails.Add(GetString("Ecom:Order.Delivery.Address2"));
 		}
-		
-		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Zip"))) {
-			shippingDetails.Add(@GetString("Ecom:Order.Delivery.Zip"));
+
+		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Zip")))
+		{
+			shippingDetails.Add(GetString("Ecom:Order.Delivery.Zip"));
 		}
-		
-		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.City"))) {
-			shippingDetails.Add(@GetString("Ecom:Order.Delivery.City"));
+
+		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.City")))
+		{
+			shippingDetails.Add(GetString("Ecom:Order.Delivery.City"));
 		}
-		
-		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Region"))) {
+
+		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Region")))
+		{
 			string regionName = GetString("Ecom:Order.Delivery.Region");
-			foreach (LoopItem region in GetLoop("DeliveryRegions")) {
-				if (region.GetString("Ecom:DeliveryRegion.IsDeliveryRegion") == "true") {
+			foreach (LoopItem region in GetLoop("DeliveryRegions"))
+			{
+				if (region.GetString("Ecom:DeliveryRegion.IsDeliveryRegion") == "true")
+				{
 					regionName = region.GetString("Ecom:DeliveryRegion.Name");
 				}
 			}
-			shippingDetails.Add(@regionName);
-		}
-		
-		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Country"))) {
-			shippingDetails.Add(@GetString("Ecom:Order.Delivery.Country"));
+			shippingDetails.Add(regionName);
 		}
 
-		string shippingDetailsString = (string.Join(",", shippingDetails.Select(x => x).ToArray())).Replace(",", ", ");
+		if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Country")))
+		{
+			shippingDetails.Add(GetString("Ecom:Order.Delivery.Country"));
+		}
+
+		if (GetBoolean("Ecom:Order.Delivery.isPickupPoint"))
+		{
+			shippingDetails.Clear();
+			var order = Dynamicweb.Ecommerce.Services.Orders.GetById(GetString("Ecom:Order.ID"));
+			if (order.ShippingProviderValues.ContainsKey("ShipmondoServicePointId"))
+			{
+				//Shipmondo provider
+				if (order.ShippingProviderValues.TryGetValue("ServiceSelectedDataCarrierName", out object CarrierName))
+				{
+					shippingDetails.Add((string)CarrierName);
+				}
+				if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCompanyName", out object CompanyName))
+				{
+					shippingDetails.Add((string)CompanyName);
+				}
+				if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataAddress", out object Address))
+				{
+					shippingDetails.Add((string)Address);
+				}
+				if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataZipcode", out object Zipcode))
+				{
+					shippingDetails.Add((string)Zipcode);
+				}
+				if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCity", out object City))
+				{
+					shippingDetails.Add((string)City);
+				}
+				if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataCountry", out object Country))
+				{
+					shippingDetails.Add((string)Country);
+				}
+				if (order.ShippingProviderValues.TryGetValue("ServicePointSelectedDataAddress2", out object Address2) && !string.IsNullOrEmpty((string)Address2))
+				{
+					shippingDetails.Add((string)Address2);
+				}
+
+			}
+
+			if (order.ShippingProviderValues.ContainsKey("ParcelShopNumber"))
+			{
+				//GLS Provider
+				if (order.ShippingProviderValues.TryGetValue("parcelShop", out object parcelShop))
+				{
+					if (parcelShop is System.Collections.Generic.Dictionary<System.String, System.Object>)
+					{
+						var selectedShop = (System.Collections.Generic.Dictionary<System.String, System.Object>)parcelShop;
+						@*foreach (var info in selectedShop)
+							{
+								<div>@info.Key - @info.Value</div>
+							}*@
+
+						if (selectedShop.TryGetValue("CompanyName", out object CompanyName))
+						{
+							shippingDetails.Add((string)CompanyName);
+						}
+						if (selectedShop.TryGetValue("Streetname", out object Streetname))
+						{
+							shippingDetails.Add((string)Streetname);
+						}
+						if (selectedShop.TryGetValue("ZipCode", out object ZipCode))
+						{
+							shippingDetails.Add((string)ZipCode);
+						}
+						if (selectedShop.TryGetValue("CityName", out object CityName))
+						{
+							shippingDetails.Add((string)CityName);
+						}
+						if (selectedShop.TryGetValue("CountryCodeISO3166A2", out object Country))
+						{
+							shippingDetails.Add((string)Country);
+						}
+						if (selectedShop.TryGetValue("Streetname2", out object Streetname2) && !string.IsNullOrEmpty((string)Streetname2))
+						{
+							shippingDetails.Add((string)Streetname2);
+						}
+					}
+				}
+
+
+
+			}
+			@*foreach (var info in order.ShippingProviderValues)
+				{
+					<div>@info.Key - @info.Value</div>
+				}*@
+		}
+
+		string shippingDetailsString = (string.Join(", ", shippingDetails.Select(x => x).ToArray()));
 
 		<div class="list-group-item py-2 fs-7" style="background-color: rgba(var(--swift-foreground-color-rgb), 0.05)" id="DeliveryGroup">
 			<dl class="grid gap-1 gap-sm-3 mb-0">
@@ -59,7 +160,7 @@
 					}
 				</dd>
 				<dd class="g-col-4 g-col-sm-1 order-1 order-sm-2 mb-0 text-end">
-					<button class="btn btn-small btn-link fs-8 p-0" type="submit" name="@editStep" id="EditDeliveryButton">
+					<button class="btn btn-small btn-link fs-8 p-0" type="submit" name="CartV2.GotoStep1" id="EditDeliveryButton">
 						<span class="text-uppercase">@Translate("Edit")</span>
 					</button>
 				</dd>

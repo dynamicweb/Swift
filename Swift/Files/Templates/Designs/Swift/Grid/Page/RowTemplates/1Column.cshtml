@@ -119,22 +119,38 @@
 	string backgroundImageSizeString = "background-size:" + backgroundImageSize + ";";
 	string styleString = string.Empty;
 
-	var decorations = Model.Item?.GetRawValueString("CssDecorations")?.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+	var decorations = Model.Item?.GetList("CssDecorations")?.SelectedValues ?? Enumerable.Empty<string>();
 	var css = string.Empty;
+	var cssClasses = new List<string> { };
 
 	foreach (var itemId in decorations)
 	{
 		var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
-		item.TryGetValue("Class", out object cssString);
-		css += $"{cssString.ToString().Replace(",", " ")} ";
+		item.TryGetValue("Class", out object classes);
+		if (classes is null)
+		{
+			continue;
+		}
+
+		var cssString = (string)classes;
+		if (cssString.StartsWith("["))
+		{
+			var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+			cssClasses.AddRange(cssArray);
+		}
+		else
+		{
+			cssClasses.Add(cssString.Replace(",", " "));
+		}
 	}
+	css = string.Join(" ", cssClasses).Trim();
 
 	@* Only gradient *@
 
-	if (!string.IsNullOrEmpty(gradient) && string.IsNullOrEmpty(backgroundImagePath) && gradientOpacity != ("0.00"))
-	{
-		styleString += "style=\"background-image:" + gradientString + ";\"";
-	}
+if (!string.IsNullOrEmpty(gradient) && string.IsNullOrEmpty(backgroundImagePath) && gradientOpacity != ("0.00"))
+{
+	styleString += "style=\"background-image:" + gradientString + ";\"";
+}
 
 	@* Only background image *@
 	
@@ -152,7 +168,7 @@
 	
 	if (Pageview.IsVisualEditorMode || !string.IsNullOrWhiteSpace(Model.Column(1).Output()))
 	{
-		<div class="@(sectionClass)@(theme) @(css)item_@Model.Item.SystemName.ToLower()" @styleString>
+		<div class="@(sectionClass)@(theme) @(css) item_@Model.Item.SystemName.ToLower()" @styleString>
 			<div class="@containerClass@(hideOverflow)">
 				<div class="grid grid-1">
 					<div class="g-col" data-col-size="12" @animationOnScrollCol1 style="--bs-columns:12">

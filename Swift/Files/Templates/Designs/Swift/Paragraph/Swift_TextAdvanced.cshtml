@@ -20,15 +20,31 @@
 }
 
 @{
-	var decorations = Model.Item?.GetRawValueString("CssDecorations")?.Split(new[]{','}, StringSplitOptions.RemoveEmptyEntries);
+	var decorations = Model.Item?.GetList("CssDecorations")?.SelectedValues ?? Enumerable.Empty<string>();
 	var css = string.Empty;
+	var cssClasses = new List<string> { };
 
 	foreach (var itemId in decorations)
 	{
 		var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
-		item.TryGetValue("Class", out object cssString);
-		css += $"{cssString.ToString().Replace(",", " ")} ";
+		item.TryGetValue("Class", out object classes);
+		if (classes is null)
+		{
+			continue;
+		}
+
+		var cssString = (string)classes;
+		if (cssString.StartsWith("["))
+		{
+			var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+			cssClasses.AddRange(cssArray);
+		}
+		else
+		{
+			cssClasses.Add(cssString.Replace(",", " "));
+		}
 	}
+	css = string.Join(" ", cssClasses).Trim();
 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? $" theme {Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower()}" : "";
 
@@ -123,7 +139,7 @@
 
 <div class="h-100 d-flex position-relative @(contentAlignment)@(theme) item_@Model.Item.SystemName.ToLower()">
 	<div id="@Model.ID" class="user-select-none position-absolute top-0"  style="scroll-margin-top: var(--header-height, 150px)"></div>
-	<div class="d-inline-flex flex-column @(contentTextAlignment) @(string.Join(" ",contentClasses))@(css)">
+	<div class="d-inline-flex flex-column @(contentTextAlignment)@(string.Join(" ",contentClasses).Trim()) @(css)">
 
 		@if (!string.IsNullOrEmpty(eyebrow))
 		{
