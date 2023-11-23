@@ -28,7 +28,8 @@ DynamicWeb proudly presents the release of **Swift v1.24.0**. This release has f
 * Publications was released end August 2023 - [Read more here](https://doc.dynamicweb.com/downloads/swift#sideNavTitle2)
 * DynamicWeb Publications is a tool which allows you to create catalog, data sheets, price list through Visual Editor, based on product information from PIM. Publications can be used with own frontend implementation or with a Swift frontend.
 * If you are using the Publications concept, Swift has now made support for using it in e.g. Your commerce site or Digital Asset Portal by using  **ProductDownloadPublication** button component on the Product Detail page, so it is possible to use the Publication design, selecting language and currency and get data sheet.
-* To use Publication it requires a set up & license
+> [!NOTE]
+> To use the Publication concept on Swoft it requires a set up & a Publications License
 
 ![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Publications-Download.gif)
 
@@ -83,6 +84,7 @@ Get an overview over where the specific themes are used on your website e.g. on 
 * Digital Assets Portal - improve download section - None in format and language is not respected - Do not send export data parameter, if none
 * Digital Asset Portal: Digital assets, PPTX files are rendered twice. Use EndWith to check file formats
 * Digital Assets: PPTX files are rendered twice in the sidebar
+* Express buy: Summary fails with error, fix duplicated iconPath error after helper removal
 * General: Make Custom CSS Decorations compatible on DW10
 * General: Order midnight date and time validation on IntegrationCustomerCenter, Orders, Quotes
 * General: Head clean up scrips + AOS timing on Swift_Master & Swift_MasterNoLayout
