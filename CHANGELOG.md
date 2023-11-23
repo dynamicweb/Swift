@@ -18,7 +18,7 @@ DynamicWeb proudly presents the release of **Swift v1.24.0**. This release has f
 > * Swift can now run on a DW10 without the _'template compatibility mode'_  on a DW10 solution
 > * No duplicate templates on DW10
 >
->If you have an existing Swift project v1.23.0 or less you will meet more merge conflicts than usual when upgrading, which is expected for this Swift version. You should spend special attention to all your custom implementations as usual that are depended on our templates
+>If you have an existing Swift project v1.23.0 or on any previous versions you will meet more merge conflicts than usual when upgrading, which is expected for this Swift version. You should spend special attention to all your custom implementations as usual that are depended on our templates
 >Get started with Swift on DW10 - [Read the guide here](https://doc.dynamicweb.dev/documentation/fundamentals/setup/installation/install-using-swift.html)
 
 ![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Swift-dw10.png)
@@ -28,7 +28,9 @@ DynamicWeb proudly presents the release of **Swift v1.24.0**. This release has f
 * Publications was released end August 2023 - [Read more here](https://doc.dynamicweb.com/downloads/swift#sideNavTitle2)
 * DynamicWeb Publications is a tool which allows you to create catalog, data sheets, price list through Visual Editor, based on product information from PIM. Publications can be used with own frontend implementation or with a Swift frontend.
 * If you are using the Publications concept, Swift has now made support for using it in e.g. Your commerce site or Digital Asset Portal by using  **ProductDownloadPublication** button component on the Product Detail page, so it is possible to use the Publication design, selecting language and currency and get data sheet.
-> [!NOTE] To use the Publication concept on Swoft it requires a set up & a Publications License
+> [!NOTE]
+> To use the Publication concept on Swift it requires a set up & a Publications License
+> [Read the guide here](https://doc.dynamicweb.com/swift/setup-project/guides/publications#sideNavTitle1-1)
 
 ![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Publications-Download.gif)
 
