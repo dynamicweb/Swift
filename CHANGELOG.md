@@ -28,8 +28,7 @@ DynamicWeb proudly presents the release of **Swift v1.24.0**. This release has f
 * Publications was released end August 2023 - [Read more here](https://doc.dynamicweb.com/downloads/swift#sideNavTitle2)
 * DynamicWeb Publications is a tool which allows you to create catalog, data sheets, price list through Visual Editor, based on product information from PIM. Publications can be used with own frontend implementation or with a Swift frontend.
 * If you are using the Publications concept, Swift has now made support for using it in e.g. Your commerce site or Digital Asset Portal by using  **ProductDownloadPublication** button component on the Product Detail page, so it is possible to use the Publication design, selecting language and currency and get data sheet.
-> [!NOTE]
-> To use the Publication concept on Swoft it requires a set up & a Publications License
+> [!NOTE] To use the Publication concept on Swoft it requires a set up & a Publications License
 
 ![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Publications-Download.gif)
 
@@ -113,6 +112,8 @@ Get an overview over where the specific themes are used on your website e.g. on 
 * Itemtypes: ProductMediaGallery & ProductDetailsMediaTable support on ProductComponent edit
 * Itemtypes: ProductlistGridView, hex colors are missing
 * Itemtypes: ProductDetailsGallery, ProductDetailsImage improve Lazy + GetImage label and descriptions
+* Itemtypes: EmailMenu, EmailViewInBrowser fix email links issues
+* Itemtypes: Email Menu, use margin for spacing
 
 ## Changed
 * **Several Swift templates has been reimplemented by removing @helper, to be compatible with the DynamicWeb10 platform**
