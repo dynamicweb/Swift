@@ -58,6 +58,8 @@
 	{
 		if (!string.IsNullOrEmpty(variantGroupId)) {
 			string itemFieldValue = Model?.Item?.GetRawValueString(itemField, itemFieldDefaultValue) != null ? Model.Item.GetRawValueString(itemField, itemFieldDefaultValue) : string.Empty;
+			itemFieldValue = itemFieldValue == string.Empty && GetViewParameterString(itemField) != null ? GetViewParameterString(itemField) : itemFieldValue;
+			
 			itemFieldValue = fieldValueMapping.ContainsKey(itemFieldValue) ? fieldValueMapping[itemFieldValue] : itemFieldValue;
 
 			// If no variantGroup (i.e. Visual Editor), return default value
@@ -140,9 +142,9 @@
 	bool hideGroupHeaders = !string.IsNullOrEmpty(Model?.Item?.GetString("HideGroupHeaders")) ? Model.Item.GetBoolean("HideGroupHeaders") : false;
 	var productVariantGroups = product.VariantGroups();
 
-	string itemId = Model.Item != null ? $"item_{Model.Item.SystemName.ToLower()}" : string.Empty;
+	string itemId = Model?.Item?.SystemName != null ? $"item_{Model.Item.SystemName.ToLower()}" : string.Empty;
 
-	bool isModalSelector = Model.Item == null;
+	bool isModalSelector = Model?.Item == null;
 	string target = isModalSelector ? "data-response-target-element=\"DynamicModalContent\"" : string.Empty;
 
 	string variantSelectorServicePageId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("VariantSelectorServicePage")) ? Dynamicweb.Context.Current.Request.Form.Get("VariantSelectorServicePage") : string.Empty;
@@ -156,8 +158,8 @@
 		int groupNumber = 1;
 
 		string baseUrl = $"Default.aspx?ID={GetPageIdByNavigationTag("Shop")}&GroupID={product.PrimaryOrDefaultGroup.Id}&ProductID={product.Id}";
-		string variantUrl = "";
-		if (!string.IsNullOrEmpty(product.VariantId))
+		string variantUrl = string.Empty;
+		if (!string.IsNullOrEmpty(product.VariantId) && !isModalSelector)
 		{
 			variantUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl($"Default.aspx?ID={GetPageIdByNavigationTag("Shop")}&GroupID={product.PrimaryOrDefaultGroup.Id}&ProductID={product.Id}&VariantID={product.VariantId}");
 		}
@@ -173,6 +175,10 @@
 				<input type="hidden" name="QuantitySelector" value="true">
 				<input type="hidden" name="VariantSelectorServicePage" value="@variantSelectorServicePageId">
 				<input type="hidden" name="ViewType" value="ModalContent">
+
+				if (GetViewParameter("ButtonAspectRatio") != null) {
+					<input type="hidden" name="ButtonAspectRatio" value="@GetViewParameter("ButtonAspectRatio")">
+				}
 				
 				if (!string.IsNullOrEmpty(getProductInfo))
 				{
@@ -206,7 +212,7 @@
 						{
 							foreach (var option in group.Options)
 							{
-								string active = variantId != null && variantId.Contains(option.Id) ? "active" : "";
+								string active = variantId != null && variantId.Contains(option.Id) ? "active" : string.Empty;
 								string buttonId = $"{product.Id}_{option.Id}_{Pageview.CurrentParagraph.ID}";
 								string contrastColor = string.Empty;
 								string buttonAspectRatio = GetDefaultOrVariantGroupValue(variantGroup.Id, "ButtonAspectRatio", "100%", new Dictionary<string, string> { { "100%", "--bs-aspect-ratio:100%" }, { "56%", "--bs-aspect-ratio:56%" }, { "177%", "--bs-aspect-ratio:177%" }, { "75%", "--bs-aspect-ratio:75%" }, { "133%", "--bs-aspect-ratio:133%" } });
@@ -250,7 +256,7 @@
 											case VariantGroupDisplayType.VariantImage:
 												string variantImage = string.Empty;
 												variantImages.TryGetValue(option.Id, out variantImage);
-												<img style="object-fit:cover" src="/Admin/Public/GetImage.ashx?image=@(variantImage)&width=64&format=webp">
+												<img class="theme" style="object-fit:contain" src="/Admin/Public/GetImage.ashx?image=@(variantImage)&width=64&format=webp">
 												break;
 
 											case VariantGroupDisplayType.VariantColor:
