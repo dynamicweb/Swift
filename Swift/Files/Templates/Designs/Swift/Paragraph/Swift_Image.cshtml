@@ -1,7 +1,43 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
 
+@functions
+{
+	private string RenderCustomCSS(IEnumerable<string> decorations)
+	{
+		var cssClasses = new List<string>();
+
+		foreach (var itemId in decorations)
+		{
+			var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
+			item.TryGetValue("Class", out object classes);
+
+			if (classes is null)
+			{
+				continue;
+			}
+
+			var cssString = (string)classes;
+
+			if (cssString.StartsWith("["))
+			{
+				var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+				cssClasses.AddRange(cssArray);
+			}
+			else
+			{
+				cssClasses.Add(cssString.Replace(",", " "));
+			}
+		}
+
+		return string.Join(" ", cssClasses).Trim();
+	}
+}
+
 @{
+	var decorations = Model.Item?.GetList("CssDecorations")?.SelectedValues ?? Enumerable.Empty<string>();
+	string css = RenderCustomCSS(decorations);
+	
 	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", string.Empty);
 	string ratioCssClass = ratio != "0" && ratio != "fill" ? " ratio" : string.Empty;
 	string ratioVariable = ratio != "0" && ratio != "fill" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : string.Empty;
@@ -81,7 +117,7 @@
 		string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "target=\"_blank\"" : "";
 		string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && link.IsExternal ? "rel=\"noopener\"" : "";
 
-		<a href="@link.Url" @target @rel>
+		<a href="@link.Url" class="@(css)" @target @rel>
 			<figure class="m-0@(ratioCssClass)@(fillClass) item_@Model.Item.SystemName.ToLower()" @ratioVariable>
 				@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
 			</figure>
@@ -89,7 +125,7 @@
 	}
 	else
 	{
-		<figure class="m-0@(ratioCssClass)@(fillClass) item_@Model.Item.SystemName.ToLower()" @ratioVariable>
+		<figure class="m-0@(ratioCssClass)@(fillClass) @(css) item_@Model.Item.SystemName.ToLower()" @ratioVariable>
 			@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
 		</figure>
 	}

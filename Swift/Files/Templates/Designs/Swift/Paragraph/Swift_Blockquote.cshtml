@@ -1,7 +1,42 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 
+@functions
+{
+	private string RenderCustomCSS(IEnumerable<string> decorations)
+	{
+		var cssClasses = new List<string>();
+
+		foreach (var itemId in decorations)
+		{
+			var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
+			item.TryGetValue("Class", out object classes);
+
+			if (classes is null)
+			{
+				continue;
+			}
+
+			var cssString = (string)classes;
+
+			if (cssString.StartsWith("["))
+			{
+				var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+				cssClasses.AddRange(cssArray);
+			}
+			else
+			{
+				cssClasses.Add(cssString.Replace(",", " "));
+			}
+		}
+
+		return string.Join(" ", cssClasses).Trim();
+	}
+}
+
 @{
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : string.Empty;
+	var decorations = Model.Item?.GetList("CssDecorations")?.SelectedValues ?? Enumerable.Empty<string>();
+	string css = RenderCustomCSS(decorations);
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 	var image = Model.Item.GetFile("QuoteAuthorImage");
 	int xPos = image?.FocalPositionFromLeft ?? 50;
@@ -56,7 +91,7 @@
 
 @if (layout == "QuoteOnly")
 {
-	<figure class="position-relative d-flex flex-column gap-3 h-100 m-0@(contentPaddingClass)@(theme)" itemscope itemtype="https://schema.org/Quotation">
+	<figure class="position-relative d-flex flex-column gap-3 h-100 m-0@(contentPaddingClass)@(theme) @(css)" itemscope itemtype="https://schema.org/Quotation">
 		<blockquote class="m-0 blockquote mb-0-last-child@(fontSizeClass)" itemprop="text">
 			@quote
 		</blockquote>
@@ -93,7 +128,7 @@
 
 @if (layout == "QuoteLeftBorder")
 {
-	<figure class="position-relative d-flex flex-column gap-3 h-100 m-0@(contentPaddingClass)@(theme)" @borderLeftLayout itemscope itemtype="https://schema.org/Quotation">
+	<figure class="position-relative d-flex flex-column gap-3 h-100 m-0@(contentPaddingClass)@(theme) @(css)" @borderLeftLayout itemscope itemtype="https://schema.org/Quotation">
 		<blockquote class="m-0 blockquote mb-0-last-child@(fontSizeClass)" itemprop="text">
 			@quote
 		</blockquote>
@@ -130,7 +165,7 @@
 
 @if (layout == "QuoteLeftBorderIconTop")
 {
-	<div class="position-relative d-flex flex-column gap-3 h-100@(contentPaddingClass)@(theme)" @borderLeftLayout itemscope itemtype="https://schema.org/Quotation">
+	<div class="position-relative d-flex flex-column gap-3 h-100@(contentPaddingClass)@(theme) @(css)" @borderLeftLayout itemscope itemtype="https://schema.org/Quotation">
 		<div class="@quoteIconSize justify-content-start">
 			@quoteIcon
 		</div>
@@ -171,7 +206,7 @@
 
 @if (layout == "QuoteLeftBorderIconLeft")
 {
-	<div class="position-relative d-flex flex-row h-100 gap-3@(contentPaddingClass)@(theme)" @borderLeftLayout itemscope itemtype="https://schema.org/Quotation">
+	<div class="position-relative d-flex flex-row h-100 gap-3@(contentPaddingClass)@(theme) @(css)" @borderLeftLayout itemscope itemtype="https://schema.org/Quotation">
 		<div class="@quoteIconSize align-items-baseline mt-1">
 			@quoteIcon
 		</div>
@@ -231,7 +266,7 @@
 	imageClass += " position-absolute top-0 start-50 translate-middle";
 
 	<figure class="position-relative d-flex flex-column h-100 m-0" itemscope itemtype="https://schema.org/Quotation">
-		<blockquote class="flex-grow-1 m-0 blockquote mb-0-last-child text-center@(fontSizeClass)@(blockquotePadding)@(theme)" itemprop="text">
+		<blockquote class="flex-grow-1 m-0 blockquote mb-0-last-child text-center@(fontSizeClass)@(blockquotePadding)@(theme) @(css)" itemprop="text">
 			@quote
 		</blockquote>
 		@if (!string.IsNullOrEmpty(quoteAuthor))
@@ -242,13 +277,13 @@
 
 				@if (image is object)
 				{
-				<img src="/Admin/Public/GetImage.ashx?image=@(image.PathUrlEncoded)&width=@(imageWidth*2)&crop=0&format=webp&compression=75" width="@imageWidth" height="@imageheight" class="@imageClass" alt="@quoteAuthor" loading="lazy" decoding="async" style="@imageStyle">
+					<img src="/Admin/Public/GetImage.ashx?image=@(image.PathUrlEncoded)&width=@(imageWidth*2)&crop=0&format=webp&compression=75" width="@imageWidth" height="@imageheight" class="@imageClass" alt="@quoteAuthor" loading="lazy" decoding="async" style="@imageStyle">
 				}
 				else
 				{
-				<div class="p-3 icon-4 shadow-none @imageClass@(theme)" style="background-color:var(--swift-foreground-color);color:var(--swift-background-color);border:2px solid var(--swift-background-color)">
-					@ReadFile(iconPath + "user.svg")
-				</div>
+					<div class="p-3 icon-4 shadow-none @imageClass@(theme)" style="background-color:var(--swift-foreground-color);color:var(--swift-background-color);border:2px solid var(--swift-background-color)">
+						@ReadFile(iconPath + "user.svg")
+					</div>
 				}
 
 				<div class="opacity-85 fs-7 pt-3" itemprop="author">
@@ -276,7 +311,7 @@
 	imageStyle += "aspect-ratio:16/9;";
 
 	<figure class="position-relative grid grid-12 gap-0 h-100 m-0" itemscope itemtype="https://schema.org/Quotation">
-		<div class="g-col-12 g-col-md-8 order-last order-md-first d-flex flex-column gap-3 h-100 align-items-start@(contentPaddingClass)@(theme)">
+		<div class="g-col-12 g-col-md-8 order-last order-md-first d-flex flex-column gap-3 h-100 align-items-start@(contentPaddingClass)@(theme) @(css)">
 			<blockquote class="m-0 blockquote mb-0-last-child@(fontSizeClass)" itemprop="text">
 				@quote
 			</blockquote>

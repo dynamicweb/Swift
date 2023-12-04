@@ -1,6 +1,39 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
 
+@functions
+{
+	private string RenderCustomCSS(IEnumerable<string> decorations)
+	{
+		var cssClasses = new List<string>();
+
+		foreach (var itemId in decorations)
+		{
+			var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
+			item.TryGetValue("Class", out object classes);
+
+			if (classes is null)
+			{
+				continue;
+			}
+
+			var cssString = (string)classes;
+
+			if (cssString.StartsWith("["))
+			{
+				var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+				cssClasses.AddRange(cssArray);
+			}
+			else
+			{
+				cssClasses.Add(cssString.Replace(",", " "));
+			}
+		}
+
+		return string.Join(" ", cssClasses).Trim();
+	}
+}
+
 @{
 	bool movePageBehind = false;
 	bool isFirstPoster = false;
@@ -183,6 +216,8 @@
 	//General layout and styling
 	string maxWidth = Model.Item.GetRawValueString("TextReadability", string.Empty) == "max-width-on" ? "mw-75ch d-inline-block" : string.Empty;
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", string.Empty).Trim().ToLower() : string.Empty;
+	var decorations = Model.Item?.GetList("CssDecorations")?.SelectedValues ?? Enumerable.Empty<string>();
+	string css = RenderCustomCSS(decorations);
 
 	string posterPaddingClass = string.Empty;
 	string posterPadding = Model.Item.GetRawValueString("ContentPadding", string.Empty);
@@ -250,7 +285,7 @@
 	containerInnerCssClasses = posterSizeBase == "aspect-ratio" && !string.IsNullOrEmpty(Model.Item.GetString("Image")) ? "container-xl" : containerInnerCssClasses;
 }
 
-<div class="position-relative@(theme)@(movePageBehindClass) item_@Model.Item.SystemName.ToLower()">
+<div class="position-relative@(theme)@(movePageBehindClass) @(css) item_@Model.Item.SystemName.ToLower()">
 	<div id="@Model.ID" class="user-select-none position-absolute top-0" style="scroll-margin-top:var(--header-height,150px)"></div>
 
 	@if (!string.IsNullOrEmpty(Model.Item.GetString("Image")))

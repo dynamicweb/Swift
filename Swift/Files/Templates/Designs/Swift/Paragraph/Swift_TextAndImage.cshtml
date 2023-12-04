@@ -1,11 +1,46 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
 
+@functions
+{
+	private string RenderCustomCSS(IEnumerable<string> decorations)
+	{
+		var cssClasses = new List<string>();
+
+		foreach (var itemId in decorations)
+		{
+			var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
+			item.TryGetValue("Class", out object classes);
+
+			if (classes is null)
+			{
+				continue;
+			}
+
+			var cssString = (string)classes;
+
+			if (cssString.StartsWith("["))
+			{
+				var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+				cssClasses.AddRange(cssArray);
+			}
+			else
+			{
+				cssClasses.Add(cssString.Replace(",", " "));
+			}
+		}
+
+		return string.Join(" ", cssClasses).Trim();
+	}
+}
+
 @{
 	Dynamicweb.Frontend.LinkViewModel link1 = new Dynamicweb.Frontend.LinkViewModel();
 	Dynamicweb.Frontend.LinkViewModel link2 = new Dynamicweb.Frontend.LinkViewModel();
 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : string.Empty;
+	var decorations = Model.Item?.GetList("CssDecorations")?.SelectedValues ?? Enumerable.Empty<string>();
+	string css = RenderCustomCSS(decorations);
 	string layout = Model.Item.GetRawValueString("Layout", "image-top");
 	string contentPadding = Model.Item.GetRawValueString("ContentPadding", string.Empty);
 	string contentPaddingClass = string.Empty;
@@ -196,7 +231,7 @@
 	string buttonClasses2 = buttonHasLabel2 ? $"text-nowrap btn{buttonStyle2}{buttonSize}{stretchedLinkClass2}{buttonVisuallyHidden2}" : stretchedLinkClass2;
 }
 
-<div class="d-flex flex-column@(gapClass) h-100 position-relative@(theme) item_@Model.Item.SystemName.ToLower()">
+<div class="d-flex flex-column@(gapClass) h-100 position-relative@(theme) @(css) item_@Model.Item.SystemName.ToLower()">
 	<div id="@Model.ID" class="user-select-none position-absolute top-0" style="scroll-margin-top:var(--header-height,150px)"></div>
 
 	@switch (layout)

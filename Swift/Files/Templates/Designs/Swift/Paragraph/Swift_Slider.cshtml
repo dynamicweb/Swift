@@ -92,6 +92,36 @@
 
 		return string.Empty;
 	}
+
+	private string RenderCustomCSS(IEnumerable<string> decorations)
+	{
+		var cssClasses = new List<string>();
+
+		foreach (var itemId in decorations)
+		{
+			var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
+			item.TryGetValue("Class", out object classes);
+
+			if (classes is null)
+			{
+				continue;
+			}
+
+			var cssString = (string)classes;
+
+			if (cssString.StartsWith("["))
+			{
+				var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+				cssClasses.AddRange(cssArray);
+			}
+			else
+			{
+				cssClasses.Add(cssString.Replace(",", " "));
+			}
+		}
+
+		return string.Join(" ", cssClasses).Trim();
+	}
 }
 
 @{
@@ -134,6 +164,8 @@
 	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-1");
 	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? "theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : string.Empty;
+	var decorations = Model.Item?.GetList("CssDecorations")?.SelectedValues ?? Enumerable.Empty<string>();
+	string css = RenderCustomCSS(decorations);
 
 	// Navgation
 	string slidesPerPage = $"slider-item-show{Model.Item.GetRawValueString("SlidesPerPage", "1")}";
@@ -170,7 +202,7 @@
 	}
 }
 <div class="h-100 grid gap-0">
-	<div class="g-col-12 item_@(Model.Item.SystemName.ToLower())">
+	<div class="g-col-12 @(css) item_@(Model.Item.SystemName.ToLower())">
 		<div id="@Model.ID" class="user-select-none" style="scroll-margin-top:var(--header-height,150px)"></div>
 		<div id="Slider_@Model.ID" class="swiffy-slider @(sliderRatio) @(slidesPerPage) @(navigationStyle) @(revealSlides) @(navigationPlacement) @(navigationAlwaysVisible) @(navigationVisibleOnTouch) @(sliderItemsGap) @(indicatorStyle) @(navigationShowScrollbar) @(navigationSmall) @(navigationInvertColors) @(indicatorsOutsideSlider) @(navigationNoLoop) @(indicatorsHighlightActive) @(indicatorsInvertColors) @(indicatorsVisibleOnSmallDevices) @(navigationSlideEntirePage) @(animation) @(autoplay) @(theme)@(contentPadding)" style="--swiffy-slider-nav-light:var(--swift-foreground-color);--swiffy-slider-nav-dark:var(--swift-background-color);visibility:hidden;opacity:0;@(scrollBarForceMobile)" data-slider-nav-autoplay-interval="@(autoplayInterval)">
 			<ul class="slider-container">

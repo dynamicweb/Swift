@@ -1,7 +1,41 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using System.IO
-@using Dynamicweb.Frontend
+
+@functions
+{
+
+	private string RenderCustomCSS(IEnumerable<string> decorations)
+	{
+		var cssClasses = new List<string>();
+
+		foreach (var itemId in decorations)
+		{
+			var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
+			item.TryGetValue("Class", out object classes);
+
+			if (classes is null)
+			{
+				continue;
+			}
+
+			var cssString = (string)classes;
+
+			if (cssString.StartsWith("["))
+			{
+				var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+				cssClasses.AddRange(cssArray);
+			}
+			else
+			{
+				cssClasses.Add(cssString.Replace(",", " "));
+			}
+		}
+
+		return string.Join(" ", cssClasses).Trim();
+	}
+
+}
 
 @{
 	string layout = Model.Item.GetRawValueString("Layout", "align-middle-center-text-center");
@@ -40,6 +74,8 @@
 	int yPos = Model.Item?.GetFile("Image")?.FocalPositionFromTop ?? 50;
 
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	var decorations = Model.Item?.GetList("CssDecorations")?.SelectedValues ?? Enumerable.Empty<string>();
+	string css = RenderCustomCSS(decorations);
 	string alignment = "";
 
 	string maxWidth = Model.Item.GetRawValueString("TextReadability", "max-width-on");
@@ -47,7 +83,7 @@
 	maxWidth = maxWidth == "max-width-off" ? "" : maxWidth;
 }
 
-<div class="position-relative h-100@(theme)@(movePageBehindClass) item_@Model.Item.SystemName.ToLower()">
+<div class="position-relative h-100@(theme)@(movePageBehindClass) @(css) item_@Model.Item.SystemName.ToLower()">
 	<div id="@Model.ID" class="user-select-none position-absolute top-0" style="scroll-margin-top:var(--header-height,150px)"></div>
 	@*Render video*@
 	@if (!string.IsNullOrEmpty(Model.Item.GetString("Video")))
