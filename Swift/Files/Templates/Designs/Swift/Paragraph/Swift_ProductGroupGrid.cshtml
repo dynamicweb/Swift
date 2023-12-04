@@ -1,0 +1,175 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Frontend
+
+@functions
+{
+	private IList<ProductGroupViewModel> GetGroups(string type)
+	{
+		IList<ProductGroupViewModel> groupList = new List<ProductGroupViewModel> { };
+
+		if (type == "subgroups")
+		{
+			IList<ProductGroupViewModel> groups = Model.Item.GetValue<IList<ProductGroupViewModel>>("Subgroups");
+			if (groups != null)
+			{
+				foreach (var group in groups)
+				{
+					var subGroups = Services.ProductGroups.GetSubgroups(Services.ProductGroups.GetGroup(group.Id));
+
+					foreach (var subGroup in subGroups)
+					{
+						var subGroupViewModel = ViewModelFactory.CreateView(new ProductGroupViewModelSettings(), subGroup);
+						groupList.Add(subGroupViewModel);
+					}
+				}
+			}
+		}
+
+		if (type == "selected-groups")
+		{
+			IList<ProductGroupViewModel> groups = Model.Item.GetValue<IList<ProductGroupViewModel>>("SelectedGroups");
+			if (groups != null)
+			{
+				foreach (var group in groups)
+				{
+					groupList.Add(group);
+				}
+			}
+		}
+
+		if (type == "subgroups-current")
+		{
+			var currentGroupId = Dynamicweb.Context.Current.Request.QueryString.Get("GroupID");
+			var currentGroup = currentGroupId != null ? Services.ProductGroups.GetGroup(currentGroupId) : null;
+			var groups = currentGroup != null ? Services.ProductGroups.GetSubgroups(currentGroup) : null;
+			if (groups != null)
+			{
+				foreach (var group in groups)
+				{
+					var groupViewModel = ViewModelFactory.CreateView(new ProductGroupViewModelSettings(), group);
+					groupList.Add(groupViewModel);
+				}
+			}
+		}
+		
+		return groupList;
+	}
+
+	private LinkViewModel GetLink(ProductGroupViewModel group)
+	{
+		var link = new LinkViewModel()
+		{
+			Url = $"/Default.aspx?ID={GetPageIdByNavigationTag("Shop")}&GroupID={group.Id.Trim()}",
+			IsExternal = false
+		};
+
+		return link;
+	}
+}
+
+@{
+	string groupType = Model.Item.GetRawValueString("GroupType", "subgroups");
+	var groups = GetGroups(groupType);
+
+	bool hideHeaders = (Model.Item?.GetBoolean("HideHeaders") ?? false);
+	string title = Model.Item?.GetString("Title", string.Empty);
+	string subtitle = Model.Item?.GetString("Subtitle", string.Empty);
+	bool showTitle = !hideHeaders || !string.IsNullOrEmpty(title);
+	bool showSubtitle = !hideHeaders || !string.IsNullOrEmpty(subtitle);
+	bool groupsExist = groups is object && groups.Count != 0;
+
+	// Grid layout
+	string gridSize = Model.Item.GetRawValueString("GridSize", "4-columns");
+	string columnSize = gridSize == "3-columns" ? "g-col-4" : gridSize == "4-columns" ? "g-col-3" : "g-col-2";
+	gridSize = gridSize == "5-columns" ? "grid-10" : "grid-12";
+	string itemsGap = $"gap-{Model.Item.GetRawValueString("GridItemsGap", "2")}";
+
+	// Styling
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? $"theme {Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower()}" : string.Empty;
+
+	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", string.Empty);
+	ratio = ratio != "0" ? ratio : string.Empty;
+	string ratioCssClass = ratio != string.Empty ? "ratio" : string.Empty;
+	string ratioVariable = ratio != string.Empty ? "--bs-aspect-ratio: " + ratio : string.Empty;
+
+	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "h3");
+	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
+	string maxWidth = Model.Item.GetRawValueString("TextReadability", string.Empty);
+	maxWidth = maxWidth == "max-width-on" ? "mw-75ch" : string.Empty;
+
+	string buttonAlignment = Model.Item.GetRawValueString("ButtonAlignment", "justify-content-center");
+
+	string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "primary");
+	buttonStyle = buttonStyle == "primary" ? "btn-primary" : buttonStyle;
+	buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
+	buttonStyle = buttonStyle == "link" ? "btn-link" : buttonStyle;
+
+	string buttonSize = Model.Item.GetRawValueString("buttonSize", "regular");
+	buttonSize = buttonSize == "small" ? " btn-sm" : buttonSize;
+	buttonSize = buttonSize == "regular" ? string.Empty : buttonSize;
+	buttonSize = buttonSize == "large" ? " btn-lg" : buttonSize;
+
+	string stretchedLink = Model.Item.GetRawValueString("StretchedLink", string.Empty);
+	stretchedLink = stretchedLink == "not-clickable" ? string.Empty : stretchedLink;
+	stretchedLink = stretchedLink == "clickable" ? "stretched-link" : stretchedLink;
+}
+
+@if (groupsExist)
+{
+	<div class="grid @(theme)">
+		<div id="@Model.ID" class="user-select-none"></div>
+
+		@if (showTitle)
+		{
+			<div class="g-col-12 @maxWidth">
+				<h2 class="@titleFontSize">@title</h2>
+			</div>
+		}
+
+		@if (showSubtitle)
+		{
+			<div class="g-col-12 @maxWidth">
+				<p class="@subtitleFontSize">@subtitle</p>
+			</div>
+		}
+
+		<div class="g-col-12 grid @gridSize @itemsGap item_@(Model.Item.SystemName.ToLower())">
+
+			@foreach (var group in groups)
+			{
+				var groupImage = Services.ProductGroups.GetGroup(group.Id)?.LargeImage;
+				groupImage = Dynamicweb.Context.Current.Server.UrlEncode(groupImage);
+				groupImage = !string.IsNullOrEmpty(groupImage) ? $"/Admin/Public/GetImage.ashx?width=640&crop=0&image=/Files{groupImage}&format=webp" : string.Empty;
+
+				bool openLinksInNewTab = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal;
+				string target = openLinksInNewTab ? "target=\"_blank\"" : "";
+				string rel = openLinksInNewTab ? "rel=\"noopener\"" : "";
+
+				if (!string.IsNullOrEmpty(groupImage))
+				{
+					<div class="@columnSize d-flex flex-column h-100">
+						<div class="@ratioCssClass" style="@ratioVariable">
+							<img class="w-100 h-100" loading="lazy" src="@groupImage" style="object-fit: cover;" alt="@group.Name">
+						</div>
+
+						<div class="d-grid pt-2 pt-auto @buttonAlignment">
+							@if (GetLink(group) != null)
+							{
+									<a href="@GetLink(group)" class="btn @(buttonSize) @buttonStyle @(stretchedLink)" @target @rel>@group.Name</a>
+							}
+						</div>
+					</div>
+				}
+			}
+
+		</div>
+	</div>
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark" role="alert">
+		<span>@Translate("Group grid"): @Translate("Edit this column to configure")</span>
+	</div>
+}
