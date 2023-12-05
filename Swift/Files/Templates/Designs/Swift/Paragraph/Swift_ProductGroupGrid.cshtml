@@ -53,7 +53,7 @@
 				}
 			}
 		}
-		
+
 		return groupList;
 	}
 
@@ -76,17 +76,16 @@
 	bool hideHeaders = (Model.Item?.GetBoolean("HideHeaders") ?? false);
 	string title = Model.Item?.GetString("Title", string.Empty);
 	string subtitle = Model.Item?.GetString("Subtitle", string.Empty);
-	bool showTitle = !hideHeaders || !string.IsNullOrEmpty(title);
-	bool showSubtitle = !hideHeaders || !string.IsNullOrEmpty(subtitle);
 	bool groupsExist = groups is object && groups.Count != 0;
 
 	// Grid layout
-	string gridSize = Model.Item.GetRawValueString("GridSize", "4-columns");
-	string columnSize = gridSize == "3-columns" ? "g-col-4" : gridSize == "4-columns" ? "g-col-3" : "g-col-2";
-	gridSize = gridSize == "5-columns" ? "grid-10" : "grid-12";
-	string itemsGap = $"gap-{Model.Item.GetRawValueString("GridItemsGap", "2")}";
+	string gridSize = Model.Item.GetRawValueString("GridSize", "3");
+	gridSize = $"grid-{gridSize}";
+
+	string itemsGap = $"gap-{Model.Item.GetRawValueString("GridItemsGap", "3")}";
 
 	// Styling
+	string generalTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("GeneralTheme")) ? $"p-3 theme {Model.Item.GetRawValueString("GeneralTheme").Replace(" ", "").Trim().ToLower()}" : string.Empty;
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? $"theme {Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower()}" : string.Empty;
 
 	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", string.Empty);
@@ -99,7 +98,37 @@
 	string maxWidth = Model.Item.GetRawValueString("TextReadability", string.Empty);
 	maxWidth = maxWidth == "max-width-on" ? "mw-75ch" : string.Empty;
 
-	string buttonAlignment = Model.Item.GetRawValueString("ButtonAlignment", "justify-content-center");
+	string alignment = Model.Item.GetRawValueString("ButtonAlignment", "align-bottom-center-text-center");
+	switch (alignment)
+	{
+		case "align-top-left-text-left":
+			alignment = "text-start justify-content-start align-items-start";
+			break;
+		case "align-top-center-text-center":
+			alignment = "text-center justify-content-center align-items-start";
+			break;
+		case "align-top-right-text-right":
+			alignment = "text-end justify-content-end align-items-start";
+			break;
+		case "align-middle-left-text-left":
+			alignment = "text-start justify-content-start align-items-center";
+			break;
+		case "align-middle-center-text-center":
+			alignment = "text-center justify-content-center align-items-center";
+			break;
+		case "align-middle-right-text-right":
+			alignment = "text-end justify-content-end align-items-center";
+			break;
+		case "align-bottom-left-text-left":
+			alignment = "text-start justify-content-start align-items-end";
+			break;
+		case "align-bottom-center-text-center":
+			alignment = "text-center justify-content-center align-items-end";
+			break;
+		case "align-bottom-right-text-right":
+			alignment = "text-end justify-content-end align-items-end";
+			break;
+	}
 
 	string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "primary");
 	buttonStyle = buttonStyle == "primary" ? "btn-primary" : buttonStyle;
@@ -118,58 +147,64 @@
 
 @if (groupsExist)
 {
-	<div class="grid @(theme)">
-		<div id="@Model.ID" class="user-select-none"></div>
+	<div class="grid h-100 gap-0 @(generalTheme)">
+		<div id="@Model.ID" class="user-select-none" style="scroll-margin-top:var(--header-height,150px)"></div>
 
-		@if (showTitle)
+		@if (!hideHeaders)
 		{
-			<div class="g-col-12 @maxWidth">
-				<h2 class="@titleFontSize">@title</h2>
+			<div class="g-col-12 pb-2 pb-lg-4">
+				<div class="mb-0-last-child">
+					@if (!string.IsNullOrEmpty(title))
+					{
+						<h2 class="mt-0 @titleFontSize @maxWidth">@title</h2>
+					}
+
+					@if (!string.IsNullOrEmpty(subtitle))
+					{
+						<p class="@subtitleFontSize @maxWidth">@subtitle</p>
+					}
+				</div>
 			</div>
 		}
 
-		@if (showSubtitle)
-		{
-			<div class="g-col-12 @maxWidth">
-				<p class="@subtitleFontSize">@subtitle</p>
-			</div>
-		}
+			<div class="g-col-12 grid @gridSize @itemsGap item_@(Model.Item.SystemName.ToLower())">
 
-		<div class="g-col-12 grid @gridSize @itemsGap item_@(Model.Item.SystemName.ToLower())">
-
-			@foreach (var group in groups)
-			{
-				var groupImage = Services.ProductGroups.GetGroup(group.Id)?.LargeImage;
-				groupImage = Dynamicweb.Context.Current.Server.UrlEncode(groupImage);
-				groupImage = !string.IsNullOrEmpty(groupImage) ? $"/Admin/Public/GetImage.ashx?width=640&crop=0&image=/Files{groupImage}&format=webp" : string.Empty;
-
-				bool openLinksInNewTab = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal;
-				string target = openLinksInNewTab ? "target=\"_blank\"" : "";
-				string rel = openLinksInNewTab ? "rel=\"noopener\"" : "";
-
-				if (!string.IsNullOrEmpty(groupImage))
+				@foreach (var group in groups)
 				{
-					<div class="@columnSize d-flex flex-column h-100">
-						<div class="@ratioCssClass" style="@ratioVariable">
-							<img class="w-100 h-100" loading="lazy" src="@groupImage" style="object-fit: cover;" alt="@group.Name">
-						</div>
+					var groupImage = Services.ProductGroups.GetGroup(group.Id)?.LargeImage;
+					groupImage = Dynamicweb.Context.Current.Server.UrlEncode(groupImage);
+					groupImage = !string.IsNullOrEmpty(groupImage) ? $"/Admin/Public/GetImage.ashx?width=640&crop=0&image=/Files{groupImage}&format=webp" : string.Empty;
 
-						<div class="d-grid pt-2 pt-auto @buttonAlignment">
-							@if (GetLink(group) != null)
+					bool openLinksInNewTab = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal;
+
+						<div class="d-flex flex-column h-100">
+							<div class="card rounded-0 border-0 @ratioCssClass @theme" style="@ratioVariable">
+							@if (!string.IsNullOrEmpty(groupImage))
 							{
-									<a href="@GetLink(group)" class="btn @(buttonSize) @buttonStyle @(stretchedLink)" @target @rel>@group.Name</a>
+								<img class="card-img rounded-0 w-100 h-100" loading="lazy" src="@groupImage" style="object-fit: cover;" alt="@group.Name">
 							}
-						</div>
-					</div>
-				}
-			}
 
+								<div class="@(!string.IsNullOrEmpty(ratioCssClass) ? "card-img-overlay " : string.Empty)@(string.IsNullOrEmpty(ratioCssClass) && string.IsNullOrEmpty(groupImage) ? "h-100 " : string.Empty)rounded-0 d-grid p-xl-4 @alignment">
+									@if (GetLink(group) != null)
+									{
+										string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal ? "target=\"_blank\"" : "";
+										string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal ? "rel=\"noopener\"" : "";
+
+										<div class="m-0">
+											<a href="@GetLink(group)" class="btn @(buttonSize) @buttonStyle @(stretchedLink)" @target @rel>@group.Name</a>
+										</div>
+									}
+								</div>
+							</div>
+						</div>
+				}
+
+			</div>
 		</div>
-	</div>
-}
-else if (Pageview.IsVisualEditorMode)
-{
-	<div class="alert alert-dark" role="alert">
-		<span>@Translate("Group grid"): @Translate("Edit this column to configure")</span>
-	</div>
-}
+	}
+	else if (Pageview.IsVisualEditorMode)
+	{
+		<div class="alert alert-dark" role="alert">
+			<span>@Translate("Group grid"): @Translate("Edit this column to configure")</span>
+		</div>
+	}
