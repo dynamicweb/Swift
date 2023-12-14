@@ -68,16 +68,14 @@
 		return link;
 	}
 
-	private string GetGroupImage(ProductGroupViewModel group)
+	private string GetGroupImageMarkup(ProductGroupViewModel group, string imageShape)
 	{
-		var groupImageMarkup = string.Empty;
-		var groupImage = Services.ProductGroups.GetGroup(group.Id)?.LargeImage;
-		groupImage = Dynamicweb.Context.Current.Server.UrlEncode(groupImage);
-		groupImage = !string.IsNullOrEmpty(groupImage) ? $"/Admin/Public/GetImage.ashx?width=640&crop=0&image=/Files{groupImage}&format=webp" : string.Empty;
-		
-		groupImageMarkup = !string.IsNullOrEmpty(groupImage) ? $"<img class=\"{GetImageShape()}\" src=\"{groupImage}\" alt=\"{group.Name}\" style=\"object-fit:cover\"/>" : groupImageMarkup;
+		string groupImage = Services.ProductGroups.GetGroup(group.Id)?.LargeImage;
+		string groupImageEncoded = Dynamicweb.Context.Current.Server.UrlEncode(groupImage);
+		string groupImagePath = $"/Admin/Public/GetImage.ashx?width=640&crop=0&image=/Files{groupImageEncoded}&format=webp";
+		string groupImageMarkup = $"<img class=\"{imageShape}\" src=\"{groupImagePath}\" alt=\"{group.Name}\" style=\"object-fit:cover\"/>";
 
-		return groupImageMarkup;
+		return !string.IsNullOrEmpty(groupImage) ? groupImageMarkup : string.Empty;
 	}
 
 	private string GetImageShape()
@@ -96,6 +94,25 @@
 				break;
 		}
 		return imageShape;
+	}
+
+	private string GetButtonAlignment()
+	{
+		string buttonAlignment = Model.Item.GetRawValueString("ButtonAlignment", "align-center-center");
+
+		switch (buttonAlignment)
+		{
+			case "align-center-center":
+				return "text-center justify-content-center align-items-center";
+			case "align-bottom-start":
+				return "text-start justify-content-start align-items-end";
+			case "align-bottom-center":
+				return "text-center justify-content-center align-items-end";
+			case "align-bottom-end":
+				return "text-end justify-content-end align-items-end";
+			default:
+				return "align-center-center";
+		}
 	}
 }
 
@@ -130,22 +147,7 @@
 	string maxWidth = Model.Item.GetRawValueString("TextReadability", string.Empty);
 	maxWidth = maxWidth == "max-width-on" ? "mw-75ch" : string.Empty;
 
-	string alignment = Model.Item.GetRawValueString("ButtonAlignment", "align-center-center");
-	switch (alignment)
-	{
-		case "align-center-center":
-			alignment = "text-center justify-content-center align-items-center";
-			break;
-		case "align-bottom-start":
-			alignment = "text-start justify-content-start align-items-end";
-			break;
-		case "align-bottom-center":
-			alignment = "text-center justify-content-center align-items-end";
-			break;
-		case "align-bottom-end":
-			alignment = "text-end justify-content-end align-items-end";
-			break;
-	}
+	string buttonAlignment = GetButtonAlignment();
 
 	string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "primary");
 	buttonStyle = buttonStyle == "primary" ? "btn-primary" : buttonStyle;
@@ -158,6 +160,10 @@
 	buttonSize = buttonSize == "large" ? "btn btn-lg" : buttonSize;
 
 	string stretchedLink = "stretched-link";
+
+	string imageShape = GetImageShape();
+	string missingImageMarkup = $"<div class=\"bg-opacity-10 {imageShape}\" style=\"background-color:rgba(var(--swift-foreground-color-rgb),var(--bs-bg-opacity));\"></div>";
+
 }
 
 @if (groupsExist)
@@ -186,23 +192,19 @@
 
 				@foreach (var group in groups)
 				{
-					<div class="d-flex flex-column h-100">
+					string groupImageMarkup = GetGroupImageMarkup(group, imageShape) ?? missingImageMarkup;
+					bool groupImage = !string.IsNullOrEmpty(groupImageMarkup);
 
+					<div class="d-flex flex-column h-100">
 						@{
 							switch (layout)
 							{
 								case "overlay":
 									<div class="card rounded-0 border-0 @(theme) @(ratioCssClass)" style="@ratioVariable">
+										
+										@(groupImage ? groupImageMarkup : missingImageMarkup)
 
-										@if (!string.IsNullOrEmpty(GetGroupImage(group)))
-										{
-											@GetGroupImage(group)
-										} else
-										{
-											<div class="bg-opacity-10 @GetImageShape()" style="background-color:rgba(var(--swift-foreground-color-rgb),var(--bs-bg-opacity));"></div>
-										}
-
-										<div class="d-grid p-3 @alignment">
+										<div class="d-grid p-3 @buttonAlignment">
 											@if (GetLink(group) is object)
 											{
 												bool openLinksInNewTab = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal;
@@ -219,17 +221,11 @@
 
 										<div class="@(ratioCssClass)" style="@ratioVariable">
 											
-											@if(!string.IsNullOrEmpty(GetGroupImage(group)))
-											{
-												@GetGroupImage(group)
-											}else
-											{
-												<div class="bg-opacity-10 @GetImageShape()" style="background-color:rgba(var(--swift-foreground-color-rgb),var(--bs-bg-opacity));"></div>
-											}
+											@(groupImage ? groupImageMarkup : missingImageMarkup)
 
 										</div>
 
-										<div class="@(!string.IsNullOrEmpty(GetGroupImage(group)) ? "h-100" : string.Empty) @(!string.IsNullOrEmpty(theme) ? "p-2" : "pt-2") d-grid @alignment">
+										<div class="@(groupImage ? "h-100" : string.Empty) @(!string.IsNullOrEmpty(theme) ? "p-2" : "pt-2") d-grid @buttonAlignment">
 
 											@if (GetLink(group) is object)
 											{
