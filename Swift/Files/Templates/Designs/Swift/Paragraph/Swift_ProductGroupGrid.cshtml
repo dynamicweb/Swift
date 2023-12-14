@@ -67,6 +67,36 @@
 
 		return link;
 	}
+
+	private string GetGroupImage(ProductGroupViewModel group)
+	{
+		var groupImageMarkup = string.Empty;
+		var groupImage = Services.ProductGroups.GetGroup(group.Id)?.LargeImage;
+		groupImage = Dynamicweb.Context.Current.Server.UrlEncode(groupImage);
+		groupImage = !string.IsNullOrEmpty(groupImage) ? $"/Admin/Public/GetImage.ashx?width=640&crop=0&image=/Files{groupImage}&format=webp" : string.Empty;
+		
+		groupImageMarkup = !string.IsNullOrEmpty(groupImage) ? $"<img class=\"{GetImageShape()}\" src=\"{groupImage}\" alt=\"{group.Name}\" style=\"object-fit:cover\"/>" : groupImageMarkup;
+
+		return groupImageMarkup;
+	}
+
+	private string GetImageShape()
+	{
+		string imageShape = Model.Item.GetRawValueString("ImageShape", "boxed");
+		switch (imageShape)
+		{
+			case "boxed":
+				imageShape = "rounded-0";
+				break;
+			case "rounded":
+				imageShape = "rounded-3";
+				break;
+			case "circle":
+				imageShape = "rounded-pill";
+				break;
+		}
+		return imageShape;
+	}
 }
 
 @{
@@ -80,13 +110,15 @@
 
 	// Grid layout
 	string gridSize = Model.Item.GetRawValueString("GridSize", "3");
-	gridSize = $"grid-{gridSize}";
-
+	gridSize = $"grid-2 grid-sm-3 grid-lg-{gridSize}";
 	string itemsGap = $"gap-{Model.Item.GetRawValueString("GridItemsGap", "3")}";
+	string layout = Model.Item.GetRawValueString("Layout", "overlay");
 
 	// Styling
-	string generalTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("GeneralTheme")) ? $"p-3 theme {Model.Item.GetRawValueString("GeneralTheme").Replace(" ", "").Trim().ToLower()}" : string.Empty;
-	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? $"theme {Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower()}" : string.Empty;
+	string generalTheme = Model.Item.GetRawValueString("GeneralTheme");
+	generalTheme = !string.IsNullOrWhiteSpace(generalTheme) ? $"p-3 theme {generalTheme.Replace(" ", "").Trim().ToLower()}" : string.Empty;
+	string theme = Model.Item.GetRawValueString("Theme");
+	theme = !string.IsNullOrWhiteSpace(theme) ? $"theme {theme.Replace(" ", "").Trim().ToLower()}" : "theme";
 
 	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", string.Empty);
 	ratio = ratio != "0" ? ratio : string.Empty;
@@ -98,34 +130,19 @@
 	string maxWidth = Model.Item.GetRawValueString("TextReadability", string.Empty);
 	maxWidth = maxWidth == "max-width-on" ? "mw-75ch" : string.Empty;
 
-	string alignment = Model.Item.GetRawValueString("ButtonAlignment", "align-bottom-center-text-center");
+	string alignment = Model.Item.GetRawValueString("ButtonAlignment", "align-center-center");
 	switch (alignment)
 	{
-		case "align-top-left-text-left":
-			alignment = "text-start justify-content-start align-items-start";
-			break;
-		case "align-top-center-text-center":
-			alignment = "text-center justify-content-center align-items-start";
-			break;
-		case "align-top-right-text-right":
-			alignment = "text-end justify-content-end align-items-start";
-			break;
-		case "align-middle-left-text-left":
-			alignment = "text-start justify-content-start align-items-center";
-			break;
-		case "align-middle-center-text-center":
+		case "align-center-center":
 			alignment = "text-center justify-content-center align-items-center";
 			break;
-		case "align-middle-right-text-right":
-			alignment = "text-end justify-content-end align-items-center";
-			break;
-		case "align-bottom-left-text-left":
+		case "align-bottom-start":
 			alignment = "text-start justify-content-start align-items-end";
 			break;
-		case "align-bottom-center-text-center":
+		case "align-bottom-center":
 			alignment = "text-center justify-content-center align-items-end";
 			break;
-		case "align-bottom-right-text-right":
+		case "align-bottom-end":
 			alignment = "text-end justify-content-end align-items-end";
 			break;
 	}
@@ -135,21 +152,19 @@
 	buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
 	buttonStyle = buttonStyle == "link" ? "btn-link" : buttonStyle;
 
-	string buttonSize = Model.Item.GetRawValueString("buttonSize", "regular");
-	buttonSize = buttonSize == "small" ? " btn-sm" : buttonSize;
-	buttonSize = buttonSize == "regular" ? string.Empty : buttonSize;
-	buttonSize = buttonSize == "large" ? " btn-lg" : buttonSize;
+	string buttonSize = Model.Item.GetRawValueString("ButtonSize", "regular");
+	buttonSize = buttonSize == "small" ? "btn btn-sm" : buttonSize;
+	buttonSize = buttonSize == "regular" ? "btn" : buttonSize;
+	buttonSize = buttonSize == "large" ? "btn btn-lg" : buttonSize;
 
-	string stretchedLink = Model.Item.GetRawValueString("StretchedLink", string.Empty);
-	stretchedLink = stretchedLink == "not-clickable" ? string.Empty : stretchedLink;
-	stretchedLink = stretchedLink == "clickable" ? "stretched-link" : stretchedLink;
+	string stretchedLink = "stretched-link";
 }
 
 @if (groupsExist)
 {
-	<div class="grid h-100 gap-0 @(generalTheme)">
+	<div class="grid h-100 gap-0 @(generalTheme) item_@(Model.Item.SystemName.ToLower())">
 		<div id="@Model.ID" class="user-select-none" style="scroll-margin-top:var(--header-height,150px)"></div>
-
+		
 		@if (!hideHeaders)
 		{
 			<div class="g-col-12 pb-2 pb-lg-4">
@@ -167,38 +182,70 @@
 			</div>
 		}
 
-			<div class="g-col-12 grid @gridSize @itemsGap item_@(Model.Item.SystemName.ToLower())">
+			<div class="g-col-12 grid @gridSize @itemsGap">
 
 				@foreach (var group in groups)
 				{
-					var groupImage = Services.ProductGroups.GetGroup(group.Id)?.LargeImage;
-					groupImage = Dynamicweb.Context.Current.Server.UrlEncode(groupImage);
-					groupImage = !string.IsNullOrEmpty(groupImage) ? $"/Admin/Public/GetImage.ashx?width=640&crop=0&image=/Files{groupImage}&format=webp" : string.Empty;
+					<div class="d-flex flex-column h-100">
 
-					bool openLinksInNewTab = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal;
-
-						<div class="d-flex flex-column h-100">
-							<div class="card rounded-0 border-0 @ratioCssClass @theme" style="@ratioVariable">
-							@if (!string.IsNullOrEmpty(groupImage))
+						@{
+							switch (layout)
 							{
-								<img class="card-img rounded-0 w-100 h-100" loading="lazy" src="@groupImage" style="object-fit: cover;" alt="@group.Name">
-							}
+								case "overlay":
+									<div class="card rounded-0 border-0 @(theme) @(ratioCssClass)" style="@ratioVariable">
 
-								<div class="@(!string.IsNullOrEmpty(ratioCssClass) ? "card-img-overlay " : string.Empty)@(string.IsNullOrEmpty(ratioCssClass) && string.IsNullOrEmpty(groupImage) ? "h-100 " : string.Empty)rounded-0 d-grid p-xl-4 @alignment">
-									@if (GetLink(group) != null)
-									{
-										string target = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal ? "target=\"_blank\"" : "";
-										string rel = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal ? "rel=\"noopener\"" : "";
+										@if (!string.IsNullOrEmpty(GetGroupImage(group)))
+										{
+											@GetGroupImage(group)
+										} else
+										{
+											<div class="bg-opacity-10 @GetImageShape()" style="background-color:rgba(var(--swift-foreground-color-rgb),var(--bs-bg-opacity));"></div>
+										}
 
-										<div class="m-0">
-											<a href="@GetLink(group)" class="btn @(buttonSize) @buttonStyle @(stretchedLink)" @target @rel>@group.Name</a>
+										<div class="d-grid p-3 @alignment">
+											@if (GetLink(group) is object)
+											{
+												bool openLinksInNewTab = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal;
+												string target = openLinksInNewTab ? "target=\"_blank\"" : string.Empty;
+												string rel = openLinksInNewTab ? "rel=\"noopener\"" : string.Empty;
+
+												<a href="@GetLink(group)" class="@(buttonSize) @buttonStyle @(stretchedLink)" @target @rel>@group.Name</a>
+											}
 										</div>
-									}
-								</div>
-							</div>
-						</div>
-				}
+									</div>
+									break;
+								case "below":
+									<div class="card rounded-0 border-0 @(theme)">
 
+										<div class="@(ratioCssClass)" style="@ratioVariable">
+											
+											@if(!string.IsNullOrEmpty(GetGroupImage(group)))
+											{
+												@GetGroupImage(group)
+											}else
+											{
+												<div class="bg-opacity-10 @GetImageShape()" style="background-color:rgba(var(--swift-foreground-color-rgb),var(--bs-bg-opacity));"></div>
+											}
+
+										</div>
+
+										<div class="@(!string.IsNullOrEmpty(GetGroupImage(group)) ? "h-100" : string.Empty) @(!string.IsNullOrEmpty(theme) ? "p-2" : "pt-2") d-grid @alignment">
+
+											@if (GetLink(group) is object)
+											{
+												bool openLinksInNewTab = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal;
+												string target = openLinksInNewTab ? "target=\"_blank\"" : string.Empty;
+												string rel = openLinksInNewTab ? "rel=\"noopener\"" : string.Empty;
+
+												<a href="@GetLink(group)" class="@(buttonSize) @buttonStyle @(stretchedLink)" @target @rel>@group.Name</a>
+											}
+										</div>
+									</div>
+									break;
+							}
+						}
+					</div>
+				}
 			</div>
 		</div>
 	}
