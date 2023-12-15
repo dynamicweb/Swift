@@ -50,6 +50,7 @@
 	IList<string> relateFromGroupIds = new List<string> { };
 	bool hasVariants = false;
 
+
 	ProductListViewModel relateToViewModel = Model.Item.GetValue<ProductListViewModel>("RelateTo");
 
 	//--- PRODUCTS ---
@@ -101,6 +102,42 @@
 		}
 	}
 
+	string relationGroupId = Model.Item.GetRawValueString("RelationGroup", string.Empty);
+
+	//--- RELATED GROUP ---
+	if (sourceType == "related")
+	{
+		if (relateToViewModel?.Products != null)
+		{
+			product = relateToViewModel.Products.FirstOrDefault();
+		}
+
+		if (product?.RelatedGroups != null)
+		{
+			foreach (var relationGroup in product.RelatedGroups)
+			{
+				if (relationGroup.Id == relationGroupId) {
+					hasVariants = relationGroup.Products.Any(p => !string.IsNullOrEmpty(p.VariantId));
+					foreach (var fromProduct in relationGroup.Products)
+					{
+						if (hasVariants)
+						{
+							if (!string.IsNullOrEmpty(fromProduct.VariantId))
+							{
+								relateFromProductVariantIds.Add($"{fromProduct.ProductId} {fromProduct.VariantId}");
+							}
+							else
+							{
+								relateFromProductVariantIds.Add($"{fromProduct.ProductId}");
+							}
+						}
+						relateFromProductIds.Add($"{fromProduct.ProductId}");
+					}
+				}
+			}
+		}
+	}
+
 
 	//Create group id collection and products id collection strings
 	string productIds = relateFromProductIds.Count > 0 ? string.Join(",", relateFromProductIds) : "";
@@ -122,7 +159,7 @@
 }
 
 @*Container element for the request*@
-@if (!string.IsNullOrEmpty(productIds) || !string.IsNullOrEmpty(groupIds) || (string.IsNullOrEmpty(productIds) && string.IsNullOrEmpty(groupIds)))
+@if (!string.IsNullOrEmpty(productIds) || !string.IsNullOrEmpty(groupIds) || (string.IsNullOrEmpty(productIds) && string.IsNullOrEmpty(groupIds) && sourceType != "related"))
 {
 	<form method="post" action="@url" id="ComponentSliderProductsForm_@Model.ID" data-response-target-element="ComponentSliderProducts_@Model.ID" data-preloader="inline" data-update-url="false" class="item_@Model.Item.SystemName.ToLower()">
 		<input type="hidden" name="ParagraphId" value="@Model.ID" />
