@@ -22,7 +22,7 @@
 
 	string uniqueId = $"{product.Id}_{product.VariantId.Replace(".", "_")}_{Pageview.CurrentParagraph.ID}";
 
-	var selectedCatalogs = Model.Item.GetList("SelectedCatalogs")?.SelectedOptions ?? null;
+	var selectedCatalogs = Model.Item.GetList("SelectedCatalogs")?.GetRawValue()?.OfType<string>();
 	int catalogCount = 0;
 	
 	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", string.Empty);
@@ -80,7 +80,7 @@
 
 	<div class="modal fade" id="DownloadPublicationModal@(uniqueId)" tabindex="-1" aria-labelledby="#DownloadPublicationModalLabel@(uniqueId)" aria-hidden="true">
 		<div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-			<form target="_blank" action="/Default.aspx?ID=@selectedCatalogs.FirstOrDefault().Value" method="post" class="modal-content" id="DownloadPublicationModalForm@(uniqueId)">
+			<form target="_blank" action="/Default.aspx?ID=@selectedCatalogs.FirstOrDefault()" method="post" class="modal-content" id="DownloadPublicationModalForm@(uniqueId)">
 				<input type="hidden" name="mainproductid" value="@product.Id">
 				<input type="hidden" name="print" value="true">
 
@@ -165,19 +165,20 @@
 							<div class="grid grid-2 grid-lg-3 gap-lg-4">
 								@foreach (var catalog in selectedCatalogs)
 								{
+									var pageObj = Dynamicweb.Content.Services.Pages.GetPage(Convert.ToInt32(catalog));
+
 									var selected = catalogCount == 0 ? "checked" : string.Empty;
-									var radioId = $"CatalogCheck_{Model.ID}_{catalog.Value}";
-									var page = Dynamicweb.Content.Services.Pages.GetPage(Convert.ToInt32(catalog.Value));
-									string imagePath = page.Item["Thumbnail"] !=  null ? $"/Admin/Public/GetImage.ashx?image={page.Item["Thumbnail"].ToString()}&width=200&format=webp" : $"https://placehold.co/235x300?text={@Translate("Catalog+Image")}";
+									var radioId = $"CatalogCheck_{Model.ID}_{pageObj.ID}";
+									string imagePath = pageObj.Item["Thumbnail"] !=  null ? $"/Admin/Public/GetImage.ashx?image={pageObj.Item["Thumbnail"].ToString()}&width=200&format=webp" : $"https://placehold.co/235x300?text={@Translate("Catalog+Image")}";
 
 									<div class="form-thumb">
-										<input class="form-thumb-input visually-hidden" type="radio" name="ID" value="@catalog.Value" id="@radioId" onclick="document.querySelector('#DownloadPublicationModalForm@(uniqueId)').action='/Default.aspx?ID=@(catalog.Value)'" @selected>
+										<input class="form-thumb-input visually-hidden" type="radio" name="ID" value="@pageObj.ID" id="@radioId" onclick="document.querySelector('#DownloadPublicationModalForm@(uniqueId)').action='/Default.aspx?ID=@(pageObj.ID)'" @selected>
 										<label class="form-thumb-label d-flex flex-column" for="@radioId" role="button">
 											<span class="d-block p-1">
 												<img class="rounded-2 w-100" style="object-fit:cover" src="@imagePath" />
 											</span>
 											<span class="d-grid p-3">
-												<span class="d-block fw-bold">@catalog.Name</span>
+												<span class="d-block fw-bold">@pageObj.GetDisplayName()</span>
 												@*<span class="d-block opacity-75 fs-7 lh-sm">@catalog.Name</span> // Descriptive text goes here //*@
 											</span>
 										</label>
