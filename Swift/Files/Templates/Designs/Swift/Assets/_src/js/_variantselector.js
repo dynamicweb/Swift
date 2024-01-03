@@ -164,9 +164,7 @@ const VariantSelector = function () {
 						url.search = searchParams.toString();
 					}
 
-					if (variantSelectorElement.getAttribute("data-friendly-url")) {
-						window.history.replaceState({}, '', decodeURI(url));
-					}
+					window.history.replaceState({}, '', decodeURI(url));
 
 					//Call the async PageUpdater
 					swift.PageUpdater.Update(variantSelectorElement);
