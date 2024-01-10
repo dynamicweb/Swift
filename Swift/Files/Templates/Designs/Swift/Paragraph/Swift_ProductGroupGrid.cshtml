@@ -1,0 +1,257 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Frontend
+
+@functions
+{
+	private IList<ProductGroupViewModel> GetGroups(string type)
+	{
+		IList<ProductGroupViewModel> groupList = new List<ProductGroupViewModel> { };
+
+		if (type == "subgroups")
+		{
+			IList<ProductGroupViewModel> groups = Model.Item.GetValue<IList<ProductGroupViewModel>>("Subgroups");
+			if (groups != null)
+			{
+				foreach (var group in groups)
+				{
+					var subGroups = Services.ProductGroups.GetSubgroups(Services.ProductGroups.GetGroup(group.Id));
+
+					foreach (var subGroup in subGroups)
+					{
+						var subGroupViewModel = ViewModelFactory.CreateView(new ProductGroupViewModelSettings(), subGroup);
+						groupList.Add(subGroupViewModel);
+					}
+				}
+			}
+		}
+
+		if (type == "selected-groups")
+		{
+			IList<ProductGroupViewModel> groups = Model.Item.GetValue<IList<ProductGroupViewModel>>("SelectedGroups");
+			if (groups != null)
+			{
+				foreach (var group in groups)
+				{
+					groupList.Add(group);
+				}
+			}
+		}
+
+		if (type == "subgroups-current")
+		{
+			var currentGroupId = Dynamicweb.Context.Current.Request.QueryString.Get("GroupID");
+			var currentGroup = currentGroupId != null ? Services.ProductGroups.GetGroup(currentGroupId) : null;
+			var groups = currentGroup != null ? Services.ProductGroups.GetSubgroups(currentGroup) : null;
+			if (groups != null)
+			{
+				foreach (var group in groups)
+				{
+					var groupViewModel = ViewModelFactory.CreateView(new ProductGroupViewModelSettings(), group);
+					groupList.Add(groupViewModel);
+				}
+			}
+		}
+
+		return groupList;
+	}
+
+	private LinkViewModel GetLink(ProductGroupViewModel group)
+	{
+		var link = new LinkViewModel()
+		{
+			Url = $"/Default.aspx?ID={GetPageIdByNavigationTag("Shop")}&GroupID={group.Id.Trim()}",
+			IsExternal = false
+		};
+
+		return link;
+	}
+
+	private string GetGroupImageMarkup(ProductGroupViewModel group, string imageShape)
+	{
+		string groupImage = Services.ProductGroups.GetGroup(group.Id)?.LargeImage;
+		string groupImageEncoded = Dynamicweb.Context.Current.Server.UrlEncode(groupImage);
+		string groupImagePath = $"/Admin/Public/GetImage.ashx?width=640&crop=0&image=/Files{groupImageEncoded}&format=webp";
+		string groupImageMarkup = $"<img class=\"{imageShape}\" src=\"{groupImagePath}\" alt=\"{group.Name}\" style=\"object-fit:cover\"/>";
+
+		return !string.IsNullOrEmpty(groupImage) ? groupImageMarkup : string.Empty;
+	}
+
+	private string GetImageShape()
+	{
+		string imageShape = Model.Item.GetRawValueString("ImageShape", "boxed");
+		switch (imageShape)
+		{
+			case "boxed":
+				imageShape = "rounded-0";
+				break;
+			case "rounded":
+				imageShape = "rounded-3";
+				break;
+			case "circle":
+				imageShape = "rounded-pill";
+				break;
+		}
+		return imageShape;
+	}
+
+	private string GetButtonAlignment()
+	{
+		string buttonAlignment = Model.Item.GetRawValueString("ButtonAlignment", "align-center-center");
+
+		switch (buttonAlignment)
+		{
+			case "align-center-center":
+				return "text-center justify-content-center align-items-center";
+			case "align-bottom-start":
+				return "text-start justify-content-start align-items-end";
+			case "align-bottom-center":
+				return "text-center justify-content-center align-items-end";
+			case "align-bottom-end":
+				return "text-end justify-content-end align-items-end";
+			default:
+				return "align-center-center";
+		}
+	}
+}
+
+@{
+	string groupType = Model.Item.GetRawValueString("GroupType", "subgroups");
+	var groups = GetGroups(groupType);
+
+	bool hideHeaders = (Model.Item?.GetBoolean("HideHeaders") ?? false);
+	string title = Model.Item?.GetString("Title", string.Empty);
+	string subtitle = Model.Item?.GetString("Subtitle", string.Empty);
+	bool groupsExist = groups is object && groups.Count != 0;
+
+	// Grid layout
+	string gridSize = Model.Item.GetRawValueString("GridSize", "3");
+	string gridSizeMobile = Model.Item.GetRawValueString("GridSizeMobile", "1");
+	gridSize = $"grid-{gridSizeMobile} grid-sm-3 grid-lg-{gridSize}";
+
+	string itemsGap = $"gap-{Model.Item.GetRawValueString("GridItemsGap", "3")}";
+	string layout = Model.Item.GetRawValueString("Layout", "overlay");
+
+	// Styling
+	string paragraphTheme = Model.Item.GetRawValueString("ParagraphTheme");
+	paragraphTheme = !string.IsNullOrWhiteSpace(paragraphTheme) ? $"theme {paragraphTheme.Replace(" ", "").Trim().ToLower()} p-3" : string.Empty;
+
+	string groupTheme = Model.Item.GetRawValueString("GroupTheme");
+	groupTheme = !string.IsNullOrWhiteSpace(groupTheme) ? $"theme {groupTheme.Replace(" ", "").Trim().ToLower()}" : "theme";
+	string groupThemePadding = groupTheme == "theme" ? "pt-2" : "p-2";
+
+	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", string.Empty);
+	ratio = ratio != "0" ? ratio : string.Empty;
+	string ratioCssClass = ratio != string.Empty ? "ratio" : string.Empty;
+	string ratioVariable = ratio != string.Empty ? "--bs-aspect-ratio: " + ratio : string.Empty;
+
+	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "h3");
+	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
+	string maxWidth = Model.Item.GetRawValueString("TextReadability", string.Empty);
+	maxWidth = maxWidth == "max-width-on" ? "mw-75ch" : string.Empty;
+
+	string buttonAlignment = GetButtonAlignment();
+
+	string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "primary");
+	buttonStyle = buttonStyle == "primary" ? "btn-primary" : buttonStyle;
+	buttonStyle = buttonStyle == "secondary" ? "btn-secondary" : buttonStyle;
+	buttonStyle = buttonStyle == "link" ? "btn-link" : buttonStyle;
+
+	string buttonSize = Model.Item.GetRawValueString("ButtonSize", "regular");
+	buttonSize = buttonSize == "small" ? "btn btn-sm" : buttonSize;
+	buttonSize = buttonSize == "regular" ? "btn" : buttonSize;
+	buttonSize = buttonSize == "large" ? "btn btn-lg" : buttonSize;
+
+	string stretchedLink = "stretched-link";
+
+	string imageShape = GetImageShape();
+	string missingImageMarkup = $"<div class=\"bg-opacity-10 {imageShape}\" style=\"background-color:rgba(var(--swift-foreground-color-rgb),var(--bs-bg-opacity));\"></div>";
+
+	}
+
+	@if (groupsExist)
+	{
+	<div class="grid gap-0 @(paragraphTheme) item_@(Model.Item.SystemName.ToLower())">
+		<div id="@Model.ID" class="user-select-none" style="scroll-margin-top:var(--header-height,150px)"></div>
+		
+		@if (!hideHeaders)
+		{
+			<div class="g-col-12 pb-2 pb-lg-4">
+				<div class="mb-0-last-child">
+					@if (!string.IsNullOrEmpty(title))
+					{
+						<h2 class="mt-0 @titleFontSize @maxWidth">@title</h2>
+					}
+
+					@if (!string.IsNullOrEmpty(subtitle))
+					{
+						<p class="@subtitleFontSize @maxWidth">@subtitle</p>
+					}
+				</div>
+			</div>
+		}
+
+			<div class="g-col-12 grid @gridSize @itemsGap">
+
+				@foreach (var group in groups)
+				{
+					string groupImageMarkup = GetGroupImageMarkup(group, imageShape) ?? missingImageMarkup;
+					bool groupImage = !string.IsNullOrEmpty(groupImageMarkup);
+
+					<div class="d-flex flex-column h-100">
+						@{
+							switch (layout)
+							{
+								case "overlay":
+									<div class="card rounded-0 border-0 @(groupTheme) @(ratioCssClass)" style="@ratioVariable">
+										
+										@(groupImage ? groupImageMarkup : missingImageMarkup)
+
+										<div class="d-grid p-3 @buttonAlignment">
+											@if (GetLink(group) is object)
+											{
+												bool openLinksInNewTab = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal;
+												string target = openLinksInNewTab ? "target=\"_blank\"" : string.Empty;
+												string rel = openLinksInNewTab ? "rel=\"noopener\"" : string.Empty;
+
+												<a href="@GetLink(group)" class="@(buttonSize) @buttonStyle @(stretchedLink)" @target @rel>@group.Name</a>
+											}
+										</div>
+									</div>
+									break;
+								case "below":
+									<div class="card rounded-0 border-0 @(groupTheme)">
+
+										<div class="@(ratioCssClass)" style="@ratioVariable">
+											
+											@(groupImage ? groupImageMarkup : missingImageMarkup)
+
+										</div>
+
+										<div class="@(groupImage ? "h-100" : string.Empty) @(groupTheme) @(groupThemePadding) d-grid @buttonAlignment">
+
+											@if (GetLink(group) is object)
+											{
+												bool openLinksInNewTab = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab") && GetLink(group).IsExternal;
+												string target = openLinksInNewTab ? "target=\"_blank\"" : string.Empty;
+												string rel = openLinksInNewTab ? "rel=\"noopener\"" : string.Empty;
+
+												<a href="@GetLink(group)" class="@(buttonSize) @buttonStyle @(stretchedLink)" @target @rel>@group.Name</a>
+											}
+										</div>
+									</div>
+									break;
+							}
+						}
+					</div>
+				}
+			</div>
+		</div>
+	}
+	else if (Pageview.IsVisualEditorMode)
+	{
+		<div class="alert alert-dark" role="alert">
+			<span>@Translate("Group grid"): @Translate("Edit this column to configure")</span>
+		</div>
+	}
