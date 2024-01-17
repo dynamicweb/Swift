@@ -167,7 +167,7 @@ const Typeahead = function() {
 
 					var allResultsPage = formElm.getAttribute("data-product-list-page");
 					allResultsPage = elm.getAttribute("data-all-results-page") ? elm.getAttribute("data-all-results-page") : allResultsPage;
-
+					
 					formElm.setAttribute("action", allResultsPage);
 				}
 			});
@@ -191,6 +191,9 @@ const Typeahead = function() {
 
 		selectSuggestion: function (elm) {
 			Typeahead.preSelectSuggestion(elm);
+
+			elm.closest(".js-type-ahead-dropdown").querySelector("[name=\"redirect\"]").remove();
+			elm.closest(".js-type-ahead-dropdown").querySelector("[name=\"SearchLayout\"]").remove();
 
 			elm.closest(".js-type-ahead-dropdown").querySelector(".js-suggest-form").submit();
 		},
