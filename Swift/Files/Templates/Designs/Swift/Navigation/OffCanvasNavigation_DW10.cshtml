@@ -1,0 +1,330 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using System.IO
+@using System.Text.RegularExpressions
+@using Dynamicweb
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@functions {
+
+	public string GetGroupFieldValue(string systemName, IList<FieldValueViewModel> groupFields)
+	{
+		string groupField = string.Empty;
+
+		if (groupFields is object)
+		{
+
+			groupField = groupFields != null ? groupFields.FirstOrDefault(field => field?.SystemName == systemName)?.Value?.ToString() : string.Empty;
+		}
+
+		return groupField;
+	}
+}
+
+@{
+	string navType = Model?.Parameters["NavType"] != null ? Model.Parameters["NavType"].ToString() : "first-nav";
+	string menuId = Model.Parameters.ContainsKey("menu-id") ? $"menu_{Model.Parameters["menu-id"].ToString().ToLower()}" : string.Empty;
+
+	string productGroupImageShape = Model.Parameters.ContainsKey("ProductGroupImageShape") ? Model.Parameters["ProductGroupImageShape"].ToString() : string.Empty;
+	bool showProductGroupImage = Model.Parameters.ContainsKey("ShowProductGroupImage") ? Convert.ToBoolean(Model.Parameters["ShowProductGroupImage"].ToString()) : false;
+	string productGroupPromotionImageTheme = Model.Parameters.ContainsKey("ProductGroupPromotionImageTheme") ? Model.Parameters["ProductGroupPromotionImageTheme"].ToString().ToLower() : string.Empty;
+	bool showProductGroupPromotionImage = Model.Parameters.ContainsKey("ShowProductGroupPromotionImage") ? Convert.ToBoolean(Model.Parameters["ShowProductGroupPromotionImage"].ToString()) : false;
+
+	string ratio = Model.Parameters.ContainsKey("ImageAspectRatio") ? Model.Parameters["ImageAspectRatio"].ToString() : string.Empty;
+	ratio = ratio != "0" ? ratio : string.Empty;
+
+	var parameters = new Dictionary<string, object>();
+	parameters.Add("ProductGroupImageShape", productGroupImageShape);
+	parameters.Add("ShowProductGroupImage", showProductGroupImage);
+	parameters.Add("ProductGroupPromotionImageTheme", productGroupPromotionImageTheme);
+	parameters.Add("ShowProductGroupPromotionImage", showProductGroupPromotionImage);
+	parameters.Add("Ratio", ratio);
+}
+
+<div class="nav @navType flex-column h-auto w-100 left-0 top-0 offcanvas-navigation @menuId">
+	@foreach (var node in Model.Nodes)
+	{
+		await NavItemHelper(node);
+	}
+</div>
+
+@{ 
+
+
+async Task NavItemHelper(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel currentNode)
+{
+	
+	string navType = Model?.Parameters["NavType"] != null ? Model.Parameters["NavType"].ToString() : "first-nav";
+	string menuId = Model.Parameters.ContainsKey("menu-id") ? $"menu_{Model.Parameters["menu-id"].ToString().ToLower()}" : string.Empty;
+
+	string productGroupImageShape = Model.Parameters.ContainsKey("ProductGroupImageShape") ? Model.Parameters["ProductGroupImageShape"].ToString() : string.Empty;
+	bool showProductGroupImage = Model.Parameters.ContainsKey("ShowProductGroupImage") ? Convert.ToBoolean(Model.Parameters["ShowProductGroupImage"].ToString()) : false;
+	string productGroupPromotionImageTheme = Model.Parameters.ContainsKey("ProductGroupPromotionImageTheme") ? Model.Parameters["ProductGroupPromotionImageTheme"].ToString().ToLower() : string.Empty;
+	bool showProductGroupPromotionImage = Model.Parameters.ContainsKey("ShowProductGroupPromotionImage") ? Convert.ToBoolean(Model.Parameters["ShowProductGroupPromotionImage"].ToString()) : false;
+
+	string ratio = Model.Parameters.ContainsKey("ImageAspectRatio") ? Model.Parameters["ImageAspectRatio"].ToString() : string.Empty;
+	ratio = ratio != "0" ? ratio : string.Empty;
+	string arrowLeftIconPath = "/Files/Templates/Designs/Swift/Assets/icons/arrow-left.svg";
+	string arrowRightIconPath = "/Files/Templates/Designs/Swift/Assets/icons/arrow-right.svg";
+	
+	<div class="nav @navType flex-column h-auto w-100 left-0 top-0 offcanvas-navigation @menuId">
+		@{
+
+			var page = Dynamicweb.Content.Services.Pages.GetPage(currentNode.PageId);
+			string pageType = page.ItemType;
+
+			var paragraphId = Pageview.CurrentParagraph.ID;
+			string groupId = Dynamicweb.Context.Current.Request["GroupID"] != null ? Dynamicweb.Context.Current.Request["GroupID"].ToString() : string.Empty;
+			string productId = Dynamicweb.Context.Current.Request["ProductID"] != null ? Dynamicweb.Context.Current.Request["ProductID"].ToString() : string.Empty;
+			string variantId = Dynamicweb.Context.Current.Request["VariantID"] != null ? Dynamicweb.Context.Current.Request["VariantID"].ToString() : string.Empty;
+
+			string productGroupImageSize = "24";
+
+			Regex reg = new Regex(@"\(([^\)]+)\)");
+
+			var hasChildren = currentNode.Nodes.Count() > 0;
+			var nodeId = !string.IsNullOrEmpty(currentNode.GroupId) ? currentNode.GroupId : currentNode.PageId.ToString();
+			var inPathChecked = currentNode.InPath ? "checked" : string.Empty;
+			var inPathClass = currentNode.InPath ? " in-path" : string.Empty;
+			var activeClass = currentNode.IsActive ? " active fw-bold" : string.Empty;
+			if (currentNode.ShowInMenu)
+			{
+				<div class="nav-item d-flex align-items-center w-100 py-1">
+					@if (pageType != "Swift_Preferences")
+					{
+						var group = currentNode.GetProductGroup();
+						IList<FieldValueViewModel> groupFields = group.GroupFields != null ? group.GroupFields : null;
+
+						if (currentNode.IsClickable)
+						{
+							<a class="nav-link position-relative d-flex align-items-center gap-2 flex-grow-1@(activeClass)@(inPathClass)" @(currentNode.IsActive ? "aria-current='page'" : string.Empty) href="@currentNode.Link" id="@nodeId">
+								@if (showProductGroupImage && !string.IsNullOrEmpty(currentNode.GroupId) && groupFields != null)
+								{
+									foreach (FieldValueViewModel field in groupFields)
+									{
+										if (field.SystemName == "ProductGroupNavigationImage" && !string.IsNullOrEmpty(field.Value.ToString()))
+										{
+										
+											var groupImage = field.Value.ToString();
+
+											if (!groupImage.StartsWith("/Files", StringComparison.OrdinalIgnoreCase))
+											{
+												groupImage = $"/Files/Images/{groupImage}";
+											}
+											
+											if (groupImage.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+											{
+												<span class="icon-auto @productGroupImageShape" style="height: @(productGroupImageSize)px; width: @(productGroupImageSize)px;">
+													@ReadFile(groupImage)
+												</span>
+											}
+											else
+											{
+												
+												var imagePath = "/Admin/Public/GetImage.ashx?Image=" + groupImage + "&Width=" + productGroupImageSize + "&Height=" + productGroupImageSize + "&crop=0";
+												<img loading="lazy" class="@productGroupImageShape" alt="@group.Name" width="@productGroupImageSize" height="@productGroupImageSize" src="@imagePath">
+											}
+										}
+									}
+								}
+								<span class="flex-grow-1">
+									@currentNode.Name
+								</span>
+							</a>
+
+							if (hasChildren)
+							{
+								<label class="nav-link position-relative" role="button" aria-label="Unfold @currentNode.Name" for="nav_@(paragraphId)_@(nodeId)">
+									@{
+										
+										<span class="icon-3">@ReadFile(arrowRightIconPath)</span>
+
+									}
+								</label>
+							}
+						}
+						else
+						{
+							<label class="nav-link position-relative d-flex align-items-center gap-2 flex-grow-1@(activeClass)@(inPathClass)" @(currentNode.IsActive ? "aria-current='page'" : "") role="button" aria-label="Unfold @currentNode.Name" for="nav_@(paragraphId)_@(nodeId)">
+								@if (showProductGroupImage && !string.IsNullOrEmpty(currentNode.GroupId) && groupFields != null)
+								{
+									foreach (FieldValueViewModel field in groupFields)
+									{
+										if (field.SystemName == "ProductGroupNavigationImage" && !string.IsNullOrEmpty(field.Value.ToString()))
+										{
+											var groupImage = field.Value.ToString();
+											if (!groupImage.StartsWith("/Files", StringComparison.OrdinalIgnoreCase))
+											{
+												groupImage = $"/Files/Images/{groupImage}";
+											}
+
+											if (groupImage.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+											{
+												<span class="icon-auto @productGroupImageShape" style="height: @(productGroupImageSize)px; width: @(productGroupImageSize)px;">
+													@ReadFile(groupImage)
+												</span>
+											}
+											else
+											{
+												var imagePath = "/Admin/Public/GetImage.ashx?Image=" + groupImage + "&Width=" + productGroupImageSize + "&Height=" + productGroupImageSize + "&crop=0";
+												<img loading="lazy" class="@productGroupImageShape" alt="@group.Name" width="@productGroupImageSize" height="@productGroupImageSize" src="@imagePath">
+											}
+										}
+									}
+								}
+
+								<span class="flex-grow-1">
+									@currentNode.Name
+								</span>
+
+								@if (hasChildren)
+								{
+									<span class="icon-3">@ReadFile(arrowRightIconPath)</span>
+
+								}
+							</label>
+						}
+
+						if (hasChildren)
+						{
+							<input type="checkbox" class="visually-hidden sub-nav-check" id="nav_@(paragraphId)_@(nodeId)" @inPathChecked>
+							<div class="nav sub-nav position-absolute h-100 opacity-0 pe-none invisible w-100 left-0 top-0">
+								<div class="h-100 w-100 overflow-y-auto overflow-x-hidden">
+									<div class="nav-header position-relative py-1">
+										<label class="nav-link position-relative d-flex align-items-center gap-2 flex-grow-1" role="button" aria-label="Go back to @currentNode.Name" for="nav_@(paragraphId)_@(nodeId)">
+											@{
+												<span class="icon-3">@ReadFile(arrowLeftIconPath)</span>
+											}
+											<span class="flex-grow-1">@currentNode.Name</span>
+										</label>
+									</div>
+
+
+									@foreach (var node in currentNode.Nodes)
+									{
+										await NavItemHelper(node);
+									}
+
+									@if (showProductGroupImage && groupFields != null)
+									{
+										var groupName = group.Name;
+										string ratioCssClass = ratio != string.Empty ? " ratio" : string.Empty;
+										string ratioVariable = ratio != string.Empty ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : string.Empty;
+										string productGroupPromotionImage = string.Empty;
+										string productGroupPromotionImagePath = string.Empty;
+										string productGroupPromotionDescription = string.Empty;
+										string productGroupPromotionLinkLabel = string.Empty;
+										string productGroupPromotionLink = string.Empty;
+										string gridGap = !string.IsNullOrEmpty(productGroupPromotionImageTheme) ? "gap-0" : "gap-3";
+										string themePadding = !string.IsNullOrEmpty(productGroupPromotionImageTheme) ? "p-3" : "p-0";
+
+										foreach (FieldValueViewModel field in groupFields)
+										{
+											if (field.SystemName == "ProductGroupPromotionImage")
+											{
+												productGroupPromotionImage = field.Value != null ? field.Value.ToString() : string.Empty;
+												if (!productGroupPromotionImage.StartsWith("/Files", StringComparison.OrdinalIgnoreCase))
+												{
+													productGroupPromotionImage = $"/Files/Images/{productGroupPromotionImage}";
+												}
+
+												productGroupPromotionImagePath = "/Admin/Public/GetImage.ashx?Width=" + 480 + "&crop=0&image=" + productGroupPromotionImage;
+											}
+											if (field.SystemName == "ProductGroupPromotionDescription")
+											{
+												productGroupPromotionDescription = field.Value != null ? field.Value.ToString() : string.Empty;
+											}
+											if (field.SystemName == "ProductGroupPromotionLinkLabel")
+											{
+												productGroupPromotionLinkLabel = field.Value != null ? field.Value.ToString() : string.Empty;
+											}
+											if (field.SystemName == "ProductGroupPromotionLink")
+											{
+												productGroupPromotionLink = field.Value != null ? field.Value.ToString() : string.Empty;
+											}
+										}
+										if (showProductGroupPromotionImage)
+										{
+											<div class="grid grid-1 mt-3 mx-3 @gridGap@(productGroupPromotionImageTheme)">
+												@if (productGroupPromotionImage != string.Empty)
+												{
+													productGroupPromotionLink = !string.IsNullOrEmpty(productGroupPromotionLink) ? productGroupPromotionLink : currentNode.Link;
+
+													<a href="@productGroupPromotionLink" title="@groupName">
+														<figure class="m-0@(ratioCssClass)" @ratioVariable>
+															<img class="img-fluid" src="@productGroupPromotionImagePath" alt="@groupName" style="object-fit:cover">
+														</figure>
+													</a>
+												}
+												@if (!string.IsNullOrEmpty(productGroupPromotionDescription) || !string.IsNullOrEmpty(productGroupPromotionLinkLabel))
+												{
+													<div class="grid grid-1 @themePadding ">
+
+														@if (!string.IsNullOrEmpty(productGroupPromotionDescription))
+														{
+															<h6 class="m-0">@productGroupPromotionDescription</h6>
+														}
+														@if (!string.IsNullOrEmpty(productGroupPromotionLinkLabel))
+														{
+															productGroupPromotionLink = !string.IsNullOrEmpty(productGroupPromotionLink) ? productGroupPromotionLink : currentNode.Link;
+
+															<a href="@productGroupPromotionLink" title="@productGroupPromotionLinkLabel" class="btn btn-link text-start border-0 p-0">@productGroupPromotionLinkLabel</a>
+														}
+													</div>
+												}
+											</div>
+										}
+									}
+								</div>
+							</div>
+						}
+					}
+					else
+					{
+						bool countrySelector = page.Item?["CountrySelector"] != null ? Convert.ToBoolean(page.Item["CountrySelector"].ToString()) : false;
+						bool languageSelector = page.Item?["LanguageSelector"] != null ? Convert.ToBoolean(page.Item["LanguageSelector"].ToString()) : false;
+						bool currencySelector = page.Item?["CurrencySelector"] != null ? Convert.ToBoolean(page.Item["CurrencySelector"].ToString()) : false;
+						string name = Translate("Preferences");
+						string icon = string.Empty;
+
+						if (languageSelector)
+						{
+							bool hideIcon = page.Item?["HideIcon"] != null ? Convert.ToBoolean(page.Item["HideIcon"].ToString()) : false;
+
+							if (!hideIcon)
+							{
+								icon = $"/Files/FlagIcons/{Pageview.Area.CultureInfo.Name.ToLower()}.svg";
+							}
+
+							name = reg.Replace(Pageview.Area.CultureInfo.DisplayName, string.Empty);
+						}
+
+						<form action="/Default.aspx?ID=@currentNode.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline" class="w-100">
+							<input type="hidden" name="Layout" value="modal">
+							<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+							<input type="hidden" name="GroupID" value="@groupId">
+							<input type="hidden" name="ProductID" value="@productId">
+							<input type="hidden" name="VariantID" value="@variantId">
+							<a href="#" role="button" onclick="swift.PageUpdater.Update(event)" class="nav-link position-relative flex-fill swift_open-preferences-modal @activeClass @inPathClass" @(currentNode.IsActive ? "aria-current='page'" : "") data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+								@if (icon != "")
+								{
+									if (icon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !icon.ToLower().Contains("none"))
+									{
+										string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
+
+										<span class="icon-2">@ReadFile(iconPath)</span>
+									}
+								}
+								<span>@name</span>
+							</a>
+						</form>
+					}
+				</div>
+
+			}
+		}
+
+	</div>
+
+
+}
+	}
