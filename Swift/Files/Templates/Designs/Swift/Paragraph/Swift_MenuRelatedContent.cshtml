@@ -81,9 +81,14 @@
 		}
 	}
 
-	string GetClickableCss(NavigationTreeNodeViewModel node)
+	string isActive(NavigationTreeNodeViewModel node)
 	{
-		return node.IsClickable ? string.Empty : "pe-none";
+		return node.IsActive ? "aria-current='page'" : string.Empty;
+	}
+
+	string isActiveDropdown(NavigationTreeNodeViewModel node)
+	{
+		return node.IsActive ? "class=\"active\"" : string.Empty;
 	}
 
 	bool GetRelatedContentStructure(IEnumerable<NavigationTreeNodeViewModel> relatedContentNodes)
@@ -128,137 +133,206 @@
 	string menuAlignment = Model.Item.GetRawValueString("MenuAlignment", "start");
 	menuAlignment = $"justify-content-{menuAlignment}";
 
-	string itemCss = $"lh-1 text-decoration-underline-hover text-decoration-accent-hover";
+	string clickable = "text-decoration-underline-hover text-decoration-accent-hover";
 
 }
 
 <div class="nav-wrapper megamenu-wrapper">
-		<nav class="d-flex gap-2 @headerAlignment">
-			@foreach (var rootNode in rootNavigation.Nodes.Where(node => node.ShowInMenu))
-			{
-				string submenuType = GetSubmenuType(rootNode);
-				bool isMegaMenu = IsMegaMenu(rootNode, submenuType);
-				string submenuTypeCss = isMegaMenu ? "position-static" : string.Empty;
+	<nav class="d-flex gap-2 @headerAlignment">
+		@foreach (var rootNode in rootNavigation.Nodes.Where(node => node.ShowInMenu))
+		{
+			string submenuType = GetSubmenuType(rootNode);
+			bool isMegaMenu = IsMegaMenu(rootNode, submenuType);
+			string submenuTypeCss = isMegaMenu ? "position-static" : string.Empty;
 
-				string relatedContentNavigationRoot = GetGroupFieldValue("ProductGroupRelatedContent", rootNode);
-				int relatedContentPageId = !string.IsNullOrEmpty(relatedContentNavigationRoot) ? GetPageIdFromLink(relatedContentNavigationRoot) : 0;
-				var relatedContentNodes = GetNavigationTreeFromPageId(relatedContentPageId, true).Nodes;
-				bool hasRelatedContent = relatedContentNodes.Any() && relatedContentPageId != 0;
-				bool nodesExist = rootNode.Nodes.Any() || hasRelatedContent;
-				bool relatedContentIsNested = hasRelatedContent ? GetRelatedContentStructure(relatedContentNodes) : false;
-				string relatedContentGap = spacing == "wide" ? "gap-4" : "gap-3";
-				relatedContentGap = relatedContentIsNested ? relatedContentGap : string.Empty;
-				<div class="nav-item dropdown @submenuTypeCss">
-					<a class="nav-link p-2 fw-bold text-uppercase @headerLinkAnimation" role="button" data-bs-toggle="dropdown" data-bs-offset="0,0" aria-expanded="false">
+			string relatedContentNavigationRoot = GetGroupFieldValue("ProductGroupRelatedContent", rootNode);
+			int relatedContentPageId = !string.IsNullOrEmpty(relatedContentNavigationRoot) ? GetPageIdFromLink(relatedContentNavigationRoot) : 0;
+			var relatedContentNodes = GetNavigationTreeFromPageId(relatedContentPageId, true).Nodes;
+			bool hasRelatedContent = relatedContentNodes.Any() && relatedContentPageId != 0;
+			bool nodesExist = rootNode.Nodes.Any() || hasRelatedContent;
+			bool relatedContentIsNested = hasRelatedContent ? GetRelatedContentStructure(relatedContentNodes) : false;
+			string relatedContentGap = spacing == "wide" ? "gap-4" : "gap-3";
+			relatedContentGap = relatedContentIsNested ? relatedContentGap : string.Empty;
+			<div class="nav-item dropdown @submenuTypeCss">
+				@if (rootNode.IsClickable)
+				{
+
+					<a class="nav-link p-2 fw-bold text-uppercase @headerLinkAnimation" href="@rootNode.Link" role="button" data-bs-toggle="dropdown" data-bs-offset="0,0" aria-expanded="false" @isActive(rootNode)>
 						@rootNode.Name
 					</a>
+				}
+				else
+				{
+					<span class="nav-link p-2 fw-bold text-uppercase @headerLinkAnimation" role="button" data-bs-toggle="dropdown" data-bs-offset="0,0" aria-expanded="false">
+						@rootNode.Name
+					</span>
+				}
 
-					@if (nodesExist)
+				@if (nodesExist)
+				{
+					if (isMegaMenu)
 					{
-						if (isMegaMenu)
-						{
-							<div class="dropdown-menu border-0 megamenu @theme">
-								<div class="container-xl">
-									<div class="d-flex py-2 gap-3">
+						<div class="dropdown-menu border-0 megamenu @theme">
+							<div class="container-xl">
+								<div class="d-flex py-2 gap-3">
 
-										@if (hasRelatedContent)
-										{
-											<div class="col-auto megamenu-col d-flex flex-column me-4 pe-4 border-end @relatedContentGap @textAlignment @menuAlignment">
-												@foreach (var relatedContentNode in relatedContentNodes.Where(node => node.ShowInMenu))
-												{
-													<div>
-
-														<a class="nav-link px-0 @itemCss @itemSpacing @headerSpacing @(GetClickableCss(relatedContentNode))" href="@relatedContentNode.Link">
+									@if (hasRelatedContent)
+									{
+										<div class="col-auto megamenu-col d-flex flex-column me-4 pe-4 border-end @relatedContentGap @textAlignment @menuAlignment">
+											@foreach (var relatedContentNode in relatedContentNodes.Where(node => node.ShowInMenu))
+											{
+												<div>
+													@if (relatedContentNode.IsClickable)
+													{
+														<a class="nav-link px-0 lh-1 @itemSpacing @headerSpacing @clickable" href="@relatedContentNode.Link" @isActive(relatedContentNode)>
 															<strong>@relatedContentNode.Name</strong>
 														</a>
+													}
+													else
+													{
+														<div class="nav-link px-0 lh-1 pe-none @itemSpacing @headerSpacing" href="@relatedContentNode.Link" @isActive(relatedContentNode)>
+															<strong>@relatedContentNode.Name</strong>
+														</div>
+													}
 
-														@foreach (var relatedContentSubNode in relatedContentNode.Nodes.Where(node => node.ShowInMenu))
+													@foreach (var relatedContentSubNode in relatedContentNode.Nodes.Where(node => node.ShowInMenu))
+													{
+														if (relatedContentSubNode.IsClickable)
 														{
-															<a class="nav-link px-0 @itemCss @itemSpacing @(GetClickableCss(relatedContentSubNode))" href="@relatedContentSubNode.Link">
+															<a class="nav-link px-0 lh-1 @itemSpacing @clickable" href="@relatedContentSubNode.Link" @isActive(relatedContentSubNode)>
 																<span>@relatedContentSubNode.Name</span>
 															</a>
 														}
-													</div>
-												}
-											</div>
-					
-										}
-
-										<div class="col d-flex flex-wrap gap-3 @menuAlignment @textAlignment">
-
-											@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
-											{
-												<div class="col-auto megamenu-col @textAlignment">
-													<a class="nav-link px-0 @itemCss @itemSpacing @headerSpacing @(GetClickableCss(subNode))" href="@subNode.Link">
-														<strong>@subNode.Name</strong>
-													</a>
-													@foreach (var (endNode, index) in subNode.Nodes.Select((node, i) => (node, i)))
-													{
-														if (index < maxEndNodes && endNode.ShowInMenu)
+														else
 														{
-															<a class="nav-link px-0 @itemCss @itemSpacing @(GetClickableCss(endNode))" href="@endNode.Link">
-																@endNode.Name
-															</a>
-
-															continue;
+															<div class="nav-link px-0 lh-1 pe-none @itemSpacing" href="@relatedContentSubNode.Link">
+																<span>@relatedContentSubNode.Name</span>
+															</div>
 														}
-
-														if (!string.IsNullOrWhiteSpace(maxEndNodesText))
-														{
-															<a class="nav-link px-0 text-decoration-underline mt-1 @itemCss @itemSpacing" href="@subNode.Link">
-																@Translate(maxEndNodesText)
-															</a>
-														}
-
-														break;
 													}
 												</div>
-
 											}
 										</div>
+
+									}
+
+									<div class="col d-flex flex-wrap gap-3 @menuAlignment @textAlignment">
+
+										@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
+										{
+											<div class="col-auto megamenu-col @textAlignment">
+												@if (subNode.IsClickable)
+												{
+													<a class="nav-link px-0 lh-1 @itemSpacing @headerSpacing @clickable" href="@subNode.Link" @isActive(subNode)>
+														<strong>@subNode.Name</strong>
+													</a>
+												}
+												else
+												{
+													<div class="nav-link px-0 lh-1 pe-none @itemSpacing @headerSpacing">
+														<strong>@subNode.Name</strong>
+													</div>
+												}
+
+												@foreach (var (endNode, index) in subNode.Nodes.Select((node, i) => (node, i)))
+												{
+													if (index < maxEndNodes && endNode.ShowInMenu)
+													{
+														if (endNode.IsClickable)
+														{
+															<a class="nav-link px-0 lh-1 @itemSpacing @clickable" href="@endNode.Link" @isActive(endNode)>
+																@endNode.Name
+															</a>
+														}
+														else
+														{
+															<div class="nav-link px-0 lh-1 pe-none @itemSpacing">
+																@endNode.Name
+															</div>
+														}
+
+														continue;
+													}
+
+													if (!string.IsNullOrWhiteSpace(maxEndNodesText))
+													{
+														<a class="nav-link px-0 text-decoration-underline mt-1 lh-1 @itemSpacing" href="@subNode.Link">
+															@Translate(maxEndNodesText)
+														</a>
+													}
+
+													break;
+												}
+											</div>
+
+										}
 									</div>
 								</div>
 							</div>
-						}
-						else
-						{
-							<ul class="dropdown-menu @theme @textAlignment">
+						</div>
+					}
+					else
+					{
+						<ul class="dropdown-menu @theme @textAlignment">
 
-								@if (hasRelatedContent)
+							@if (hasRelatedContent)
+							{
+								foreach (var relatedContentNode in relatedContentNodes)
 								{
-									foreach (var relatedContentNode in relatedContentNodes)
+									if (relatedContentNode.IsClickable)
 									{
-										<li>
-											<a class="dropdown-item py-2 @itemCss @(GetClickableCss(relatedContentNode))" href="@relatedContentNode.Link">
+										<li @isActiveDropdown(relatedContentNode)>
+											<a class="dropdown-item py-2 lh-1 @clickable" href="@relatedContentNode.Link" @isActive(relatedContentNode)>
 												<strong>@relatedContentNode.Name</strong>
 											</a>
 										</li>
+									}
+									else
+									{
+										<li>
+											<span class="dropdown-item py-2 lh-1 pe-none">
+												<strong>@relatedContentNode.Name</strong>
+											</span>
+										</li>
 
-										foreach (var relatedContentSubNode in relatedContentNode.Nodes.Where(node => node.ShowInMenu))
+									}
+
+									foreach (var relatedContentSubNode in relatedContentNode.Nodes.Where(node => node.ShowInMenu))
+									{
+										if (relatedContentSubNode.IsClickable)
 										{
-											<li>
-												<a class="dropdown-item py-2 @itemCss @(GetClickableCss(relatedContentSubNode))" href="@relatedContentSubNode.Link">
+											<li @isActiveDropdown(relatedContentSubNode)>
+												<a class="dropdown-item py-2 lh-1 @clickable" href="@relatedContentSubNode.Link" @isActive(relatedContentSubNode)>
 													<strong>@relatedContentSubNode.Name</strong>
 												</a>
 											</li>
 										}
+										else
+										{
+											<li>
+												<span class="dropdown-item py-2 lh-1 pe-none">
+													<strong>@relatedContentSubNode.Name</strong>
+												</span>
+											</li>
+										}
 									}
-
-									<li class="dropdown-divider"></li>
 								}
 
-								@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
-								{
-									<li>
-										<a class="dropdown-item py-2 @itemCss @(GetClickableCss(subNode))" href="@subNode.Link">
-											<strong>@subNode.Name</strong>
-										</a>
-									</li>
-								}
-							</ul>
-						}
+								<li class="dropdown-divider"></li>
+							}
+
+							@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
+							{
+								<li @isActiveDropdown(subNode)>
+									<a class="dropdown-item py-2 lh-1 @clickable" href="@subNode.Link" @isActive(subNode)>
+										<strong>@subNode.Name</strong>
+									</a>
+								</li>
+							}
+						</ul>
 					}
-				</div>
-			}
-		</nav>
+				}
+			</div>
+		}
+	</nav>
 </div>
