@@ -16,6 +16,7 @@ import { AssetLoader } from './_assetLoader';
 import { LiveProductInfo } from './_live-product-info';
 import { BackInStockNotification } from './_backInStockNotification';
 import { ExpressBuy } from './_expressBuy';
+import { Menu } from './_menu';
 
 //Bootstrap
 window.bootstrap = bootstrap;
@@ -39,7 +40,8 @@ const swift = function () {
 		AssetLoader: AssetLoader,
 		LiveProductInfo: LiveProductInfo,
 		BackInStockNotification: BackInStockNotification,
-		ExpressBuy: ExpressBuy
+		ExpressBuy: ExpressBuy,
+		Menu: Menu
 	}
 }();
 export { swift };
@@ -56,14 +58,21 @@ window.addEventListener('DOMContentLoaded', () => {
 
 	dropdowns.forEach(dropdown => {
 		const dropdownToggle = dropdown.querySelector('[data-bs-toggle="dropdown"]');
+		const dropdownMenu = dropdown.querySelector('.dropdown-menu');
 
 		if (dropdownToggle) {
+			
+			const bsMenu = new bootstrap.Dropdown(dropdownToggle);
+			
 			dropdown.addEventListener('mouseenter', () => {
-				new bootstrap.Dropdown(dropdownToggle).show();
+				dropdownMenu.classList.toggle('mouseover');
+				bsMenu.show();
 				dropdownToggle.style.outline = "none";
 			});
+
 			dropdown.addEventListener('mouseleave', () => {
-				new bootstrap.Dropdown(dropdownToggle).hide();
+				dropdownMenu.classList.toggle('mouseover');
+				bsMenu.hide();
 			});
 
 			dropdownToggle.addEventListener('click', () => {
