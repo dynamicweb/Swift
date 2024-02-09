@@ -69,9 +69,26 @@
 		return groupField;
 	}
 
-	string GetClickableCss(NavigationTreeNodeViewModel node)
+	string isActive(NavigationTreeNodeViewModel node)
 	{
-		return node.IsClickable ? string.Empty : "pe-none";
+		return node.IsActive ? "aria-current='page'" : string.Empty;
+	}
+
+	string isActiveDropdown(NavigationTreeNodeViewModel node)
+	{
+		return node.IsActive ? "class=\"active\"" : string.Empty;
+	}
+
+	public string GetImagePathSanitized(string imagePath)
+	{
+		if (!imagePath.StartsWith("/Files", StringComparison.OrdinalIgnoreCase))
+		{
+			if (!imagePath.StartsWith("Files/", StringComparison.OrdinalIgnoreCase))
+			{
+				imagePath = $"/Files/Images/{imagePath}";
+			}
+		}
+		return imagePath;
 	}
 }
 
@@ -85,7 +102,6 @@
 	//CSS Settings
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? "theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 	string promotionImageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductGroupPromotionImageTheme")) ? "theme " + Model.Item.GetRawValueString("ProductGroupPromotionImageTheme").Replace(" ", "").Trim().ToLower() : "";
-	string itemCss = "nav-link text-decoration-underline-hover text-decoration-accent-hover";
 	string headerAlignment = Model.Item.GetRawValueString("HeaderAlignment", "start");
 	headerAlignment = $"justify-content-{headerAlignment} text-{headerAlignment}";
 	string menuAlignment = Model.Item.GetRawValueString("MenuAlignment", "start");
@@ -96,24 +112,40 @@
 	headerLinkAnimation = headerLinkAnimation == "none" ? "text-decoration-underline-hover" : $"hover-underline-animation-{headerLinkAnimation}";
 	string promotionImageRatio = Model.Item.GetRawValueString("ProductGroupPromotionImageRatio");
 	string navigationImageRatio = Model.Item.GetRawValueString("ProductGroupImageRatio");
+	string clickable = "text-decoration-underline-hover text-decoration-accent-hover";
+
 }
 
 <div class="nav-wrapper megamenu-wrapper item_@Model.Item.SystemName.ToLower()">
 	<nav class="d-flex gap-2 @headerAlignment">
 		@foreach (var rootNode in navigationRoot.Nodes.Where(node => node.ShowInMenu))
 		{
-			string submenuType = GetSubmenuType(rootNode);
-			bool isMegaMenu = IsMegaMenu(rootNode, submenuType);
-			string submenuTypeCss = isMegaMenu ? "position-static" : string.Empty;
 			var rootNodeProductGroup = rootNode.GetProductGroup() ?? null;
 			var rootNodeGroupFields = rootNodeProductGroup.GroupFields ?? null;
 			string promotionImage = GetGroupFieldValue("ProductGroupPromotionImage", rootNodeGroupFields);
 			bool promotionImageExists = !string.IsNullOrEmpty(promotionImage);
+			var nodesExist = rootNode.Nodes.Any();
+			
+			string submenuType = GetSubmenuType(rootNode);
+			bool isMegaMenu = IsMegaMenu(rootNode, submenuType);
+			string submenuTypeCss = isMegaMenu ? "position-static" : string.Empty;
+			string dropdown = nodesExist ? "dropdown" : string.Empty;
+			string dropdownAttributes = nodesExist ? "role=\"button\" data-bs-toggle=\"dropdown\" data-bs-offset=\"0,0\" aria-expanded=\"false\"" : string.Empty;
 
-			<div class="nav-item dropdown position-static">
-				<a class="nav-link p-2 fw-bold text-uppercase @headerLinkAnimation" role="button" data-bs-toggle="dropdown" data-bs-offset="0,0" aria-expanded="false">
-					@rootNode.Name
-				</a>
+			<div class="nav-item @dropdown @submenuTypeCss">
+				@if (rootNode.IsClickable)
+				{
+					<a class="nav-link p-2 fw-bold text-uppercase @headerLinkAnimation" href="@rootNode.Link" @dropdownAttributes @isActive(rootNode)>
+						<span class="text-wrap-nowrap">@rootNode.Name</span>
+					</a>
+				}
+				else
+				{
+					<span class="nav-link p-2 fw-bold text-uppercase pe-none @headerLinkAnimation" @dropdownAttributes>
+						<span class="text-wrap-nowrap">@rootNode.Name</span>
+					</span>
+				}
+
 				@if (rootNode.Nodes.Any())
 				{
 					if (isMegaMenu)
@@ -127,33 +159,49 @@
 											{
 												var groupFields = subNode.GetProductGroup().GroupFields ?? null;
 												string groupImage = GetGroupFieldValue("ProductGroupNavigationImage", groupFields);
-												var imagePath = Dynamicweb.Context.Current.Server.UrlEncode("/Files/Images/" + groupImage);
+												var imagePath = Dynamicweb.Context.Current.Server.UrlEncode(GetImagePathSanitized(groupImage));
 												var imageSrc = $"/Admin/Public/GetImage.ashx?Image={imagePath}&Width=420";
 
 												<div class="megamenu-product-group-image-col">
-													<a href="@subNode.Link" class="text-decoration-none @(GetClickableCss(subNode))">
 
-														@if (showProductGroupImages && !string.IsNullOrEmpty(groupImage))
-														{
-															<figure class="ratio m-0" style="--bs-aspect-ratio: @navigationImageRatio">
-																<img loading="lazy" alt="@subNode.Name" src="@imageSrc" style="object-fit: cover">
-															</figure>
-														}
+													@if (subNode.IsClickable)
+													{
+														<a href="@subNode.Link" class="text-decoration-none" @isActive(subNode)>
+															@if (showProductGroupImages && !string.IsNullOrEmpty(groupImage))
+															{
+																<figure class="ratio m-0" style="--bs-aspect-ratio: @navigationImageRatio">
+																	<img loading="lazy" alt="@subNode.Name" src="@imageSrc" style="object-fit: cover">
+																</figure>
+															}
+															<div class="nav-link px-0 @textAlignment @clickable">
+																@(subNode.Name)
+															</div>
+														</a>
+													}
+													else
+													{
+														<div class="text-decoration-none">
+															@if (showProductGroupImages && !string.IsNullOrEmpty(groupImage))
+															{
+																<figure class="ratio m-0" style="--bs-aspect-ratio: @navigationImageRatio">
+																	<img loading="lazy" alt="@subNode.Name" src="@imageSrc" style="object-fit: cover">
+																</figure>
+															}
+															<div class="nav-link px-0 pe-none @textAlignment">
+																@(subNode.Name)
+															</div>
 
-														<div class="@itemCss px-0 @textAlignment">
-															@(subNode.Name)
 														</div>
-													</a>
+													}
 												</div>
 											}
 										</div>
 									</div>
 
 									@{
-
 										if (promotionImageExists)
 										{
-											string promotionImageSrc = "/Files/Images/" + promotionImage;
+											string promotionImageSrc = GetImagePathSanitized(promotionImage);
 											string promotionDescription = GetGroupFieldValue("ProductGroupPromotionDescription", rootNodeGroupFields);
 											string promotionLinkLabel = GetGroupFieldValue("ProductGroupPromotionLinkLabel", rootNodeGroupFields);
 											string promotionLink = GetGroupFieldValue("ProductGroupPromotionLink", rootNodeGroupFields);
@@ -162,11 +210,10 @@
 
 											var promotionImageParams = new Dictionary<string, object>();
 											promotionImageParams.Add("Ratio", promotionImageRatio);
-
 											<div class="g-col-4 grid grid-3 align-items-start">
 												<figure class="g-col-2 g-start-2 m-0">
 													<div class="ratio @promotionImageTheme" style="--bs-aspect-ratio: @promotionImageRatio" title="@groupName">
-													
+
 														@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = promotionImageSrc }, promotionImageParams)
 														<figcaption class="align-items-baseline d-flex flex-column justify-content-end gap-3 p-3 bg-dark bg-opacity-10">
 															<h4 class="lh-1 mb-0">@promotionDescription</h4>
@@ -177,21 +224,29 @@
 											</div>
 										}
 									}
-
 								</div>
 							</div>
 						</div>
 					}
 					else
 					{
-						<ul class="dropdown-menu dropdown-menu-shadow rounded-0 @theme @textAlignment">
+						<ul class="dropdown-menu dropdown-menu-shadow @theme @textAlignment">
 
 							@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
 							{
-								<li>
-									<a class="dropdown-item @itemCss @(GetClickableCss(subNode))" href="@subNode.Link">
-										<strong>@subNode.Name</strong>
-									</a>
+								<li @isActiveDropdown(subNode)>
+									@if (subNode.IsClickable)
+									{
+										<a class="dropdown-item nav-link @clickable" href="@subNode.Link" @isActive(subNode)>
+											<strong>@subNode.Name</strong>
+										</a>
+									}
+									else
+									{
+										<span class="dropdown-item nav-link pe-none">
+											<strong>@subNode.Name</strong>
+										</span>
+									}
 								</li>
 							}
 						</ul>

@@ -1,0 +1,200 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend.Navigation
+@using System.IO
+
+@{ 
+	string paragraphId = Model.ID.ToString();
+	string horizontalAlign = !string.IsNullOrEmpty(Model.Item.GetRawValueString("HorizontalAlignment")) ? "justify-content-" + Model.Item.GetRawValueString("HorizontalAlignment") : "";
+	string offcanvasDirection = !string.IsNullOrEmpty(Model.Item.GetRawValueString("OffCanvasDirection")) ? Model.Item.GetRawValueString("OffCanvasDirection") : "start";
+	string productGroupPromotionImageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductGroupPromotionImageTheme")) ? " theme " + Model.Item.GetRawValueString("ProductGroupPromotionImageTheme").Replace(" ", "").Trim().ToLower() : "";
+	string productGroupImageShape = Model.Item.GetRawValueString("ProductGroupImageShape", "");
+	productGroupImageShape = productGroupImageShape == "image-square" ? "" : productGroupImageShape;
+	productGroupImageShape = productGroupImageShape == "image-rounded" ? "rounded-circle" : productGroupImageShape;
+	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
+	string title = Model.Item.GetString("Title", string.Empty);
+	string icon = Model.Item.GetRawValueString("Icon", string.Empty);
+	string iconLayout = Model.Item.GetRawValueString("IconLayout", "iconOnly");
+	string iconLayoutCss = iconLayout == "iconRight" ? "flex-row-reverse" : "flex-row";
+	var mainNavigationSettings = new NavigationSettings();
+	mainNavigationSettings.StartLevel = 1;
+	mainNavigationSettings.StopLevel = 10;
+	mainNavigationSettings.ExpandMode = ExpandMode.All;
+	mainNavigationSettings.Parameters.Add("NavType", "first-nav");
+	mainNavigationSettings.Parameters.Add("ShowProductGroupImage", Model.Item.GetBoolean("ShowProductGroupImage"));
+	mainNavigationSettings.Parameters.Add("ProductGroupImageShape", productGroupImageShape);
+	mainNavigationSettings.Parameters.Add("ProductGroupPromotionImageTheme", productGroupPromotionImageTheme);
+	mainNavigationSettings.Parameters.Add("ShowProductGroupPromotionImage", Model.Item.GetBoolean("ShowProductGroupPromotionImage"));
+	mainNavigationSettings.Parameters.Add("ImageAspectRatio", ratio);
+
+	string menuLabelFontWeight = $"fw-{Model.Item.GetRawValueString("MenuLabelFontWeight", "normal")}";
+	string menuLabelFontCasing = $"text-{Model.Item.GetRawValueString("MenuLabelFontCasing", "regular")}";
+	string menuLabelFontSize = Model.Item.GetRawValueString("MenuLabelFontSize", "regular");
+	menuLabelFontSize = menuLabelFontSize == "small" ? "fs-7" : menuLabelFontSize == "large" ? "fs-5" : "fs-6";
+
+	if (!string.IsNullOrEmpty(Model.Item.GetString("MainNavigationRoot"))) {
+		string root = Model.Item.GetString("MainNavigationRoot");
+
+		if (root.Contains("=")) {
+			int rootPageId = Convert.ToInt32(root.Substring(root.LastIndexOf('=') + 1));
+			mainNavigationSettings.RootPageId = rootPageId;
+
+			var page = Dynamicweb.Content.Services.Pages.GetPage(rootPageId);
+			if (page != null && !string.IsNullOrEmpty(page.NavigationTag))
+			{
+				mainNavigationSettings.Parameters.Add("menu-id", page.NavigationTag.ToLower());
+			}
+		}
+		mainNavigationSettings.StartLevel = 2;
+	} else {
+		mainNavigationSettings.StartLevel = 1;
+		mainNavigationSettings.Parameters.Add("menu-id", "root");
+	}
+
+
+	var secondaryNavigationSettings = new NavigationSettings();
+	secondaryNavigationSettings.StartLevel = 1;
+	secondaryNavigationSettings.StopLevel = 10;
+	secondaryNavigationSettings.ExpandMode = ExpandMode.All;
+	secondaryNavigationSettings.Parameters.Add("NavType", "second-nav");
+
+	if (!string.IsNullOrEmpty(Model.Item.GetString("SecondaryNavigationRoot"))) {
+		string root = Model.Item.GetString("SecondaryNavigationRoot");
+
+		if (root.Contains("=")) {
+			int rootPageId = Convert.ToInt32(root.Substring(root.LastIndexOf('=') + 1));
+			secondaryNavigationSettings.RootPageId = rootPageId;
+
+			var page = Dynamicweb.Content.Services.Pages.GetPage(rootPageId);
+			if (page != null && !string.IsNullOrEmpty(page.NavigationTag))
+			{
+				secondaryNavigationSettings.Parameters.Add("menu-id", page.NavigationTag.ToLower());
+			}
+		}
+	}
+	else
+	{
+		secondaryNavigationSettings.Parameters.Add("menu-id", "root");
+	}
+
+
+	var utilityNavigationSettings = new NavigationSettings();
+	utilityNavigationSettings.StartLevel = 1;
+	utilityNavigationSettings.StopLevel = 10;
+	utilityNavigationSettings.ExpandMode = ExpandMode.All;
+
+	utilityNavigationSettings.Parameters.Add("TextPosition", "right");
+	utilityNavigationSettings.Parameters.Add("HideTexts", true);
+	utilityNavigationSettings.Parameters.Add("HideIcons", false);
+	utilityNavigationSettings.Parameters.Add("Size", "normal");
+
+	if (!string.IsNullOrEmpty(Model.Item.GetString("UtilityNavigationRoot"))) {
+		string root = Model.Item.GetString("UtilityNavigationRoot");
+
+		if (root.Contains("=")) {
+			int rootPageId = Convert.ToInt32(root.Substring(root.LastIndexOf('=') + 1));
+			utilityNavigationSettings.RootPageId = rootPageId;
+
+			var page = Dynamicweb.Content.Services.Pages.GetPage(rootPageId);
+			if (page != null && !string.IsNullOrEmpty(page.NavigationTag))
+			{
+				utilityNavigationSettings.Parameters.Add("menu-id", page.NavigationTag.ToLower());
+			}
+		}
+	}
+	else
+	{
+		utilityNavigationSettings.Parameters.Add("menu-id", "root");
+	}
+
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	string themeSidebarNavigation = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ThemeOffCanvasNavigation")) ? " theme " + Model.Item.GetRawValueString("ThemeOffCanvasNavigation").Replace(" ", "").Trim().ToLower() : "";
+}
+<div class="nav-wrapper d-flex @(horizontalAlign)@(theme) item_@Model.Item.SystemName.ToLower()">
+
+	<button class="btn lh-1 p-2 text-reset" type="button" data-bs-toggle="offcanvas" data-bs-target="#navigation_@(paragraphId)" aria-controls="navigation_@(paragraphId)" aria-label="@Translate("Navigation open button")">
+		<span class="d-flex gap-2 align-items-center @iconLayoutCss">			
+			@{
+				if (!string.IsNullOrEmpty(icon) && iconLayout != "titleOnly")
+				{
+					if (icon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+					{
+						<span class="icon-3 pe-none">
+							@ReadFile(icon)
+						</span>
+					}
+					else
+					{
+						icon = "/Admin/Public/GetImage.ashx?width=" + 24 + "&height=" + 24 + "&image=" + icon + "&format=webp";
+
+						<span class="mx-auto d-block pe-none" width="24" height="24">
+							<img loading="lazy" decoding="async" src="@icon" alt="@title">
+						</span>
+					}
+				}
+				if(!string.IsNullOrEmpty(title) && iconLayout != "iconOnly")
+				{
+				<span class="text-nowrap @menuLabelFontWeight @menuLabelFontCasing @menuLabelFontSize">@title</span>
+				}
+			}			
+		</span>
+	</button>
+
+	@*Moving offcanvas to Master for optimal rendering*@
+	@SnippetStart("offcanvas")
+	<nav class="offcanvas offcanvas-@offcanvasDirection @themeSidebarNavigation" tabindex="-1" id="navigation_@(paragraphId)" aria-label="@Translate("Navigation")" style="visibility: hidden;">
+		<div class="offcanvas-header py-1 px-0 position-relative">
+
+			<button type="button" class="btn btn-link" data-bs-dismiss="offcanvas" aria-label="@Translate("Navigation close button")">
+				@{
+					string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/x.svg";  
+
+					if (!iconPath.ToLower().Contains("none") && iconPath != "")
+					{
+						<span class="icon-3 pe-none">
+							@ReadFile(iconPath)
+						</span>
+					}
+				}
+			</button>
+
+			@if (!string.IsNullOrEmpty(Model.Item.GetString("UtilityNavigationRoot")))
+			{
+				@Navigation.RenderNavigation("Navigation/OffCanvasUtilityNavigation.cshtml", utilityNavigationSettings)
+			}
+		</div>
+		<div class="offcanvas-body p-0 position-relative overflow-hidden">
+
+			<div class="offcanvas-navigation text-uppercase h-100 d-none overflow-y-auto overflow-x-hidden" role="navigation">
+				@Navigation.RenderNavigation("Navigation/OffCanvasNavigation_DW10.cshtml", mainNavigationSettings)
+
+				@if (!string.IsNullOrEmpty(Model.Item.GetString("SecondaryNavigationRoot")))
+				{
+					@Navigation.RenderNavigation("Navigation/OffCanvasNavigation_DW10.cshtml", secondaryNavigationSettings)
+				}
+				@if (Pageview.User != null)
+				{
+					string link = "/Admin/Public/ExtranetLogoff.aspx?redirect=no";
+					
+					<hr class="m-0">
+					
+					if (Dynamicweb.Security.UserManagement.User.GetCurrentSecondaryUser() != null)
+					{
+					<div class="nav h-auto w-100 left-0 top-0">
+						<div class="nav-item d-flex align-items-center w-100 py-1">
+							<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="nav-link flex-fill position-relative swift_sign-out-as-customer-link">@Translate("Sign out as a customer")</a>
+						</div>
+					</div>
+					}
+					<div class="nav h-auto w-100 left-0 top-0">
+						<div class="nav-item d-flex align-items-center w-100 py-1">
+							<a href="@link" class="nav-link flex-fill position-relative swift_sign-out-link">@Translate("Sign out")</a>
+						</div>
+					</div>
+				}
+			</div>
+			
+		</div>
+	</nav>
+	@SnippetEnd("offcanvas")
+
+</div>
