@@ -10,77 +10,86 @@
 
 	bool userHasDefaultAddress = false;
 	bool userAddressSelected = false;
+	bool disableUserAddress = false;
 	foreach (LoopItem userAddress in userAddressLoop)
 	{
 		if (userAddress.GetBoolean("UserManagement:User.UserAddress.Default"))
 		{
 			userHasDefaultAddress = true;
 		}
-		if (userAddress.GetBoolean("UserManagement:User.UserAddress.SelectedForCustomerFields"))
+		if (userAddress.GetBoolean("UserManagement:User.UserAddress.SelectedForDeliveryFields"))
 		{
 			userAddressSelected = true;
 		}
+		if (!userAddressSelected && userHasDefaultAddress) 
+		{
+			disableUserAddress = true;
+		}
 	}
 
-	List<string> customerAddress = new List<string>();
-	if (!string.IsNullOrEmpty(GetString("Ecom:Order.Customer.Address")))
+	List<string> deliveryAddress = new List<string>();
+	if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Address")))
 	{
-		customerAddress.Add(GetString("Ecom:Order.Customer.Address"));
+		deliveryAddress.Add(GetString("Ecom:Order.Delivery.Address"));
 	}
-	if (!string.IsNullOrEmpty(GetString("Ecom:Order.Customer.Address2")))
+	if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Address2")))
 	{
-		customerAddress.Add(GetString("Ecom:Order.Customer.Address2"));
+		deliveryAddress.Add(GetString("Ecom:Order.Delivery.Address2"));
 	}
-	if (!string.IsNullOrEmpty(GetString("Ecom:Order.Customer.Zip")))
+	if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Zip")))
 	{
-		customerAddress.Add(GetString("Ecom:Order.Customer.Zip"));
+		deliveryAddress.Add(GetString("Ecom:Order.Delivery.Zip"));
 	}
-	if (!string.IsNullOrEmpty(GetString("Ecom:Order.Customer.City")))
+	if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.City")))
 	{
-		customerAddress.Add(GetString("Ecom:Order.Customer.City"));
+		deliveryAddress.Add(GetString("Ecom:Order.Delivery.City"));
+	}
+	if (!string.IsNullOrEmpty(GetString("Ecom:Order.Delivery.Country")))
+	{
+		deliveryAddress.Add(GetString("Ecom:Order.Delivery.Country"));
 	}
 
-	string deliveryAddressString = (string.Join(",", customerAddress.Select(x => x.ToString()).ToArray()));
+	string deliveryAddressString = (string.Join(",", deliveryAddress.Select(x => x.ToString()).ToArray()));
 
-	List<string> customerAddressList = new List<string>();
+	List<string> userAddressString = new List<string>();
 	if (!string.IsNullOrEmpty(GetString("UserManagement:User.Address")))
 	{
-		customerAddressList.Add(GetString("UserManagement:User.Address"));
+		userAddressString.Add(GetString("UserManagement:User.Address"));
 	}
 	if (!string.IsNullOrEmpty(GetString("UserManagement:User.Address2")))
 	{
-		customerAddressList.Add(GetString("UserManagement:User.Address2"));
+		userAddressString.Add(GetString("UserManagement:User.Address2"));
 	}
 	if (!string.IsNullOrEmpty(GetString("UserManagement:User.Zip")))
 	{
-		customerAddressList.Add(GetString("UserManagement:User.Zip"));
+		userAddressString.Add(GetString("UserManagement:User.Zip"));
 	}
 	if (!string.IsNullOrEmpty(GetString("UserManagement:User.City")))
 	{
-		customerAddressList.Add(GetString("UserManagement:User.City"));
+		userAddressString.Add(GetString("UserManagement:User.City"));
 	}
 	if (!string.IsNullOrEmpty(GetString("UserManagement:User.State")))
 	{
 		var countryCode = !string.IsNullOrEmpty(GetString("UserManagement:User.CountryCode")) ? GetString("UserManagement:User.CountryCode") : Pageview.Area.EcomCountryCode;
 		string stateName = Dynamicweb.Ecommerce.Services.Countries.GetRegion(countryCode, GetString("UserManagement:User.UserAddress.State"))?.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID) ?? string.Empty;
 
-		customerAddressList.Add(stateName);
+		userAddressString.Add(stateName);
 	}
 	if (!string.IsNullOrEmpty(GetString("UserManagement:User.Country")))
 	{
-		customerAddressList.Add(GetString("UserManagement:User.Country"));
+		userAddressString.Add(GetString("UserManagement:User.Country"));
 	}
 
-	string selectedAddress = Dynamicweb.Context.Current.Request.Form.Get("EcomOrderCustomerSelectedAddressId") ?? "";
+	string selectedAddress = Dynamicweb.Context.Current.Request.Form.Get("EcomOrderDeliverySelectedAddressId") ?? "";
 
-	string addressStringCommaSeparated = (string.Join(",", customerAddressList.Select(x => x.ToString()).ToArray()));
+	string userAddressStringCommaSeparated = (string.Join(",", userAddressString.Select(x => x.ToString()).ToArray()));
 	string useBillingIsChecked = !userAddressSelected || selectedAddress == "" || selectedAddress == "-1" ? "checked" : "";
 
-	string disabled = addressStringCommaSeparated == deliveryAddressString || string.IsNullOrEmpty(deliveryAddressString) || string.IsNullOrEmpty(addressStringCommaSeparated) ? "" : "disabled";
-	disabled = userAddressSelected && userHasDefaultAddress ? "disabled" : disabled;
+	string disabled = userAddressStringCommaSeparated == deliveryAddressString || string.IsNullOrEmpty(deliveryAddressString) || string.IsNullOrEmpty(userAddressStringCommaSeparated) ? "" : "disabled";
+	disabled = disableUserAddress ? "disabled" : disabled;
 
-	//Billing address is missing
-	if (string.IsNullOrWhiteSpace(addressStringCommaSeparated))
+	//User address is missing
+	if (string.IsNullOrWhiteSpace(userAddressStringCommaSeparated))
 	{
 		<div class="text-center border p-5">
 			<h3 class="mb-4">@Translate("You do not have any address yet")</h3>
@@ -102,19 +111,19 @@
 		<div class="list-group" id="SelectDeliveryAddressGroup">
 			<label class="list-group-item list-group-item-action">
 				<div class="form-check">
-					<input class="form-check-input" type="radio" name="EcomOrderCustomerSelectedAddressId" id="EcomOrderCustomerSelectedAddressId_@GetString("UserManagement:User.ID")" value="-1" @useBillingIsChecked onclick="useBillingAddress()">
+					<input class="form-check-input" type="radio" name="EcomOrderDeliverySelectedAddressId" id="EcomOrderDeliverySelectedAddressId_@GetString("UserManagement:User.ID")" value="-1" @useBillingIsChecked onclick="useBillingAddress()">
 					<span class="form-check-label">@Translate("Same as the billing address")</span>
 
-					<input @disabled type="hidden" name="EcomOrderCustomerName" value="@GetString("UserManagement:User.Name")">
-					<input @disabled type="hidden" name="EcomOrderCustomerEmail" value="@GetString("UserManagement:User.Email")">
-					<input @disabled type="hidden" name="EcomOrderCustomerPhone" value="@GetString("UserManagement:User.Phone")">
-					<input @disabled type="hidden" name="EcomOrderCustomerCompany" value="@GetString("UserManagement:User.Company")">
-					<input @disabled type="hidden" name="EcomOrderCustomerAddress" value="@GetString("UserManagement:User.Address")">
-					<input @disabled type="hidden" name="EcomOrderCustomerAddress2" value="@GetString("UserManagement:User.Address2")">
-					<input @disabled type="hidden" name="EcomOrderCustomerZip" value="@GetString("UserManagement:User.Zip")">
-					<input @disabled type="hidden" name="EcomOrderCustomerCity" value="@GetString("UserManagement:User.City")">
-					<input @disabled type="hidden" name="EcomOrderCustomerRegion" value="@GetString("UserManagement:User.State")">
-					<input @disabled type="hidden" name="EcomOrderCustomerCountry" value="@GetString("UserManagement:User.CountryCode")">
+					<input @disabled type="hidden" name="EcomOrderDeliveryName" value="@GetString("UserManagement:User.Name")">
+					<input @disabled type="hidden" name="EcomOrderDeliveryEmail" value="@GetString("UserManagement:User.Email")">
+					<input @disabled type="hidden" name="EcomOrderDeliveryPhone" value="@GetString("UserManagement:User.Phone")">
+					<input @disabled type="hidden" name="EcomOrderDeliveryCompany" value="@GetString("UserManagement:User.Company")">
+					<input @disabled type="hidden" name="EcomOrderDeliveryAddress" value="@GetString("UserManagement:User.Address")">
+					<input @disabled type="hidden" name="EcomOrderDeliveryAddress2" value="@GetString("UserManagement:User.Address2")">
+					<input @disabled type="hidden" name="EcomOrderDeliveryZip" value="@GetString("UserManagement:User.Zip")">
+					<input @disabled type="hidden" name="EcomOrderDeliveryCity" value="@GetString("UserManagement:User.City")">
+					<input @disabled type="hidden" name="EcomOrderDeliveryRegion" value="@GetString("UserManagement:User.State")">
+					<input @disabled type="hidden" name="EcomOrderDeliveryCountry" value="@GetString("UserManagement:User.CountryCode")">
 
 				</div>
 			</label>
@@ -151,20 +160,20 @@
 				{
 					userAddressList.Add(userAddress.GetString("UserManagement:User.UserAddress.Culture.CountryName"));
 				}
-				string userAddressString = (string.Join(",", userAddressList.Select(x => x.ToString()).ToArray())).Replace(",", ", ");
-				string isChecked = userAddress.GetBoolean("UserManagement:User.UserAddress.SelectedForCustomerFields") ? "checked" : "";
+				string userAddressLabelString = (string.Join(",", userAddressList.Select(x => x.ToString()).ToArray())).Replace(",", ", ");
+				string isChecked = userAddress.GetBoolean("UserManagement:User.UserAddress.SelectedForDeliveryFields") ? "checked" : "";
 				isChecked = userAddressSelected == false && userAddress.GetBoolean("UserManagement:User.UserAddress.Default") && selectedAddress != "-1" ? "checked" : isChecked;
 
 				<label class="list-group-item list-group-item-action">
 					<div class="grid">
 						<div class="g-col-12 g-col-md-4 d-flex">
 							<div class="form-check">
-								<input class="form-check-input" type="radio" name="EcomOrderCustomerSelectedAddressId" id="EcomOrderCustomerSelectedAddressId_@addressId" value="@addressId" @isChecked onclick="useUserAddress()">
+								<input class="form-check-input" type="radio" name="EcomOrderDeliverySelectedAddressId" id="EcomOrderDeliverySelectedAddressId_@addressId" value="@addressId" @isChecked onclick="useUserAddress()">
 								<span class="form-check-label">@userAddress.GetString("UserManagement:User.UserAddress.Description")</span>
 							</div>
 						</div>
 						<div class="g-col-12 g-col-md-7 fs-7">
-							@userAddressString
+							@userAddressLabelString
 						</div>
 					</div>
 				</label>
@@ -173,21 +182,17 @@
 
 		<script>
 			useBillingAddress = function () {
-				document.querySelectorAll("input[name^='EcomOrderCustomer']").forEach(function (field) {
+				document.querySelectorAll("input[name^='EcomOrderDelivery']").forEach(function (field) {
 					field.removeAttribute("disabled");
 				});
-
-				submitForm();
 			}
 
 			useUserAddress = function () {
-				document.querySelectorAll("input[name^='EcomOrderCustomer']").forEach(function (field) {
-					if (field.name != "EcomOrderCustomerSelectedAddressId") {
+				document.querySelectorAll("input[name^='EcomOrderDelivery']").forEach(function (field) {
+					if (field.name != "EcomOrderDeliverySelectedAddressId") {
 						field.setAttribute("disabled", "true");
 					}
 				});
-
-				submitForm();
 			}
 		</script>
 	}
