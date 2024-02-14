@@ -2,113 +2,141 @@
 @using Dynamicweb
 @using Dynamicweb.Environment
 
+@functions {
+	string GetCookieOptInPermission(string category)
+	{
+		bool categoryOrAllGranted = false;
+
+		if (CookieManager.IsCookieManagementActive)
+		{
+			var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
+			var cookieOptInCategories = CookieManager.GetCookieOptInCategories();
+			categoryOrAllGranted = cookieOptInCategories.Contains(category) || cookieOptInLevel == CookieOptInLevel.All;
+		}
+
+		return categoryOrAllGranted ? "granted" : "denied";
+	}
+
+	bool AllowTracking()
+	{
+		bool allowTracking = true;
+		if (CookieManager.IsCookieManagementActive)
+		{
+			var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
+			var cookieOptInCategories = CookieManager.GetCookieOptInCategories();
+
+			bool consentEither = (cookieOptInCategories.Contains("Statistical") || cookieOptInCategories.Contains("Marketing"));
+			bool consentFunctional = cookieOptInLevel == CookieOptInLevel.Functional;
+			bool consentAtLeastOne = cookieOptInLevel == CookieOptInLevel.All || (consentFunctional && consentEither);
+
+			allowTracking = consentAtLeastOne;
+		}
+		return allowTracking;
+	}
+}
+
 @{
 	string swiftVersion = ReadFile("/Files/Templates/Designs/Swift/swift_version.txt");
 	@* Branding Themes Fonts *@
-	var brandingPageId = Model.Area.Item.GetLink("BrandingPage") != null ? Model.Area.Item.GetLink("BrandingPage").PageId : 0;
-	var themePageId = Model.Area.Item.GetLink("ThemesPage") != null ? Model.Area.Item.GetLink("ThemesPage").PageId : 0;
+var brandingPageId = Model.Area.Item.GetLink("BrandingPage") != null ? Model.Area.Item.GetLink("BrandingPage").PageId : 0;
+var themePageId = Model.Area.Item.GetLink("ThemesPage") != null ? Model.Area.Item.GetLink("ThemesPage").PageId : 0;
 
-	var disableWideBreakpoints = Model.Area?.Item?.GetRawValueString("DisableWideBreakpoints", "default");
+var disableWideBreakpoints = Model.Area?.Item?.GetRawValueString("DisableWideBreakpoints", "default");
 
-	string customHeaderInclude = Model.Area.Item.GetFile("CustomHeaderInclude") != null ? Model.Area.Item.GetFile("CustomHeaderInclude").Name : string.Empty;
+string customHeaderInclude = Model.Area.Item.GetFile("CustomHeaderInclude") != null ? Model.Area.Item.GetFile("CustomHeaderInclude").Name : string.Empty;
 
-	string masterTheme = !string.IsNullOrWhiteSpace(Model.Area.Item.GetRawValueString("Theme")) ? " theme " + Model.Area.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+string masterTheme = !string.IsNullOrWhiteSpace(Model.Area.Item.GetRawValueString("Theme")) ? " theme " + Model.Area.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
 
-	string favicon = Model.Area.Item.GetFile("Favicon") != null ? Model.Area.Item.GetFile("Favicon").Path : "/Files/Templates/Designs/Swift/Assets/Images/favicon.png";
+string favicon = Model.Area.Item.GetFile("Favicon") != null ? Model.Area.Item.GetFile("Favicon").Path : "/Files/Templates/Designs/Swift/Assets/Images/favicon.png";
 
-	var brandingPage = Dynamicweb.Content.Services.Pages?.GetPage(brandingPageId) ?? null;
-	var themesParagraphLastChanged = Dynamicweb.Content.Services.Paragraphs.GetParagraphsByPageId(themePageId).OrderByDescending(p => p.Audit.LastModifiedAt).FirstOrDefault();
-	var cssLastModified = brandingPage.Audit.LastModifiedAt > themesParagraphLastChanged.Audit.LastModifiedAt ? brandingPage.Audit.LastModifiedAt : themesParagraphLastChanged.Audit.LastModifiedAt;
+var brandingPage = Dynamicweb.Content.Services.Pages?.GetPage(brandingPageId) ?? null;
+var themesParagraphLastChanged = Dynamicweb.Content.Services.Paragraphs.GetParagraphsByPageId(themePageId).OrderByDescending(p => p.Audit.LastModifiedAt).FirstOrDefault();
+var cssLastModified = brandingPage.Audit.LastModifiedAt > themesParagraphLastChanged.Audit.LastModifiedAt ? brandingPage.Audit.LastModifiedAt : themesParagraphLastChanged.Audit.LastModifiedAt;
 
-	var cssStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift/Assets/css/styles.css"));
-	var jsFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift/Assets/js/scripts.js"));
-	
-	string googleTagManagerID = Model.Area.Item.GetString("GoogleTagManagerID");
-	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
+var cssStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift/Assets/css/styles.css"));
+var jsFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift/Assets/js/scripts.js"));
 
-	bool allowTracking = true;
-	if (CookieManager.IsCookieManagementActive)
-	{
-		var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
-		allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
-	}
+string googleTagManagerID = Model.Area.Item.GetString("GoogleTagManagerID");
+string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
 
-	// Schema.org details for PDP
-	string productId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ProductID") : "";
-	bool isProductDetailsPage = !string.IsNullOrEmpty(productId);
-	bool isArticlePage = Model.ItemType == "Swift_Article";
-	string schemaOrgType = string.Empty;
+bool allowTracking = AllowTracking();
 
-	if(isProductDetailsPage)
-	{
-		schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Product\"";
-	}
+// Schema.org details for PDP
+string productId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ProductID") : "";
+bool isProductDetailsPage = !string.IsNullOrEmpty(productId);
+bool isArticlePage = Model.ItemType == "Swift_Article";
+string schemaOrgType = string.Empty;
 
-	if(isArticlePage)
-	{
-		schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Article\"";
-	}
+if (isProductDetailsPage)
+{
+	schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Product\"";
+}
+
+if (isArticlePage)
+{
+	schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Article\"";
+}
 }
 
 <!doctype html>
 <html lang="@Pageview.Area.CultureInfo.TwoLetterISOLanguageName">
-	<head>
-		<!-- @swiftVersion -->
-		@* Required meta tags *@
-		<meta charset="utf-8">
-		<meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0">
-		<link rel="preload" href="/Files/Templates/Designs/Swift/Assets/css/styles.css?@cssStyleFileInfo.LastWriteTime.Ticks" as="style">
-		<link rel="preload" href="/Files/Templates/Designs/Swift/Assets/js/scripts.js?@jsFileInfo.LastWriteTime.Ticks" as="script">
+<head>
+	<!-- @swiftVersion -->
+	@* Required meta tags *@
+	<meta charset="utf-8">
+	<meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0">
+	<link rel="preload" href="/Files/Templates/Designs/Swift/Assets/css/styles.css?@cssStyleFileInfo.LastWriteTime.Ticks" as="style">
+	<link rel="preload" href="/Files/Templates/Designs/Swift/Assets/js/scripts.js?@jsFileInfo.LastWriteTime.Ticks" as="script">
 
-		<link rel="shortcut icon" href="@favicon">
-		<link rel="apple-touch-icon" href="/Files/Templates/Designs/Swift/Assets/Images/logo_transparent.png">
-		<meta http-equiv="X-UA-Compatible" content="ie=edge">
-		<meta name="googlebot-news" content="nosnippet">
+	<link rel="shortcut icon" href="@favicon">
+	<link rel="apple-touch-icon" href="/Files/Templates/Designs/Swift/Assets/Images/logo_transparent.png">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<meta name="googlebot-news" content="nosnippet">
 
-		@Model.MetaTags
+	@Model.MetaTags
 
-		<title>@Model.Title</title>
+	<title>@Model.Title</title>
 
-		@* Bootstrap + Swift stylesheet *@
-		<link href="/Files/Templates/Designs/Swift/Assets/css/styles.css?@cssStyleFileInfo.LastWriteTime.Ticks" rel="stylesheet" media="all" type="text/css">
-		
-		@if (disableWideBreakpoints != "disableBoth")
-		{ 
+	@* Bootstrap + Swift stylesheet *@
+	<link href="/Files/Templates/Designs/Swift/Assets/css/styles.css?@cssStyleFileInfo.LastWriteTime.Ticks" rel="stylesheet" media="all" type="text/css">
+
+	@if (disableWideBreakpoints != "disableBoth")
+	{
+		<style>
+			@@media ( min-width: 1600px ) {
+				.container-xxl,
+				.container-xl,
+				.container-lg,
+				.container-md,
+				.container-sm,
+				.container {
+					max-width: 1520px;
+				}
+			}
+		</style>
+
+		if (disableWideBreakpoints != "disableUltraWideOnly")
+		{
 			<style>
-				@@media ( min-width: 1600px ) {
+				@@media ( min-width: 1920px ) {
 					.container-xxl,
 					.container-xl,
 					.container-lg,
 					.container-md,
 					.container-sm,
 					.container {
-						max-width: 1520px;
+						max-width: 1820px;
 					}
 				}
-			</style>		
-		
-			if (disableWideBreakpoints != "disableUltraWideOnly")
-			{ 
-				<style>
-					@@media ( min-width: 1920px ) {
-						.container-xxl,
-						.container-xl,
-						.container-lg,
-						.container-md,
-						.container-sm,
-						.container {
-							max-width: 1820px;
-						}
-					}
-				</style>
-			}
+			</style>
 		}
+	}
 
-		@* Branding and Themes min stylesheet *@
-		<link href="/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_@(Model.Area.ID).min.css?@cssLastModified.Ticks" rel="stylesheet" media="all" type="text/css" data-last-modified-content="@cssLastModified">
-		<script src="/Files/Templates/Designs/Swift/Assets/js/scripts.js?@jsFileInfo.LastWriteTime.Ticks"></script>
+	@* Branding and Themes min stylesheet *@
+	<link href="/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_@(Model.Area.ID).min.css?@cssLastModified.Ticks" rel="stylesheet" media="all" type="text/css" data-last-modified-content="@cssLastModified">
+	<script src="/Files/Templates/Designs/Swift/Assets/js/scripts.js?@jsFileInfo.LastWriteTime.Ticks"></script>
 
-		<script type="module">
+	<script type="module">
 			swift.Scroll.hideHeadersOnScroll();
 			swift.Scroll.handleAlternativeTheme();
 
@@ -120,60 +148,63 @@
 					AOS.init({ duration: 400, delay: 100, easing: 'ease-in-out', mirror: false, disable: window.matchMedia('(prefers-reduced-motion: reduce)') });
 				});
 			}
+	</script>
+
+	@* Google tag manager *@
+	@if (!string.IsNullOrWhiteSpace(googleTagManagerID))
+	{
+		<script>
+			window.dataLayer = window.dataLayer || [];
+			function gtag() { dataLayer.push(arguments); }
+
+			gtag('consent', 'default', {
+				'ad_storage': 'denied',
+				'ad_user_data': 'denied',
+				'ad_personalization': 'denied',
+				'analytics_storage': 'denied'
+			});
 		</script>
-
-		@* Google tag manager *@
-		@if (!string.IsNullOrWhiteSpace(googleTagManagerID) && allowTracking)
+		<script>
+                (function (w, d, s, l, i) {
+                    w[l] = w[l] || []; w[l].push({
+                        'gtm.start':
+                            new Date().getTime(), event: 'gtm.js'
+                    }); var f = d.getElementsByTagName(s)[0],
+                        j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src =
+                            'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+                })(window, document, 'script', 'dataLayer', '@(googleTagManagerID)');
+		</script>
+		if (allowTracking)
 		{
+			string adConsent = GetCookieOptInPermission("Marketing");
+			string analyticsConsent = GetCookieOptInPermission("Statistical");
 			<script>
-				(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-				new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-				j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-				'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-				})(window, document, 'script', 'dataLayer', '@(googleTagManagerID)');
-
-				function gtag() { dataLayer.push(arguments); }
+                    gtag('consent', 'update', {
+                        'ad_storage': '@adConsent',
+                        'ad_user_data': '@adConsent',
+                        'ad_personalization': '@adConsent',
+                        'analytics_storage': '@analyticsConsent'
+                    });
 			</script>
 		}
+	}
 
-		@if (!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) && allowTracking)
-		{
-			var GoogleAnalyticsDebugMode = "";
-			bool isLoggedInBackendUser = false;
-
-			if (Dynamicweb.Security.UserManagement.User.GetCurrentBackendUser() != null) { 
-				isLoggedInBackendUser = true;
-			}
-
-			if (Model.Area.Item.GetBoolean("EnableGoogleAnalyticsDebugMode") && @isLoggedInBackendUser)
-			{
-				GoogleAnalyticsDebugMode = ", {'debug_mode': true}";
-			}
-
-			<script async src="https://www.googletagmanager.com/gtag/js?id=@googleAnalyticsMeasurementID"></script>
-			<script>
-				window.dataLayer = window.dataLayer || [];
-				function gtag(){dataLayer.push(arguments);}
-				gtag('js', new Date());
-				gtag('config', '@googleAnalyticsMeasurementID'@GoogleAnalyticsDebugMode);
-			</script>
-		}
-
-		@if (!string.IsNullOrWhiteSpace(customHeaderInclude)) {
-			@RenderPartial($"Components/Custom/{customHeaderInclude}")
-		}
+	@if (!string.IsNullOrWhiteSpace(customHeaderInclude))
+	{
+		@RenderPartial($"Components/Custom/{customHeaderInclude}")
+	}
 </head>
 
-	<body class="brand @(masterTheme)">
+<body class="brand @(masterTheme)">
 
-		<div data-intersect></div>
-		
-		<main id="content" @(schemaOrgType)>
-			@ContentPlaceholder()
-		</main>
-	
-		@* Render any offcanvas menu here *@
-		@RenderSnippet("offcanvas")
-	</body>
+	<div data-intersect></div>
+
+	<main id="content" @(schemaOrgType)>
+		@ContentPlaceholder()
+	</main>
+
+	@* Render any offcanvas menu here *@
+	@RenderSnippet("offcanvas")
+</body>
 
 </html>
