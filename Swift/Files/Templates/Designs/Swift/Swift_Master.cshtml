@@ -4,6 +4,39 @@
 @using Dynamicweb.Environment
 @using Dynamicweb.Frontend
 
+@functions {
+    string GetCookieOptInPermission(string category)
+    {
+        bool categoryOrAllGranted = false;
+
+        if (CookieManager.IsCookieManagementActive)
+        {
+            var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
+            var cookieOptInCategories = CookieManager.GetCookieOptInCategories();
+            categoryOrAllGranted = cookieOptInCategories.Contains(category) || cookieOptInLevel == CookieOptInLevel.All;
+        }
+
+        return categoryOrAllGranted ? "granted" : "denied";
+    }
+
+    bool AllowTracking()
+    {
+        bool allowTracking = true;
+        if (CookieManager.IsCookieManagementActive)
+        {
+            var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
+            var cookieOptInCategories = CookieManager.GetCookieOptInCategories();
+
+            bool consentEither = (cookieOptInCategories.Contains("Statistical") || cookieOptInCategories.Contains("Marketing"));
+            bool consentFunctional = cookieOptInLevel == CookieOptInLevel.Functional;
+            bool consentAtLeastOne = cookieOptInLevel == CookieOptInLevel.All || (consentFunctional && consentEither);
+
+            allowTracking = consentAtLeastOne;
+        }
+        return allowTracking;
+    }
+}
+
 @{
     var brandingPageId = Model.Area.Item?.GetInt32("BrandingPage") ?? 0;
     var themePageId = Model.Area.Item?.GetInt32("ThemesPage") ?? 0;
@@ -115,13 +148,7 @@
     string googleTagManagerID = Model.Area.Item.GetString("GoogleTagManagerID");
     string googleAnalyticsMeasurementID = Model.Area.Item.GetString("GoogleAnalyticsMeasurementID");
 
-    bool allowTracking = true;
-    if (CookieManager.IsCookieManagementActive)
-    {
-        var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
-        allowTracking = (cookieOptInLevel == CookieOptInLevel.All) ||
-            (cookieOptInLevel == CookieOptInLevel.Functional && (CookieManager.GetCookieOptInCategories().Contains("Statistical") || CookieManager.GetCookieOptInCategories().Contains("Marketing")));
-    }
+    bool allowTracking = AllowTracking();
 
     Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift/Assets/css/styles.css?{cssStyleFileInfo.LastWriteTime.Ticks}>; rel=preload; as=style;");
     Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_{Model.Area.ID}.min.css?{cssLastModified.Ticks}>; rel=preload; as=style;");
@@ -289,8 +316,8 @@
             </script>
             if (allowTracking)
             {
-                string adConsent = allowTracking ? "granted" : "denied";
-                string analyticsConsent = (allowTracking && CookieManager.GetCookieOptInCategories().Contains("Statistical")) ? "granted" : "denied";
+                string adConsent = GetCookieOptInPermission("Marketing");
+                string analyticsConsent = GetCookieOptInPermission("Statistical");
                 <script>
                     gtag('consent', 'update', {
                         'ad_storage': '@adConsent',
