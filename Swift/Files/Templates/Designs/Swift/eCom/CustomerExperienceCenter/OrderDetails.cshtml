@@ -314,8 +314,11 @@
 			string link = orderline?.GetProduct()?.GetProductLink(GetPageIdByNavigationTag("Shop"), false) ?? "";
 
 			var orderlineType = orderline.OrderLineType;
+			bool isProductIdOrNumber = !string.IsNullOrEmpty(orderline.ProductId) || !string.IsNullOrEmpty(orderline.ProductNumber);  //Live Cart orderlines may not return ProductId. Manually entered products may not have ProductNumber
+			bool isDiscount = orderline.OrderLineType == OrderLineType.Discount || orderline.OrderLineType == OrderLineType.ProductDiscount;
+			bool isFreeProduct = isDiscount && isProductIdOrNumber;
 
-			if (orderlineType == OrderLineType.Product || orderlineType == OrderLineType.GiftCard || orderlineType == OrderLineType.Fixed || (orderlineType == OrderLineType.ProductDiscount && !string.IsNullOrEmpty(orderline.ProductNumber)))
+			if (orderlineType == OrderLineType.Product || orderlineType == OrderLineType.GiftCard || orderlineType == OrderLineType.Fixed || isFreeProduct)
 			{
 				<article class="grid">
 					<div class="g-col-3">
@@ -363,19 +366,20 @@
 										</li>
 									}
 									<li>
-										@if (orderlineType == OrderLineType.ProductDiscount && !string.IsNullOrEmpty(orderline.ProductNumber))
+										@if (isFreeProduct)
 										{
 											@* Free product notice *@
 											<p class="mt-2 mb-0 fs-7 fs-md-6 opacity-75">@Translate("Free product")</p>
-										} else {
-										<span>@Translate("Price"):</span>
-										<span class="text-price">@orderline.UnitPriceWithProductDiscount.PriceFormatted</span>
-											if (orderline.UnitPriceWithProductDiscount.Price != orderline.UnitPrice.Price && orderline.UnitPrice.Price != 0.0)
-										{
-											<span class="text-decoration-line-through fs-7">
-												<span class="text-price">@orderline.UnitPrice.PriceFormatted</span>
-											</span>
 										}
+										else {
+											<span>@Translate("Price"):</span>
+											<span class="text-price">@orderline.UnitPriceWithProductDiscount.PriceFormatted</span>
+											if (orderline.UnitPriceWithProductDiscount.Price != orderline.UnitPrice.Price && orderline.UnitPrice.Price != 0.0)
+											{
+												<span class="text-decoration-line-through fs-7">
+													<span class="text-price">@orderline.UnitPrice.PriceFormatted</span>
+												</span>
+											}
 										}
 									</li>
 									<li>
@@ -430,7 +434,10 @@
 				@* Discounts (only order discounts) *@
 				@foreach (OrderLineViewModel orderline in Model.OrderLines)
 				{
-					if (orderline.OrderLineType == OrderLineType.Discount)
+					bool isProductIdOrNumber = !string.IsNullOrEmpty(orderline.ProductId) || !string.IsNullOrEmpty(orderline.ProductNumber);  //Live Cart orderlines may not return ProductId. Manually entered products may not have ProductNumber
+					bool isOrderAmountDiscount = orderline.OrderLineType == OrderLineType.Discount && !isProductIdOrNumber;
+					
+					if (isOrderAmountDiscount)
 					{
 						<div class="d-flex my-1">
 							<dt class="flex-fill fw-normal">@orderline.ProductName</dt>
