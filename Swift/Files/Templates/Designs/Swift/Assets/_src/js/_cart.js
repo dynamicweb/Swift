@@ -8,8 +8,6 @@ const Cart = function () {
 	let productReferer;
 	let productPrice;
 	let addQuantity;
-	let stockQuantity;
-	let isAmountReservation = false;
 	let isPendingQuote = "false";
 
 	return {
@@ -18,7 +16,7 @@ const Cart = function () {
 			const clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
 			const form = clickedButton.closest("form");
 			const quantityField = form.querySelector('[name="Quantity"]');
-
+			
 			//Setup the form data
 			let formData = new FormData(form);
 			productId = formData.get("ProductId");
@@ -30,8 +28,6 @@ const Cart = function () {
 			productReferer = formData.get("ProductReferer");
 			productPrice = formData.get("ProductPrice");
 			addQuantity = formData.get("Quantity") ? formData.get("Quantity") : 1;
-			stockQuantity = formData.get("Stock") ? formData.get("Stock") : 9999999;
-			isAmountReservation = formData.get("GetReservedAmount") ? formData.get("GetReservedAmount") : "false";
 			isPendingQuote = formData.get("PendingQuote") ? formData.get("PendingQuote") : "false";
 
 			this.PushDataToGoogleAnalytics();
@@ -48,16 +44,6 @@ const Cart = function () {
 			let localDispatcher = clickedButton.dispatchEvent(event);
 			
 			if (globalDispatcher != false && localDispatcher != false) {
-				//Remove reserved amount from the form data, so that we only use it for the special reserved amount call
-				if (isAmountReservation == "true") {
-					formData.delete("GetReservedAmount");
-				}
-
-				//Special call to get only the reserved amount
-				let reservedAmount = 0;				
-				if (isAmountReservation == "true" && stockQuantity != 9999999) {
-					reservedAmount = await this.GetReservedAmount(form);
-				}
 
 				const isMinQuantityValid = this.ValidateMinQuantity(quantityField);
 				const isStepQuantityValid = this.ValidateStepQuantity(quantityField);
@@ -75,7 +61,7 @@ const Cart = function () {
 
 					dynamicModal.show();
 				}
-				else if (isValid && (isAmountReservation == "false" || ((parseInt(addQuantity) + parseInt(reservedAmount)) <= parseInt(stockQuantity)))) {
+				else if (isValid) {
 					//UI updates
 					const clickedButtonWidth = clickedButton.offsetWidth + "px";
 
@@ -98,29 +84,12 @@ const Cart = function () {
 					let response = await fetch(form.action, fetchOptions);
 
 					if (response.ok) {
-						Cart.Success(response, clickedButton, formData, reservedAmount);
+						Cart.Success(response, clickedButton, formData);
 					} else {
 						Cart.Error(response, clickedButton);
 					}
 				} else if (!isValid) {
 					this.AddToCartValidate(quantityField);
-				} else {
-					const outOfStockMessage = form.querySelector(".js-out-of-stock-notice").innerHTML;
-					document.querySelector("#DynamicModalContent").innerHTML = outOfStockMessage;
-
-					if (quantityField != null) {
-						if (quantityField.min != null) {
-							quantityField.value = quantityField.min > 0 ? quantityField.min : 1;
-						} else {
-							quantityField.value = 1;
-						}
-					}
-
-					let dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), {
-						backdrop: 'static'
-					});
-
-					dynamicModal.show();
 				}
 			}
 		},
@@ -136,7 +105,7 @@ const Cart = function () {
 			};
 		},
 
-		Success: async function (response, clickedButton, formData, reservedAmount = 0) {
+		Success: async function (response, clickedButton, formData) {
 			let html = await response.text().then(function (text) {
 				return text;
 			});
@@ -171,11 +140,7 @@ const Cart = function () {
 				Cart.GetMiniCarts(formData.get("minicartid")).forEach(function (el) {
 					el.innerHTML = "(" + totalQuantity.trim() + ")";
 				});
-
-				//Update stock
-				if (isAmountReservation == "true") {
-					this.UpdateStock(reservedAmount, clickedButton)
-				}
+				
 			}
 		},
 
@@ -230,64 +195,24 @@ const Cart = function () {
 
 			return miniCarts;
 		},
-
-		GetReservedAmount: async function (form) {
-			const getReservedFormData = new FormData();
-			getReservedFormData.append("GetReservedAmount", true);
-			getReservedFormData.append("ProductId", productId);
-
-			if (addQuantity != null) {
-				getReservedFormData.append("Quantity", addQuantity);
-			}
-
-			if (productUnitId != null) {
-				getReservedFormData.append("UnitId", productUnitId);
-			}
-
-			if (productVariantId != null) {
-				getReservedFormData.append("VariantId", productVariantId);
-			}
-
-			const getReservedAmountfetchOptions = {
-				method: 'POST',
-				body: getReservedFormData
-			};
-
-			let response = await fetch(form.action, getReservedAmountfetchOptions);
-
-			if (response.ok) {
-				let amount = await response.text().then(function (text) {
-					return text;
-				});
-
-				return amount;
-			} else {
-				Cart.Error(response, clickedButton);
-
-				return 0;
-			}
-		},
-
-		UpdateStock: function (reservedAmount, clickedButton) {
-			const stockLevelElement = clickedButton.closest(".js-product") ? clickedButton.closest(".js-product").querySelector(".js-text-stock") : clickedButton.closest("#content").querySelector(".js-text-stock");
-
-			if (stockLevelElement) {
-				if (stockQuantity != 9999999) {
-					stockLevelElement.innerHTML = (parseInt(stockQuantity) - parseInt(addQuantity) - parseInt(reservedAmount));
-				}
-			}
-		},
-
 		ValidateMinQuantity: function (quantityField) {
 			let isValid = true;
 
 			if (quantityField != null) {
-				const quantity = parseInt(quantityField.value);
-				const minQuantity = parseInt(quantityField.min);
+				const quantity = parseFloat(quantityField.value);
+				const minQuantity = parseFloat(quantityField.min);
 				isValid = quantity < minQuantity ? false : isValid;
 			}
 
 			return isValid;
+		},
+		ValidateMaxQuantity: function (inputElement) {
+			const enteredValue = parseFloat(inputElement.value);
+			const maxValue = parseFloat(inputElement.max);
+
+			if (maxValue && enteredValue > maxValue) {
+				inputElement.value = maxValue;
+			}
 		},
 		
 		ValidateStepQuantity: function (quantityField) {
