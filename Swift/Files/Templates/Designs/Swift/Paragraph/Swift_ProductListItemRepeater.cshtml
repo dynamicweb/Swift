@@ -1,8 +1,6 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Core
-@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
-@using Dynamicweb.Environment
 
 @{
 	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
@@ -45,16 +43,6 @@
 	<div class="h-100@(theme) product-list item_@Model.Item.SystemName.ToLower()" @productInfoFeed>
 		@{
 			bool isVisualEditor = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.QueryString.Get("VisualEdit")) : false;
-
-			string googleTagManagerID = Pageview.AreaSettings.GetString("GoogleTagManagerID");
-			string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
-
-			bool allowTracking = true;
-			if (CookieManager.IsCookieManagementActive)
-			{
-				var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
-				allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
-			}
 
 			string groupId = productList?.Group?.Id != null ? productList.Group.Id : "";
 			string url = Dynamicweb.Context.Current.Request.RawUrl;
@@ -117,26 +105,23 @@
 					}
 
 					<div class="grid pb-3">
-						@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
-						{
-							<script>
-								gtag("event", "view_item_list", {
-									item_list_id: "product_list_item_repeater",
-									item_list_name: "Product list (Item Repeater)",
-									items: [
-										@foreach (ProductViewModel product in productList.Products)
-										{
-											<text>{
-												item_id: "@product.Number",
-												item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.Name)",
-												currency: "@product.Price.CurrencyCode",
-												price: @PriceViewModelExtensions.ToStringInvariant(product.Price)
-											},</text>
-										}
-									]
-								});
-							</script>
-						}
+						<script>
+							gtag("event", "view_item_list", {
+								item_list_id: "product_list_item_repeater",
+								item_list_name: "Product list (Item Repeater)",
+								items: [
+									@foreach (ProductViewModel product in productList.Products)
+									{
+										<text>{
+											item_id: "@product.Number",
+											item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.Name)",
+											currency: "@product.Price.CurrencyCode",
+											price: @PriceViewModelExtensions.ToStringInvariant(product.Price)
+										},</text>
+									}
+								]
+							});
+						</script>
 
 						@foreach (ProductViewModel product in productList.Products)
 						{
@@ -157,39 +142,34 @@
 								{
 									<article class="@gridColumnMobileSize @gridColumnSize @listItemTheme @listItemPaddingClass d-flex flex-column position-relative product js-product" data-product-id="@product.Id" data-variant-id="@product.VariantId" itemscope itemtype="https://schema.org/Product">
 										@{
-											string clickProductLink = string.Empty;
-											if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
-											{
-												clickProductLink = "onclick=\"return clickProductLink('" + @product.Id + "', '" + @product.Name + "', '" + @product.VariantName + "', '" + @product.Price.CurrencyCode + "', '" + @PriceViewModelExtensions.ToStringInvariant(product.Price) + "')\"";
-											}
+											string clickProductLink = "onclick=\"return clickProductLink('" + @product.Id + "', '" + @product.Name + "', '" + @product.VariantName + "', '" + @product.Price.CurrencyCode + "', '" + @PriceViewModelExtensions.ToStringInvariant(product.Price) + "')\"";
 										}
 										<a href="@link" class="stretched-link" onmouseover="swift.Image.swapImage(event)" onmouseout="swift.Image.swapImage(event)" @clickProductLink>
 											<span class="visually-hidden">@product.Name</span>
 										</a>
-										@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
-										{
-											<script>
-												function clickProductLink(productId, productName, productVariant, productCurrency, productPrice) {
-													if (typeof gtag !== "undefined") {
-														gtag("event", "select_item", {
-															item_list_id: "product_list_item_repeater",
-															item_list_name: "Product list (Item Repeater)",
-															items: [
-																{
-																	item_id: productId,
-																	item_name: productName,
-																	currency: productCurrency,
-																	item_list_id: "product_list_item_repeater",
-																	item_list_name: "Product list (Item Repeater)",
-																	item_variant: productVariant,
-																	price: productPrice
-																}
-															]
-														});
-													}
+										
+										<script>
+											function clickProductLink(productId, productName, productVariant, productCurrency, productPrice) {
+												if (typeof gtag !== "undefined") {
+													gtag("event", "select_item", {
+														item_list_id: "product_list_item_repeater",
+														item_list_name: "Product list (Item Repeater)",
+														items: [
+															{
+																item_id: productId,
+																item_name: productName,
+																currency: productCurrency,
+																item_list_id: "product_list_item_repeater",
+																item_list_name: "Product list (Item Repeater)",
+																item_variant: productVariant,
+																price: productPrice
+															}
+														]
+													});
 												}
-											</script>
-										}
+											}
+										</script>
+
 										@RenderGrid(itemSourcePageId)
 									</article>
 								}

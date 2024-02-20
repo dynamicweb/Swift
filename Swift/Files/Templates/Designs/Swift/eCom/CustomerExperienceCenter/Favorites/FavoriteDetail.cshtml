@@ -3,7 +3,6 @@
 @using Dynamicweb.Ecommerce.Frontend
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
-@using Dynamicweb.Environment
 
 @functions {
 	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
@@ -40,14 +39,6 @@
 }
 
 @{
-	string googleTagManagerID = Pageview.AreaSettings.GetString("GoogleTagManagerID");
-	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
-
-	if (CookieManager.IsCookieManagementActive)
-	{
-		var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
-		allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
-	}
 
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
 	string theme = !string.IsNullOrEmpty(themeRaw) ? " h-100 theme " + themeRaw.Replace(" ", string.Empty).Trim().ToLower() : string.Empty;
@@ -79,10 +70,10 @@
 	var favoriteParameters = new Dictionary<string, object>();
 	int defaultFavoriteListId = 0;
 
-	IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
-	if (favoreiteLists.Count() == 1)
+	IEnumerable<FavoriteList> favoriteLists = Pageview.User.GetFavoriteLists();
+	if (favoriteLists.Count() == 1)
 	{
-		foreach (FavoriteList list in favoreiteLists)
+		foreach (FavoriteList list in favoriteLists)
 		{
 			defaultFavoriteListId = list.ListId;
 		}
@@ -125,9 +116,7 @@
 	@if (Model?.ProductList != null)
 	{
 		<div class="grid grid-2 grid-lg-3 grid-xxl-4 p-3">
-			@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
-			{
-				<script>
+			<script>
 				gtag("event", "view_item_list", {
 					item_list_id: "favourite_detail",
 					item_list_name: "Favourite List",
@@ -143,8 +132,7 @@
 						}
 					]
 				});
-				</script>
-			}
+			</script>
 
 			@foreach (var product in Model.ProductList.Products)
 			{
@@ -172,36 +160,30 @@
 						<div class="ratio ratio-1x1">
 							@if (product.DefaultImage.Value != "")
 							{
-								string clickProductLink = string.Empty;
-								if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
-								{
-									clickProductLink = "onclick=\"return clickProductLink('" + @product.Id + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.Name) + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.VariantName) + "', '" + @product.Price.CurrencyCode + "', '" + @PriceViewModelExtensions.ToStringInvariant(product.Price) + "')\"";
-								}
+								string clickProductLink = "onclick=\"return clickProductLink('" + @product.Id + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.Name) + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.VariantName) + "', '" + @product.Price.CurrencyCode + "', '" + @PriceViewModelExtensions.ToStringInvariant(product.Price) + "')\"";
+
 								<a href="@link" class="d-flex justify-content-center align-items-center" @clickProductLink>
-									@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
-									{
-										<script>
-											function clickProductLink(productId, productName, productVariant, productCurrency, productPrice) {
-												if (typeof gtag !== "undefined") {
-													gtag("event", "select_item", {
-														item_list_id: "favourite_detail",
-														item_list_name: "Favourite List",
-														items: [
-															{
-																item_id: productId,
-																item_name: productName,
-																currency: productCurrency,
-																item_list_id: "favourite_detail",
-																item_list_name: "Favourite List",
-																item_variant: productVariant,
-																price: productPrice
-															}
-														]
-													});
-												}
+									<script>
+										function clickProductLink(productId, productName, productVariant, productCurrency, productPrice) {
+											if (typeof gtag !== "undefined") {
+												gtag("event", "select_item", {
+													item_list_id: "favourite_detail",
+													item_list_name: "Favourite List",
+													items: [
+														{
+															item_id: productId,
+															item_name: productName,
+															currency: productCurrency,
+															item_list_id: "favourite_detail",
+															item_list_name: "Favourite List",
+															item_variant: productVariant,
+															price: productPrice
+														}
+													]
+												});
 											}
-										</script>
-									}
+										}
+									</script>
 									<img src="@productImage"
 										 loading="lazy"
 										 decoding="async"

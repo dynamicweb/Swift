@@ -3,7 +3,6 @@
 @using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
 @using Dynamicweb.Core
 @using System.Linq
-@using Dynamicweb.Environment
 
 @functions
 {
@@ -79,16 +78,6 @@
 	badgeParms.Add("newPublicationDays", Model.Item.GetInt32("NewPublicationDays"));
 	badgeParms.Add("campaignBadgesValues", Model.Item.GetList("CampaignBadges")?.GetRawValue().OfType<string>().ToList());
 
-	string googleTagManagerID = Pageview.AreaSettings.GetString("GoogleTagManagerID");
-	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
-
-	bool allowTracking = true;
-	if (CookieManager.IsCookieManagementActive)
-	{
-		var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
-		allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
-	}
-
 	var favoriteParameters = new Dictionary<string, object>();
 	if (!anonymousUser && !hideFavoritesSelector)
 	{
@@ -120,9 +109,7 @@
 
 			int loadedProducts = productList.PageSize > productList.TotalProductsCount ? productList.TotalProductsCount : productList.PageSize;
 
-			if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
-			{
-				<script>
+			<script>
 				gtag("event", "view_item_list", {
 					item_list_id: "product_list_compactview",
 					item_list_name: "Product list (Compactview)",
@@ -138,8 +125,7 @@
 						}
 					]
 				});
-				</script>
-			}
+			</script>
 
 			foreach (ProductViewModel product in productList.Products)
 			{
@@ -202,38 +188,31 @@
 
 				<article class="grid align-items-baseline gap-2 gap-lg-3 mb-3@(productTheme)@(textPadding) @liveInfoClass" data-product-id="@product.Id" data-variant-id="@product.VariantId">
 					@{
-						string clickProductLink = string.Empty;
-						if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
-						{
-							clickProductLink = "onclick=\"return clickProductLink('" + @product.Id + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.Name) + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.VariantName) + "', '" + @product.Price.CurrencyCode + "', '" + @PriceViewModelExtensions.ToStringInvariant(product.Price) + "')\"";
-						}
+						string clickProductLink = "onclick=\"return clickProductLink('" + @product.Id + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.Name) + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(product.VariantName) + "', '" + @product.Price.CurrencyCode + "', '" + @PriceViewModelExtensions.ToStringInvariant(product.Price) + "')\"";
 					}
 					<a href="@link" class="g-col-12 g-col-lg-8 d-flex align-items-baseline gap-3 text-decoration-none mb-2 mb-lg-0" @clickProductLink>
 
-						@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
-						{
-							<script>
-								function clickProductLink(productId, productName, productVariant, productCurrency, productPrice) {
-									if (typeof gtag !== "undefined") {
-										gtag("event", "select_item", {
-											item_list_id: "product_list_compactview",
-											item_list_name: "Product list (Compact view)",
-											items: [
-												{
-													item_id: productId,
-													item_name: productName,
-													currency: productCurrency,
-													item_list_id: "product_list_compactview",
-													item_list_name: "Product list (Compact view)",
-													item_variant: productVariant,
-													price: productPrice
-												}
-											]
-										});
-									}
+						<script>
+							function clickProductLink(productId, productName, productVariant, productCurrency, productPrice) {
+								if (typeof gtag !== "undefined") {
+									gtag("event", "select_item", {
+										item_list_id: "product_list_compactview",
+										item_list_name: "Product list (Compact view)",
+										items: [
+											{
+												item_id: productId,
+												item_name: productName,
+												currency: productCurrency,
+												item_list_id: "product_list_compactview",
+												item_list_name: "Product list (Compact view)",
+												item_variant: productVariant,
+												price: productPrice
+											}
+										]
+									});
 								}
-							</script>
-						}
+							}
+						</script>
 
 						@if (!Model.Item.GetBoolean("HideImage"))
 						{
