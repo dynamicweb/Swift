@@ -3,16 +3,6 @@
 @using Dynamicweb.Environment
 
 @{
-	string googleTagManagerID = Pageview.AreaSettings.GetString("GoogleTagManagerID");
-	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
-
-	bool allowTracking = true;
-	if (CookieManager.IsCookieManagementActive)
-	{
-		var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
-		allowTracking = cookieOptInLevel == CookieOptInLevel.All || (cookieOptInLevel == CookieOptInLevel.Functional && CookieManager.GetCookieOptInCategories().Contains("Statistical"));
-	}
-
 	int frontPageId = Dynamicweb.Content.Services.Pages.GetFirstPageForArea(Pageview.AreaID).ID;
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
 	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", string.Empty).Trim().ToLower() : string.Empty;
@@ -315,32 +305,29 @@
 	</div>
 </div>
 
-@if ((!string.IsNullOrWhiteSpace(googleAnalyticsMeasurementID) || !string.IsNullOrWhiteSpace(googleTagManagerID)) && allowTracking)
-{
-	<script>
-		gtag("event", "purchase", {
-			transaction_id: "@GetString("Ecom:Order.ID")",
-			value: @GetDouble("Ecom:Order.Price.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
-			tax: @GetString("Ecom:Order.Taxes.Total.Price.Value"),
-			shipping: @GetString("Ecom:Order.ShippingFee.Price.Value"),
-			currency: "@GetString("Ecom:Order.Price.Currency.Code")",
-			items: [
-				@foreach (LoopItem orderline in GetLoop("OrderLines"))
+<script>
+	gtag("event", "purchase", {
+		transaction_id: "@GetString("Ecom:Order.ID")",
+		value: @GetDouble("Ecom:Order.Price.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+		tax: @GetString("Ecom:Order.Taxes.Total.Price.Value"),
+		shipping: @GetString("Ecom:Order.ShippingFee.Price.Value"),
+		currency: "@GetString("Ecom:Order.Price.Currency.Code")",
+		items: [
+			@foreach (LoopItem orderline in GetLoop("OrderLines"))
+			{
+				<text>
 				{
-					<text>
-					{
-						item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
-						item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(orderline.GetString("Ecom:Order:OrderLine.ProductName"))",
-						currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
-						price: @orderline.GetDouble("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
-						quantity: @orderline.GetDouble("Ecom:Order:OrderLine.Quantity").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
-					},
-					</text>
-				}
-			]
-		});
-	</script>
-}
+					item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
+					item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(orderline.GetString("Ecom:Order:OrderLine.ProductName"))",
+					currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
+					price: @orderline.GetDouble("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+					quantity: @orderline.GetDouble("Ecom:Order:OrderLine.Quantity").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+				},
+				</text>
+			}
+		]
+	});
+</script>
 
 @Include("../Helpers/CustomerAddressDisplayFormatted.cshtml")
 @Include("../Helpers/DeliveryAddressDisplayFormatted.cshtml")
