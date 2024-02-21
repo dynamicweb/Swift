@@ -89,7 +89,8 @@ const ProductList = function () {
 				var newUrl = url.origin + url.pathname + "?" + newParams.toString(); //Create url with the new parameters
 
 				//Handle ios devices (Scroll not working on async loaded content)
-				if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1 && swap != "afterend") {
+				if ((navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1 && swap != "afterend") ||
+					navigator.userAgent.indexOf('CriOS') >= 0) {
 					newParams.set("LayoutTemplate", "");
 					window.location = url.origin + url.pathname + "?" + newParams.toString();
 				} else {
