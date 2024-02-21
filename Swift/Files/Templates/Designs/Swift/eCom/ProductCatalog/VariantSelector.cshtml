@@ -40,17 +40,20 @@
 {
 	if (viewType == "ModalContent")
 	{
-		string minQty = Model.PurchaseMinimumQuantity != 1 ? "min=\"" + Model.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
-		string stepQty = Model.PurchaseQuantityStep > 1 ? Model.PurchaseQuantityStep.ToString() : "1";
-		string valueQty = Model.PurchaseMinimumQuantity > Model.PurchaseQuantityStep ? Model.PurchaseMinimumQuantity.ToString() : stepQty;
-
-		bool isNeverOutOfStock = Model.NeverOutOfstock;
+		bool neverOutOfStock = Model.NeverOutOfstock;
 		bool isDiscontinued = Model.Discontinued;
+		bool isStockType = Model.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock;
+
+		double? stepQty = Model.PurchaseQuantityStep > 0 ? Model.PurchaseQuantityStep : 1;
+		double? minQty = Model.PurchaseMinimumQuantity > 0 ? Model.PurchaseMinimumQuantity : 1;
+		double? valueQty = minQty > stepQty ? minQty : stepQty;
+		bool setMaxQty = isStockType && !neverOutOfStock;
+		double? maxQty = setMaxQty ? Model.StockLevel : null;
 
 		bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
 		string disableAddToCart = (Model.StockLevel <= 0) ? "disabled" : "";
 		disableAddToCart = isDiscontinued ? "disabled" : disableAddToCart;
-		disableAddToCart = isNeverOutOfStock && !isLazyLoadingForProductInfoEnabled ? "" : disableAddToCart;
+		disableAddToCart = neverOutOfStock && !isLazyLoadingForProductInfoEnabled ? "" : disableAddToCart;
 		disableAddToCart = string.IsNullOrEmpty(Model.VariantId) ? "disabled" : disableAddToCart;
 
 
@@ -78,14 +81,13 @@
 				@if (quantitySelector)
 				{
 					<div class="flex-fill input-group input-primary-button-group d-flex flex-row">
-						<input id="Quantity_@(Model.Id)_@Model.VariantId" name="Quantity" value="@valueQty" step="@stepQty" @minQty class="form-control swift_quantity-field" style="max-width: 100px" type="number" onkeydown="swift.Cart.UpdateOnEnterKey(event)" @disableAddToCart>
+						<input id="Quantity_@(Model.Id)_@Model.VariantId" name="Quantity" value="@valueQty" step="@stepQty" min="@minQty" max="@maxQty" class="form-control swift_quantity-field" style="max-width: 100px" type="number" onkeydown="swift.Cart.UpdateOnEnterKey(event)" @disableAddToCart>
 						<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary flex-fill js-add-to-cart-button" title="@Translate("Add to cart")" id="AddToCartButton@(Model.Id)_@Pageview.CurrentParagraph.ID" @disableAddToCart>@Translate("Add to cart")</button>
-						@if (stepQty != "1")
-						{
-							<div class="invalid-feedback d-none">
-								@Translate("Please select a quantity that is dividable by") @stepQty
-							</div>
-						}
+						
+						<div class="invalid-feedback d-none">
+							@Translate("Please select a quantity that is dividable by") @stepQty
+						</div>
+						
 					</div>
 					<label for="Quantity_@(Model.Id)_@Model.VariantId" class="visually-hidden">@Translate("Quantity")</label>
 				}
