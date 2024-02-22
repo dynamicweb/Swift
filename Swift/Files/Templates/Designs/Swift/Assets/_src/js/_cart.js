@@ -35,7 +35,6 @@ const Cart = function () {
 			isPendingQuote = formData.get("PendingQuote") ? formData.get("PendingQuote") : "false";
 
 			this.PushDataToGoogleAnalytics();
-
 			let event = new CustomEvent("update.swift.cart", {
 			//Fire the 'update' event
 				cancelable: true,
@@ -169,7 +168,7 @@ const Cart = function () {
 				//Replace the markup (Update min carts counters)
 				let totalQuantity = html != undefined ? html : 0;
 				Cart.GetMiniCarts(formData.get("minicartid")).forEach(function (el) {
-					el.innerHTML = "(" + totalQuantity.trim() + ")";
+					el.innerHTML = totalQuantity.trim();
 				});
 
 				//Update stock

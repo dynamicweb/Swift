@@ -6,12 +6,31 @@
 
 @{
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
-	bool isMiniCart = Dynamicweb.Context.Current.Request["CartType"] == "minicart";
+	var cartType = Dynamicweb.Context.Current.Request["CartType"];
+	var requestPageId = Dynamicweb.Context.Current.Request["RequestPageID"];
+	var orderContext = Dynamicweb.Context.Current.Request["OrderContext"];
+	string checkoutUrl = Dynamicweb.Context.Current.Request["checkoutUrl"];
+	string quoteCheckoutPageId = Dynamicweb.Context.Current.Request["quoteCheckoutPageLink"];
+	var order = Dynamicweb.Ecommerce.Services.Orders.GetById(Model.Cart.ID);
+	
+	bool isMiniCart = cartType == "minicart";
+	bool anonymousUser = Pageview.User == null;
 }
 
-<div class="item_@Model.Item.SystemName.ToLower() @(isMiniCart ? "p-3 p-lg-4" : null)">
+@if(isMiniCart)
+{
+	<div class="modal-header sticky-top p-lg-4 theme" style="box-shadow: 0 10px 10px -12px var(--bs-gray-300);">
+		<span class="h6 m-0">@Translate("Your cart")</span>
+
+		<button type="button" class="btn btn-close text-decoration-none" data-bs-dismiss="offcanvas" aria-label="Close" id="CloseMiniCart"></button>
+	</div>
+}
+
+<div class="item_@Model.Item.SystemName.ToLower() @(isMiniCart ? "p-3 p-lg-4 h-100" : null)">
 	@if (Model.Cart.TotalProductsCount > 0)
 	{
+
+
 		if (!isMiniCart)
 		{
 			<button class="toggle-order-summary btn text-reset w-100 d-block d-lg-none px-0" type="button" data-bs-toggle="collapse" data-bs-target="#CartSummary" aria-expanded="false" aria-controls="CartSummary">
@@ -41,7 +60,7 @@
 			</style>
 		}
 
-		<div class="d-lg-block h-lg-auto @(!isMiniCart ? "collapse" : null) pt-2 pt-lg-0" id="CartSummary">
+		<div class="@(!isMiniCart ? "d-lg-block h-lg-auto collapse" : "d-flex flex-column h-100") pt-2 pt-lg-0" id="CartSummary">
 			<div class="d-flex flex-column gap-2 gap-lg-3 pb-2 pb-lg-3">
 				@foreach (CartOrderlineViewModel orderline in Model.Cart.CartOrderlines.Reverse())
 				{
@@ -123,7 +142,7 @@
 										</div>
 									</div>
 									
-									<a href="/Default.aspx?ID=@Pageview.Page.ID&CartCmd=DelOrderLine&key=@orderline.ID" class="btn btn-link btn-sm p-0 m-0 fs-8 align-self-start opacity-50" title="@Translate("Remove")">@Translate("Remove")</a>
+									<a href="/Default.aspx?ID=@requestPageId&OrderContext=@(orderContext)&CartCmd=DelOrderLine&key=@orderline.ID" class="btn btn-link btn-sm p-0 m-0 fs-8 align-self-start opacity-50" title="@Translate("Remove")">@Translate("Remove")</a>
 									
 								</div>
 							</div>
@@ -133,24 +152,19 @@
 			</div>
 
 			<div class="d-flex justify-content-end pb-2 pb-lg-3">
-				<a href="/Default.aspx?ID=@(Pageview.Page.ID)&cartcmd=emptycart" class="btn btn-link p-0 text-decoration-none">
+				<a href="/Default.aspx?ID=@(requestPageId)&OrderContext=@(orderContext)&cartcmd=emptycart" class="btn btn-link p-0 text-decoration-none">
 					<span class="text-decoration-underline">@Translate("Remove all")</span> 
 					<span class="icon-1">@ReadFile(iconPath + "trash-2.svg")</span>
 				</a>
 			</div>
 
 			@{ 
-				bool anonymousUser = Pageview.User == null;
 				string totalPriceWithoutDiscountsFeesAndTaxes = Model.Cart.TotalPriceWithoutDiscounts.PriceWithoutVat.Formatted;
 				string totalPriceWithoutOrderDiscountsAndFees = Model.Cart.TotalPriceWithoutFees.Price.Formatted;
 				string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
 				bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
-				string checkoutUrl = Dynamicweb.Context.Current.Request["checkoutUrl"];
-				string quoteCheckoutPageId = Dynamicweb.Context.Current.Request["quoteCheckoutPageLink"];
-				string cartType = Dynamicweb.Context.Current.Request["CartType"];
-				var order = Dynamicweb.Ecommerce.Services.Orders.GetById(Model.Cart.ID);
 
-				<div class="d-flex flex-column gap-2 gap-lg-3 position-sticky bottom-0 theme" id="cartSummaryFooter" style="box-shadow: 0 -10px 10px -12px var(--bs-gray-300);">
+				<div class="d-flex flex-column mt-auto gap-2 gap-lg-3 position-sticky bottom-0 theme" id="cartSummaryFooter" style="box-shadow: 0 -10px 10px -12px var(--bs-gray-300);">
 
 					<div class="fs-8 border-top pt-2 pt-lg-3">
 						@* Subtotal *@
