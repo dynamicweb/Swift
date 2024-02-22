@@ -1,5 +1,6 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
 @using Dynamicweb
+@using Dynamicweb.Ecommerce.Orders
 @using System.IO
 
 @{
@@ -9,7 +10,7 @@
 	string menuId = Model.Parameters.ContainsKey("menu-id") ? $"menu_{Model.Parameters["menu-id"].ToString().ToLower()}" : string.Empty;
 }
 
-<nav class="nav flex-nowrap offcanvas-utility-navigation @menuId" aria-label="@Translate("Utility navigation")">
+<nav class="nav flex-nowrap offcanvas-utility-navigation @menuId pe-2" aria-label="@Translate("Utility navigation")">
 	@foreach (var node in Model.Nodes)
 	{
 		var page = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
@@ -29,16 +30,26 @@
 			{
 				if (node.IsClickable)
 				{
-					@:<a class="nav-link @(activeClass)" href="@node.Link">
+					@:<a class="nav-link p-2 @(activeClass)" href="@node.Link">
 				}
 				else
 				{
-					@:<span class="nav-link">
+					@:<span class="nav-link p-2">
 				}
 
 				if (pageType == "Swift_Cart")
 				{
+					string cartId = page.Item["ContextCart"] != null && page.Item["ContextCart"] != string.Empty ? $"ID=\"Cart_{page.Item["ContextCart"].ToString()}\"" : string.Empty;
+					string jsCartClass = string.IsNullOrEmpty(cartId) ? "js-cart-qty" : string.Empty;
 					double totalProducts = 0;
+
+					Dynamicweb.Ecommerce.Common.Context.CartContext = null;
+					if (page.Item["ContextCart"] != null)
+					{
+						var orderContext = Dynamicweb.Ecommerce.Services.OrderContexts.GetOrderContextById(page.Item["ContextCart"].ToString());
+						Dynamicweb.Ecommerce.Common.Context.CartContext = orderContext;
+					}
+
 					if (Dynamicweb.Ecommerce.Common.Context.Cart != null)
 					{
 						bool renderOrderlineCountInsteadOfProductCount = page.Item["RenderOrderlineCountInsteadOfProductCount"] != null ? Convert.ToBoolean(page.Item["RenderOrderlineCountInsteadOfProductCount"]) : false;
@@ -48,7 +59,13 @@
 						}
 						else
 						{
-							totalProducts = Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines.Count();
+							foreach (var orderline in Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines)
+							{
+								if (orderline.HasType(new[] { OrderLineType.Product, OrderLineType.Fixed, OrderLineType.PointProduct, OrderLineType.GiftCard }))
+								{
+									totalProducts++;
+								}
+							}
 						}
 					}
 
@@ -56,7 +73,7 @@
 					{
 						string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
 						<span class="icon-3">@ReadFile(iconPath)</span>
-						<span class="js-cart-qty mini-cart-quantity align-middle">(@totalProducts)</span>
+						<span class="@jsCartClass mini-cart-quantity" @cartId data-order-context="@page.Item["ContextCart"]">@totalProducts</span>
 					}
 				}
 				else
