@@ -264,7 +264,7 @@ const Cart = function () {
 			const minQuantityWarning = form.querySelector(".js-min-quantity-warning");
 
 			const message = minQuantityWarning.innerHTML;
-			const minQuantity = parseInt(quantityField.min);
+			const minQuantity = parseFloat(quantityField.min);
 			document.querySelector("#DynamicModalContent").innerHTML = message;
 
 			if (!document.querySelector('#DynamicModal').classList.contains("show")) {
