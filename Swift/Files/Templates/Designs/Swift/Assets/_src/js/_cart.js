@@ -12,7 +12,7 @@ const Cart = function () {
 
 	return {
 		Update: async function (e) {
-			//NP: clickedButton is not always the button. Sometimes it is the qty input field if [enter] is pressed
+			// ClickedButton is not always the button. Sometimes it is the qty input field if [enter] is pressed
 			const clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
 			const form = clickedButton.closest("form");
 			const quantityField = form.querySelector('[name="Quantity"]');
