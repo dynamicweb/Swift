@@ -44,28 +44,37 @@ const Cart = function () {
 			let localDispatcher = clickedButton.dispatchEvent(event);
 			
 			if (globalDispatcher != false && localDispatcher != false) {
-
-				const isMinQuantityValid = this.ValidateMinQuantity(quantityField);
-				const isStepQuantityValid = this.ValidateStepQuantity(quantityField);
-				const isMaxQuantityValid = this.ValidateMaxQuantity(quantityField);
-				const isValid = isMinQuantityValid && isStepQuantityValid && isMaxQuantityValid;
 				quantityField.classList.remove("is-invalid");
-
+				
 				//The actual cart call (add to cart)
-				if (isPendingQuote == "true") {
-					PromptPendingQuoteMessage();
+				if (quantityField != null) {
+					//Validation
+					const isMinQuantityValid = this.ValidateMinQuantity(quantityField);
+					const isStepQuantityValid = this.ValidateStepQuantity(quantityField);
+					const isMaxQuantityValid = this.ValidateMaxQuantity(quantityField);
+					const isValid = isMinQuantityValid && isStepQuantityValid && isMaxQuantityValid;
+
+					if (isPendingQuote == "true") {
+						PromptPendingQuoteMessage();
+					}
+					else if (isValid) {
+						this.AddToCart(clickedButton, form, formData);
+					} else if (!isMinQuantityValid) {
+						this.PromptMinQuantityFailedWarning(quantityField, form);
+					} else if (!isStepQuantityValid) {
+						this.PromptStepQuantityFailedWarning(form);
+					} else if (!isMaxQuantityValid) {
+						quantityField.classList.add("is-invalid");
+					} 			
 				}
-				else if (isValid) {
+				else 
+				{
+					if (isPendingQuote == "true") {
+						PromptPendingQuoteMessage();
+					}
+
 					this.AddToCart(clickedButton, form, formData);
-				} else if (!isMinQuantityValid) {
-					this.PromptMinQuantityFailedWarning(quantityField, form);
-				} else if (!isStepQuantityValid) {
-					this.PromptStepQuantityFailedWarning(form);
-				} else if (!isMaxQuantityValid) {
-					quantityField.classList.add("is-invalid");
-				} else {
-					quantityField.classList.remove("is-invalid");
-				}				
+				}
 			}
 		},
 		PromptPendingQuoteMessage: function () {
