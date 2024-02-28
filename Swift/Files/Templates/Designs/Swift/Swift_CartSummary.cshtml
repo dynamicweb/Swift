@@ -7,9 +7,12 @@
 @{
 	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
 	bool anonymousUser = Pageview.User == null;
+	var cartServicePageId = GetPageIdByNavigationTag("CartService");
+	var cartSummaryPageId = GetPageIdByNavigationTag("CartSummary");
 	var cartType = Dynamicweb.Context.Current.Request["CartType"];
 	var requestPageId = Dynamicweb.Context.Current.Request["RequestPageID"];
 	var orderContext = Dynamicweb.Context.Current.Request["OrderContext"];
+	string cartUrl = Model.Item.GetLink("CartPageLink")?.Url;
 	string checkoutUrl = Dynamicweb.Context.Current.Request["checkoutUrl"];
 	checkoutUrl = string.IsNullOrEmpty(checkoutUrl) ? (!anonymousUser ? Model.Item.GetLink("CheckoutSignedInPageLink")?.Url : Model.Item.GetLink("CheckoutAnonymousPageLink")?.Url) : checkoutUrl;
 	string quoteCheckoutPageId = Dynamicweb.Context.Current.Request["quoteCheckoutPageLink"];
@@ -18,7 +21,7 @@
 	bool isMiniCart = cartType == "minicart";
 }
 
-@if(isMiniCart)
+@if (isMiniCart)
 {
 	<div class="modal-header sticky-top py-1 py-lg-3 ps-lg-4 pe-0 pe-lg-3 theme" style="box-shadow: 0 10px 10px -12px var(--bs-gray-300);">
 		<span class="h6 m-0">@Translate("Your cart")</span>
@@ -34,8 +37,6 @@
 <div class="item_@Model.Item.SystemName.ToLower() @(isMiniCart ? "p-3 p-lg-4 h-100" : null)">
 	@if (Model.Cart.TotalProductsCount > 0)
 	{
-
-
 		if (!isMiniCart)
 		{
 			<button class="toggle-order-summary btn text-reset w-100 d-block d-lg-none px-0" type="button" data-bs-toggle="collapse" data-bs-target="#CartSummary" aria-expanded="false" aria-controls="CartSummary">
@@ -66,7 +67,7 @@
 		}
 
 		<div class="@(!isMiniCart ? "d-lg-block h-lg-auto collapse" : "d-flex flex-column h-100") pt-2 pt-lg-0" id="CartSummary">
-			<div class="d-flex flex-column gap-2 gap-lg-3 pb-2 pb-lg-3">
+			<div class="d-flex flex-column gap-4 pb-4">
 				@foreach (CartOrderlineViewModel orderline in Model.Cart.CartOrderlines.Reverse())
 				{
 					string name = orderline.ProductName;
@@ -97,7 +98,7 @@
 								</a>
 							</div>
 
-							<div class="g-col-10">
+							<div class="g-col-6">
 
 								<div class="d-flex flex-column gap-1">
 									@* Title *@
@@ -108,8 +109,8 @@
 									@* Variants *@
 									@if (!string.IsNullOrEmpty(variantText))
 									{
-										<p class="fs-8 m-0">@variantText</p> 
-									} 
+										<p class="fs-8 m-0">@variantText</p>
+									}
 									@* Unit price *@
 
 									<p class="fs-8 m-0">
@@ -122,48 +123,74 @@
 										else
 										{
 											<span class="text-price">@discountPrice</span>
-												<span class="text-decoration-line-through">
+											<span class="text-decoration-line-through">
 												<span class="text-price">@unitPrice</span>
 											</span>
 										}
 									</p>
 
-									<div class="d-flex flex-row justify-content-between">
-										@* Quantity *@
-										<span class="fs-8 d-block">@Translate("Qty"): @quantity</span>
+									@* Quantity *@
+									<span class="fs-8 d-block">@Translate("Qty"): @quantity</span>
 
-										<div class="text-end flex-fill">
-											@* Total *@
-											<span class="h6 d-block fs-7 m-0">
-												<span class="text-price">@priceTotalWithDiscounts</span>
-											</span>
-											
-											@if (orderline.TotalDiscount.Price.Value != 0)
-											{
-												<span class="d-block fs-8">
-													<span class="text-price">@discountTotal</span>
-												</span>
-											}
-										</div>
-									</div>
-									
-									<a href="/Default.aspx?ID=@requestPageId&OrderContext=@(orderContext)&CartCmd=DelOrderLine&key=@orderline.ID" class="btn btn-link btn-sm p-0 m-0 fs-8 align-self-start opacity-50" title="@Translate("Remove")">@Translate("Remove")</a>
-									
 								</div>
 							</div>
+
+							<div class="g-col-4">
+
+								<div class="d-flex flex-column gap-1 text-end h-100">
+
+									<form action="Default.aspx?ID=@cartServicePageId" method="post" data-layout-template="Swift_CartSummary.cshtml" data-response-target-element=@(isMiniCart ? "DynamicOffcanvas" : "CartSummaryContainer") data-preloader="inline">
+										<input type="hidden" name="requestPageId" value="@requestPageId">
+										<input type="hidden" name="redirect" value="false">
+										<input type="hidden" name="OrderContext" value="@orderContext">
+										<input type="hidden" name="cartcmd" value="DelOrderLine">
+										<input type="hidden" name="checkoutUrl" value="@checkoutUrl">
+										<input type="hidden" name="key" value="@orderline.ID">
+										<input type="hidden" name="CartType" value="@cartType">
+										<button type="button" class="btn btn-link btn-sm p-0 m-0 fs-8 opacity-50" onclick="swift.Cart.Update(this);">
+											@Translate("Remove")
+										</button>
+									</form>
+
+									<div class="d-flex flex-column justify-content-end flex-fill">
+										@if (orderline.TotalDiscount.Price.Value != 0)
+										{
+											<span class="d-block fs-8">
+												<span class="text-price">@discountTotal</span>
+											</span>
+										}
+										@* Total *@
+										<span class="h6 d-block fs-7 m-0">
+											<span class="text-price">@priceTotalWithDiscounts</span>
+										</span>
+									</div>
+
+								</div>
+
+							</div>
+
 						</article>
 					}
 				}
 			</div>
 
-			<div class="d-flex justify-content-end pb-2 pb-lg-3">
-				<a href="/Default.aspx?ID=@(requestPageId)&OrderContext=@(orderContext)&cartcmd=emptycart" class="btn btn-link p-0 text-decoration-none">
-					<span class="text-decoration-underline">@Translate("Remove all")</span> 
-					<span class="icon-1">@ReadFile(iconPath + "trash-2.svg")</span>
-				</a>
+			<div class="d-flex justify-content-end pb-3">
+
+				<form action="Default.aspx?ID=@cartServicePageId" method="post" data-layout-template="Swift_CartSummary.cshtml" data-response-target-element=@(isMiniCart ? "DynamicOffcanvas" : "CartSummaryContainer") data-preloader="inline">
+					<input type="hidden" name="requestPageId" value="@requestPageId">
+					<input type="hidden" name="redirect" value="false">
+					<input type="hidden" name="OrderContext" value="@orderContext">
+					<input type="hidden" name="cartcmd" value="emptycart">
+					<input type="hidden" name="checkoutUrl" value="@checkoutUrl">
+					<input type="hidden" name="CartType" value="@cartType">
+					<button type="button" class="btn btn-link p-0 text-decoration-none d-flex align-items-center gap-1" onclick="swift.Cart.Update(this);">
+						<span class="icon-2">@ReadFile(iconPath + "trash-2.svg")</span>
+						<span class="text-decoration-underline">@Translate("Remove all")</span>
+					</button>
+				</form>
 			</div>
 
-			@{ 
+			@{
 				string totalPriceWithoutDiscountsFeesAndTaxes = Model.Cart.TotalPriceWithoutDiscounts.PriceWithoutVat.Formatted;
 				string totalPriceWithoutOrderDiscountsAndFees = Model.Cart.TotalPriceWithoutFees.Price.Formatted;
 				string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
@@ -265,54 +292,70 @@
 							<span>@Translate("Total")</span>
 							@if (!neverShowVat && showPricesWithVat == "false")
 							{
-							<span class="text-price text-end">
-								<span class="fs-5 d-block">@Model.Cart.TotalPrice.Price.Formatted</span>
-								<span class="fs-8 fw-normal d-block">@Translate("Excl. VAT")</span>
-							</span> 
+								<span class="text-price text-end">
+									<span class="fs-5 d-block">@Model.Cart.TotalPrice.Price.Formatted</span>
+									<span class="fs-8 fw-normal d-block">@Translate("Excl. VAT")</span>
+								</span>
 							}
 							else if (!neverShowVat && showPricesWithVat == "true")
 							{
-							<span class="text-price text-end">
-								<span class="fs-5 d-block">@Model.Cart.TotalPrice.Price.Formatted</span>
-								<span class="fs-8 fw-normal d-block">@Translate("Incl. VAT")</span>
-							</span>
+								<span class="text-price text-end">
+									<span class="fs-5 d-block">@Model.Cart.TotalPrice.Price.Formatted</span>
+									<span class="fs-8 fw-normal d-block">@Translate("Incl. VAT")</span>
+								</span>
 							}
 							else
 							{
-							<span class="text-price fs-5">@Model.Cart.TotalPrice.Price.Formatted</span>
+								<span class="text-price fs-5">@Model.Cart.TotalPrice.Price.Formatted</span>
 							}
 						</div>
 
 						@if (!neverShowVat)
 						{
-							<div class="d-flex justify-content-between"><span>@Translate("VAT")</span><span class="text-price">@Model.Cart.TotalPrice.Vat.Formatted</span></div> 
+							<div class="d-flex justify-content-between"><span>@Translate("VAT")</span><span class="text-price">@Model.Cart.TotalPrice.Vat.Formatted</span></div>
 							if (showPricesWithVat == "false")
 							{
-							<div class="d-flex justify-content-between"><span>@Translate("Total incl. VAT")</span><span class="text-price">@Model.Cart.TotalPrice.PriceWithVat.Formatted</span></div>
+								<div class="d-flex justify-content-between"><span>@Translate("Total incl. VAT")</span><span class="text-price">@Model.Cart.TotalPrice.PriceWithVat.Formatted</span></div>
 							}
 						}
 
 						@if (Model.Cart.TotalDiscount.Price.Value != 0)
 						{
-						<div class="d-flex justify-content-between"><span>@Translate("Discount")</span><span class="text-price">@Model.Cart.TotalDiscount.Price.Formatted</span></div>
+							<div class="d-flex justify-content-between"><span>@Translate("Discount")</span><span class="text-price">@Model.Cart.TotalDiscount.Price.Formatted</span></div>
 						}
 					</div>
-				
+
 					<div class="mb-3 d-flex flex-column justify-content-end gap-3">
 
 						@if (isMiniCart)
 						{
-							<button type="button" class="btn btn-link link-secondary text-decoration-none" data-bs-dismiss="offcanvas" aria-label="Close" id="ContinueShopping">
+							@*Close offcanvas button*@
+							<button type="button" class="btn btn-link link-secondary text-decoration-none order-last" data-bs-dismiss="offcanvas" aria-label="Close" id="ContinueShopping">
 								<div class="d-flex align-items-center justify-content-center position-relative">
 									<span class="icon-2 me-1 position-absolute position-lg-static start-0">
 										@ReadFile(iconPath + "chevron-left.svg")
 									</span>
-									<span>@Translate("Continue Shopping")</span>
+									<span>@Translate("Continue shopping")</span>
 								</div>
 							</button>
+
+							if (!string.IsNullOrEmpty(cartUrl))
+							{
+								@*Cart button*@
+								<a href="@(cartUrl)?&OrderContext=@(orderContext)" class="btn btn-secondary" id="GoToCartButton">
+									<div class="d-flex align-items-center justify-content-center position-relative">
+										<span>@Translate("Cart")</span>
+										<span class="icon-2 ms-1 position-absolute position-md-static end-0">
+											@ReadFile(iconPath + "chevron-right.svg")
+										</span>
+									</div>
+								</a>
+							}
 						}
 
-						<a href="@checkoutUrl?OrderContext=@(orderContext)" class="btn btn-primary order-last" id="GoToCheckoutButton">
+
+						@*Checkout button*@
+						<a href="@checkoutUrl?OrderContext=@(orderContext)" class="btn btn-primary order-first" id="GoToCheckoutButton">
 							<div class="d-flex align-items-center justify-content-center position-relative">
 								<span>@Translate("Checkout")</span>
 								<span class="icon-2 ms-1 position-absolute position-md-static end-0">
@@ -321,6 +364,7 @@
 							</div>
 						</a>
 
+						@*Quote Checkout button*@
 						@if (!string.IsNullOrEmpty(quoteCheckoutPageId) && Converter.ToInt32(quoteCheckoutPageId) > 0 && !anonymousUser)
 						{
 							<a href="Default.aspx?ID=@quoteCheckoutPageId&OrderContext=@(orderContext)" class="btn btn-secondary" id="RequestQuoteButton">

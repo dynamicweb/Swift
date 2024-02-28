@@ -58,10 +58,13 @@ const Cart = function () {
 					reservedAmount = await this.GetReservedAmount(form);
 				}
 
-				const isMinQuantityValid = this.ValidateMinQuantity(quantityField);
-				const isStepQuantityValid = this.ValidateStepQuantity(quantityField);
-				const isValid = isMinQuantityValid && isStepQuantityValid;
-				quantityField.classList.remove("is-invalid");
+				var isValid = true;
+				if (typeof (quantityField) != 'undefined' && quantityField != null) {
+					const isMinQuantityValid = this.ValidateMinQuantity(quantityField);
+					const isStepQuantityValid = this.ValidateStepQuantity(quantityField);
+					isValid = isMinQuantityValid && isStepQuantityValid;
+					quantityField.classList.remove("is-invalid");
+				}
 
 				//The actual cart call (add to cart)
 				if (isPendingQuote == "true") {
