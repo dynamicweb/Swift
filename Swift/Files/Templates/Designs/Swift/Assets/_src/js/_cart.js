@@ -218,7 +218,7 @@ const Cart = function () {
 		ValidateMinQuantity: function (quantityField) {
 			let isValid = true;
 
-			if (quantityField != null) {
+			if (quantityField != null && quantityField.min) {
 				const quantity = parseFloat(quantityField.value);
 				const minQuantity = parseFloat(quantityField.min);
 				isValid = quantity < minQuantity ? false : isValid;
@@ -227,12 +227,13 @@ const Cart = function () {
 			return isValid;
 		},
 		ValidateMaxQuantity: function (quantityField) {
-
-			const enteredValue = parseFloat(quantityField.value);
-			const maxValue = parseFloat(quantityField.max);
-			if (enteredValue > maxValue) {
-				quantityField.value = maxValue;
-				return false;
+			if (quantityField != null && quantityField.max) {
+				const enteredValue = parseFloat(quantityField.value);
+				const maxValue = parseFloat(quantityField.max);
+				if (enteredValue > maxValue) {
+					quantityField.value = maxValue;
+					return false;
+				}
 			}
 			return true;
 		},
@@ -248,7 +249,7 @@ const Cart = function () {
 		ValidateStepQuantity: function (quantityField) {
 			let isValid = true;
 
-			if (quantityField != null) {
+			if (quantityField != null && quantityField.step) {
 				const quantity = parseFloat(quantityField.value);
 				const stepQty = parseFloat(quantityField.step);
 				
