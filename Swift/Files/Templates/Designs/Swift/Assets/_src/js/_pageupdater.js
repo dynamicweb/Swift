@@ -95,6 +95,39 @@ const PageUpdater = function () {
 			}
 		},
 
+		UpdateFromUrl: async function (e, url, layout, target) {
+			
+			var layoutTemplate = layout != undefined ? layout : "Swift_PageClean.cshtml";
+			url += "&LayoutTemplate=" + layoutTemplate;
+			
+			var responseTargetElement = target != undefined ? target : e.target;
+			
+			let event = new CustomEvent("update.swift.pageupdater", {
+				cancelable: true,
+				detail: {
+					parentEvent: e
+				}
+			});
+			var globalDispatcher = document.dispatchEvent(event);
+			var localDispatcher = e.target.dispatchEvent(event);
+
+			if (globalDispatcher != false && localDispatcher != false) {
+				//UI updates
+				var addPreloaderTimer = setTimeout(function () {
+					PageUpdater.AddPreloaders("inline", responseTargetElement);
+				}, 200); //Small delay to secure that the preloader is not loaded all the time
+
+				//Fetch
+				let response = await fetch(url);
+
+				if (response.ok) {
+					PageUpdater.Success(response, addPreloaderTimer, new FormData(), responseTargetElement, e.target);
+				} else {
+					PageUpdater.Error(response, addPreloaderTimer);
+				}
+			}
+		},
+
 		AddPreloaders: function (type, targetElement, addPreloaderTimer) {	//Private method
 			if (type != "inline") {
 				var overlayElement = document.createElement('div');
