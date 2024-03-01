@@ -43,7 +43,6 @@ const Cart = function () {
 			let localDispatcher = clickedButton.dispatchEvent(event);
 			
 			if (globalDispatcher != false && localDispatcher != false) {
-					quantityField.classList.remove("is-invalid");
 
 				//The actual cart call (add to cart)
 				if (quantityField != null) {
@@ -52,6 +51,8 @@ const Cart = function () {
 					const isStepQuantityValid = this.ValidateStepQuantity(quantityField);
 					const isMaxQuantityValid = this.ValidateMaxQuantity(quantityField);
 					const isValid = isMinQuantityValid && isStepQuantityValid && isMaxQuantityValid;
+
+					quantityField.classList.remove("is-invalid");
 
 					if (isPendingQuote == "true") {
 						PromptPendingQuoteMessage();
