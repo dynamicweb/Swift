@@ -640,16 +640,17 @@
 							@if (!hideAddToCart)
 							{
 								bool isDiscontinued = product.Discontinued;
-								bool isNeverOutOfStock = product.NeverOutOfstock;
+								bool neverOutOfStock = product.NeverOutOfstock;
 								string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : string.Empty;
 								disableAddToCart = isDiscontinued ? " disabled" : disableAddToCart;
-								disableAddToCart = isNeverOutOfStock && !isLazyLoadingForProductInfoEnabled ? string.Empty : disableAddToCart;
+								disableAddToCart = neverOutOfStock && !isLazyLoadingForProductInfoEnabled ? string.Empty : disableAddToCart;
 
-								string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
-								string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
-								string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
-
-								var reserveMode = Dynamicweb.Ecommerce.Frontend.Cart.ProductReserve.Mode;
+								double? stepQty = product.PurchaseQuantityStep > 0 ? product.PurchaseQuantityStep : 1;
+								double? minQty = product.PurchaseMinimumQuantity > 0 ? product.PurchaseMinimumQuantity : 1;
+								double? valueQty = minQty > stepQty ? minQty : stepQty;
+								bool isStockType = product.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock;
+								bool setMaxQty = isStockType && !neverOutOfStock;
+								double? maxQty = setMaxQty ? product.StockLevel : null;
 
 								<td align="right">
 									<form method="post" action="@url">
@@ -672,27 +673,20 @@
 											<input type="hidden" name="VariantId" value="@product.VariantId">
 										}
 
-										@if (reserveMode == Dynamicweb.Ecommerce.Frontend.Cart.ProductReserveMode.AddToCart)
-										{
-											<input type="hidden" name="GetReservedAmount" value="true">
-										}
-
 										@if (quantitySelector)
 										{
 											<div class="input-group input-primary-button-group flex-nowrap">
-												<input id="Quantity_@(product.Id)_@product.VariantId.Replace(".", "_")" aria-label="@Translate("Quantity")" name="Quantity" value="0" step="@stepQty" @minQty class="form-control swift_quantity-field" type="number" onchange="swift.Cart.UpdateOnEnterKey(event)" onkeyup="swift.Cart.UpdateOnEnterKey(event)" @disableAddToCart>
+												<input id="Quantity_@(product.Id)_@product.VariantId.Replace(".", "_")" aria-label="@Translate("Quantity")" name="Quantity" value="0" step="@stepQty" min="@minQty" max="@maxQty" class="form-control swift_quantity-field" type="number" onchange="swift.Cart.UpdateOnEnterKey(event)" onkeyup="swift.Cart.UpdateOnEnterKey(event)" @disableAddToCart>
 												<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary js-add-to-cart-button @(disableAddToCart)" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)@(product.VariantId.Replace(".", "_"))">
 													<span class="icon-2">
 														@ReadFile(iconPath + "shopping-cart.svg")
 													</span>
 												</button>
 											</div>
-											if (stepQty != "1")
-											{
-												<div class="invalid-feedback d-none">
-													@Translate("Please select a quantity that is dividable by") @stepQty
-												</div>
-											}
+
+											<div class="invalid-feedback d-none">
+												@Translate("Please select a quantity that is dividable by") @stepQty
+											</div>
 										}
 										else
 										{
@@ -704,23 +698,6 @@
 											</button>
 										}
 
-										@if (!product.NeverOutOfstock)
-										{
-											<input type="hidden" name="Stock" value="@product.StockLevel">
-
-											<template class="js-out-of-stock-notice">
-												<div class="modal-header">
-													<h1 class="modal-title fs-5">@Translate("Stock limit")</h1>
-													<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
-												</div>
-												<div class="modal-body">
-													@Translate("There are not enough products in stock. The product might be sold out or discontinued. Please adjust the quantity.")
-												</div>
-											</template>
-										}
-
-										@if (stepQty != "1")
-										{
 											<template class="js-step-quantity-warning">
 												<div class="modal-header">
 													<h1 class="modal-title fs-5">@Translate("The quantity is not valid")</h1>
@@ -729,10 +706,7 @@
 													@Translate("Please select a quantity that is dividable by") @stepQty
 												</div>
 											</template>
-										}
-										
-										@if (product.PurchaseMinimumQuantity != 1)
-										{
+						
 											<template class="js-min-quantity-warning">
 												<div class="modal-header">
 													<h1 class="modal-title fs-5">@Translate("The product could not be added to the cart")</h1>
@@ -741,7 +715,6 @@
 													@Translate("The quantity is not valid. You must buy at least") @product.PurchaseMinimumQuantity
 												</div>
 											</template>
-										}
 										
 										@if (userHasPendingQuote)
                                         {

@@ -140,9 +140,9 @@
 
 				string priceId = "ProductPrice_" + product.Id + product.VariantId.Replace(".", "_");
 
-				string minQty = product.PurchaseMinimumQuantity != 1 ? "min=\"" + product.PurchaseMinimumQuantity.ToString() + "\"" : "min=\"1\"";
-				string stepQty = product.PurchaseQuantityStep > 1 ? product.PurchaseQuantityStep.ToString() : "1";
-				string valueQty = product.PurchaseMinimumQuantity > product.PurchaseQuantityStep ? product.PurchaseMinimumQuantity.ToString() : stepQty;
+				double? stepQty = product.PurchaseQuantityStep > 0 ? product.PurchaseQuantityStep : 1;
+				double? minQty = product.PurchaseMinimumQuantity > 0 ? product.PurchaseMinimumQuantity : 1;
+				double? valueQty = minQty > stepQty ? minQty : stepQty;
 
 				string productImage = "/Admin/Public/GetImage.ashx?Image=" + @product.DefaultImage.Value + "&Format=webp&Width=450&Height=450";
 				productImage = !product.DefaultImage.Value.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? product.DefaultImage.Value : productImage;
@@ -316,6 +316,24 @@
 						@if (!hideAddToCart)
 						{
 							<form method="post" action="@url" class="flex-sm-fill">
+								<template class="js-step-quantity-warning">
+									<div class="modal-header">
+										<h1 class="modal-title fs-5">@Translate("The quantity is not valid")</h1>
+									</div>
+									<div class="modal-body">
+										@Translate("Please select a quantity that is dividable by") @stepQty
+									</div>
+								</template>
+
+								<template class="js-min-quantity-warning">
+									<div class="modal-header">
+										<h1 class="modal-title fs-5">@Translate("The product could not be added to the cart")</h1>
+									</div>
+									<div class="modal-body">
+										@Translate("The quantity is not valid. You must buy at least") @product.PurchaseMinimumQuantity
+									</div>
+								</template>
+
 								<div class="d-flex flex-row">
 									<input type="hidden" name="redirect" value="false">
 									<input type="hidden" name="ProductId" value="@product.Id">
@@ -326,7 +344,7 @@
 										{
 											<input type="hidden" name="VariantId" value="@product.VariantId">
 										}
-										<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" type="hidden">
+										<input id="Quantity_@product.Id" name="Quantity" value="@valueQty" step="@stepQty" min="@minQty" type="hidden">
 										<button type="button"
 												onclick="swift.Cart.Update(event)"
 												class="d-none d-sm-block btn btn-primary w-100 js-add-to-cart-button @disableAddToCart"

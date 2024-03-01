@@ -1,6 +1,8 @@
 @inherits ViewModelTemplate<ProductViewModel>
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.Products;
+@using Dynamicweb.Core;
 
 @{
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
@@ -20,26 +22,30 @@
 {
 	string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
 	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
-	
+
 	string replacementProductLink = replacementProduct.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
 	string replacementProductStockState = replacementProduct.NeverOutOfstock ? Translate("In stock") : $"{replacementProduct.StockLevel} {Translate("In stock")}";
 	string replacementProductPrice = showPricesWithVat == "false" && !neverShowVat ? replacementProduct.PriceBeforeDiscount.PriceWithoutVatFormatted : replacementProduct.PriceBeforeDiscount.PriceFormatted;
-					
-	string replacementProductMinQty = replacementProduct.PurchaseMinimumQuantity != 1 ? replacementProduct.PurchaseMinimumQuantity.ToString() : "1";
-	string replacementProductStepQty = replacementProduct.PurchaseQuantityStep > 1 ? replacementProduct.PurchaseQuantityStep.ToString() : "1";
-	
+
+	double? stepQty = replacementProduct.PurchaseQuantityStep > 0 ? replacementProduct.PurchaseQuantityStep : 1;
+	double? minQty = replacementProduct.PurchaseMinimumQuantity > 0 ? replacementProduct.PurchaseMinimumQuantity : 1;
+	double? valueQty = minQty > stepQty ? minQty : stepQty;
+	bool isStockType = replacementProduct.ProductType == ProductType.Stock;
+	bool setMaxQty = isStockType && !replacementProduct.NeverOutOfstock;
+	double? maxQty = setMaxQty ? replacementProduct.StockLevel : null;
+
 	string disableQuantityField = (replacementProduct.StockLevel < 1 && !replacementProduct.NeverOutOfstock) || replacementProduct.Discontinued ? "disabled" : "";
-	int productCounter = Dynamicweb.Core.Converter.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("productCounter"));
-	double? quantity = Dynamicweb.Core.Converter.ToDouble(Dynamicweb.Context.Current.Request.QueryString.Get("quantity"));
+	int productCounter = Converter.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("productCounter"));
+	double? quantity = Converter.ToDouble(Dynamicweb.Context.Current.Request.QueryString.Get("quantity"));
 
 	if (productCounter == 0) { productCounter = 1; }
-	if (quantity == 0) { quantity = replacementProduct.PurchaseMinimumQuantity; }
+	if (quantity == 0) { quantity = minQty; }
 
-	bool isErpConnectionDown = !Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsWebServiceConnectionAvailable"]);
+	bool isErpConnectionDown = !Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsWebServiceConnectionAvailable"]);
 	bool hidePrice = Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && isErpConnectionDown;
-	
+
 	string link = Model.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
-	
+
 	<table class="table" id="modalReplacementBody">
 		<thead>
 		<tr>
@@ -161,7 +167,7 @@
 
 			<div class="g-col-2 g-col-lg-2">
 				<label for="Quantity" class="visually-hidden">@Translate("Quantity")</label>
-			<input type="number" step="@replacementProductStepQty" min="@replacementProductMinQty" class="form-control text-center ms-auto swift_quantity-field" value="@quantity" name="Quantity@(productCounter)" @disableQuantityField style="max-width: 85px;">
+			<input type="number" step="@stepQty" min="@minQty" max="@maxQty" class="form-control text-center ms-auto swift_quantity-field" value="@quantity" name="Quantity@(productCounter)" @disableQuantityField style="max-width: 85px;">
 			</div>
 
 		</article>

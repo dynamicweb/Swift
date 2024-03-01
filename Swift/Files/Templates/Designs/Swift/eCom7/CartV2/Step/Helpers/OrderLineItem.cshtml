@@ -3,9 +3,6 @@
 @foreach (LoopItem orderline in GetLoop("OrderLines"))
 {
 	bool neverOutOfStock = orderline.GetBoolean("Ecom:Product.NeverOutOfStock");
-
-	int stockQuantity = neverOutOfStock ? 9999999 : orderline.GetInteger("Ecom:Product.Stock");
-
 	string name = orderline.GetString("Ecom:Order:OrderLine.ProductName");
 	string image = orderline.GetString("Ecom:Product.PrimaryImage");
 	image = !orderline.GetString("Ecom:Product.PrimaryImage").StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? orderline.GetString("Ecom:Product.PrimaryImage") : image;
@@ -26,17 +23,13 @@
 	string productId = orderline.GetString("Ecom:Order:OrderLine.ProductID");
 	string variantId = orderline.GetString("Ecom:Order:OrderLine.ProductVariantID");
 	string unitId = orderline.GetString("Ecom:Order:OrderLine.UnitID");
-	double stock = orderline.GetDouble("Ecom:Product.Stock");
-
-	var reserveMode = Dynamicweb.Ecommerce.Frontend.Cart.ProductReserve.Mode;
-	if (reserveMode == Dynamicweb.Ecommerce.Frontend.Cart.ProductReserveMode.AddToCart)
-	{
-		double? reservedAmount = Dynamicweb.Ecommerce.Frontend.Cart.ProductReserve.GetReservedAmount(productId, variantId, 0, unitId);
-		stockQuantity = Convert.ToInt32(quantity + (stock - reservedAmount));
-	}
-
-	string minQty = orderline.GetDouble("Ecom:Product.PurchaseMinimumQuantity") != 1 ? "min=\"" + orderline.GetDouble("Ecom:Product.PurchaseMinimumQuantity").ToString() + "\"" : "min=\"1\"";
-	string stepQty = orderline.GetDouble("Ecom:Product.PurchaseQuantityStep") > 1 ? orderline.GetDouble("Ecom:Product.PurchaseQuantityStep").ToString() : "1";
+	string productType = orderline.GetString("Ecom.Product.Type");
+	double? stockQuantity = orderline.GetDouble("Ecom:Product.Stock");
+	double? minQty = orderline.GetDouble("Ecom:Product.PurchaseMinimumQuantity") > 0 ? orderline.GetDouble("Ecom:Product.PurchaseMinimumQuantity") : 1;
+	double? stepQty = orderline.GetDouble("Ecom:Product.PurchaseQuantityStep") > 0 ? orderline.GetDouble("Ecom:Product.PurchaseQuantityStep") : 1;
+	bool isStockType = orderline.GetInteger("Ecom.Product.Type") == 0;
+	bool setMaxQty = isStockType && !neverOutOfStock;
+	double? maxQty = setMaxQty ? stockQuantity : null;
 
 	string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
 	link += $"&GroupID={primaryGroupId}";
@@ -108,17 +101,10 @@
 								@* Quantity *@
 								<div class="input-group js-input-group">
 									<label for="QuantityOrderLine@(orderlineId)" class="visually-hidden">@Translate("Quantity"):</label>
-									<input type="number" id="QuantityOrderLine@(orderlineId)" step="@stepQty" @minQty class="form-control text-center swift_quantity-field" value="@quantity" name="QuantityOrderLine@(orderlineId)" style="width: 5.5rem;">
-									<button class="btn btn-secondary px-2" type="button" onclick="UpdateQuantity(document.querySelector('#QuantityOrderLine@(orderlineId)'), '@stockQuantity')">@ReadFile("/Files/Templates/Designs/Swift/Assets/icons/" + "refresh-cw.svg")</button>
-									@if (stepQty != "1")
-									{
-										<div class="invalid-feedback d-none">
-											@Translate("Please select a quantity that is dividable by") @stepQty
-										</div>
-									}
-
-									<div class="invalid-feedback js-not-enough-stock d-none">
-										@Translate("We do not have enough products in stock")
+									<input type="number" id="QuantityOrderLine@(orderlineId)" step="@stepQty" min="@minQty" max="@maxQty" class="form-control text-center swift_quantity-field" onchange="swift.Cart.ValidateCartQuantity(this); this.form.submit();" value="@quantity" name="QuantityOrderLine@(orderlineId)" style="width: 5.5rem;">
+									
+									<div class="invalid-feedback d-none">
+										@Translate("Please select a quantity that is dividable by") @stepQty
 									</div>
 								</div>
 							}
