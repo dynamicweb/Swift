@@ -1,6 +1,6 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 @using Dynamicweb.Ecommerce.ProductCatalog
-@using Dynamicweb.Frontend
+@using System.Text.RegularExpressions; 
 @using System.IO
 
 @functions {
@@ -34,6 +34,43 @@
 
 		return ratioSettings;
 	}
+
+	public Dictionary<string, object> GetVideoParams(MediaViewModel asset, string size)
+	{
+		string assetName = !string.IsNullOrEmpty(asset.DisplayName) ? asset.DisplayName : asset.Name;
+		string type = GetVideoType(asset.Value);
+		bool openInModal = Model.Item.GetString("OpenVideoInModal") == "true" ? true : false;
+		bool autoPlay = Model.Item.GetBoolean("VideoAutoPlay");
+
+		var videoParams = new Dictionary<string, object>();
+		videoParams.Add("AssetName", asset.Name);
+		videoParams.Add("AssetVideoType", type);
+		videoParams.Add("AssetDisplayName", asset.DisplayName);
+		videoParams.Add("OpenVideoInModal", openInModal);
+		videoParams.Add("VideoAutoPlay", autoPlay);
+		videoParams.Add("Size", size);
+		videoParams.Add("Id", Model.ID);
+		return videoParams;
+
+	}
+
+	public string GetVideoType(string assetValue)
+	{
+		string type = assetValue.IndexOf("youtu.be", StringComparison.OrdinalIgnoreCase) >= 0 || assetValue.IndexOf("youtube", StringComparison.OrdinalIgnoreCase) >= 0 ? "youtube" : string.Empty;
+		type = assetValue.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "vimeo" : type;
+		type = string.IsNullOrEmpty(type) ? "selfhosted" : type;
+		return type;
+	}
+
+	public string GetYoutubeScreenDump(string assetValue)
+	{
+		var regex = new Regex(@"(?:youtube\.com\/.*[\?&]v=|youtu\.be\/)([\w-]+)");
+		Match match = regex.Match(assetValue);
+		string videoId = match.Success ? match.Groups[1].Value : string.Empty;
+		string youtubeThumbnail = $"https://img.youtube.com/vi/{videoId}/mqdefault.jpg";
+		return youtubeThumbnail;
+	}
+
 }
 
 @{
@@ -204,33 +241,30 @@
 															{ //Videos
 																if (assetValue.IndexOf(videoFormat, StringComparison.OrdinalIgnoreCase) >= 0)
 																{
-																	string videoScreendumpPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : "";
-																	string videoId = videoScreendumpPath.Substring(videoScreendumpPath.LastIndexOf('/') + 1);
-																	videoScreendumpPath = videoScreendumpPath.IndexOf("youtu.be", StringComparison.OrdinalIgnoreCase) >= 0 || videoScreendumpPath.IndexOf("youtube", StringComparison.OrdinalIgnoreCase) >= 0 ? "https://img.youtube.com/vi/" + videoId + "/mqdefault.jpg" : videoScreendumpPath;
-
-																	string vimeoJsClass = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "js-vimeo-video-thumbnail" : "";
-																	videoScreendumpPath = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "" : videoScreendumpPath;
-
 																	string productName = product.Name;
 																	productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
 																	string assetTitle = !string.IsNullOrEmpty(asset.DisplayName) ? "title=\"" + asset.DisplayName + "\"" : "";
 
 																	RatioSettings ratioSettings = GetRatioSettings();
 
+																	string type = GetVideoType(asset.Value);
+																	string videoScreendumpPath = type == "youtube" ? GetYoutubeScreenDump(asset.Value) : string.Empty;
+																	videoScreendumpPath = type == "selfhosted" ? System.Uri.EscapeDataString(asset.Value) : videoScreendumpPath;
+																	string videoJsClass = type == "vimeo" ? "js-vimeo-video-thumbnail" : string.Empty;
+
 																	<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
 																		<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
 																			<div class="icon-2 position-absolute" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
-																			@if (videoScreendumpPath.IndexOf(".mp4", StringComparison.OrdinalIgnoreCase) < 0)
+																			@if (type != "selfhosted")
 																			{
-																				<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
+																				<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@videoJsClass mw-100 mh-100" data-asset-value="@asset.Value" style="object-fit: cover;">
 																			}
 																			else
 																			{
 																				string videoType = Path.GetExtension(asset.Value).ToLower();
-																				string videoPathEncoded = System.Uri.EscapeDataString(assetValue);
-
+																				
 																				<video preload="auto" class="h-100 w-100" style="object-fit: contain;">
-																					<source src="@(videoPathEncoded)#t=0.001" type="video/@videoType.Replace(".", "")">
+																					<source src="@(videoScreendumpPath)#t=0.001" type="video/@videoType.Replace(".", "")">
 																				</video>
 																			}
 																		</div>
@@ -320,12 +354,11 @@
 												{ //Videos
 													if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0)
 													{
-														string videoScreendumpPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : "";
-														string videoId = videoScreendumpPath.Substring(videoScreendumpPath.LastIndexOf('/') + 1);
-														videoScreendumpPath = videoScreendumpPath.IndexOf("youtu.be", StringComparison.OrdinalIgnoreCase) >= 0 || videoScreendumpPath.IndexOf("youtube", StringComparison.OrdinalIgnoreCase) >= 0 ? "https://img.youtube.com/vi/" + videoId + "/mqdefault.jpg" : videoScreendumpPath;
+														string type = GetVideoType(asset.Value);
+														string videoScreendumpPath = type == "youtube" ? GetYoutubeScreenDump(asset.Value) : string.Empty;
+														videoScreendumpPath = type == "selfhosted" ? System.Uri.EscapeDataString(asset.Value) : videoScreendumpPath;
+														string videoJsClass = type == "vimeo" ? "js-vimeo-video-thumbnail" : string.Empty;
 
-														string vimeoJsClass = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "js-vimeo-video-thumbnail" : "";
-														videoScreendumpPath = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "" : videoScreendumpPath;
 
 														string productName = product.Name;
 														productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
@@ -336,17 +369,16 @@
 														<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
 															<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
 																<div class="icon-2 position-absolute" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
-																@if (videoScreendumpPath.IndexOf(".mp4", StringComparison.OrdinalIgnoreCase) < 0)
+																@if (type != "selfhosted")
 																{
-																	<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
+																	<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@videoJsClass mw-100 mh-100" data-asset-value="@asset.Value" style="object-fit: cover;">
 																}
 																else
 																{
 																	string videoType = Path.GetExtension(asset.Value).ToLower();
-																	string videoPathEncoded = System.Uri.EscapeDataString(assetValue);
-
+																	
 																	<video preload="auto" class="h-100 w-100" style="object-fit: contain;">
-																		<source src="@(videoPathEncoded)#t=0.001" type="video/@videoType.Replace(".", "")">
+																		<source src="@(videoScreendumpPath)#t=0.001" type="video/@videoType.Replace(".", "")">
 																	</video>
 																}
 															</div>
@@ -434,13 +466,10 @@
 												if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0)
 												{
 
-
-													string videoScreendumpPath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : "";
-													string videoId = videoScreendumpPath.Substring(videoScreendumpPath.LastIndexOf('/') + 1);
-													videoScreendumpPath = videoScreendumpPath.IndexOf("youtu.be", StringComparison.OrdinalIgnoreCase) >= 0 || videoScreendumpPath.IndexOf("youtube", StringComparison.OrdinalIgnoreCase) >= 0 ? "https://img.youtube.com/vi/" + videoId + "/mqdefault.jpg" : videoScreendumpPath;
-
-													string vimeoJsClass = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "js-vimeo-video-thumbnail" : "";
-													videoScreendumpPath = videoScreendumpPath.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "" : videoScreendumpPath;
+													string type = GetVideoType(asset.Value);
+													string videoScreendumpPath = type == "youtube" ? GetYoutubeScreenDump(asset.Value) : string.Empty;
+													videoScreendumpPath = type == "selfhosted" ? System.Uri.EscapeDataString(asset.Value) : videoScreendumpPath;
+													string videoJsClass = type == "vimeo" ? "js-vimeo-video-thumbnail" : string.Empty;
 
 													string productName = product.Name;
 													productName += !string.IsNullOrEmpty(asset.Keywords) ? " " + asset.Keywords : "";
@@ -451,17 +480,16 @@
 													<div class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)">
 														<div class="d-flex align-items-center justify-content-center overflow-hidden h-100">
 															<div class="icon-2 position-absolute" style="z-index: 1">@ReadFile(iconPath + "play-circle.svg")</div>
-															@if (videoScreendumpPath.IndexOf(".mp4", StringComparison.OrdinalIgnoreCase) < 0)
+															@if (type != "selfhosted")
 															{
-																<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@vimeoJsClass mw-100 mh-100" data-video-id="@videoId" style="object-fit: cover;">
+																<img src="@videoScreendumpPath" loading="lazy" decoding="async" alt="@productName" @assetTitle class="@videoJsClass mw-100 mh-100" data-asset-value="@asset.Value" style="object-fit: cover;">
 															}
 															else
 															{
 																string fileExtension = Path.GetExtension(asset.Value).ToLower();
-																string videoPathEncoded = System.Uri.EscapeDataString(assetValue);
-
+																
 																<video preload="auto" class="h-100 w-100" style="object-fit: contain;">
-																	<source src="@(videoPathEncoded)#t=0.001" type="video/@fileExtension.Replace(".", "")">
+																	<source src="@(videoScreendumpPath)#t=0.001" type="video/@fileExtension.Replace(".", "")">
 																</video>
 															}
 														</div>
@@ -529,58 +557,9 @@
 										<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 									</div>
 									<div class="modal-body p-2 p-lg-3 h-100">
-										@{
-											assetName = !string.IsNullOrEmpty(asset.DisplayName) ? asset.DisplayName : asset.Name;
-											string assetValue = asset.Value;
-											string videoId = asset.Value.Substring(asset.Value.LastIndexOf('/') + 1);
-											string type = assetValue.IndexOf("youtu.be", StringComparison.OrdinalIgnoreCase) >= 0 || assetValue.IndexOf("youtube", StringComparison.OrdinalIgnoreCase) >= 0 ? "youtube" : "";
-											type = assetValue.IndexOf("vimeo", StringComparison.OrdinalIgnoreCase) >= 0 ? "vimeo" : type;
-											type = assetValue.IndexOf(".mp4", StringComparison.OrdinalIgnoreCase) >= 0 || assetValue.IndexOf(".webm", StringComparison.OrdinalIgnoreCase) >= 0 ? "selfhosted" : type;
-
-											<div class="h-100" itemscope itemtype="https://schema.org/VideoObject">
-												<span class="visually-hidden" itemprop="name">@assetName</span>
-												<span class="visually-hidden" itemprop="contentUrl">@asset.Value</span>
-												<span class="visually-hidden" itemprop="thumbnailUrl">@asset.Value</span>
-												@if (type != "selfhosted")
-												{
-													<div id="player_@(Pageview.CurrentParagraph.ID)_@(videoId)"
-														 class="plyr__video-embed"
-														 data-plyr-provider="@(type)"
-														 data-plyr-embed-id="@videoId"
-														 style="--plyr-color-main: var(--swift-foreground-color); height: 100%">
-													</div>
-
-													<script type="module" src="/Files/Templates/Designs/Swift/Assets/js/plyr.js"></script>
-													<script type="module">
-														var player = new Plyr('#player_@(Pageview.CurrentParagraph.ID)_@(videoId)', {
-															type: 'video',
-															youtube: {
-																noCookie: true,
-																showinfo: 0
-															},
-															fullscreen: {
-																enabled: true,
-																iosNative: true,
-															}
-														});
-
-														document.querySelectorAll('.js-video-modal').forEach(function (modal) {
-															modal.addEventListener('hidden.bs.modal', function (event) {
-																player.media.pause();
-															})
-														});
-													</script>
-												}
-												else
-												{
-													string videoType = Path.GetExtension(assetValue).ToLower();
-													string videoPathEncoded = System.Uri.EscapeDataString(assetValue);
-
-													<video preload="auto" class="h-100 w-100" style="object-fit: cover;" controls>
-														<source src="@(videoPathEncoded)#t=0.001" type="video/@videoType.Replace(".", "")">
-													</video>
-												}
-											</div>
+										@{ 
+											var videoParams = GetVideoParams(asset, "modal");
+											@RenderPartial("Components/VideoPlayer.cshtml", new Dynamicweb.Frontend.FileViewModel { Path = asset.Value }, videoParams)
 										}
 									</div>
 								</div>

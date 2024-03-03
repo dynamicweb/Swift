@@ -3,12 +3,14 @@ const Video = function () {
 	return {
 		init() {
 			document.querySelectorAll(".js-vimeo-video-thumbnail").forEach(function (thumbnailElement) {
-				var videoId = thumbnailElement.getAttribute("data-video-id");
-				swift.Video.setVimeoThumbnail(thumbnailElement, videoId);
+				const assetValue = thumbnailElement.dataset.assetValue;
+				swift.Video.setVimeoThumbnail(thumbnailElement, assetValue);
 			});
 		},
 
-		setVimeoThumbnail(element, videoId) {
+		setVimeoThumbnail(element, assetValue) {
+			const videoId = assetValue.substring(assetValue.lastIndexOf('/') + 1);
+	
 			fetch('https://vimeo.com/api/v2/video/' + videoId + '.json')
 			.then(function (response) {
 				return response.text();
