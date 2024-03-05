@@ -71,8 +71,9 @@
 			<div class="d-flex flex-column gap-4 pb-4">
 				@foreach (var orderline in Model.Cart.CartOrderlines.Reverse())
 				{
+					var product = orderline?.GetProduct() ?? null;
 					string name = orderline.ProductName;
-					string image = orderline.GetProduct()?.DefaultImage?.Value ?? string.Empty;
+					string image = product?.DefaultImage?.Value ?? string.Empty;
 					string imagePath = $"/Admin/Public/GetImage.ashx?image={image}&width=80&height=80&crop=5&fillcanvas=true&Background=ffffff&format=webp";
 					imagePath = !string.IsNullOrWhiteSpace(image) && !image.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? imagePath : image;
 					string priceTotalWithDiscounts = orderline.TotalPriceWithProductDiscounts.Price.Formatted;
@@ -85,9 +86,10 @@
 					var orderlineId = orderline.ID;
 					var quantity = orderline.Quantity;
 
-					string link = orderline?.GetProduct()?.GetProductLink(GetPageIdByNavigationTag("Shop"), false) ?? string.Empty;
+					string link = product?.GetProductLink(GetPageIdByNavigationTag("Shop"), false) ?? string.Empty;
 
 					bool isProductIdOrNumber = !string.IsNullOrEmpty(orderline.ProductID) || !string.IsNullOrEmpty(orderline.ProductNumber);  //Live Cart orderlines may not return ProductId. Manually entered products may not have ProductNumber
+
 					bool isProduct = orderline.IsProduct || (orderline.IsDiscount && isProductIdOrNumber);
 
 					if (isProduct)
@@ -237,17 +239,16 @@
 						</div>
 
 						@* Discounts (only order discounts) *@
-						@if (cartType != "ExpressBuy")
+						@foreach (var orderline in Model.Cart.CartOrderlines)
 						{
-							foreach (var orderline in Model.Cart.CartOrderlines)
-							{
-								bool isProductIdOrNumber = !string.IsNullOrEmpty(orderline.ProductID) || !string.IsNullOrEmpty(orderline.ProductNumber);  //Live Cart orderlines may not return ProductId. Manually entered products may not have ProductNumber
-								bool isOrderAmountDiscount = orderline.IsDiscount && !isProductIdOrNumber;
+							bool isProductIdOrNumber = !string.IsNullOrEmpty(orderline.ProductID) || !string.IsNullOrEmpty(orderline.ProductNumber);  //Live Cart orderlines may not return ProductId. Manually entered products may not have ProductNumber
+							var orderLineViewModel = Dynamicweb.Ecommerce.Services.OrderLines.GetById(orderline.ID);
+							bool isDiscount = orderLineViewModel.OrderLineType == Dynamicweb.Ecommerce.Orders.OrderLineType.Discount;
+							bool isOrderAmountDiscount = isDiscount && !isProductIdOrNumber;
 
-								if (isOrderAmountDiscount)
-								{
-									<div class="d-flex justify-content-between"><span>@orderline.ProductName</span><span class="text-price">@orderline.TotalPriceWithProductDiscounts.Price.Formatted</span></div>
-								}
+							if (isOrderAmountDiscount)
+							{
+								<div class="d-flex justify-content-between"><span>@orderline.ProductName</span><span class="text-price">@orderline.TotalPriceWithProductDiscounts.Price.Formatted</span></div>
 							}
 						}
 
