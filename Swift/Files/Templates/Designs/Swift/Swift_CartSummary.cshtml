@@ -69,28 +69,28 @@
 
 		<div class="@(!isMiniCart ? "d-lg-block h-lg-auto collapse" : "d-flex flex-column h-100") pt-2 pt-lg-0" id="CartSummary">
 			<div class="d-flex flex-column gap-4 pb-4">
-				@foreach (CartOrderlineViewModel orderline in Model.Cart.CartOrderlines.Reverse())
+				@foreach (var orderline in Model.Cart.CartOrderlines.Reverse())
 				{
 					string name = orderline.ProductName;
-					string image = orderline?.ProductImage;
+					string image = orderline.GetProduct()?.DefaultImage?.Value ?? string.Empty;
 					string imagePath = $"/Admin/Public/GetImage.ashx?image={image}&width=80&height=80&crop=5&fillcanvas=true&Background=ffffff&format=webp";
 					imagePath = !string.IsNullOrWhiteSpace(image) && !image.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? imagePath : image;
-					string priceTotalWithDiscounts = orderline.TotalPrice.Price.Formatted;
+					string priceTotalWithDiscounts = orderline.TotalPriceWithProductDiscounts.Price.Formatted;
 					string priceBefore = orderline.UnitPriceBeforeDiscount.Price.Formatted;
 					string unitPrice = orderline.UnitPrice.Price.Formatted;
-					string unitName = orderline.UnitName;
-					string discountPrice = orderline.UnitPrice.Price.Formatted;
+					string discountPrice = orderline.UnitPriceWithProductDiscount.Price.Formatted;
 					string discountTotal = orderline.TotalDiscount.Price.Formatted;
 					string variantText = orderline.ProductVariantText;
+					string unitName = orderline.UnitName;
 					var orderlineId = orderline.ID;
 					var quantity = orderline.Quantity;
 
 					string link = orderline?.GetProduct()?.GetProductLink(GetPageIdByNavigationTag("Shop"), false) ?? string.Empty;
 
-					bool isDiscount = orderline.IsDiscount;
-					bool isTax = orderline.IsTax;
+					bool isProductIdOrNumber = !string.IsNullOrEmpty(orderline.ProductID) || !string.IsNullOrEmpty(orderline.ProductNumber);  //Live Cart orderlines may not return ProductId. Manually entered products may not have ProductNumber
+					bool isProduct = orderline.IsProduct || (orderline.IsDiscount && isProductIdOrNumber);
 
-					if (!isDiscount && !isTax)
+					if (isProduct)
 					{
 						<article class="grid grid-12">
 
@@ -113,25 +113,34 @@
 									{
 										<p class="fs-8 m-0">@variantText</p>
 									}
-									@* Unit price *@
 
-									<p class="fs-8 m-0">
-										@if (!string.IsNullOrEmpty(unitName))
-										{
-											<span>@unitName: </span>
-										}
-										@if (discountPrice == unitPrice)
-										{
-											<span class="text-price">@unitPrice</span>
-										}
-										else
-										{
-											<span class="text-price">@discountPrice</span>
-											<span class="text-decoration-line-through">
-												<span class="text-price">@unitPrice</span>
-											</span>
-										}
-									</p>
+									@if (orderline.IsDiscount)
+									{
+										@* Free product notice *@
+										<p class="fs-8 m-0">@Translate("Free product")</p>
+									}
+									else
+									{
+										@* Unit price *@
+										<p class="fs-8 m-0">
+											@if (!string.IsNullOrEmpty(unitName))
+											{
+												<span>@unitName: </span>
+											}
+											@if (discountPrice == unitPrice)
+
+											{
+												<span class="text-price">@unitPrice</span>	
+											}
+											else
+											{
+												<span class="text-price">@discountPrice</span>
+												<span class="text-decoration-line-through">
+													<span class="text-price">@unitPrice</span>
+												</span>
+											}
+										</p>
+									}
 
 									@* Quantity *@
 									<span class="fs-8 d-block">@Translate("Qty"): @quantity</span>
@@ -157,16 +166,16 @@
 									</form>
 
 									<div class="d-flex flex-column justify-content-end flex-fill">
+										@* Total *@
+										<span class="h6 d-block fs-7 m-0">
+											<span class="text-price">@priceTotalWithDiscounts</span>
+										</span>
 										@if (orderline.TotalDiscount.Price.Value != 0)
 										{
 											<span class="d-block fs-8 opacity-50">
 												<span class="text-price">@discountTotal</span>
 											</span>
 										}
-										@* Total *@
-										<span class="d-block fs-7 m-0">
-											<span class="text-price">@priceTotalWithDiscounts</span>
-										</span>
 									</div>
 
 								</div>
@@ -195,7 +204,7 @@
 			</div>
 
 			@{
-				string totalPriceWithoutDiscountsFeesAndTaxes = Model.Cart.TotalPriceWithoutDiscounts.PriceWithoutVat.Formatted;
+				string totalPriceWithoutDiscountsFeesAndTaxes = Model.Cart.TotalPriceWithoutDiscountsFeesAndTaxes.Price.Formatted;
 				string totalPriceWithoutOrderDiscountsAndFees = Model.Cart.TotalPriceWithoutFees.Price.Formatted;
 				string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
 				bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
@@ -207,22 +216,22 @@
 						<div class="d-flex justify-content-between fw-bold">
 							<span>@Translate("Subtotal")</span>
 							<span class="text-end">
+								
+								<span class="d-block">
+									@if (totalPriceWithoutDiscountsFeesAndTaxes != totalPriceWithoutOrderDiscountsAndFees)
+									{
+									<span class="text-price fw-normal text-decoration-line-through">@(totalPriceWithoutDiscountsFeesAndTaxes)</span>
+									}
+									<span class="text-price">@totalPriceWithoutOrderDiscountsAndFees</span>
+								</span>
+								
 								@if (!neverShowVat && showPricesWithVat == "false")
 								{
-									<span class="d-block">
-										<span class="text-price">@totalPriceWithoutOrderDiscountsAndFees</span>
-									</span>
 									<span class="fs-8 fw-normal d-block">@Translate("Excl. VAT")</span>
 								}
-								else
+								else if (!neverShowVat)
 								{
-									<span class="d-block">
-										<span class="text-price">@totalPriceWithoutOrderDiscountsAndFees</span>
-									</span>
-									if (!neverShowVat)
-									{
-										<span class="fs-8 fw-normal d-block">@Translate("Incl. VAT")</span>
-									}
+									<span class="fs-8 fw-normal d-block">@Translate("Incl. VAT")</span>
 								}
 							</span>
 						</div>
@@ -230,13 +239,14 @@
 						@* Discounts (only order discounts) *@
 						@if (cartType != "ExpressBuy")
 						{
-							foreach (CartOrderlineViewModel orderline in Model.Cart.CartOrderlines)
+							foreach (var orderline in Model.Cart.CartOrderlines)
 							{
-								bool isDiscount = orderline.IsDiscount;
+								bool isProductIdOrNumber = !string.IsNullOrEmpty(orderline.ProductID) || !string.IsNullOrEmpty(orderline.ProductNumber);  //Live Cart orderlines may not return ProductId. Manually entered products may not have ProductNumber
+								bool isOrderAmountDiscount = orderline.IsDiscount && !isProductIdOrNumber;
 
-								if (isDiscount)
+								if (isOrderAmountDiscount)
 								{
-									<div class="d-flex justify-content-between"><span>@orderline.ProductName</span><span class="text-price">@orderline.TotalPrice.Price.Formatted</span></div>
+									<div class="d-flex justify-content-between"><span>@orderline.ProductName</span><span class="text-price">@orderline.TotalPriceWithProductDiscounts.Price.Formatted</span></div>
 								}
 							}
 						}
