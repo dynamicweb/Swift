@@ -7,7 +7,7 @@ Swift is a **plug-and-play standard solution** which allows you to create beauti
 
 [Key features](#key-features) • [Installation](#installation) • [Requirements](#requirements) • [Hosting & Install DW](#hosting-environment-and-dynamicweb-install) • [Database](#swift-database-and-product-images) • [License](#log-in-and-install-a-license)
 
-![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Bikeshop.png)
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/swift-multidevices.png)
 
 ## Key features 
 
@@ -20,6 +20,7 @@ Swift is a **plug-and-play standard solution** which allows you to create beauti
 * **Visual editor** :rainbow: building content pages, product list and product detail pages in a visual manner and with components 
 
 ![alt text](http://doc.dynamicweb.com//Files/Images/Swift/VE-clothes.gif)
+
 # Installation
 
 Swift is installed on top of a [Dynamicweb application](https://doc.dynamicweb.com/get-started/introduction).
