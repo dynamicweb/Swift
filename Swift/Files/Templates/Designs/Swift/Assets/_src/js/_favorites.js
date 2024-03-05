@@ -86,7 +86,7 @@ const Favorites = function () {
 			var favoriteNotification = document.querySelector("#favoriteNotificationToast");
 
 			//Fire the 'updated'´event
-			let event = new CustomEvent("updated.swift.cart", {
+			let event = new CustomEvent("updated.swift.favorites", {
 				cancelable: true,
 				detail: {
 					formData: formData
