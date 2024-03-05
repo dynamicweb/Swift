@@ -95,7 +95,7 @@ const PageUpdater = function () {
 			}
 		},
 
-		UpdateFromUrl: async function (e, url, layout, target) {
+		UpdateFromUrlInline: async function (e, url, layout, target) {
 			
 			var layoutTemplate = layout != undefined ? layout : "Swift_PageClean.cshtml";
 			url += "&LayoutTemplate=" + layoutTemplate;
