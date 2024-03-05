@@ -3,11 +3,11 @@
 
 Swift is a **plug-and-play standard solution** which allows you to create beautiful mobile-friendly  websites. It is **fast and easy to build ecommerce sites** on Dynamicweb for both **B2C** and **B2B**. Using configuration and almost no coding. 
 
-![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/DynamicWeb9%20Release-v9.16.6-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub DW10](https://img.shields.io/badge/DynamicWeb10%20Release-v10.0.27-darkblue)](https://doc.dynamicweb.dev/) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-purple)](https://doc.dynamicweb.com/swift/setup-project) 
+![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/DynamicWeb9%20Release-v9.17.1-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub DW10](https://img.shields.io/badge/DynamicWeb10%20Release-v10.1.0-darkblue)](https://doc.dynamicweb.dev/) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-purple)](https://doc.dynamicweb.com/swift/setup-project) 
 
 [Key features](#key-features) • [Installation](#installation) • [Requirements](#requirements) • [Hosting & Install DW](#hosting-environment-and-dynamicweb-install) • [Database](#swift-database-and-product-images) • [License](#log-in-and-install-a-license)
 
-![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Bikeshop.png)
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/swift-multidevices.png)
 
 ## Key features 
 
@@ -20,6 +20,7 @@ Swift is a **plug-and-play standard solution** which allows you to create beauti
 * **Visual editor** :rainbow: building content pages, product list and product detail pages in a visual manner and with components 
 
 ![alt text](http://doc.dynamicweb.com//Files/Images/Swift/VE-clothes.gif)
+
 # Installation
 
 Swift is installed on top of a [Dynamicweb application](https://doc.dynamicweb.com/get-started/introduction).
@@ -30,13 +31,14 @@ This repository contains a `./Files` with design files, images, and other static
 1. Prepare the hosting environment
 2. Install the DynamicWeb application
 3. Set up a website in IIS Manager and add the Swift-folder as a virtual directory
-4. Download the [Swift Product Image folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.19.0/Swift_20230629_DemoProductImages.zip "Download Swift Product Image folder") and insert the folder here `Swift/Files/Files/Images/Products`
+4. Download the [Swift Product Image folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.26.0/Swift_20240305_DemoProductImages.zip "Download Swift Product Image folder") and insert the folder here `Swift/Files/Files/Images/Products`
 5. Build the Swift design
 6. Install the Swift database & connect solution to it
 7. Log in and install a license
 
 ## Requirements
 
+* **Swift 1.26.0** requires **DynamicWeb version 9.17.1** and **Shipmondo dll v2.0.0** or newer, it can also run on DynamicWeb version 10.1.0 or newer
 * **Swift 1.25.1** requires **DynamicWeb version 9.16.6** or newer, it can also run on DynamicWeb version 10.0.27
 * **Swift 1.25.0** requires **DynamicWeb version 9.16.5** or newer, it can also run on DynamicWeb version 10.0.25
 * **Swift 1.24.0** requires **DynamicWeb version 9.16.2** or newer, it can also run on DynamicWeb version 10.0.21
@@ -68,9 +70,9 @@ After following these guides you will have a freshly installed DynamicWeb soluti
 
 | Download |      |
 | ------ | ------ |
-| Database | [Swift Demo database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.22.0/Swift_20230629_Database.zip "Download Swift database")|
-| Database | [Swift Empty database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-NoEcomData/Swift_NoEcomData_20230630_Database.zip "Download Swift Empty database, with No Ecom data")|
-| Image folder | [Swift Product Image](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.22.0/Swift_20230629_DemoProductImages.zip "Download Swift Product Image folder") |
+| Database | [Swift Demo database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.26.0/Swift_20240305_Database.zip "Download Swift database")|
+| Database | [Swift Empty database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-NoEcomData/Swift_NoEcomData_20240305_Database.zip "Download Swift Empty database, with No Ecom data")|
+| Image folder | [Swift Product Image](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.26.0/Swift_20240305_DemoProductImages.zip "Download Swift Product Image folder") |
 
 
 ## Add Swift-folder as virtual directory
