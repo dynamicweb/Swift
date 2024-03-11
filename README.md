@@ -70,8 +70,8 @@ After following these guides you will have a freshly installed DynamicWeb soluti
 
 | Download |      |
 | ------ | ------ |
-| Database | [Swift Demo database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.26.0/Swift_20240305_Database.zip "Download Swift database")|
-| Database | [Swift Empty database](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-NoEcomData/Swift_NoEcomData_20240305_Database.zip "Download Swift Empty database, with No Ecom data")|
+| Database | [Swift Demo database](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-1 "Download Swift database")|
+| Database | [Swift Empty database](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-1 "Download Swift Empty database, with No Ecom data")|
 | Image folder | [Swift Product Image](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.26.0/Swift_20240305_DemoProductImages.zip "Download Swift Product Image folder") |
 
 
