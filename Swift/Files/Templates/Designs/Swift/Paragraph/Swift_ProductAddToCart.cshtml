@@ -64,19 +64,14 @@
 		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
 	}
 
-	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
-	string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : "";
-	bool isNeverOutOfStock = product.NeverOutOfstock;
-	disableAddToCart = isNeverOutOfStock && !isLazyLoadingForProductInfoEnabled ? "" : disableAddToCart;
-
 	string whenVariantsExist = Model.Item.GetRawValueString("WhenVariantsExist", "hide");
-
 	string flexFill = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "flex-fill" : "";
 	string fullWidth = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "w-100" : "";
 	string addToCartIcon = Model.Item.GetRawValueString("Icon", iconPath + "shopping-cart.svg");
 	string addToCartLabel = !addToCartIcon.Contains("_none") ? $"<span class=\"icon-2\">{ReadFile(addToCartIcon)}</span>" : "";
 	addToCartLabel += !addToCartIcon.Contains("_none") && !Model.Item.GetBoolean("HideButtonText") ? " " : "";
 	addToCartLabel += !Model.Item.GetBoolean("HideButtonText") ? $"<span class=\"d-none d-md-inline\">{Translate("Add to cart")}</span><span class=\"d-inline d-md-none\">{Translate("Add")}</span>" : "";
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
 
 	bool userHasPendingQuote = Dynamicweb.Ecommerce.Common.Context.Cart != null && Dynamicweb.Ecommerce.Common.Context.Cart.IsQuote;
 
@@ -91,10 +86,14 @@
 		double? stepQty = product.PurchaseQuantityStep > 0 ? product.PurchaseQuantityStep : 1;
 		double? minQty = product.PurchaseMinimumQuantity > 0 ? product.PurchaseMinimumQuantity : 1;
 		double? valueQty = minQty > stepQty ? minQty : stepQty;
-		bool isStockType = product.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock;
-		bool neverOutOfStock = product.NeverOutOfstock;
-		bool setMaxQty = isStockType && !neverOutOfStock;
-		double? maxQty = setMaxQty ? product.StockLevel : null;
+		string disableAddToCart = null;
+		double? maxQty = null;
+		
+		if (product.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock && !product.NeverOutOfstock)
+		{
+			disableAddToCart = (product.StockLevel <= 0) || (!product.NeverOutOfstock && isLazyLoadingForProductInfoEnabled) ? "disabled" : disableAddToCart;
+			maxQty = product.StockLevel;
+		}
 
 		if (unitsSelector && product.UnitOptions.Count > 0) {
 			<form method="post" action="/Default.aspx?ID=@(Pageview.Page.ID)&ProductId=@product.Id" id="UnitSelectorForm_@(product.Id)_@(product.VariantId.Replace(".", "_"))_@Model.ID">
