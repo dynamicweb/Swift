@@ -252,10 +252,9 @@ const Cart = function () {
 			if (quantityField != null && quantityField.step) {
 				const quantity = parseFloat(quantityField.value);
 				const stepQty = parseFloat(quantityField.step);
-				
-				isValid = quantity % stepQty == 0;
+				const stepQtyMod = ((quantity * 100000) % (stepQty * 100000)) / 100000;
+				isValid = stepQtyMod == 0;
 			}
-			
 			return isValid;
 		},
 		PromptStepQuantityFailedWarning: function (form) {
