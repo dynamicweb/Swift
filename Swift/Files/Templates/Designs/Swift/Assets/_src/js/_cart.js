@@ -252,8 +252,9 @@ const Cart = function () {
 			if (quantityField != null && quantityField.step) {
 				const quantity = parseFloat(quantityField.value);
 				const stepQty = parseFloat(quantityField.step);
-				const stepQtyMod = ((quantity * 100000) % (stepQty * 100000)) / 100000;
-				isValid = stepQtyMod == 0;
+				const allowedDecimals = 100000;
+				isValid = ((quantity * allowedDecimals) % (stepQty * allowedDecimals)) / allowedDecimals == 0;
+				
 			}
 			return isValid;
 		},
