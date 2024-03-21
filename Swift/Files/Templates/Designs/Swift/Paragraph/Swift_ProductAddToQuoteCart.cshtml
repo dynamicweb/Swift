@@ -46,24 +46,33 @@
 	{
 		url += url.Contains("?") ? "&LayoutTemplate=Swift_MiniCart.cshtml" : "?LayoutTemplate=Swift_MiniCart.cshtml";
 	}
-
-	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
-	string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : "";
-	bool isNeverOutOfStock = product.NeverOutOfstock;
-	disableAddToCart = isNeverOutOfStock && !isLazyLoadingForProductInfoEnabled ? "" : disableAddToCart;
-
+	
 	string fullWidth = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? " w-100" : "";
 	string addToCartIcon = Model.Item.GetRawValueString("Icon", iconPath + "shopping-cart.svg");
 	string addToCartLabel = !addToCartIcon.Contains("_none") ? "<span class=\"icon-2\">" + ReadFile(addToCartIcon) + "</span>" : "";
 	addToCartLabel += !addToCartIcon.Contains("_none") && !Model.Item.GetBoolean("HideButtonText") ? " " : "";
 	addToCartLabel += !Model.Item.GetBoolean("HideButtonText") ? Translate("Request quote") : "";
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
 
+	string disableAddToCart = null;
 	double? stepQty = product.PurchaseQuantityStep > 0 ? product.PurchaseQuantityStep : 1;
 	double? minQty = product.PurchaseMinimumQuantity > 0 ? product.PurchaseMinimumQuantity : 1;
+	double? maxQty = null;
 	double? valueQty = minQty > stepQty ? minQty : stepQty;
-	bool isStockType = product.ProductType == ProductType.Stock;
-	bool setMaxQty = isStockType && !product.NeverOutOfstock;
-	double? maxQty = setMaxQty ? product.StockLevel : null;
+	bool isStockType = product.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock;
+
+	if (isStockType)
+	{
+		if (product.NeverOutOfstock)
+		{
+			disableAddToCart = !isLazyLoadingForProductInfoEnabled ? "disabled" : disableAddToCart;
+		}
+		else
+		{
+			disableAddToCart = (product.StockLevel <= 0) || product.Discontinued ? "disabled" : disableAddToCart;
+			maxQty = product.StockLevel;
+		}
+	}
 
 	string modalId = Model.ID + "_" + product.Id;
 	modalId += product.VariantId.Replace(".", "_") ?? "";
