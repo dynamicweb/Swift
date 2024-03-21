@@ -26,15 +26,19 @@
 	string replacementProductLink = replacementProduct.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
 	string replacementProductStockState = replacementProduct.NeverOutOfstock ? Translate("In stock") : $"{replacementProduct.StockLevel} {Translate("In stock")}";
 	string replacementProductPrice = showPricesWithVat == "false" && !neverShowVat ? replacementProduct.PriceBeforeDiscount.PriceWithoutVatFormatted : replacementProduct.PriceBeforeDiscount.PriceFormatted;
-
+	
+	string disableQuantityField = null;
 	double? stepQty = replacementProduct.PurchaseQuantityStep > 0 ? replacementProduct.PurchaseQuantityStep : 1;
 	double? minQty = replacementProduct.PurchaseMinimumQuantity > 0 ? replacementProduct.PurchaseMinimumQuantity : 1;
-	double? valueQty = minQty > stepQty ? minQty : stepQty;
-	bool isStockType = replacementProduct.ProductType == ProductType.Stock;
-	bool setMaxQty = isStockType && !replacementProduct.NeverOutOfstock;
-	double? maxQty = setMaxQty ? replacementProduct.StockLevel : null;
+	double? maxQty = null;
+	bool isStockType = replacementProduct.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock;
 
-	string disableQuantityField = (replacementProduct.StockLevel < 1 && !replacementProduct.NeverOutOfstock) || replacementProduct.Discontinued ? "disabled" : "";
+	if (isStockType && !replacementProduct.NeverOutOfstock)
+	{
+		disableQuantityField = (replacementProduct.StockLevel <= 0) || replacementProduct.Discontinued ? "disabled" : disableQuantityField;
+		maxQty = replacementProduct.StockLevel;
+	}
+
 	int productCounter = Converter.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("productCounter"));
 	double? quantity = Converter.ToDouble(Dynamicweb.Context.Current.Request.QueryString.Get("quantity"));
 
@@ -144,10 +148,10 @@
 					{
 						<div class="fs-8 fs-lg-6 text-end text-lg-start text-danger productStockState">@Translate("Discontinued")</div>
 					}
-					else if (replacementProduct.NeverOutOfstock)
+					else if (!isStockType || replacementProduct.NeverOutOfstock)
 					{
 						<div class="fs-8 fs-lg-6 text-end text-lg-start text-success">@Translate("In stock")</div>
-					} else if (replacementProduct.StockLevel > 0)
+					} else if (isStockType && replacementProduct.StockLevel > 0)
 					{
 						<div class="fs-8 fs-lg-6 text-end text-lg-start text-success">@replacementProduct.StockLevel @Translate("In stock")</div>
 					}
