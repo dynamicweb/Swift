@@ -126,13 +126,7 @@
 			foreach (ProductViewModel product in productList.Products)
 			{
 				string link = product.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
-
-				bool isDiscontinued = product.Discontinued;
-				bool isNeverOutOfStock = product.NeverOutOfstock;
-				string disableAddToCart = (product.StockLevel <= 0) ? "disabled" : string.Empty;
-				disableAddToCart = isDiscontinued ? "disabled" : disableAddToCart;
-				disableAddToCart = isNeverOutOfStock && !isLazyLoadingForProductInfoEnabled ? string.Empty : disableAddToCart;
-
+				
 				string imagePath = product?.DefaultImage?.Value ?? string.Empty;
 				imagePath = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
 				imagePath = "/Admin/Public/GetImage.ashx?width=" + 80 + "&image=" + imagePath + "&format=webp";
@@ -418,13 +412,24 @@
 								{
 									if (product.VariantInfo.VariantInfo == null)
 									{
+										
+
+										string disableAddToCart = null;
 										double? stepQty = product.PurchaseQuantityStep > 0 ? product.PurchaseQuantityStep : 1;
 										double? minQty = product.PurchaseMinimumQuantity > 0 ? product.PurchaseMinimumQuantity : 1;
+										double? maxQty = null;
 										double? valueQty = minQty > stepQty ? minQty : stepQty;
 										bool isStockType = product.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock;
-										bool setMaxQty = isStockType && !product.NeverOutOfstock;
-										double? maxQty = setMaxQty ? product.StockLevel : null;
-
+										
+										if (isStockType) { 
+											if (product.NeverOutOfstock) { 
+												disableAddToCart = !isLazyLoadingForProductInfoEnabled ? "disabled" : disableAddToCart;
+											} else { 
+												disableAddToCart = (product.StockLevel <= 0) || product.Discontinued ? "disabled" : disableAddToCart;
+												maxQty = product.StockLevel;
+											}	
+										}
+										
 										<form method="post" action="@miniCartUrl">
 											<input type="hidden" name="redirect" value="false">
 											<input type="hidden" name="ProductId" value="@product.Id">
@@ -496,7 +501,7 @@
 												@* If lazy loading is enabled, bypass it because we're loading a modal window, so render everything as if it was server-side *@
 												<input type="hidden" name="getproductinfo" value="true">
 											}
-											<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-primary" style="width: @buttonWidth" @disableVariantSelector @disableVariantSelector title="@Translate("Select")" data-bs-toggle="modal" data-bs-target="#DynamicModal" id="OpenVariantSelectorModal@(product.Id)_@Pageview.CurrentParagraph.ID">@buttonText</button>
+											<button type="button" onclick="swift.PageUpdater.Update(event)" class="btn btn-primary" style="width: @buttonWidth" @disableVariantSelector title="@Translate("Select")" data-bs-toggle="modal" data-bs-target="#DynamicModal" id="OpenVariantSelectorModal@(product.Id)_@Pageview.CurrentParagraph.ID">@buttonText</button>
 										</form>
 									}
 								}
