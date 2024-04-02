@@ -1,6 +1,7 @@
 @inherits ViewModelTemplate<ProductListViewModel>
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.Products
 
 @{
 	string orderId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("OrderID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("OrderID") : "";
@@ -57,10 +58,9 @@
 			}
 		}
 	}
-
 	var products = order == null ? Model.Products : orderProducts;
 	bool hasDiscontinuedProducts = products.Any(p => p.Discontinued && !string.IsNullOrEmpty(p.ReplacementProduct.ProductId) && p.ReplacementProduct.GetProduct() != null
-		&& p.ReplacementProduct.GetProduct().Active && (p.ReplacementProduct.GetProduct().StockLevel > 0 || p.ReplacementProduct.GetProduct().NeverOutOfstock));
+		&& p.ReplacementProduct.GetProduct().Active && (p.ReplacementProduct.GetProduct().ProductType != ProductType.Stock || p.ReplacementProduct.GetProduct().StockLevel >= 0));
 }
 
 @if (products.Any())
@@ -90,9 +90,9 @@
 								productCounter += 1;
 								
 								ProductViewModel replacementProduct = product.Discontinued && product.ReplacementProduct != null && !string.IsNullOrEmpty(product.ReplacementProduct.ProductId) ? product.ReplacementProduct.GetProduct() : null;
-								bool showReplacementProduct = product.Discontinued && replacementProduct != null && replacementProduct.Active && (replacementProduct.StockLevel > 0 || replacementProduct.NeverOutOfstock);
-								
-								if ((product.StockLevel < 1 && !product.NeverOutOfstock) || product.Discontinued)
+								bool showReplacementProduct = product.Discontinued && replacementProduct != null && replacementProduct.Active && (replacementProduct.ProductType != ProductType.Stock || replacementProduct.StockLevel > 0);
+						
+								if ((product.StockLevel <= 0 && !product.NeverOutOfstock) || product.Discontinued)
 								{
 									<tr>
 										<td class="align-middle">
@@ -225,9 +225,8 @@
 			}
 
 			ProductViewModel replacementProduct = product.Discontinued && product.ReplacementProduct != null && !string.IsNullOrEmpty(product.ReplacementProduct.ProductId) ? product.ReplacementProduct.GetProduct() : null;
-			bool showReplacementProduct = product.Discontinued && replacementProduct != null && replacementProduct.Active && (replacementProduct.StockLevel > 0 || replacementProduct.NeverOutOfstock);
+			bool showReplacementProduct = product.Discontinued && replacementProduct != null && replacementProduct.Active && (replacementProduct.ProductType != ProductType.Stock || (replacementProduct.StockLevel > 0 || replacementProduct.NeverOutOfstock));
 			string replacementProductFeed = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl("Default.aspx?ID=" + GetPageIdByNavigationTag("ReorderReplacement") + "&ProductId=" + product.Id + "&productCounter=" + productCounter + "&quantity=" + quantity + "&getproductinfo=true");
-
 			<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center product js-replacement-product @disableOrderline" data-product-counter="@productCounter" data-replacement-feed="@replacementProductFeed">
 				
 				<div class="d-none d-lg-block g-col-12 border-top"></div>
@@ -291,7 +290,6 @@
 				</div>
 
 			</article>
-
 			if (product.Discontinued && showReplacementProduct)
 			{
 				<div class="position-relative start-50 translate-middle d-flex g-start-8 js-product-replacements-button" data-product-counter="@productCounter" data-replacing-message="@($"{Translate("Replacing")} {product.Name}")" data-replace-refused-message="@Translate("Replacement Refused")">
