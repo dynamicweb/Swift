@@ -208,9 +208,9 @@ const Cart = function () {
 			return miniCarts;
 		},
 		ValidateCartQuantity: function (inputElement) {
-			const enteredValue = parseNumber(inputElement.value);
-			const maxValue = parseNumber(inputElement.max);
-			const isValid = true;
+			const enteredValue = parseFloat(inputElement.value);
+			const maxValue = parseFloat(inputElement.max);
+			let isValid = true;
 			if (maxValue && enteredValue > maxValue) {
 				inputElement.value = maxValue;
 				isValid = false;
