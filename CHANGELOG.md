@@ -1,5 +1,63 @@
 # Changelog
 
+## [v1.26.1] - 09-04-2024
+
+> [!NOTE]  
+> **Requirements**
+> * **Swift v1.26.1 requires DynamicWeb v9.17.1 or newer, requires the newest Shipmondo.dll version 2.0.0**
+> * **Swift v1.26.1 can also run on DynamicWeb v10.1.0 or newer, requires the newest Shipmondo.dll v10.0.5 (which needs to be installed)**
+
+## Bugfixes
+
+* Checkout: Invalid voucher code message doesn't disappear in summary
+* General: Using Custom (not Google) Font result Swift template error on DW10, fix null checks
+* General: Searchfield change of what happens on Enter. Use Friendly standard url, for better url handeling
+* Itemtypes: Poster with two Product link buttons does not appear
+* Itemtypes: Video poster - Video is not rendered in DW10 - Use EscapeUriString instead of EscapeDataString
+* Itemtypes: Product group grid is not available. Extend ParentItemTypeRestrictionRule to ProductDetails
+* Itemtypes: ProductAddToCart, Never out of stock is false by default for non-stock type products
+* Itemtypes: ExpressBuySearchResponse, Add to cart disabled state fix
+* Itemtypes: ProductListCompactView, Add to cart disabled state fix
+* Itemtypes: ProductListListView, Add to cart disable state fix
+* Itemtypes: ProductAddToQuoteCart, add to cart disabled state fix
+* Itemtypes: RelatedProductsList, Add to cart disabled state fix
+* Itemtypes: ProductReplacement, Add to cart disabled state fix
+* Product group grid: W3C - Trailing slash on void elements. Group grid, remove trailing slash
+* Product group grid: Extra border between image and button area, fix grouptheme location
+* System Email: Order Email - Improve EmailOrderlines null checks
+
+> [!TIP]
+> ### System email - order receipt
+> **Set up order receipt**
+>
+> 1. In Content / System Emails / Checkout Email / **Order Confirmation Email** . Publish Order Confirmation Email
+> 2. On edit paragraph Swift_EmailOrderlines go to App, select template from **eCom / Order / Orderlines.cshtml** (IMG 1 & IMG 2))
+> 3. On the order number section, remove the styling bold from {{Ecom:Order.ID}} (Since order number info disappear on mail) (IMG 3)
+>
+> **Select order receipt in checkout for Checkout user & Anonymous checkout**
+>
+> 4. In Content / Navigation / Utilities / Cart / **Checkout user** 
+> 5. Edit checkout paragraph, go to App
+> 6. In section Notification e-mails, select Mail Content for Page (IMG 4)
+> 7. Select system Email / Checkout email / Order Confirmation Email page (IMG 4)
+> 8. Do the same steps for **Anonymous checkout** 
+
+**Set up order receipt**
+
+(IMG 1)
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/System-email-order-receipt.png)
+
+(IMG 2)
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/System-email-order-receipt2.png)
+
+(IMG 3)
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/remove-bold-orderid.png)
+
+**Select order receipt in checkout for Checkout user & Anonymous checkout**
+
+(IMG 4)
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/System-Email-Checkout.png)
+
 ## [v1.26.0] - 05-03-2024
 
 > [!NOTE]  
