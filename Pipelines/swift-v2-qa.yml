@@ -6,10 +6,39 @@ pr:
 pool: DW10
 
 steps:
-- task: CreatePRCommentTask@1
-  condition: eq(variables['System.PullRequest.TargetBranch'], 'refs/heads/main')
-  inputs:
-    AuthType: 'pat'
-    AzureDevOpsPat: '6fnfod7yg2nkgfsndhcvlpoafk5owyisegfuafbastzekzwfvsuq'
-    Comment: 'PR: $(System.PullRequest.PullRequestId) can be tested on http://swift-v2.qa.$(System.PullRequest.PullRequestId).dev02.dynamicweb.dk'
-  displayName: Add comment with testsite to PR
+  - task: NodeTool@0
+    inputs:
+      versionSpec: "20.x"
+    displayName: "Install Node.js"
+
+  - script: |
+      npm install
+    displayName: "npm install"
+
+  - script: |
+      npm run build --verbose
+    displayName: "npm run build"
+
+  - task: ArchiveFiles@2
+    inputs:
+      rootFolderOrFile: "$(Build.SourcesDirectory)/Files"
+      includeRootFolder: false
+      archiveType: "zip"
+      archiveFile: "$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip"
+      replaceExistingArchive: true
+    displayName: "Zip Files"
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: "$(Build.ArtifactStagingDirectory)"
+      ArtifactName: "swift-v2"
+      publishLocation: "Container"
+    displayName: "Publish artifact"
+
+  - task: CreatePRCommentTask@1
+    condition: eq(variables['Build.Reason'], 'PullRequest')
+    inputs:
+      AuthType: 'pat'
+      AzureDevOpsPat: '$(pat)'
+      Comment: 'PR: $(System.PullRequest.PullRequestId) can be tested on http://swift-v2.qa.$(System.PullRequest.PullRequestId).dev02.dynamicweb.dk'
+    displayName: Add comment to PR with link to test site
