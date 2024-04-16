@@ -1,5 +1,21 @@
 # Changelog
 
+## [v1.26.2] - 17-04-2024
+
+> [!NOTE]  
+> **Requirements**
+> * **Swift v1.26.2 requires DynamicWeb v9.17.1 or newer, requires the newest Shipmondo.dll version 2.0.0**
+> * **Swift v1.26.2 can also run on DynamicWeb v10.1.0 or newer, requires the newest Shipmondo.dll version 10.0.5 (which needs to be installed)**
+
+## Bugfixes
+
+* Email: Template errors on emails on DW10 - due to removal of Newtonsoft.Json from Dynamicweb.Core
+* Itemtypes: Add to cart, disable add to cart, if variant exist and variant options are not selected
+* Itemtypes: Add to cart, change label from ' Disable add to cart ' to ' Disable add to cart hen no options selected '
+* General: Get breakpoint radio buttons back on Master.xml missing on DW10
+* General: Quote unify link redirect, when approving a quote
+* General: Variant modal, quantity field is too small
+
 ## [v1.26.1] - 09-04-2024
 
 > [!NOTE]  
