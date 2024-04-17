@@ -38,15 +38,13 @@ This repository contains a `./Files` with design files, images, and other static
 
 ## Requirements
 
+* **Swift 1.26.2** requires **DynamicWeb version 9.17.1** and **Shipmondo dll v2.0.0** or newer, it can also run on DynamicWeb version 10.1.0 or newer and **Shipmondo dll v10.0.5 (Needs to be installed)**
 * **Swift 1.26.1** requires **DynamicWeb version 9.17.1** and **Shipmondo dll v2.0.0** or newer, it can also run on DynamicWeb version 10.1.0 or newer and **Shipmondo dll v10.0.5 (Needs to be installed)**
 * **Swift 1.26.0** requires **DynamicWeb version 9.17.1** and **Shipmondo dll v2.0.0** or newer, it can also run on DynamicWeb version 10.1.0 or newer  and **Shipmondo dll v10.0.5 (Needs to be installed)**
 * **Swift 1.25.1** requires **DynamicWeb version 9.16.6** or newer, it can also run on DynamicWeb version 10.0.27
 * **Swift 1.25.0** requires **DynamicWeb version 9.16.5** or newer, it can also run on DynamicWeb version 10.0.25
 * **Swift 1.24.0** requires **DynamicWeb version 9.16.2** or newer, it can also run on DynamicWeb version 10.0.21
 * **Swift 1.23.0** requires **DynamicWeb version 9.15.13** or newer
-* **Swift 1.22.0** requires **DynamicWeb version 9.15.9** or newer
-* **Swift 1.21.0** requires **DynamicWeb version 9.15.5** or newer
-* **Swift 1.20.0** requires **DynamicWeb version 9.15.4** or newer
 
 See requirements for older Swift versions [here](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-1)
 
