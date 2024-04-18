@@ -47,8 +47,8 @@ const Cart = function () {
 				//The actual cart call (add to cart)
 				if (quantityField != null) {
 					//Validation
-					const validityState = quantityField.validity	
-					
+					const validityState = quantityField.validity
+
 					quantityField.classList.remove("is-invalid");
 
 					if (isPendingQuote == "true") {
@@ -189,7 +189,6 @@ const Cart = function () {
 				});
 			}
 		},
-
 		GetMiniCarts: function (miniCartId) {
 			let miniCarts = [];
 
@@ -207,15 +206,23 @@ const Cart = function () {
 
 			return miniCarts;
 		},
-		ValidateCartQuantity: function (inputElement) {
+		UpdateCart: async function (e) {
+			const inputElement = e.currentTarget;
 			const enteredValue = parseFloat(inputElement.value);
 			const maxValue = parseFloat(inputElement.max);
-			let isValid = true;
+			const minValue = parseFloat(inputElement.min);
+
 			if (maxValue && enteredValue > maxValue) {
 				inputElement.value = maxValue;
-				isValid = false;
 			}
-			return isValid;
+			if (minValue && enteredValue < minValue) {
+				inputElement.value = minValue;
+			}
+
+			let form = e.currentTarget.closest("form");
+			form.action = '?cartcmd=updateorderlines';
+			form.submit();
+
 		},
 		PromptStepQuantityFailedWarning: function (form) {
 			const dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), {});
@@ -229,7 +236,7 @@ const Cart = function () {
 			}
 		},
 		PromptMinQuantityFailedWarning: function (quantityField, form) {
-			const dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), { });
+			const dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), {});
 			const minQuantityWarning = form.querySelector(".js-min-quantity-warning");
 
 			const message = minQuantityWarning.innerHTML;
@@ -240,7 +247,7 @@ const Cart = function () {
 			}
 
 			quantityField.value = quantityField.min;
-			
+
 		},
 		PromptMissingValueWarning: function (form) {
 			const dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), {});
