@@ -25,13 +25,6 @@ steps:
       archiveType: "zip"
       archiveFile: "$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip"
       replaceExistingArchive: true
-
-  - task: PublishBuildArtifacts@1
-    inputs:
-      PathtoPublish: "$(Build.ArtifactStagingDirectory)"
-      ArtifactName: "swift-v2"
-      publishLocation: "Container"
-    displayName: "Publish artifact"
   
   - task: PowerShell@2
     name: SwiftVersion
@@ -41,7 +34,23 @@ steps:
         Write-Host '- - - - - - - - - - - - - - - - - - - - - - - - -'
         Write-Host ' Get swift version from package.json'
         Write-Host '- - - - - - - - - - - - - - - - - - - - - - - - -'
-        $versionString=$(node -p "require('./package.json').version") 
-            echo "##vso[task.setvariable variable=swiftVersion;isOutput=true]$versionString"
+        $versionString=$(node -p "require('./package.json').version")
+        Write-Host '- - - - - - - - - - - - - - - - - - - - - - - - -'
+        Write-Host ' Creating new version text file'
+        Write-Host '- - - - - - - - - - - - - - - - - - - - - - - - -'
+        New-Item -Path "$(Build.ArtifactStagingDirectory)" -Name "$versionString.txt" -ItemType "File"
+        Set-Content $(Build.ArtifactStagingDirectory)\swift.txt '$(versionString)'
+        Add-Content -Path "$(Build.ArtifactStagingDirectory)\$versionString.txt" -Value "$versionString"
+        Write-Host '- - - - - - - - - - - - - - - - - - - - - - - - -'
+        Write-Host ' Add text to version file' -f Green
+        Write-Host '- - - - - - - - - - - - - - - - - - - - - - - - -'
+
     env:
       SwiftVersion: $versionString
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: "$(Build.ArtifactStagingDirectory)"
+      ArtifactName: "swift-v2"
+      publishLocation: "Container"
+    displayName: "Publish artifact"
