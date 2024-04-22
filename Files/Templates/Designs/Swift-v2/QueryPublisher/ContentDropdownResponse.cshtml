@@ -1,0 +1,73 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb
+@using Dynamicweb.Core.Encoders
+
+@{
+	var resultsList = GetLoop("QueryResultItem");
+	string iconPath = "/Files/Templates/Designs/Swift-v2/Assets/icons/";
+
+	string layout = Dynamicweb.Context.Current.Request["SearchLayout"] != null ? Dynamicweb.Context.Current.Request.Form.Get("SearchLayout").ToString() : "field";
+
+	string searchTerm = string.Empty;
+	if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request["eq"]))
+	{
+		searchTerm = Dynamicweb.Context.Current.Request["eq"].Trim();
+	}
+
+	string resultsPage = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl("Default.aspx?ID=" + GetPageIdByNavigationTag("ContentSearch"));
+}
+
+@* If not the first parahraph, add divider *@
+@if (Pageview.CurrentParagraph.Sort != 1) { 
+  <li><hr class="dropdown-divider"></li>
+}
+
+
+@if (GetInteger("DwPaging.PageSize") != 1) {
+	foreach (var result in resultsList)
+	{
+		var resultProperties = result.GetLoop("Properties").ToDictionary(x => x.GetString("Name"), y => y.GetString("Value"));
+
+		var pageId = resultProperties.ContainsKey("PageId") ? resultProperties["PageId"] : "";
+		var title = resultProperties.ContainsKey("PageMenuText") ? resultProperties["PageMenuText"] : "";
+		title = !string.IsNullOrEmpty(result.GetString("PageMetaTitle")) ? result.GetString("PageMetaTitle") : title;
+
+		var link = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl($"Default.aspx?ID={pageId}");
+
+		<li class="dropdown-item d-flex flex-lg-row-reverse align-items-center text-wrap px-0 py-2 px-lg-2 text-wrap text-decoration-underline-hover" onclick="swift.Typeahead.selectSuggestion(this);" data-param="ID" data-paramvalue="@pageId" data-selected-details-page="@link">
+			<span aria-hidden="true" class="d-lg-none dropdown-item-search-icon d-flex align-items-center justify-content-center"></span>
+			<span class="js-suggestion flex-fill text-break">@title</span>
+			<span class="d-flex align-items-center justify-content-center icon-2 ps-2 pe-3" title="@title">
+				@ReadFile(iconPath + "file.svg")
+			</span>
+		</li>	
+	}
+
+	if (resultsList.Count > 0)
+	{
+		<li class="dropdown-item text-center p-2 text-wrap text-decoration-underline-hover" id="ViewAllContentPageResults" onclick="swift.Typeahead.selectSuggestion(this);" data-all-results-page="@resultsPage">
+			<span class="text-break text-decoration-underline">@Translate("View all") @GetString("QueryResult.TotalCount") @Translate("content pages")<mark> "<span class="js-suggestion">@searchTerm</span>"</mark></span>
+
+		</li>
+	}
+} else if (resultsList.Count != 0) { 
+	if (resultsList.Count == 1) { 
+		<li class="dropdown-item text-center p-2 text-wrap text-decoration-underline-hover swift" id="ViewAllContentPageResults" onclick="swift.Typeahead.selectSuggestion(this);" data-all-results-page="@resultsPage">
+			<span class="text-break text-decoration-underline">@Translate("View") @Translate("content page")<mark> "<span class="js-suggestion">@searchTerm</span>"</mark></span>
+		</li>
+	} else { 
+		<li class="dropdown-item text-center p-2 text-wrap text-decoration-underline-hover" id="ViewAllContentPageResults" onclick="swift.Typeahead.selectSuggestion(this);" data-all-results-page="@resultsPage">
+			<span class="text-break text-decoration-underline">@Translate("View all") @GetString("QueryResult.TotalCount") @Translate("content pages")<mark> "<span class="js-suggestion">@searchTerm</span>"</mark></span>
+		</li>
+	}
+}
+
+@if (!string.IsNullOrEmpty(searchTerm))
+{
+	if (resultsList.Count == 0)
+	{
+		<li class="dropdown-item text-center p-2 text-wrap text-decoration-underline-hover" id="NoContentPageResults" onclick="swift.Typeahead.selectSuggestion(this);">
+			@Translate("We have no results for")<mark> "<span class="js-suggestion">@searchTerm</span>"</mark>
+		</li>
+	}
+}
