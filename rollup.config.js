@@ -7,7 +7,7 @@ import autoprefixer from "autoprefixer";
 import copy from "rollup-plugin-copy";
 const isProd = process.env.NODE_ENV === "production";
 const srcPath = "_src/";
-const distPath = "Files/Templates/Designs/Swift/Assets/";
+const distPath = "Files/Templates/Designs/Swift-v2/Assets/";
 
 console.log("Building for " + (isProd ? "production" : "development"));
 

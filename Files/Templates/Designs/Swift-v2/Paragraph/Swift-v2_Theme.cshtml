@@ -1,0 +1,773 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using System.Globalization
+@using System.Drawing
+@using Dynamicweb.Core
+
+@functions{
+	// Get Hex Color from color picker and translate to RGB color
+	public static string HexToRGB(string hexString)
+	{
+		if (hexString.Equals("none") || string.IsNullOrEmpty(hexString))
+			return hexString;
+
+		//replace # occurences
+		if (hexString.IndexOf('#') != -1)
+			hexString = hexString.Replace("#", "");
+		try
+		{
+			int r, g, b = 0;
+			r = int.Parse(hexString.Substring(0, 2), NumberStyles.AllowHexSpecifier);
+			g = int.Parse(hexString.Substring(2, 2), NumberStyles.AllowHexSpecifier);
+			b = int.Parse(hexString.Substring(4, 2), NumberStyles.AllowHexSpecifier);
+
+			string rgb = r + "," + g + "," + b;
+			return rgb;
+		}
+		catch (System.Exception)
+		{
+			return hexString;
+		}
+	}
+
+	public static string GetColorSquare(string hex)
+	{
+		return $"<div class=\"swift-checkered d-inline-block me-1\" style=\"height:1.25rem;width:1.25rem;\"><div style=\"background-color: {hex};border:.0625rem solid grey\" class=\"w-100 h-100\"></div></div>";
+	}
+
+	public class HSL
+	{
+		public double h { get; set; }
+		public double s { get; set; }
+		public double l { get; set; }
+	}
+
+	//Convert HEX to HSL
+	public static HSL HexToHsl(string hexString)
+	{
+		System.Drawing.Color color = System.Drawing.ColorTranslator.FromHtml(hexString);
+
+		float _R = (color.R / 255f);
+		float _G = (color.G / 255f);
+		float _B = (color.B / 255f);
+
+		float _Min = Math.Min(Math.Min(_R, _G), _B);
+		float _Max = Math.Max(Math.Max(_R, _G), _B);
+		float _Delta = _Max - _Min;
+
+		float S = 0;
+		float L = (float)((_Max + _Min) / 2.0f);
+
+		if (_Delta != 0)
+		{
+			if (L < 0.5f)
+			{
+				S = (float)(_Delta / (_Max + _Min));
+			}
+			else
+			{
+				S = (float)(_Delta / (2.0f - _Max - _Min));
+			}
+		}
+
+		HSL hsl = new HSL();
+		hsl.h = Math.Round(color.GetHue(), 2);
+		hsl.s = Math.Round(S, 2) * 100;
+		hsl.l = Math.Round(L, 2) * 100;
+
+		return hsl;
+	}
+
+	//Find contrast color (white, black)
+	public static Color GetContrastColor(string hexString)
+	{
+		System.Drawing.Color bg = System.Drawing.ColorTranslator.FromHtml(hexString);
+
+		int nThreshold = 105;
+		int bgDelta = Convert.ToInt32((bg.R * 0.299) + (bg.G * 0.587) +
+									  (bg.B * 0.114));
+
+		Color foreColor = (255 - bgDelta < nThreshold) ? Color.Black : Color.White;
+		return foreColor;
+	}
+
+	public string GetColorVariation(string hexString)
+	{
+		var contrast = GetContrastColor(hexString);
+		HSL currentHslColor = HexToHsl(hexString);
+		HSL variantHslColor = currentHslColor;
+
+		if (contrast == Color.Black)
+		{
+			variantHslColor.l = 85; //The background is dark - Color should be light
+		}
+		else
+		{
+			variantHslColor.l = 40; //The background is light - Color should be less light
+		}
+
+		//Color is very light
+		if (currentHslColor.l > 85)
+		{
+			variantHslColor.l = 95;
+		}
+
+		string colorString = variantHslColor.h + ", " + variantHslColor.s + "%, " + variantHslColor.l + "%";
+		return colorString;
+	}
+
+	private class ThemeDatabaseUsage
+	{
+		public string TableName { get; set; }
+		public string ColumnName { get; set; }
+	}
+
+	private class ThemeUsage
+	{
+		public string Id { get; set; }
+		public List<int> WebsiteUsages { get; set; } = new List<int>();
+		public List<int> PageUsages { get; set; } = new List<int>();
+		public List<int> PagePropertyUsages { get; set; } = new List<int>();
+		public List<int> GridRowUsages { get; set; } = new List<int>();
+		public List<int> ParagraphUsages { get; set; } = new List<int>();
+		public int AllUsages { get; set; } = 0;
+	}
+
+	private List<ThemeDatabaseUsage> GetThemeColumnsFromSchema()
+	{
+		string cacheKey = "ThemesFromDatabase";
+		if (Dynamicweb.Context.Current.Items.Contains(cacheKey))
+		{
+			return (List<ThemeDatabaseUsage>)Dynamicweb.Context.Current.Items[cacheKey];
+		}
+		var schema = Dynamicweb.Data.Database.CreateDataReader("SELECT table_name, column_name FROM information_schema.columns WHERE column_name LIKE '%Theme%'");
+
+		var rawData = new List<ThemeDatabaseUsage>();
+		while (schema.Read()) {
+			rawData.Add(new ThemeDatabaseUsage {TableName = schema["table_name"].ToString(), ColumnName = schema["column_name"].ToString() });
+		}
+		Dynamicweb.Context.Current.Items[cacheKey] = rawData;
+		return rawData;
+	}
+
+	private List<ThemeUsage> GetAllThemeUsages()
+	{
+		string cacheKey = "ThemeUsages";
+		if (Dynamicweb.Context.Current.Items.Contains(cacheKey))
+		{
+			return (List<ThemeUsage>)Dynamicweb.Context.Current.Items[cacheKey];
+		}
+		
+		var rawData = GetThemeColumnsFromSchema();
+		var themeUsages = new List<ThemeUsage>();
+		
+		var sqlQuery = "";
+		foreach (var row in rawData)
+		{
+			if (!string.IsNullOrEmpty(sqlQuery)) { sqlQuery += " UNION ALL "; }
+			sqlQuery += $"SELECT '{row.TableName}' AS TableName, '{row.ColumnName}' AS ColumnName, {row.ColumnName} AS ColumnValue, Id, AreaId, Page.PageId, PageProperties.PageId as 'PagePropertiesId', GridRowId, ParagraphId" +
+			            $" FROM [{row.TableName}]" +
+			            $" LEFT JOIN Area ON AreaItemType = '{row.TableName.Replace("ItemType_","")}' AND AreaItemId = Id" +
+			            $" LEFT JOIN Page ON PageItemType = '{row.TableName.Replace("ItemType_","")}' AND PageItemId = Id" +
+			            $" LEFT JOIN Page as PageProperties ON AreaItemTypePageProperty = '{row.TableName.Replace("ItemType_","")}' AND PageProperties.PagePropertyItemId = Id" +
+			            $" LEFT JOIN GridRow ON GridRowItemType = '{row.TableName.Replace("ItemType_","")}' AND GridRowItemId = Id" +
+			            $" LEFT JOIN Paragraph ON ParagraphItemType = '{row.TableName.Replace("ItemType_","")}' AND ParagraphItemId = Id" +
+			            $" WHERE {row.ColumnName} != '' AND {row.ColumnName} IS NOT NULL" +
+			            $"	AND (AreaId IS NULL OR AreaId = {Pageview.AreaID})" +
+			            $"	AND (Page.PageId IS NULL OR Page.PageAreaId = {Pageview.AreaID})" +
+			            $"	AND (PageProperties.PageId IS NULL OR PageProperties.PageAreaId = {Pageview.AreaID})" +
+			            $"	AND (GridRowId IS NULL OR GridRowPageId IN (SELECT value From string_split(@pageIds, ',')))" +
+			            $"	AND (ParagraphId IS NULL OR ParagraphPageId IN (SELECT value From string_split(@pageIds, ',')))";
+			
+			var maxMsSqlServerCharLimit = 60000;
+			if (sqlQuery.Length > maxMsSqlServerCharLimit)
+			{
+				UpdateThemeUsages(sqlQuery, themeUsages);
+				sqlQuery = "";
+			}
+		}
+		
+		if (!string.IsNullOrEmpty(sqlQuery))
+		{
+			UpdateThemeUsages(sqlQuery, themeUsages);
+		}
+		UpdateAllUsages(themeUsages);
+	
+		Dynamicweb.Context.Current.Items[cacheKey] = themeUsages;
+		return themeUsages;
+	}
+
+	private void UpdateThemeUsages(string sqlQuery, List<ThemeUsage> themeUsages)
+	{
+		sqlQuery = $"DECLARE @pageIds NVARCHAR(max) = (SELECT STRING_AGG(PageId,',') FROM Page WHERE PageAreaId = {Pageview.AreaID}) " + sqlQuery;
+		var rawData = Dynamicweb.Data.Database.CreateDataReader(sqlQuery);
+		while (rawData.Read())
+		{
+			var themeId = rawData["ColumnValue"].ToString();
+			var themeUsageExists = themeUsages.FirstOrDefault(t => t.Id == themeId) != null;
+			if (!themeUsageExists)
+			{
+				themeUsages.Add(new ThemeUsage { Id = themeId });
+			}
+
+			var themeUsage = themeUsages.FirstOrDefault(t => t.Id == themeId);
+			if (themeUsage == null) continue;
+
+			if (Converter.ToInt32(rawData["AreaId"].ToString()) > 0) { themeUsage.WebsiteUsages.Add(Converter.ToInt32(rawData["AreaId"].ToString())); }
+			if (Converter.ToInt32(rawData["PageId"].ToString()) > 0) { themeUsage.PageUsages.Add(Converter.ToInt32(rawData["PageId"].ToString())); }
+			if (Converter.ToInt32(rawData["PagePropertiesId"].ToString()) > 0) { themeUsage.PagePropertyUsages.Add(Converter.ToInt32(rawData["PagePropertiesId"].ToString())); }
+			if (Converter.ToInt32(rawData["GridRowId"].ToString()) > 0) { themeUsage.GridRowUsages.Add(Converter.ToInt32(rawData["GridRowId"].ToString())); }
+			if (Converter.ToInt32(rawData["ParagraphId"].ToString()) > 0) { themeUsage.ParagraphUsages.Add(Converter.ToInt32(rawData["ParagraphId"].ToString())); }
+		}
+	}
+
+	private void UpdateAllUsages(List<ThemeUsage> themeUsages)
+	{
+		foreach (var themeUsage in themeUsages)
+		{
+			int websiteUsages = themeUsage?.WebsiteUsages.Count ?? 0;
+			int pageUsages = themeUsage?.PageUsages.Count ?? 0;
+			int pagePropertyUsages = themeUsage?.PagePropertyUsages.Count ?? 0;
+			int gridRowUsages = themeUsage?.GridRowUsages.Count ?? 0;
+			int paragraphUsages = themeUsage?.ParagraphUsages.Count ?? 0;
+			themeUsage.AllUsages = websiteUsages + pageUsages + pagePropertyUsages + gridRowUsages + paragraphUsages;
+		}
+	}
+
+	private ThemeUsage GetThemeUsageById(string themeId)
+	{
+		var themeUsages = GetAllThemeUsages();
+		return themeUsages.FirstOrDefault(t => t.Id == themeId);
+	}
+
+}
+
+@{
+	string themeName = !string.IsNullOrWhiteSpace(Model.Item.GetString("Name")) ? Model.Item.GetString("Name") : "Default";
+	string themeClassName = !string.IsNullOrWhiteSpace(Model.Item.GetString("CSSClassName")) ? Model.Item.GetString("CSSClassName").Replace(" ", "").Trim().ToLower() : "";
+
+	//Theme colors
+	string foregroundColor = Model.Item.GetString("ForegroundColor", "currentColor");
+	string backgroundColor = Model.Item.GetString("BackgroundColor", "transparent");
+	string accentColor = Model.Item.GetString("accentColor", "currentColor");
+	string borderColor = Model.Item.GetString("BorderColor", "transparent");
+
+	//Primary button
+	string buttonPrimaryForegroundColor = Model.Item.GetString("ButtonPrimaryForegroundColor", "currentColor");
+	string buttonPrimaryBackgroundColor = Model.Item.GetString("ButtonPrimaryBackgroundColor", "transparent");
+	string buttonPrimaryBorderColor = Model.Item.GetString("ButtonPrimaryBorderColor", "transparent");
+
+	string buttonPrimaryHoverBackgroundColorAuto = "transparent";
+	if (buttonPrimaryBackgroundColor != "transparent")
+	{
+		buttonPrimaryHoverBackgroundColorAuto = "hsl(" + GetColorVariation(buttonPrimaryBackgroundColor) + ")";
+	}
+	string buttonPrimaryHoverForegroundColor = Model.Item.GetString("ButtonPrimaryHoverForegroundColor", buttonPrimaryForegroundColor);
+	string buttonPrimaryHoverBackgroundColor = Model.Item.GetString("ButtonPrimaryHoverBackgroundColor", buttonPrimaryHoverBackgroundColorAuto);
+	string buttonPrimaryHoverBorderColor = Model.Item.GetString("ButtonPrimaryHoverBorderColor", buttonPrimaryBorderColor);
+
+	//Secondary buton
+	string buttonSecondaryForegroundColor = Model.Item.GetString("ButtonSecondaryForegroundColor", "currentColor");
+	string buttonSecondaryBackgroundColor = Model.Item.GetString("ButtonSecondaryBackgroundColor", "transparent");
+	string buttonSecondaryBorderColor = Model.Item.GetString("ButtonSecondaryBorderColor", "transparent");
+
+	string buttonSecondaryHoverBackgroundColorAuto = "transparent";
+	if (buttonSecondaryBackgroundColor != "transparent")
+	{
+		buttonSecondaryHoverBackgroundColorAuto = "hsl(" + GetColorVariation(buttonSecondaryBackgroundColor) + ")";
+	}
+	string buttonSecondaryHoverForegroundColor = Model.Item.GetString("ButtonSecondaryHoverForegroundColor", buttonSecondaryForegroundColor);
+	string buttonSecondaryHoverBackgroundColor = Model.Item.GetString("ButtonSecondaryHoverBackgroundColor", buttonSecondaryHoverBackgroundColorAuto);
+	string buttonSecondaryHoverBorderColor = Model.Item.GetString("ButtonSecondaryHoverBorderColor", buttonSecondaryBorderColor);
+
+	//Link buton
+	string buttonLinkColor = Model.Item.GetString("ButtonLinkColor", "currentColor");
+	string buttonLinkHoverColorAuto = "currentColor";
+	if (buttonLinkColor != "currentColor")
+	{
+		buttonLinkHoverColorAuto = "hsl(" + GetColorVariation(buttonLinkColor) + ")";
+	}
+	string buttonLinkHoverColor = Model.Item.GetString("ButtonLinkHoverColor", buttonLinkHoverColorAuto);
+
+	string accessibilityOutlineColor = Model.Item.GetString("OutlineColor") != null ? Model.Item.GetString("OutlineColor") : "";
+
+	if (!string.IsNullOrEmpty(themeClassName))
+	{
+		var sb = new System.Text.StringBuilder();
+
+		sb.AppendLine("." + themeClassName + "{");
+		if (!string.IsNullOrEmpty(foregroundColor))
+		{
+			sb.AppendLine($"--swift-foreground-color: {foregroundColor};");
+			sb.AppendLine($"--swift-foreground-color-rgb: {HexToRGB(foregroundColor)};");
+		}
+		if (!string.IsNullOrEmpty(backgroundColor))
+		{
+			sb.AppendLine($"--swift-background-color: {backgroundColor};");
+			sb.AppendLine($"--swift-background-color-rgb: {HexToRGB(backgroundColor)};");
+		}
+		if (!string.IsNullOrEmpty(accentColor))
+		{
+			sb.AppendLine($"--swift-accent-color: {accentColor};");
+			sb.AppendLine($"--swift-accent-color-rgb: {HexToRGB(accentColor)};");
+		}
+		if (!string.IsNullOrEmpty(borderColor))
+		{
+			sb.AppendLine($"--swift-border-color: {borderColor};");
+			sb.AppendLine($"--swift-border-color-rgb: {HexToRGB(borderColor)};");
+		}
+
+		if (!string.IsNullOrEmpty(buttonPrimaryBackgroundColor))
+		{
+			sb.AppendLine($"--swift-button-primary-background-color: {buttonPrimaryBackgroundColor};");
+			sb.AppendLine($"--swift-button-primary-background-color-rgb: {HexToRGB(buttonPrimaryBackgroundColor)};");
+		}
+		if (!string.IsNullOrEmpty(buttonPrimaryForegroundColor))
+		{
+			sb.AppendLine($"--swift-button-primary-foreground-color: {buttonPrimaryForegroundColor};");
+			sb.AppendLine($"--swift-button-primary-foreground-color-rgb: {HexToRGB(buttonPrimaryForegroundColor)};");
+		}
+		if (!string.IsNullOrEmpty(buttonPrimaryBorderColor))
+		{
+			sb.AppendLine($"--swift-button-primary-border-color: {buttonPrimaryBorderColor};");
+			sb.AppendLine($"--swift-button-primary-border-color-rgb: {HexToRGB(buttonPrimaryBorderColor)};");
+		}
+
+		if (!string.IsNullOrEmpty(buttonPrimaryHoverBackgroundColor))
+		{
+			sb.AppendLine($"--swift-button-primary-hover-background-color: {buttonPrimaryHoverBackgroundColor};");
+			sb.AppendLine($"--swift-button-primary-hover-background-color-rgb: {HexToRGB(buttonPrimaryHoverBackgroundColor)};");
+		}
+		if (!string.IsNullOrEmpty(buttonPrimaryHoverForegroundColor))
+		{
+			sb.AppendLine($"--swift-button-primary-hover-foreground-color: {buttonPrimaryHoverForegroundColor};");
+			sb.AppendLine($"--swift-button-primary-hover-foreground-color-rgb: {HexToRGB(buttonPrimaryHoverForegroundColor)};");
+		}
+		if (!string.IsNullOrEmpty(buttonPrimaryHoverBorderColor))
+		{
+			sb.AppendLine($"--swift-button-primary-hover-border-color: {buttonPrimaryHoverBorderColor};");
+			sb.AppendLine($"--swift-button-primary-hover-border-color-rgb: {HexToRGB(buttonPrimaryHoverBorderColor)};");
+		}
+
+		if (!string.IsNullOrEmpty(buttonSecondaryBackgroundColor))
+		{
+			sb.AppendLine($"--swift-button-secondary-background-color: {buttonSecondaryBackgroundColor};");
+			sb.AppendLine($"--swift-button-secondary-background-color-rgb: {HexToRGB(buttonSecondaryBackgroundColor)};");
+		}
+		if (!string.IsNullOrEmpty(buttonSecondaryForegroundColor))
+		{
+			sb.AppendLine($"--swift-button-secondary-foreground-color: {buttonSecondaryForegroundColor};");
+			sb.AppendLine($"--swift-button-secondary-foreground-color-rgb: {HexToRGB(buttonSecondaryForegroundColor)};");
+		}
+		if (!string.IsNullOrEmpty(buttonSecondaryBorderColor))
+		{
+			sb.AppendLine($"--swift-button-secondary-border-color: {buttonSecondaryBorderColor};");
+			sb.AppendLine($"--swift-button-secondary-border-color-rgb: {HexToRGB(buttonSecondaryBorderColor)};");
+		}
+		if (!string.IsNullOrEmpty(buttonSecondaryHoverBackgroundColor))
+		{
+			sb.AppendLine($"--swift-button-secondary-hover-background-color: {buttonSecondaryHoverBackgroundColor};");
+			sb.AppendLine($"--swift-button-secondary-hover-background-color-rgb: {HexToRGB(buttonSecondaryHoverBackgroundColor)};");
+		}
+		if (!string.IsNullOrEmpty(buttonSecondaryHoverForegroundColor))
+		{
+			sb.AppendLine($"--swift-button-secondary-hover-foreground-color: {buttonSecondaryHoverForegroundColor};");
+			sb.AppendLine($"--swift-button-secondary-hover-foreground-color-rgb: {HexToRGB(buttonSecondaryHoverForegroundColor)};");
+		}
+		if (!string.IsNullOrEmpty(buttonSecondaryHoverBorderColor))
+		{
+			sb.AppendLine($"--swift-button-secondary-hover-border-color: {buttonSecondaryHoverBorderColor};");
+			sb.AppendLine($"--swift-button-secondary-hover-border-color-rgb: {HexToRGB(buttonSecondaryHoverBorderColor)};");
+		}
+		if (!string.IsNullOrEmpty(buttonLinkColor))
+		{
+			sb.AppendLine($"--swift-button-link-color: {buttonLinkColor};");
+			sb.AppendLine($"--swift-button-link-color-rgb: {HexToRGB(buttonLinkColor)};");
+		}
+		if (!string.IsNullOrEmpty(buttonLinkHoverColor))
+		{
+			sb.AppendLine($"--swift-button-link-hover-color: {buttonLinkHoverColor};");
+			sb.AppendLine($"--swift-button-link-hover-color-rgb: {HexToRGB(buttonLinkHoverColor)};");
+		}
+		if (!string.IsNullOrEmpty(accessibilityOutlineColor))
+		{
+			sb.AppendLine($"--swift-a11y-outline-color: {accessibilityOutlineColor};");
+			sb.AppendLine($"--swift-a11y-outline-color-rgb: {HexToRGB(accessibilityOutlineColor)};");
+		}
+		sb.AppendLine("}");
+
+		Dynamicweb.Core.Helpers.TextFileHelper.WriteTextFile(sb.ToString() + Environment.NewLine, Dynamicweb.Context.Current.Server.MapPath($"/Files/Templates/Designs/Swift-v2/_parsed/Swift_css/Swift_theme_styles_{Dynamicweb.Content.Services.Pages.GetPage(Model.PageID).AreaId}.tmp"), true);
+	}
+}
+
+@if (themeClassName != "")
+{
+	string iconPath = "/Files/Templates/Designs/Swift-v2/Assets/icons/";
+
+	<div class="g-col-12 g-col-lg-4">
+		<div class="swift-checkered p-3">
+			<div class="theme-option theme @themeClassName p-lg-3">
+				<div class="mb-2 pb-1 border-bottom d-flex align-items-center">
+					<span class="icon-3 me-2">
+						@ReadFile(iconPath + "sun.svg")
+					</span>
+					<h4 class="m-0 p-0">@themeName</h4>
+				</div>
+				<div class="d-flex flex-column gap-1 mb-2">
+					<p class="mb-0">This is the body text of the theme.</p>
+					<p class="mb-0" style="color: var(--swift-accent-color)">This is the accent color of the theme.</p>
+				</div>
+				<div>
+					<button class="btn btn-primary me-1">Primary</button>
+					<button class="btn btn-secondary">Secondary</button>
+					<button class="btn btn-link">Link</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="g-col-12 g-col-lg-8 mb-4 mb-lg-0">
+		<div class="grid fs-7">
+			<div class="g-col-12 g-col-lg-3">
+				<table class="table table-borderless table-sm w-100">
+					<thead>
+						<tr>
+							<th colspan="2" class="fw-bold">@Translate("Base")</th>
+						</tr>
+					</thead>
+					<tr>
+						<td>@Translate("Foreground")</td>
+						<td>@GetColorSquare(foregroundColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@foregroundColor');">@foregroundColor</a></td>
+					</tr>
+					<tr>
+						<td>@Translate("Background")</td>
+						<td>@GetColorSquare(backgroundColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@backgroundColor');">@backgroundColor</a></td>
+					</tr>
+					<tr>
+						<td>@Translate("Accent")</td>
+						<td>@GetColorSquare(accentColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@accentColor');">@accentColor</a></td>
+					</tr>
+					<tr>
+						<td>@Translate("Border")</td>
+						<td>@GetColorSquare(borderColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@borderColor');">@borderColor</a></td>
+					</tr>
+				</table>
+			</div>
+			<div class="g-col-12 g-col-lg-3">
+				<table class="table table-borderless table-sm w-100">
+					<thead>
+						<tr>
+							<th colspan="2" class="fw-bold">@Translate("Primary button")</th>
+						</tr>
+					</thead>
+					<tr>
+						<td>@Translate("Foreground")</td>
+						<td>@GetColorSquare(buttonPrimaryForegroundColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonPrimaryForegroundColor');">@buttonPrimaryForegroundColor</a></td>
+					</tr>
+					<tr>
+						<td>@Translate("Background")</td>
+						<td>@GetColorSquare(buttonPrimaryBackgroundColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonPrimaryBackgroundColor');">@buttonPrimaryBackgroundColor</a></td>
+					</tr>
+					@if (!string.IsNullOrEmpty(buttonPrimaryBorderColor))
+					{
+						<tr>
+							<td>@Translate("Border")</td>
+							<td>@GetColorSquare(buttonPrimaryBorderColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonPrimaryBorderColor');">@buttonPrimaryBorderColor</a></td>
+						</tr>
+					}
+					<thead>
+						<tr>
+							<th colspan="2" class="fw-bold">@Translate("Primary button hover")</th>
+						</tr>
+					</thead>
+					@if (!string.IsNullOrEmpty(buttonPrimaryHoverForegroundColor))
+					{
+						<tr>
+							<td>@Translate("Foreground")</td>
+							<td>@GetColorSquare(buttonPrimaryHoverForegroundColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonPrimaryHoverForegroundColor');">@buttonPrimaryHoverForegroundColor</a></td>
+						</tr>
+					}
+					@if (!string.IsNullOrEmpty(buttonPrimaryHoverBackgroundColor))
+					{
+						<tr>
+							<td>@Translate("Background")</td>
+							<td>@GetColorSquare(buttonPrimaryHoverBackgroundColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonPrimaryHoverBackgroundColor');">@buttonPrimaryHoverBackgroundColor</a></td>
+						</tr>
+					}
+					@if (!string.IsNullOrEmpty(buttonPrimaryHoverBorderColor))
+					{
+						<tr>
+							<td>@Translate("Border")</td>
+							<td>@GetColorSquare(buttonPrimaryHoverBorderColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonPrimaryHoverBorderColor');">@buttonPrimaryHoverBorderColor</a></td>
+						</tr>
+					}
+				</table>
+			</div>
+			<div class="g-col-12 g-col-lg-3">
+				<table class="table table-borderless table-sm w-100">
+					<thead>
+						<tr>
+							<th colspan="2" class="fw-bold">@Translate("Secondary button")</th>
+						</tr>
+					</thead>
+					<tr>
+						<td>@Translate("Foreground")</td>
+						<td>@GetColorSquare(buttonSecondaryForegroundColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonSecondaryForegroundColor');">@buttonSecondaryForegroundColor</a></td>
+					</tr>
+					<tr>
+						<td>@Translate("Background")</td>
+						<td>@GetColorSquare(buttonSecondaryBackgroundColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonSecondaryBackgroundColor');">@buttonSecondaryBackgroundColor</a></td>
+					</tr>
+					@if (!string.IsNullOrEmpty(buttonSecondaryBorderColor))
+					{
+						<tr>
+							<td>@Translate("Border")</td>
+							<td>@GetColorSquare(buttonSecondaryBorderColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonSecondaryBorderColor');">@buttonSecondaryBorderColor</a></td>
+						</tr>
+					}
+					<thead>
+						<tr>
+							<th colspan="2" class="fw-bold">@Translate("Secondary button hover")</th>
+						</tr>
+					</thead>
+					@if (!string.IsNullOrEmpty(buttonSecondaryHoverForegroundColor))
+					{
+						<tr>
+							<td>@Translate("Foreground")</td>
+							<td>@GetColorSquare(buttonSecondaryHoverForegroundColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonSecondaryHoverForegroundColor');">@buttonSecondaryHoverForegroundColor</a></td>
+						</tr>
+					}
+					@if (!string.IsNullOrEmpty(buttonSecondaryHoverBackgroundColor))
+					{
+						<tr>
+							<td>@Translate("Background")</td>
+							<td>@GetColorSquare(buttonSecondaryHoverBackgroundColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonSecondaryHoverBackgroundColor');">@buttonSecondaryHoverBackgroundColor</a></td>
+						</tr>
+					}
+					@if (!string.IsNullOrEmpty(buttonSecondaryHoverBorderColor))
+					{
+						<tr>
+							<td>@Translate("Border")</td>
+							<td>@GetColorSquare(buttonSecondaryHoverBorderColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonSecondaryHoverBorderColor');">@buttonSecondaryHoverBorderColor</a></td>
+						</tr>
+					}
+					@if (!string.IsNullOrEmpty(accessibilityOutlineColor))
+					{
+						<tr>
+							<td>@Translate("Focus outline")</td>
+							<td>@GetColorSquare(accessibilityOutlineColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@accessibilityOutlineColor');">@accessibilityOutlineColor</a></td>
+						</tr>
+					}
+				</table>
+			</div>
+			<div class="g-col-12 g-col-lg-3">
+				<table class="table table-borderless table-sm w-100">
+					<thead>
+						<tr>
+							<th colspan="2" class="fw-bold">@Translate("Link button")</th>
+						</tr>
+					</thead>
+					<tr>
+						<td>@Translate("Link color")</td>
+						<td>@GetColorSquare(buttonLinkColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonLinkColor');">@buttonLinkColor</a></td>
+					</tr>
+					<thead>
+						<tr>
+							<th colspan="2" class="fw-bold">@Translate("Link button hover")</th>
+						</tr>
+					</thead>
+					@if (!string.IsNullOrEmpty(buttonLinkHoverColor))
+					{
+						<tr>
+							<td>@Translate("Link hover color")</td>
+							<td>@GetColorSquare(buttonLinkHoverColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@buttonLinkHoverColor');">@buttonLinkHoverColor</a></td>
+						</tr>
+					}
+
+					@if (!string.IsNullOrEmpty(accessibilityOutlineColor))
+					{
+						<tr>
+							<td>@Translate("Focus outline")</td>
+							<td>@GetColorSquare(accessibilityOutlineColor)<a class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@accessibilityOutlineColor');">@accessibilityOutlineColor</a></td>
+						</tr>
+					}
+				</table>
+			</div>
+			<div class="g-col-12 g-col-lg-3">
+				<table class="table table-borderless table-sm w-100">
+					<tr>
+						<td class="fw-bold">@Translate("Implementation")</td>
+					</tr>
+					<tr>
+						<td>
+							@{
+								string implementation = $"<div class=\"theme {themeClassName}\"></div>";
+							}
+							<div class="text-muted">
+								<code class="align-top" role="button" title="@Translate("Click to copy")" onclick="copyTextToClipboard('@themeClassName');">
+									@Dynamicweb.Core.Encoders.HtmlEncoder.HtmlEncode(implementation)
+								</code>
+							</div>
+						</td>
+					</tr>
+				</table>
+			</div>
+			@{
+				bool hasUsageData = Converter.ToBoolean(Dynamicweb.Context.Current.Request["auditUsages"]);
+				if (hasUsageData)
+				{
+					var themeUsage = GetThemeUsageById(themeClassName);
+					int allUsages = themeUsage?.AllUsages ?? 0;
+					string buttonAttributes = allUsages > 0 ? $"data-bs-toggle=\"modal\" data-bs-target=\"#themeUsage_{Model.ID}\"" : string.Empty;
+					string badgeStyle = allUsages > 0 ? "bg-success" : "bg-danger";
+					
+					<div class="g-col-12 g-col-lg-9 position-relative">
+						<button type="button" class="btn btn-primary btn-sm position-absolute end-0" @buttonAttributes>
+		                  Usages
+		                  <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-white @badgeStyle">@allUsages</span>
+		                </button>
+		            
+						@if (allUsages > 0)
+						{
+							int websiteUsages = themeUsage?.WebsiteUsages.Count ?? 0;
+							int pageUsages = themeUsage?.PageUsages.Count ?? 0;
+							int pagePropertyUsages = themeUsage?.PagePropertyUsages.Count ?? 0;
+							int gridRowUsages = themeUsage?.GridRowUsages.Count ?? 0;
+							int paragraphUsages = themeUsage?.ParagraphUsages.Count ?? 0;
+							
+			                <!-- Modal -->
+			                <div class="modal fade" id="themeUsage_@(Model.ID)" tabindex="-1" aria-labelledby="usagesModelLabel" aria-hidden="true">
+				                <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+					                <div class="modal-content">
+						                <div class="modal-header">
+							                <h5 class="modal-title" id="usagesModelLabel">@allUsages Usages of '@(themeName)' (@(themeClassName))</h5>
+							                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+						                </div>
+						                <div class="modal-body">
+							                <div class="accordion" id="accordionWrapper">
+								                @if(websiteUsages > 0)
+								                {
+									                <div class="accordion-item">
+										                <h2 class="accordion-header" id="headingWebsites">
+											                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseWebsites" aria-expanded="true" aria-controls="collapseWebsites">
+												                <span class="pe-2">Websites</span><span class="badge rounded-pill bg-secondary text-light">@websiteUsages</span>
+											                </button>
+										                </h2>
+										                <div id="collapseWebsites" class="accordion-collapse collapse show" aria-labelledby="headingWebsites" data-bs-parent="#accordionWrapper">
+											                <div class="accordion-body">
+												                <ul>
+													                @foreach (var usage in themeUsage.WebsiteUsages)
+													                {
+														                var website = Dynamicweb.Content.Services.Areas.GetArea(usage);
+														                <li><span class="fw-bold">@website.Name</span>@($" (ID: {usage})")</li>
+													                }
+												                </ul>
+											                </div>
+										                </div>
+									                </div>
+								                }
+								                @if (pageUsages > 0)
+								                {
+													var pages = Dynamicweb.Content.Services.Pages.GetPages(themeUsage.PageUsages.ToArray());
+									                
+									                <div class="accordion-item">
+										                <h2 class="accordion-header" id="headingPages">
+											                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePages" aria-expanded="false" aria-controls="collapsePages">
+												                <span class="pe-2">Pages</span><span class="badge rounded-pill bg-secondary text-light">@pageUsages</span>
+											                </button>
+										                </h2>
+										                <div id="collapsePages" class="accordion-collapse collapse" aria-labelledby="headingPages" data-bs-parent="#accordionWrapper">
+											                <div class="accordion-body">
+												                <ul>
+													                @foreach (var usage in themeUsage.PageUsages)
+													                {
+														                <li><span class="fw-bold">@pages.FirstOrDefault(p => p.ID == usage).GetDisplayName()</span>@($" (ID: {usage})")</li>
+													                }
+												                </ul>
+											                </div>
+										                </div>
+									                </div>
+								                }
+								                @if (pagePropertyUsages > 0)
+								                {
+													var pages = Dynamicweb.Content.Services.Pages.GetPages(themeUsage.PageUsages.ToArray());
+									                
+									                <div class="accordion-item">
+										                <h2 class="accordion-header" id="headingPageProperties">
+											                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePageProperties" aria-expanded="false" aria-controls="collapsePageProperties">
+												                <span class="pe-2">Page Properties</span><span class="badge rounded-pill bg-secondary text-light">@pagePropertyUsages</span>
+											                </button>
+										                </h2>
+										                <div id="collapsePageProperties" class="accordion-collapse collapse" aria-labelledby="headingPageProperties" data-bs-parent="#accordionWrapper">
+											                <div class="accordion-body">
+												                <ul>
+													                @foreach (var usage in themeUsage.PagePropertyUsages)
+													                {
+														                <li><span class="fw-bold">@pages.FirstOrDefault(p => p.ID == usage).GetDisplayName()</span>@($" (ID: {usage})")</li>
+													                }
+												                </ul>
+											                </div>
+										                </div>
+									                </div>
+								                }
+								                @if (gridRowUsages > 0)
+								                {
+													var rows = Dynamicweb.Content.Services.Grids.GetGridRows().Where(r => themeUsage.GridRowUsages.Contains(r.ID)).ToList();
+									                
+									                <div class="accordion-item">
+										                <h2 class="accordion-header" id="headingRows">
+											                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRows" aria-expanded="false" aria-controls="collapseRows">
+												                <span class="pe-2">Rows</span><span class="badge rounded-pill bg-secondary text-light">@gridRowUsages</span>
+											                </button>
+										                </h2>
+										                <div id="collapseRows" class="accordion-collapse collapse" aria-labelledby="headingRows" data-bs-parent="#accordionWrapper">
+											                <div class="accordion-body">
+												                <ul>
+													                @foreach (var usage in themeUsage.GridRowUsages)
+													                {
+														                var row = rows.FirstOrDefault(r => r.ID == usage);
+														                var page = Dynamicweb.Content.Services.Pages.GetPage(row.PageId);
+														                <li>Page: <span class="fw-bold">@(page.GetDisplayName())</span>@($"( ID: {page.ID}) - Row: ")<span class="fw-bold">@(row.DefinitionId)</span>@($" (ID: {usage})")</li>
+													                }
+												                </ul>
+											                </div>
+										                </div>
+									                </div>
+								                }
+								                @if (paragraphUsages > 0)
+								                {
+													var paragraphs = Dynamicweb.Content.Services.Paragraphs.GetParagraphs().Where(p => themeUsage.ParagraphUsages.Contains(p.ID)).ToList();
+									                
+									                <div class="accordion-item">
+										                <h2 class="accordion-header" id="headingParagraphs">
+											                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseParagraphs" aria-expanded="false" aria-controls="collapseParagraphs">
+												                <span class="pe-2">Paragraphs</span><span class="badge rounded-pill bg-secondary text-light">@paragraphUsages</span>
+											                </button>
+										                </h2>
+										                <div id="collapseParagraphs" class="accordion-collapse collapse" aria-labelledby="headingParagraphs" data-bs-parent="#accordionWrapper">
+											                <div class="accordion-body">
+												                <ul>
+													                @foreach (var usage in themeUsage.ParagraphUsages)
+	                                                                {
+	                                                                    var paragraph = paragraphs.FirstOrDefault(p => p.ID == usage);
+	                                                                    var page = Dynamicweb.Content.Services.Pages.GetPage(paragraph.PageID);
+	                                                                    <li>Page: <span class="fw-bold">@(page.GetDisplayName())</span>@($"( ID: {page.ID}) - Paragraph: ")<span class="fw-bold">@paragraph.Header</span>@($" (ID: {usage})")</li>
+	                                                                }
+												                </ul>
+											                </div>
+										                </div>
+									                </div>
+								                }
+							                </div>
+						                </div>
+					                </div>
+				                </div>
+			                </div>
+						}
+					</div>
+				}
+			}
+		</div>
+	</div>
+}
+<div class="g-col-12">
+	<hr />
+</div>
