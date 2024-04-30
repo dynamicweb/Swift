@@ -1,12 +1,27 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 @using System.Globalization
+@using System
 
 @functions{
+
+	string GetQuantityRoundedFromStep(double? value, double? stepQty) {
+		if (stepQty.HasValue && value.HasValue) {
+			
+			var stepQtySplit = stepQty.Value.ToString(CultureInfo.InvariantCulture).Split(".");
+			int decimalPlaces = stepQtySplit.Length > 1 ? int.TryParse(stepQtySplit[1], out int result) ? result : 0 : 0;
+			// Cut decimals to 15 when backend double calculations is faulty
+			decimalPlaces = decimalPlaces > 15 ? 15 : decimalPlaces;
+			return DoubleToString(Math.Round(value.Value, decimalPlaces, MidpointRounding.AwayFromZero));
+		}
+
+		return null;
+	}
+
 	string DoubleToString(double? value)
 	{
 		if (value.HasValue)
 		{
-			return value.Value.ToString(CultureInfo.InvariantCulture);
+			return value.Value.ToString(CultureInfo.InvariantCulture); 
 		}
 		return null;
 	}
@@ -34,7 +49,8 @@
 	string discountTotal = orderline.GetString("Ecom:Order:OrderLine.TotalDiscount.PriceFormatted");
 	string variantText = orderline.GetString("Ecom:Order:OrderLine.ProductVariantText");
 	var orderlineId = orderline.GetValue("Ecom:Order:OrderLine.Id");
-	var quantity = orderline.GetDouble("Ecom:Order:OrderLine.Quantity");
+	double? stepQty = orderline.GetDouble("Ecom:Product.PurchaseQuantityStep") > 0 ? orderline.GetDouble("Ecom:Product.PurchaseQuantityStep") : 1;
+	var quantity = GetQuantityRoundedFromStep(orderline.GetDouble("Ecom:Order:OrderLine.Quantity"), stepQty);
 	var unitName = orderline.GetString("Ecom:Order:OrderLine.UnitName");
 	string primaryGroupId = orderline.GetString("Ecom:Order:OrderLine.PrimaryOrDefaultGroupId");
 	string productId = orderline.GetString("Ecom:Order:OrderLine.ProductID");
@@ -43,11 +59,10 @@
 	string productType = orderline.GetString("Ecom.Product.Type");
 	double? stockQuantity = orderline.GetDouble("Ecom:Product.Stock");
 	double? minQty = orderline.GetDouble("Ecom:Product.PurchaseMinimumQuantity") > 0 ? orderline.GetDouble("Ecom:Product.PurchaseMinimumQuantity") : 1;
-	double? stepQty = orderline.GetDouble("Ecom:Product.PurchaseQuantityStep") > 0 ? orderline.GetDouble("Ecom:Product.PurchaseQuantityStep") : 1;
 	bool isStockType = orderline.GetInteger("Ecom.Product.Type") == 0;
 	bool setMaxQty = isStockType && !neverOutOfStock;
 	double? maxQty = setMaxQty ? stockQuantity : null;
-
+	
 	string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
 	link += $"&GroupID={primaryGroupId}";
 	link += $"&ProductID={productId}";
@@ -118,8 +133,7 @@
 								@* Quantity *@
 								<div class="input-group js-input-group">
 									<label for="QuantityOrderLine@(orderlineId)" class="visually-hidden">@Translate("Quantity"):</label>
-									<input type="number" id="QuantityOrderLine@(orderlineId)" step="@DoubleToString(stepQty)" min="@DoubleToString(minQty)" max="@DoubleToString(maxQty)" class="form-control text-center swift_quantity-field" onchange="swift.Cart.UpdateCart(event);" value="@DoubleToString(quantity)" name="QuantityOrderLine@(orderlineId)" style="width: 5.5rem;">
-
+									<input type="number" id="QuantityOrderLine@(orderlineId)" step="@DoubleToString(stepQty)" min="@DoubleToString(minQty)" max="@DoubleToString(maxQty)" class="form-control text-center swift_quantity-field" onchange="swift.Cart.UpdateCart(event);" value="@quantity" name="QuantityOrderLine@(orderlineId)" style="width: 5.5rem;">
 									<div class="invalid-feedback d-none">
 										@Translate("Please select a quantity that is dividable by") @stepQty
 									</div>
@@ -148,7 +162,7 @@
 					<div class="g-col-12">
 						@if (!orderIsQuote)
 						{
-							string clickProductLink = "onclick=\"return removeProductLink('" + @productId + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(name) + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(variantText) + "', '" + @unitPriceCurrency + "', '" + @unitPriceClean + "', '" + @quantity.ToString().Replace(",", ".") + "')\"";
+							string clickProductLink = "onclick=\"return removeProductLink('" + @productId + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(name) + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(variantText) + "', '" + @unitPriceCurrency + "', '" + @unitPriceClean + "', '" + @quantity + "')\"";
 
 							<a href="@removeFromBasketLink" class="btn btn-link btn-sm p-0 m-0 fs-8" title="@Translate("Remove")" @clickProductLink>@Translate("Remove")</a>
 						}
