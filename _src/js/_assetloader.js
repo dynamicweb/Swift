@@ -1,14 +1,15 @@
 const AssetLoader = (function () {
+  let asset;
   return {
     Load: function (assetPath, assetType) {
       if (assetType == "js") {
         //if filename is a external JavaScript file
-        var asset = document.createElement("script");
+        asset = document.createElement("script");
         asset.setAttribute("type", "text/javascript");
         asset.setAttribute("src", assetPath);
       } else if (assetType == "css") {
         //if filename is an external CSS file
-        var asset = document.createElement("link");
+        asset = document.createElement("link");
         asset.setAttribute("rel", "stylesheet");
         asset.setAttribute("type", "text/css");
         asset.setAttribute("href", assetPath);
@@ -31,7 +32,7 @@ const AssetLoader = (function () {
 
     AppendToHead: function (asset) {
       const head = document.head;
-      var assetFound = false;
+      let assetFound = false;
 
       if (asset.type == "text/css") {
         head.querySelectorAll("link").forEach((element) => {
