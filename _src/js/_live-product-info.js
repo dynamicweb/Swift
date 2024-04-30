@@ -30,8 +30,7 @@ const LiveProductInfo = (function () {
       productPrices: ".product-prices",
       productPriceTemplate: ".product-prices-template",
       productPriceQuantity: ".js-text-price-quantity",
-      productPriceQuantityFieldForLists:
-        ".item_swift_productlistcompactview .js-quantity, .item_swift_productlistlistview .js-quantity",
+      productPriceQuantityFieldForLists: ".js-quantity",
       productPricePrice: ".js-text-price-price",
       quantityField: ".swift_quantity-field",
       stock: ".js-text-stock",
