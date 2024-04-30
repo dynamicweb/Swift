@@ -19,12 +19,13 @@ const Scroll = (function () {
               var headerElement = element.closest("header");
               var headerHeight = headerElement ? headerElement.clientHeight : 0;
 
+              let alternativeThemeClasses = alternativeTheme.split(" ");
+
               if (
                 document.body.scrollTop > headerHeight ||
                 document.documentElement.scrollTop > headerHeight
               ) {
                 if (currentTheme !== mainTheme) {
-                  var alternativeThemeClasses = alternativeTheme.split(" ");
                   for (let i = 0; i < alternativeThemeClasses.length; i++) {
                     if (alternativeThemeClasses[i] != "") {
                       element.classList.remove(alternativeThemeClasses[i]);
@@ -41,14 +42,13 @@ const Scroll = (function () {
               } else {
                 if (currentTheme !== alternativeTheme) {
                   let mainThemeClasses = mainTheme.split(" ");
-                  for (var i = 0; i < mainThemeClasses.length; i++) {
+                  for (let i = 0; i < mainThemeClasses.length; i++) {
                     if (mainThemeClasses[i] != "") {
                       element.classList.remove(mainThemeClasses[i]);
                     }
                   }
 
-                  var alternativeThemeClasses = alternativeTheme.split(" ");
-                  for (var i = 0; i < alternativeThemeClasses.length; i++) {
+                  for (let i = 0; i < alternativeThemeClasses.length; i++) {
                     if (alternativeThemeClasses[i] != "") {
                       element.classList.add(alternativeThemeClasses[i]);
                     }

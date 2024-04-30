@@ -1,14 +1,14 @@
+import { Modal } from "bootstrap";
+
 const Cart = (function () {
   let productId;
-	let productVariantId;
-	let productUnitId;
-	let productName;
-	let productVariantName;
-	let productCurrency;
-	let productReferer;
-	let productPrice;
-	let addQuantity;
-	let isPendingQuote = "false";
+  let productName;
+  let productVariantName;
+  let productCurrency;
+  let productReferer;
+  let productPrice;
+  let addQuantity;
+  let isPendingQuote = "false";
 
   return {
     Update: async function (e) {
@@ -20,8 +20,6 @@ const Cart = (function () {
       //Setup the form data
       let formData = new FormData(form);
       productId = formData.get("ProductId");
-      productVariantId = formData.get("VariantId");
-      productUnitId = formData.get("UnitID");
       productName = formData.get("ProductName");
       productVariantName = formData.get("ProductVariantName");
       productCurrency = formData.get("ProductCurrency");
@@ -57,7 +55,7 @@ const Cart = (function () {
           quantityField.classList.remove("is-invalid");
 
           if (isPendingQuote == "true") {
-            PromptPendingQuoteMessage();
+            this.PromptPendingQuoteMessage(form);
           } else if (isValid) {
             this.AddToCart(clickedButton, form, formData);
           } else if (!isMinQuantityValid) {
@@ -69,21 +67,21 @@ const Cart = (function () {
           }
         } else {
           if (isPendingQuote == "true") {
-            PromptPendingQuoteMessage();
+            this.PromptPendingQuoteMessage(form);
           }
 
           this.AddToCart(clickedButton, form, formData);
         }
       }
     },
-    PromptPendingQuoteMessage: function () {
+    PromptPendingQuoteMessage: function (form) {
       const pendingQuoteMessage = form.querySelector(
         ".js-pending-quote-notice"
       ).innerHTML;
       document.querySelector("#DynamicModalContent").innerHTML =
         pendingQuoteMessage;
 
-      let dynamicModal = new bootstrap.Modal(
+      let dynamicModal = new Modal(
         document.querySelector("#DynamicModal"),
         {
           backdrop: "static",
@@ -155,7 +153,7 @@ const Cart = (function () {
         clickedButton.innerHTML = clickedButton.getAttribute("data-content");
         clickedButton.setAttribute("data-content", "");
 
-        let removeFocusCssClassTimer = setTimeout(function () {
+        setTimeout(function () {
           Cart.GetMiniCarts(formData.get("minicartid")).forEach(function (el) {
             el.classList.remove("mini-cart-quantity-added");
           });
@@ -171,7 +169,7 @@ const Cart = (function () {
 
     Error: async function (response, clickedButton) {
       //Cleanup
-      let removeFocusCssClassTimer = setTimeout(function () {
+      setTimeout(function () {
         document.querySelectorAll(".js-cart-qty").forEach(function (el) {
           el.classList.remove("mini-cart-quantity-added");
         });
@@ -185,6 +183,8 @@ const Cart = (function () {
     },
 
     PushDataToGoogleAnalytics: function () {
+      let gtag = window.gtag;
+
       if (typeof gtag !== "undefined") {
         gtag("event", "add_to_cart", {
           currency: productCurrency,
@@ -265,7 +265,7 @@ const Cart = (function () {
       return isValid;
     },
     PromptStepQuantityFailedWarning: function (form) {
-      const dynamicModal = new bootstrap.Modal(
+      const dynamicModal = new Modal(
         document.querySelector("#DynamicModal"),
         {}
       );
@@ -281,7 +281,7 @@ const Cart = (function () {
       }
     },
     PromptMinQuantityFailedWarning: function (quantityField, form) {
-      const dynamicModal = new bootstrap.Modal(
+      const dynamicModal = new Modal(
         document.querySelector("#DynamicModal"),
         {}
       );

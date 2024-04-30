@@ -1,3 +1,6 @@
+import { Modal } from "bootstrap";
+import { Scroll } from "scroll";
+
 const ProductList = (function () {
   return {
     init: function () {
@@ -14,11 +17,11 @@ const ProductList = (function () {
         .getAttribute("data-response-target-element")
         .includes(".")
         ? document.querySelector(
-            "#" + form.getAttribute("data-response-target-element")
-          )
+          "#" + form.getAttribute("data-response-target-element")
+        )
         : clickedButton.closest(
-            form.getAttribute("data-response-target-element")
-          );
+          form.getAttribute("data-response-target-element")
+        );
       var preloader = form.getAttribute("data-preloader");
       var swap = form.getAttribute("data-swap")
         ? form.getAttribute("data-swap")
@@ -61,7 +64,7 @@ const ProductList = (function () {
             responseTargetElement.innerHTML = "";
           }
 
-          var addPreloaderTimer = setTimeout(function () {
+          setTimeout(function () {
             var preloaderElement = document.createElement("div");
             preloaderElement.className = "d-flex p-4";
             var preloaderSpinner = document.createElement("div");
@@ -215,8 +218,8 @@ const ProductList = (function () {
           });
         }
 
-        swift.Scroll.hideHeadersOnScroll();
-        swift.Scroll.handleAlternativeTheme();
+        Scroll.hideHeadersOnScroll();
+        Scroll.handleAlternativeTheme();
 
         //Run scripts from the loaded html
         scripts = responseTargetElement.querySelectorAll("script");
@@ -239,7 +242,7 @@ const ProductList = (function () {
           document.querySelector("#FacetsModal") &&
           requestType != "UpdateList"
         ) {
-          var facetsModal = new bootstrap.Modal(
+          var facetsModal = new Modal(
             document.querySelector("#FacetsModal"),
             { backdrop: false }
           );
@@ -262,7 +265,8 @@ const ProductList = (function () {
             },
           },
         });
-        var globalDispatcher = document.dispatchEvent(replacedEvent);
+        
+        document.dispatchEvent(replacedEvent);
       }
     },
 
@@ -289,8 +293,8 @@ const ProductList = (function () {
           parentEvent: e,
         },
       });
-      var globalDispatcher = document.dispatchEvent(event);
-      var localDispatcher = clickedButton.dispatchEvent(event);
+      const globalDispatcher = document.dispatchEvent(event);
+      const localDispatcher = clickedButton.dispatchEvent(event);
 
       if (globalDispatcher != false && localDispatcher != false) {
         form

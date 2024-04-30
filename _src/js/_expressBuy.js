@@ -1,3 +1,5 @@
+import { PageUpdater } from "pageupdater";
+
 const ExpressBuy = (function () {
   return {
     OpenReplacementModal: function (productCounter) {
@@ -9,7 +11,7 @@ const ExpressBuy = (function () {
         "data-replacement-feed"
       );
 
-      swift.PageUpdater.UpdateFromUrl(modalBody, productReplacementFeed).then(
+      PageUpdater.UpdateFromUrl(modalBody, productReplacementFeed).then(
         function () {
           const productNameElement =
             productArticle.querySelector(".js-product-name");

@@ -1,3 +1,6 @@
+import { PageUpdater } from "pageupdater";
+import { google } from "google-maps";
+
 const Places = (function () {
   var autocomplete;
 
@@ -42,12 +45,12 @@ const Places = (function () {
           }
         });
 
-        input.addEventListener("keyup", function (e) {
+        input.addEventListener("keyup", function () {
           document.querySelector(".pac-container").style.visibility = "visible";
         });
 
         autocomplete = new google.maps.places.Autocomplete(input, options);
-        autocomplete.addListener("place_changed", swift.Places.fillInAddress);
+        autocomplete.addListener("place_changed", this.fillInAddress);
         input.setAttribute("autocomplete", "none");
       }
     },
@@ -58,28 +61,28 @@ const Places = (function () {
       });
     },
 
-    changeCountryWithAddressFormat: function (countryCode) {
+    changeCountryWithAddressFormat: function () {
       const form = document.querySelector("#AddressForm");
       form.querySelector("input[name=AddAddressesForm]").remove();
       form.querySelector("input[name=ManageAddressesFormAction]").value = "Add";
-      swift.PageUpdater.Update(form);
+      PageUpdater.Update(form);
     },
 
     fillInAddress: function () {
       var fieldPrefix = settings.fieldPrefix;
       fieldPrefix =
         document.querySelector("#EcomOrderDeliveryAddress") &&
-        fieldPrefix == null
+          fieldPrefix == null
           ? "EcomOrderDelivery"
           : fieldPrefix;
       fieldPrefix =
         document.querySelector("#EcomOrderCustomerAddress") &&
-        fieldPrefix == null
+          fieldPrefix == null
           ? "EcomOrderCustomer"
           : fieldPrefix;
       fieldPrefix =
         document.querySelector("#UserManagement_Form_Address") &&
-        fieldPrefix == null
+          fieldPrefix == null
           ? "UserManagement_Form_"
           : fieldPrefix;
 
@@ -105,45 +108,45 @@ const Places = (function () {
           const componentType = component.types[0];
 
           switch (componentType) {
-            case "street_number": {
-              streetnumber = component.short_name;
-              break;
-            }
+          case "street_number": {
+            streetnumber = component.short_name;
+            break;
+          }
 
-            case "route": {
-              address = component.short_name;
-              break;
-            }
+          case "route": {
+            address = component.short_name;
+            break;
+          }
 
-            case "postal_code": {
-              zip = component.long_name;
-              break;
-            }
+          case "postal_code": {
+            zip = component.long_name;
+            break;
+          }
 
-            case "postal_town": {
-              locality = locality == "" ? component.long_name : locality;
-              break;
-            }
+          case "postal_town": {
+            locality = locality == "" ? component.long_name : locality;
+            break;
+          }
 
-            case "locality": {
-              locality = locality == "" ? component.long_name : locality;
-              break;
-            }
+          case "locality": {
+            locality = locality == "" ? component.long_name : locality;
+            break;
+          }
 
-            case "sublocality_level_1": {
-              sublocality = component.long_name;
-              break;
-            }
+          case "sublocality_level_1": {
+            sublocality = component.long_name;
+            break;
+          }
 
-            case "administrative_area_level_1": {
-              region = component.short_name;
-              break;
-            }
+          case "administrative_area_level_1": {
+            region = component.short_name;
+            break;
+          }
 
-            case "country":
-              country = component.short_name;
-              countrycode = component.short_name;
-              break;
+          case "country":
+            country = component.short_name;
+            countrycode = component.short_name;
+            break;
           }
         }
 

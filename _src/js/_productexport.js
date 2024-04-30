@@ -78,7 +78,7 @@ const ProductExport = (function () {
           recipiens.appendChild(inputElement);
         });
 
-        swift.ProductExport.StartDownload(clickedButton);
+        this.StartDownload(clickedButton);
       } else {
         clickedButton.disabled = false;
         clickedButton.innerHTML = settings.downloadLinkLabel;

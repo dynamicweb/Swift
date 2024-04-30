@@ -28,12 +28,12 @@ export default [
             drop_console: true,
           },
         }),
-      // eslint({
-      //   include: srcPath + ["js/**"],
-      //   exclude: ["node_modules/**", distPath + "**"],
-      //   throwOnError: true,
-      //   throwOnWarning: true,
-      // }),
+      eslint({
+        include: srcPath + ["js/**"],
+        exclude: ["node_modules/**", distPath + "**"],
+        throwOnError: true,
+        throwOnWarning: true,
+      }),
       copy({
         targets: [
           { src: "node_modules/swiffy-slider/dist/", dest: distPath + "lib/" },

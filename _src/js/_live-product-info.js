@@ -259,7 +259,7 @@ const LiveProductInfo = (function () {
                 product.VariantInfo.PriceMin != null &&
                 product.VariantInfo.PriceMax != null &&
                 product.VariantInfo.PriceMin.Price !=
-                  product.VariantInfo.PriceMax.Price
+                product.VariantInfo.PriceMax.Price
               ) {
                 price =
                   product.VariantInfo.PriceMin.PriceFormatted +
@@ -305,7 +305,7 @@ const LiveProductInfo = (function () {
                 product.VariantInfo.PriceMin != null &&
                 product.VariantInfo.PriceMax != null &&
                 product.VariantInfo.PriceMin.PriceWithVat !=
-                  product.VariantInfo.PriceMax.PriceWithVat
+                product.VariantInfo.PriceMax.PriceWithVat
               ) {
                 priceWithVat =
                   product.VariantInfo.PriceMin.PriceWithVatFormatted +
@@ -497,8 +497,8 @@ const LiveProductInfo = (function () {
       );
       return data.Products
         ? data.Products.filter(function (el) {
-            return el.Id === productId && el.VariantId === variantId;
-          })[0]
+          return el.Id === productId && el.VariantId === variantId;
+        })[0]
         : data;
     },
 
