@@ -92,7 +92,7 @@ const ProductList = (function () {
           newParams.set("ID", pageId);
         }
 
-        newParams.set("LayoutTemplate", "Swift_PageClean.cshtml"); //Set template to not include header and footer
+        newParams.set("LayoutTemplate", "Swift-v2_PageClean.cshtml"); //Set template to not include header and footer
 
         if (swap == "afterend") {
           newParams.delete("PageSize");

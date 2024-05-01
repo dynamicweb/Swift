@@ -306,7 +306,7 @@ const Typeahead = (function () {
 
     goToPage: function (aTag) {
       var pageTitle = aTag.getAttribute("title");
-      //Typeahead.navigateToPage(aTag.href);
+      Typeahead.navigateToPage(aTag.href);
       history.pushState(null, pageTitle, aTag.href);
       if (pageTitle != null) {
         document.title = pageTitle;
@@ -314,7 +314,9 @@ const Typeahead = (function () {
       return false;
     },
 
-    //navigateToPage: async function (href) {},
+    navigateToPage: async function (href) {
+      console.log(href);
+    },
 
     init: function () {
       document
