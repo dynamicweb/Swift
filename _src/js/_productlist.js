@@ -1,5 +1,5 @@
 import { Modal } from "bootstrap";
-import { Scroll } from "scroll";
+import { Scroll } from "./_scroll.js";
 
 const ProductList = (function () {
   return {
@@ -242,10 +242,9 @@ const ProductList = (function () {
           document.querySelector("#FacetsModal") &&
           requestType != "UpdateList"
         ) {
-          var facetsModal = new Modal(
-            document.querySelector("#FacetsModal"),
-            { backdrop: false }
-          );
+          var facetsModal = new Modal(document.querySelector("#FacetsModal"), {
+            backdrop: false,
+          });
           facetsModal.show();
 
           var backdrop = document.querySelector(".modal-backdrop");
@@ -265,7 +264,7 @@ const ProductList = (function () {
             },
           },
         });
-        
+
         document.dispatchEvent(replacedEvent);
       }
     },

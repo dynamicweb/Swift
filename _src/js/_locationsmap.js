@@ -1,4 +1,5 @@
-import { google } from "google-maps";
+// Dependencies: Google Maps API
+const google = window.google;
 
 const LocationsMap = (function () {
   var map;

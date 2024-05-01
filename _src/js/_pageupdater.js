@@ -1,4 +1,4 @@
-import { Scroll } from "scroll";
+import { Scroll } from "./_scroll.js";
 
 const PageUpdater = (function () {
   var timeout;
@@ -18,7 +18,7 @@ const PageUpdater = (function () {
         responseTargetElement = document.querySelector(responseTargetElement);
         var layoutTemplate = form.getAttribute("data-layout-template")
           ? form.getAttribute("data-layout-template")
-          : "Swift_PageClean.cshtml";
+          : "Swift-v2_PageClean.cshtml";
 
         let formData = new FormData(form);
         formData.set("LayoutTemplate", layoutTemplate);
@@ -81,7 +81,7 @@ const PageUpdater = (function () {
       var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
       var layoutTemplate = clickedButton.getAttribute("data-layout-template")
         ? clickedButton.getAttribute("data-layout-template")
-        : "Swift_PageClean.cshtml";
+        : "Swift-v2_PageClean.cshtml";
       url += "&LayoutTemplate=" + layoutTemplate;
 
       //By default the UpdateFromUrl simply targets the element that makes the call. But you do also have the choice of setting the target
@@ -128,7 +128,7 @@ const PageUpdater = (function () {
 
     UpdateFromUrlInline: async function (e, url, layout, target) {
       var layoutTemplate =
-        layout != undefined ? layout : "Swift_PageClean.cshtml";
+        layout != undefined ? layout : "Swift-v2_PageClean.cshtml";
       url += "&LayoutTemplate=" + layoutTemplate;
 
       var responseTargetElement = target != undefined ? target : e.target;

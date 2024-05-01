@@ -1,4 +1,4 @@
-import { PageUpdater } from "pageupdater";
+import { PageUpdater } from "./_pageupdater.js";
 
 const ExpressBuy = (function () {
   return {

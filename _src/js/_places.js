@@ -1,5 +1,5 @@
-import { PageUpdater } from "pageupdater";
-import { google } from "google-maps";
+import { PageUpdater } from "./_pageupdater.js";
+const google = window.google;
 
 const Places = (function () {
   var autocomplete;
