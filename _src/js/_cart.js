@@ -26,9 +26,7 @@ const Cart = (function () {
       productReferer = formData.get("ProductReferer");
       productPrice = formData.get("ProductPrice");
       addQuantity = formData.get("Quantity") ? formData.get("Quantity") : 1;
-      isPendingQuote = formData.get("PendingQuote")
-        ? formData.get("PendingQuote")
-        : "false";
+      isPendingQuote = formData.get("PendingQuote") ? formData.get("PendingQuote") : "false";
 
       this.PushDataToGoogleAnalytics();
       let event = new CustomEvent("update.swift.cart", {
@@ -36,41 +34,36 @@ const Cart = (function () {
         cancelable: true,
         detail: {
           formData: formData,
-          parentEvent: e,
+          parentEvent: e
         },
       });
       let globalDispatcher = document.dispatchEvent(event);
       let localDispatcher = clickedButton.dispatchEvent(event);
 
       if (globalDispatcher != false && localDispatcher != false) {
+
         //The actual cart call (add to cart)
         if (quantityField != null) {
           //Validation
-          const isMinQuantityValid = this.ValidateMinQuantity(quantityField);
-          const isStepQuantityValid = this.ValidateStepQuantity(quantityField);
-          const isMaxQuantityValid = this.ValidateMaxQuantity(quantityField);
-          const isValid =
-            isMinQuantityValid && isStepQuantityValid && isMaxQuantityValid;
+          const validityState = quantityField.validity;
 
           quantityField.classList.remove("is-invalid");
 
           if (isPendingQuote == "true") {
             this.PromptPendingQuoteMessage(form);
-          } else if (isValid) {
-            this.AddToCart(clickedButton, form, formData);
-          } else if (!isMinQuantityValid) {
+          } else if (validityState.rangeUnderflow) {
             this.PromptMinQuantityFailedWarning(quantityField, form);
-          } else if (!isStepQuantityValid) {
-            this.PromptStepQuantityFailedWarning(form);
-          } else if (!isMaxQuantityValid) {
+          } else if (validityState.rangeOverflow) {
+            quantityField.value = quantityField.max;
             quantityField.classList.add("is-invalid");
-          }
-        } else {
-          if (isPendingQuote == "true") {
-            this.PromptPendingQuoteMessage(form);
-          }
 
-          this.AddToCart(clickedButton, form, formData);
+          } else if (validityState.stepMismatch) {
+            this.PromptStepQuantityFailedWarning(form);
+          } else if (!quantityField.value) {
+            this.PromptMissingValueWarning(form);
+          } else {
+            this.AddToCart(clickedButton, form, formData);
+          }
         }
       }
     },
@@ -221,35 +214,23 @@ const Cart = (function () {
 
       return miniCarts;
     },
-    ValidateMinQuantity: function (quantityField) {
-      let isValid = true;
-
-      if (quantityField != null && quantityField.min) {
-        const quantity = parseFloat(quantityField.value);
-        const minQuantity = parseFloat(quantityField.min);
-        isValid = quantity < minQuantity ? false : isValid;
-      }
-
-      return isValid;
-    },
-    ValidateMaxQuantity: function (quantityField) {
-      if (quantityField != null && quantityField.max) {
-        const enteredValue = parseFloat(quantityField.value);
-        const maxValue = parseFloat(quantityField.max);
-        if (enteredValue > maxValue) {
-          quantityField.value = maxValue;
-          return false;
-        }
-      }
-      return true;
-    },
-    ValidateCartQuantity: function (inputElement) {
+    UpdateCart: async function (e) {
+			const inputElement = e.currentTarget;
       const enteredValue = parseFloat(inputElement.value);
       const maxValue = parseFloat(inputElement.max);
+      const minValue = parseFloat(inputElement.min);
 
       if (maxValue && enteredValue > maxValue) {
         inputElement.value = maxValue;
       }
+      
+      if (minValue && enteredValue < minValue) {
+        inputElement.value = minValue;
+      }
+
+      let form = e.currentTarget.closest("form");
+      form.action = '?cartcmd=updateorderlines';
+      form.submit();
     },
 
     ValidateStepQuantity: function (quantityField) {
@@ -265,10 +246,7 @@ const Cart = (function () {
       return isValid;
     },
     PromptStepQuantityFailedWarning: function (form) {
-      const dynamicModal = new Modal(
-        document.querySelector("#DynamicModal"),
-        {}
-      );
+      const dynamicModal = new Modal(document.querySelector("#DynamicModal"),{ });
       const stepQuantityWarning = form.querySelector(
         ".js-step-quantity-warning"
       );
@@ -281,22 +259,29 @@ const Cart = (function () {
       }
     },
     PromptMinQuantityFailedWarning: function (quantityField, form) {
-      const dynamicModal = new Modal(
-        document.querySelector("#DynamicModal"),
-        {}
-      );
+      const dynamicModal = new Modal(document.querySelector("#DynamicModal"),{ });
       const minQuantityWarning = form.querySelector(".js-min-quantity-warning");
 
       const message = minQuantityWarning.innerHTML;
-      const minQuantity = parseFloat(quantityField.min);
       document.querySelector("#DynamicModalContent").innerHTML = message;
 
       if (!document.querySelector("#DynamicModal").classList.contains("show")) {
         dynamicModal.show();
       }
 
-      quantityField.value = minQuantity;
+      quantityField.value = quantityField.min;
     },
+    PromptMissingValueWarning: function (form) {
+      const dynamicModal = new Modal(document.querySelector('#DynamicModal'), {});
+      const stepQuantityWarning = form.querySelector(".js-value-missing-warning");
+
+      const message = stepQuantityWarning.innerHTML;
+      document.querySelector("#DynamicModalContent").innerHTML = message;
+
+      if (!document.querySelector('#DynamicModal').classList.contains("show")) {
+        dynamicModal.show();
+      }
+    }
   };
 })();
 
