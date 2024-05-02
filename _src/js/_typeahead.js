@@ -41,8 +41,6 @@ const Typeahead = (function () {
 
       if (e.key === "Escape") {
         // Revert back to the original value last entered in the input field
-        const highlightedItems = userList.querySelectorAll(".highlighted");
-
         document
           .querySelectorAll(".js-type-ahead-field")
           .forEach(function (field) {
@@ -114,7 +112,7 @@ const Typeahead = (function () {
         const signal = controller.signal;
         let abortError = false;
         let response = await fetch(searchUrl, { signal }).catch(function (
-          error
+          //error
         ) {
           abortError = true;
         });
@@ -156,12 +154,14 @@ const Typeahead = (function () {
         .forEach(function (field) {
           field.value = inputValue;
 
+          /*
           if (field.value != "") {
             elm
               .closest(".js-type-ahead-dropdown")
               .querySelector(".js-suggest-form")
               .submit();
           }
+          */
         });
     },
 
@@ -235,7 +235,7 @@ const Typeahead = (function () {
         Typeahead.showSearchResults(searchField);
       }
 
-      var hideSearchTimer = setTimeout(function () {
+      setTimeout(function () {
         document.body.addEventListener("click", Typeahead.hideSearchResults);
       }, 200);
     },
@@ -268,7 +268,7 @@ const Typeahead = (function () {
 
       closestDropdown.classList.add("show");
 
-      var hideSearchTimer = setTimeout(function () {
+      setTimeout(function () {
         document.body.addEventListener("click", Typeahead.hideSearchResults);
       }, 200);
     },
@@ -314,7 +314,9 @@ const Typeahead = (function () {
       return false;
     },
 
-    navigateToPage: async function (href) {},
+    navigateToPage: async function (href) {
+      console.log(href);
+    },
 
     init: function () {
       document

@@ -1,3 +1,5 @@
+import { Scroll } from "./_scroll.js";
+
 const PageUpdater = (function () {
   var timeout;
   var controller = new AbortController();
@@ -16,7 +18,7 @@ const PageUpdater = (function () {
         responseTargetElement = document.querySelector(responseTargetElement);
         var layoutTemplate = form.getAttribute("data-layout-template")
           ? form.getAttribute("data-layout-template")
-          : "Swift_PageClean.cshtml";
+          : "Swift-v2_PageClean.cshtml";
 
         let formData = new FormData(form);
         formData.set("LayoutTemplate", layoutTemplate);
@@ -42,7 +44,7 @@ const PageUpdater = (function () {
           //UI updates
           var preloaderTargetElement =
             preloader != "inline" ? form : responseTargetElement;
-          var addPreloaderTimer = setTimeout(function () {
+          let addPreloaderTimer = setTimeout(function () {
             PageUpdater.AddPreloaders(preloader, preloaderTargetElement);
           }, 200); //Small delay to secure that the preloader is not loaded all the time
 
@@ -79,7 +81,7 @@ const PageUpdater = (function () {
       var clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
       var layoutTemplate = clickedButton.getAttribute("data-layout-template")
         ? clickedButton.getAttribute("data-layout-template")
-        : "Swift_PageClean.cshtml";
+        : "Swift-v2_PageClean.cshtml";
       url += "&LayoutTemplate=" + layoutTemplate;
 
       //By default the UpdateFromUrl simply targets the element that makes the call. But you do also have the choice of setting the target
@@ -87,8 +89,8 @@ const PageUpdater = (function () {
         "data-response-target-element"
       )
         ? document.querySelector(
-            "#" + clickedButton.getAttribute("data-response-target-element")
-          )
+          "#" + clickedButton.getAttribute("data-response-target-element")
+        )
         : clickedButton;
 
       //Fire the 'update' event
@@ -126,7 +128,7 @@ const PageUpdater = (function () {
 
     UpdateFromUrlInline: async function (e, url, layout, target) {
       var layoutTemplate =
-        layout != undefined ? layout : "Swift_PageClean.cshtml";
+        layout != undefined ? layout : "Swift-v2_PageClean.cshtml";
       url += "&LayoutTemplate=" + layoutTemplate;
 
       var responseTargetElement = target != undefined ? target : e.target;
@@ -137,12 +139,12 @@ const PageUpdater = (function () {
           parentEvent: e,
         },
       });
-      var globalDispatcher = document.dispatchEvent(event);
-      var localDispatcher = e.target.dispatchEvent(event);
+      const globalDispatcher = document.dispatchEvent(event);
+      const localDispatcher = e.target.dispatchEvent(event);
 
       if (globalDispatcher != false && localDispatcher != false) {
         //UI updates
-        var addPreloaderTimer = setTimeout(function () {
+        const addPreloaderTimer = setTimeout(function () {
           PageUpdater.AddPreloaders("inline", responseTargetElement);
         }, 200); //Small delay to secure that the preloader is not loaded all the time
 
@@ -163,7 +165,7 @@ const PageUpdater = (function () {
       }
     },
 
-    AddPreloaders: function (type, targetElement, addPreloaderTimer) {
+    AddPreloaders: function (type, targetElement) {
       //Private method
       if (type != "inline") {
         var overlayElement = document.createElement("div");
@@ -239,8 +241,8 @@ const PageUpdater = (function () {
           responseTargetElement.innerHTML = html;
           var scripts = responseTargetElement.querySelectorAll("script");
 
-          swift.Scroll.hideHeadersOnScroll();
-          swift.Scroll.handleAlternativeTheme();
+          Scroll.hideHeadersOnScroll();
+          Scroll.handleAlternativeTheme();
 
           //Run scripts from the loaded html
           scripts.forEach((script) => {

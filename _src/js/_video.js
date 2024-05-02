@@ -5,7 +5,7 @@ const Video = (function () {
         .querySelectorAll(".js-vimeo-video-thumbnail")
         .forEach(function (thumbnailElement) {
           const assetValue = thumbnailElement.dataset.assetValue;
-          swift.Video.setVimeoThumbnail(thumbnailElement, assetValue);
+          this.setVimeoThumbnail(thumbnailElement, assetValue);
         });
     },
 

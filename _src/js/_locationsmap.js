@@ -1,3 +1,6 @@
+// Dependencies: Google Maps API
+const google = window.google;
+
 const LocationsMap = (function () {
   var map;
   var markers = [];
@@ -140,10 +143,12 @@ const LocationsMap = (function () {
 
     // Create a marker and set its position
     markLocation: function (location) {
+      let marker;
+
       if (settings.mapIcon.path || settings.mapIcon.url) {
         settings.mapIcon.scaledSize = new google.maps.Size(35, 35);
 
-        var marker = new google.maps.Marker({
+        marker = new google.maps.Marker({
           icon: settings.mapIcon,
           map: map,
           position: location.location,
@@ -151,7 +156,7 @@ const LocationsMap = (function () {
           id: markersCount,
         });
       } else {
-        var marker = new google.maps.Marker({
+        marker = new google.maps.Marker({
           map: map,
           position: location.location,
           title: location.name,
@@ -195,13 +200,13 @@ const LocationsMap = (function () {
 
     // Render the list item
     renderLocationListItem: function (id, type) {
-      var target = document.querySelector("#LocationsList");
+      const target = document.querySelector("#LocationsList");
 
       // Data
-      var location = settings.locations[id];
-      var name = location.company != "" ? location.company : location.name;
-      var addressLineOne = location.address;
-      var addressLineTwoArr = [];
+      const location = settings.locations[id];
+      const name = location.company != "" ? location.company : location.name;
+      const addressLineOne = location.address;
+      const addressLineTwoArr = [];
       if (location.zip != "") {
         addressLineTwoArr.push(location.zip);
       }
@@ -214,49 +219,49 @@ const LocationsMap = (function () {
       if (location.country != "") {
         addressLineTwoArr.push(location.country);
       }
-      var addressLineTwo = addressLineTwoArr.join(", ");
+      const addressLineTwo = addressLineTwoArr.join(", ");
 
-      var addressLineThreeArr = [];
+      const addressLineThreeArr = [];
       if (location.email != "") {
         addressLineThreeArr.push(location.email);
       }
       if (location.phone != "") {
         addressLineThreeArr.push(location.phone);
       }
-      var addressLineThree = addressLineThreeArr.join(", ");
+      const addressLineThree = addressLineThreeArr.join(", ");
 
       // List element
-      var listÌtemElement = document.createElement("div");
+      const listÌtemElement = document.createElement("div");
       listÌtemElement.style.cursor = "pointer";
       listÌtemElement.className = "list-group-item";
 
-      var containerElement = document.createElement("div");
+      const containerElement = document.createElement("div");
       containerElement.className = "d-flex";
       listÌtemElement.appendChild(containerElement);
 
       // Left column
-      var columnOneElement = document.createElement("div");
+      const columnOneElement = document.createElement("div");
       columnOneElement.className = "flex-fill";
 
-      var headerElement = document.createElement("h6");
+      const headerElement = document.createElement("h6");
       headerElement.className = "h6";
       headerElement.innerHTML = name;
       columnOneElement.appendChild(headerElement);
 
       if (addressLineOne != "") {
-        var addressLineElement = document.createElement("div");
+        const addressLineElement = document.createElement("div");
         addressLineElement.innerHTML = addressLineOne;
         columnOneElement.appendChild(addressLineElement);
       }
 
       if (addressLineTwo != "") {
-        var addressLineElement = document.createElement("div");
+        const addressLineElement = document.createElement("div");
         addressLineElement.innerHTML = addressLineTwo;
         columnOneElement.appendChild(addressLineElement);
       }
 
       if (addressLineThree != "") {
-        var addressLineElement = document.createElement("div");
+        const addressLineElement = document.createElement("div");
         addressLineElement.innerHTML = addressLineThree;
         columnOneElement.appendChild(addressLineElement);
       }
@@ -265,9 +270,9 @@ const LocationsMap = (function () {
 
       // Directions - In list
       if (type == "AddToList" && addressLineTwo != "") {
-        var columnTwoElement = document.createElement("div");
+        const columnTwoElement = document.createElement("div");
 
-        var directionsElement = document.createElement("a");
+        const directionsElement = document.createElement("a");
         directionsElement.className = "btn icon-2 pe-0 pt-0";
         directionsElement.innerHTML =
           '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-corner-up-right"><polyline points="15 14 20 9 15 4"></polyline><path d="M4 20v-7a4 4 0 0 1 4-4h12"></path></svg>';
@@ -285,7 +290,7 @@ const LocationsMap = (function () {
 
       // Directions in info
       if (type == "UpdateInfo" && addressLineTwo != "") {
-        var directionsElement = document.createElement("a");
+        const directionsElement = document.createElement("a");
         directionsElement.className = "btn btn-primary w-100 mt-3";
         directionsElement.innerHTML = settings.directionsLabel;
         directionsElement.title = settings.directionsLabel;
@@ -373,9 +378,9 @@ const LocationsMap = (function () {
         var a =
           Math.sin(dLat / 2) * Math.sin(dLat / 2) +
           Math.cos((lat * Math.PI) / 180) *
-            Math.cos((lat * Math.PI) / 180) *
-            Math.sin(dLong / 2) *
-            Math.sin(dLong / 2);
+          Math.cos((lat * Math.PI) / 180) *
+          Math.sin(dLong / 2) *
+          Math.sin(dLong / 2);
         var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         var d = R * c;
         distances[counter] = d;

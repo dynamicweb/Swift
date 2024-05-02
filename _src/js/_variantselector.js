@@ -1,3 +1,5 @@
+import { PageUpdater } from "./_pageupdater.js";
+
 const VariantSelector = (function () {
   return {
     init: function () {
@@ -187,13 +189,14 @@ const VariantSelector = (function () {
 
         if (globalDispatcher != false && localDispatcher != false) {
           //Update the url
+          let url = "";
 
           if (variantSelectorElement.getAttribute("data-base-url")) {
-            var url = variantSelectorElement.getAttribute("data-base-url");
+            url = variantSelectorElement.getAttribute("data-base-url");
             url += "&variantid=" + selections.join(".");
           } else {
-            var url = new URL(window.location);
-            var searchParams = url.searchParams;
+            url = new URL(window.location);
+            let searchParams = url.searchParams;
             searchParams.set("variantid", selections.join("."));
             url.search = searchParams.toString();
           }
@@ -201,7 +204,7 @@ const VariantSelector = (function () {
           window.history.replaceState({}, "", decodeURI(url));
 
           //Call the async PageUpdater
-          swift.PageUpdater.Update(variantSelectorElement);
+          PageUpdater.Update(variantSelectorElement);
 
           //Set the friendly url returned from the request
           variantSelectorElement.addEventListener(

@@ -4,8 +4,8 @@ const Image = (function () {
       const currentElement = e.currentTarget;
       const currentImage = currentElement.classList.contains("stretched-link")
         ? currentElement
-            .closest(".js-product")
-            .querySelector("[data-alternative-image]")
+          .closest(".js-product")
+          .querySelector("[data-alternative-image]")
         : currentElement;
 
       if (currentImage) {
