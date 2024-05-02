@@ -215,7 +215,7 @@ const Cart = (function () {
       return miniCarts;
     },
     UpdateCart: async function (e) {
-			const inputElement = e.currentTarget;
+      const inputElement = e.currentTarget;
       const enteredValue = parseFloat(inputElement.value);
       const maxValue = parseFloat(inputElement.max);
       const minValue = parseFloat(inputElement.min);
@@ -223,7 +223,7 @@ const Cart = (function () {
       if (maxValue && enteredValue > maxValue) {
         inputElement.value = maxValue;
       }
-      
+
       if (minValue && enteredValue < minValue) {
         inputElement.value = minValue;
       }
@@ -246,7 +246,7 @@ const Cart = (function () {
       return isValid;
     },
     PromptStepQuantityFailedWarning: function (form) {
-      const dynamicModal = new Modal(document.querySelector("#DynamicModal"),{ });
+      const dynamicModal = new Modal(document.querySelector("#DynamicModal"), {});
       const stepQuantityWarning = form.querySelector(
         ".js-step-quantity-warning"
       );
@@ -259,7 +259,7 @@ const Cart = (function () {
       }
     },
     PromptMinQuantityFailedWarning: function (quantityField, form) {
-      const dynamicModal = new Modal(document.querySelector("#DynamicModal"),{ });
+      const dynamicModal = new Modal(document.querySelector("#DynamicModal"), {});
       const minQuantityWarning = form.querySelector(".js-min-quantity-warning");
 
       const message = minQuantityWarning.innerHTML;
