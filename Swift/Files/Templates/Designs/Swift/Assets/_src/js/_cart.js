@@ -174,7 +174,7 @@ const Cart = function () {
 			if (typeof gtag !== "undefined") {
 				gtag("event", "add_to_cart", {
 					currency: productCurrency,
-					value: productPrice,
+					value: (parseFloat(productPrice) * parseFloat(addQuantity)),
 					items: [
 						{
 							item_id: productId,
