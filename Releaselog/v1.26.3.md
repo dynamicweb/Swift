@@ -11,6 +11,7 @@
 
 * Cart: Rename GoToCheckoutButton in CartSummary
 * Cart:  OrderLineItem, set the value parameter to  sum (price * quantity)
+* Cart: OrderLineItem, fix Missing image 
 * Checkout: gtag events, begin_checkout, add_shipping_info , add_payment_info and purchase, fix unit price for
 * Customer Center: OrderViewSearchList, Order state "Deleted" - filter IsDeleted
 * General: PasswordReset in Extranet, improve userFound condition
