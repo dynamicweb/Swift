@@ -5,7 +5,7 @@
 > [!NOTE]  
 > **Requirements**
 > * **Swift v1.26.3 requires DynamicWeb v9.17.4 or newer, requires the  Shipmondo.dll version 2.0.0 or newer**
-> * **Swift v1.26.3 can also run on DynamicWeb v10.2.0 or newer, requires Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
+> * **Swift v1.26.3 can also run on DynamicWeb v10.4.0 or newer, requires Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
 
 ## Bugfixes
 
