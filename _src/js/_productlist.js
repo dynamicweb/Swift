@@ -1,5 +1,5 @@
-import { Modal } from "bootstrap";
 import { Scroll } from "./_scroll.js";
+const bootstrap = window.bootstrap;
 
 const ProductList = (function () {
   return {
@@ -17,11 +17,11 @@ const ProductList = (function () {
         .getAttribute("data-response-target-element")
         .includes(".")
         ? document.querySelector(
-          "#" + form.getAttribute("data-response-target-element")
-        )
+            "#" + form.getAttribute("data-response-target-element")
+          )
         : clickedButton.closest(
-          form.getAttribute("data-response-target-element")
-        );
+            form.getAttribute("data-response-target-element")
+          );
       var preloader = form.getAttribute("data-preloader");
       var swap = form.getAttribute("data-swap")
         ? form.getAttribute("data-swap")
@@ -52,7 +52,7 @@ const ProductList = (function () {
             overlayElement.setAttribute("id", "overlay");
             var overlayElementIcon = document.createElement("div");
             overlayElementIcon.className = "spinner-border";
-            overlayElementIcon.style.top = window.pageYOffset + "px";
+            overlayElementIcon.style.top = window.scrollY + "px";
             overlayElement.appendChild(overlayElementIcon);
 
             if (form) {
@@ -242,9 +242,12 @@ const ProductList = (function () {
           document.querySelector("#FacetsModal") &&
           requestType != "UpdateList"
         ) {
-          var facetsModal = new Modal(document.querySelector("#FacetsModal"), {
-            backdrop: false,
-          });
+          var facetsModal = new bootstrap.Modal(
+            document.querySelector("#FacetsModal"),
+            {
+              backdrop: false,
+            }
+          );
           facetsModal.show();
 
           var backdrop = document.querySelector(".modal-backdrop");

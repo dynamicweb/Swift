@@ -52,7 +52,7 @@ window.onpopstate = function () {
 // Dropdown
 window.addEventListener("DOMContentLoaded", () => {
   const bootstrap = window.bootstrap || {};
-  const dropdowns = document.querySelectorAll(".dropdown");
+  const dropdowns = document.querySelectorAll("#page-header-desktop .dropdown");
 
   dropdowns.forEach((dropdown) => {
     const dropdownToggle = dropdown.querySelector(
