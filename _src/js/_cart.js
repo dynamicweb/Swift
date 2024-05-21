@@ -1,4 +1,4 @@
-import { Modal } from "bootstrap";
+const bootstrap = window.bootstrap;
 
 const Cart = (function () {
   let productId;
@@ -74,7 +74,7 @@ const Cart = (function () {
       document.querySelector("#DynamicModalContent").innerHTML =
         pendingQuoteMessage;
 
-      let dynamicModal = new Modal(
+      let dynamicModal = new bootstrap.Modal(
         document.querySelector("#DynamicModal"),
         {
           backdrop: "static",
@@ -246,7 +246,7 @@ const Cart = (function () {
       return isValid;
     },
     PromptStepQuantityFailedWarning: function (form) {
-      const dynamicModal = new Modal(document.querySelector("#DynamicModal"), {});
+      const dynamicModal = new bootstrap.Modal(document.querySelector("#DynamicModal"), {});
       const stepQuantityWarning = form.querySelector(
         ".js-step-quantity-warning"
       );
@@ -259,7 +259,7 @@ const Cart = (function () {
       }
     },
     PromptMinQuantityFailedWarning: function (quantityField, form) {
-      const dynamicModal = new Modal(document.querySelector("#DynamicModal"), {});
+      const dynamicModal = new bootstrap.Modal(document.querySelector("#DynamicModal"), {});
       const minQuantityWarning = form.querySelector(".js-min-quantity-warning");
 
       const message = minQuantityWarning.innerHTML;
@@ -272,7 +272,7 @@ const Cart = (function () {
       quantityField.value = quantityField.min;
     },
     PromptMissingValueWarning: function (form) {
-      const dynamicModal = new Modal(document.querySelector('#DynamicModal'), {});
+      const dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), {});
       const stepQuantityWarning = form.querySelector(".js-value-missing-warning");
 
       const message = stepQuantityWarning.innerHTML;
