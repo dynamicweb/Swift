@@ -17,11 +17,11 @@ const ProductList = (function () {
         .getAttribute("data-response-target-element")
         .includes(".")
         ? document.querySelector(
-            "#" + form.getAttribute("data-response-target-element")
-          )
+          "#" + form.getAttribute("data-response-target-element")
+        )
         : clickedButton.closest(
-            form.getAttribute("data-response-target-element")
-          );
+          form.getAttribute("data-response-target-element")
+        );
       var preloader = form.getAttribute("data-preloader");
       var swap = form.getAttribute("data-swap")
         ? form.getAttribute("data-swap")
