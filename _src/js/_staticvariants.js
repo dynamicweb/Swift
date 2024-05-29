@@ -5,7 +5,7 @@ const StaticVariants = (function () {
 
       var productImageElement = target
         .closest(".js-product")
-        .querySelector("img[id]");
+        .querySelector("#ProductImage_" + id);
       var productPriceElement = target
         .closest(".js-product")
         .querySelector("#ProductPrice_" + id + " .text-price");
