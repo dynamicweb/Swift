@@ -37,45 +37,36 @@
 
 @{
 	string swiftVersion = ReadFile("/Files/Templates/Designs/Swift-v2/swift_version.txt");
-	@* Branding Themes Fonts *@
-var brandingPageId = Model.Area.Item.GetLink("BrandingPage") != null ? Model.Area.Item.GetLink("BrandingPage").PageId : 0;
-var themePageId = Model.Area.Item.GetLink("ThemesPage") != null ? Model.Area.Item.GetLink("ThemesPage").PageId : 0;
+	var disableWideBreakpoints = Model.Area?.Item?.GetRawValueString("DisableWideBreakpoints", "default");
+	string customHeaderInclude = Model.Area?.Item?.GetFile("CustomHeaderInclude") != null ? Model.Area.Item.GetFile("CustomHeaderInclude").Name : string.Empty;
+	string favicon = Model.Area.Item.GetRawValueString("Favicon", "/Files/Templates/Designs/Swift-v2/Assets/Images/favicon.png");
+    string appleTouchIcon = Model.Area.Item.GetRawValueString("AppleTouchIcon", "/Files/Templates/Designs/Swift-v2/Assets/Images/apple-touch-icon.png");
+	
+	var cssStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/css/styles.css"));
+	var jsFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/js/scripts.js"));
+	Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/css/swift.css?{cssStyleFileInfo.LastWriteTime.Ticks}>; rel=preload; as=style;");
+    Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js>; rel=preload; as=script;");
+    Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/js/swift.js?{jsFileInfo.LastWriteTime.Ticks}>; rel=preload; as=script;");
 
-var disableWideBreakpoints = Model.Area?.Item?.GetRawValueString("DisableWideBreakpoints", "default");
+	string googleTagManagerID = Model.Area.Item.GetString("GoogleTagManagerID");
+	string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
+	bool allowTracking = AllowTracking();
 
-string customHeaderInclude = Model.Area.Item.GetFile("CustomHeaderInclude") != null ? Model.Area.Item.GetFile("CustomHeaderInclude").Name : string.Empty;
+	// Schema.org details for PDP
+	string productId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ProductID") : string.Empty;
+	bool isProductDetailsPage = !string.IsNullOrEmpty(productId);
+	bool isArticlePage = Model.ItemType == "Swift-v2_Article";
+	string schemaOrgType = string.Empty;
 
-string masterTheme = !string.IsNullOrWhiteSpace(Model.Area.Item.GetRawValueString("Theme")) ? " theme " + Model.Area.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	if (isProductDetailsPage)
+	{
+		schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Product\"";
+	}
 
-string favicon = Model.Area.Item.GetFile("Favicon") != null ? Model.Area.Item.GetFile("Favicon").Path : "/Files/Templates/Designs/Swift-v2/Assets/Images/favicon.png";
-
-var brandingPage = Dynamicweb.Content.Services.Pages?.GetPage(brandingPageId) ?? null;
-var themesParagraphLastChanged = Dynamicweb.Content.Services.Paragraphs.GetParagraphsByPageId(themePageId).OrderByDescending(p => p.Audit.LastModifiedAt).FirstOrDefault();
-var cssLastModified = brandingPage.Audit.LastModifiedAt > themesParagraphLastChanged.Audit.LastModifiedAt ? brandingPage.Audit.LastModifiedAt : themesParagraphLastChanged.Audit.LastModifiedAt;
-
-var cssStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/css/styles.css"));
-var jsFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/js/scripts.js"));
-
-string googleTagManagerID = Model.Area.Item.GetString("GoogleTagManagerID");
-string googleAnalyticsMeasurementID = Pageview.AreaSettings.GetString("GoogleAnalyticsMeasurementID");
-
-bool allowTracking = AllowTracking();
-
-// Schema.org details for PDP
-string productId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ProductID") : "";
-bool isProductDetailsPage = !string.IsNullOrEmpty(productId);
-bool isArticlePage = Model.ItemType == "Swift-v2_Article";
-string schemaOrgType = string.Empty;
-
-if (isProductDetailsPage)
-{
-	schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Product\"";
-}
-
-if (isArticlePage)
-{
-	schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Article\"";
-}
+	if (isArticlePage)
+	{
+		schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Article\"";
+	}
 }
 
 <!doctype html>
@@ -85,19 +76,15 @@ if (isArticlePage)
 	@* Required meta tags *@
 	<meta charset="utf-8">
 	<meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0">
-	<link rel="preload" href="/Files/Templates/Designs/Swift-v2/Assets/css/swift.css?@cssStyleFileInfo.LastWriteTime.Ticks" as="style">
-	<link rel="preload" href="/Files/Templates/Designs/Swift-v2/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js" as="script">
-	<link rel="preload" href="/Files/Templates/Designs/Swift-v2/Assets/js/swift.js?@jsFileInfo.LastWriteTime.Ticks" as="script">
-
 	<link rel="shortcut icon" href="@favicon">
-	<link rel="apple-touch-icon" href="/Files/Templates/Designs/Swift-v2/Assets/Images/logo_transparent.png">
+	<link rel="apple-touch-icon" href="@appleTouchIcon">
+
+	@Model.MetaTags
+	
 	<meta http-equiv="X-UA-Compatible" content="ie=edge">
 	<meta name="googlebot-news" content="nosnippet">
 
-	@Model.MetaTags
-
 	<title>@Model.Title</title>
-
 	@* Swift stylesheet *@
 	<link href="/Files/Templates/Designs/Swift-v2/Assets/css/swift.css?@cssStyleFileInfo.LastWriteTime.Ticks" rel="stylesheet" media="all" type="text/css">
 
@@ -133,14 +120,12 @@ if (isArticlePage)
 		}
 	}
 
-	@* Branding and Color schemes stylesheets *@
-	<link href="/Files/Templates/Designs/Swift-v2/_parsed/Swift_css/Swift_styles_@(Model.Area.ID).min.css?@cssLastModified.Ticks" rel="stylesheet" media="all" type="text/css" data-last-modified-content="@cssLastModified">
-	<script src="/Files/Templates/Designs/Swift-v2/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-
+	@* Color schemes stylesheets *@
 	@if (Model.GetColorSchemeStyle() != null) {
 		<link href="@Model.GetColorSchemeStyle()" rel="stylesheet" media="all" type="text/css">
 	}
-
+        
+	<script src="/Files/Templates/Designs/Swift-v2/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 	<script src="/Files/Templates/Designs/Swift-v2/Assets/js/swift.js?@jsFileInfo.LastWriteTime.Ticks"></script>
 	<script src="/Files/Templates/Designs/Swift-v2/Assets/lib/aos/dist/aos.js"></script>
         
@@ -221,7 +206,7 @@ if (isArticlePage)
 	}
 </head>
 
-<body class="brand @(masterTheme)">
+<body class="">
 
 	@* Google tag manager *@
 	@if (!string.IsNullOrWhiteSpace(googleTagManagerID) && allowTracking)

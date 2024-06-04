@@ -42,16 +42,7 @@
 	bool enableMiniCart = Model.Area.Item?.GetBoolean("EnableOffcanvasMiniCart") ?? false;
 	var offcanvasMiniCartBehaviour = Model.Area.Item?.GetRawValueString("OffcanvasMinicartBehaviour", "3") ?? "3";
 	bool miniCartEnabled = cartSummaryPageId != null && enableMiniCart;
-	var brandingPageId = Model.Area.Item?.GetInt32("BrandingPage") ?? 0;
-    var themePageId = Model.Area.Item?.GetInt32("ThemesPage") ?? 0;
-    var cssPageId = Model.Area.Item?.GetInt32("CssPage") ?? 0;
-    var brandingPage = brandingPageId != 0 ? Dynamicweb.Content.Services.Pages?.GetPage(brandingPageId) ?? null : null;
-    var themesParagraphs = themePageId != 0 ? Dynamicweb.Content.Services.Paragraphs?.GetParagraphsByPageId(themePageId) ?? null : null;
-    var cssParagraphs = cssPageId != 0 ? Dynamicweb.Content.Services.Paragraphs?.GetParagraphsByPageId(cssPageId) ?? null : null;
-}
 
-@if (themesParagraphs != null || brandingPage != null)
-{
     string swiftVersion = ReadFile("/Files/Templates/Designs/Swift-v2/swift_version.txt");
     bool renderAsResponsive = Model.Area.Item.GetString("DeviceRendering", "responsive").Equals("responsive", StringComparison.OrdinalIgnoreCase);
     bool renderMobile = Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Mobile || Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Tablet;
@@ -65,42 +56,11 @@
 
     var headerDesktopLink = Model.Area.Item?.GetLink("HeaderDesktop") ?? null;
     var headerMobileLink = Model.Area.Item?.GetLink("HeaderMobile") ?? null;
-
     var footerDesktopLink = Model.Area.Item?.GetLink("FooterDesktop") ?? null;
     var footerMobileLink = Model.Area.Item?.GetLink("FooterMobile") ?? null;
 
     var disableWideBreakpoints = Model.Area?.Item?.GetRawValueString("DisableWideBreakpoints", "default");
-
     string customHeaderInclude = !string.IsNullOrEmpty(Model.Area.Item.GetRawValueString("CustomHeaderInclude")) ? Model.Area.Item.GetFile("CustomHeaderInclude").Name : string.Empty;
-
-    var themesParagraphLastChanged = Dynamicweb.Content.Services.Paragraphs.GetParagraphsByPageId(themePageId).OrderByDescending(p => p.Audit.LastModifiedAt).FirstOrDefault();
-    var cssLastModified = brandingPage.Audit.LastModifiedAt > themesParagraphLastChanged.Audit.LastModifiedAt ? brandingPage.Audit.LastModifiedAt : themesParagraphLastChanged.Audit.LastModifiedAt;
-
-    var cssThemeAndBrandingStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath($"/Files/Templates/Designs/Swift-v2/_parsed/Swift_css/Swift_styles_{Model.Area.ID}.min.css"));
-
-
-    if (cssPageId != 0)
-    {
-        var cssFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath($"/Files/Templates/Designs/Swift-v2/_parsed/Swift_css/Swift_css_styles_{Model.Area.ID}.css"));
-        var cssParagraphLastChanged = Dynamicweb.Content.Services.Paragraphs.GetParagraphsByPageId(cssPageId).OrderByDescending(p => p.Audit.LastModifiedAt).FirstOrDefault();
-        if (!cssThemeAndBrandingStyleFileInfo.Exists || cssThemeAndBrandingStyleFileInfo.LastWriteTime < cssParagraphLastChanged.Audit.LastModifiedAt)
-        {
-            var cssPageview = Dynamicweb.Frontend.PageView.GetPageviewByPageID(cssPageId);
-            cssPageview.Redirect = false;
-            cssPageview.Output();
-        }
-    }
-
-    if (!cssThemeAndBrandingStyleFileInfo.Exists || cssThemeAndBrandingStyleFileInfo.LastWriteTime < brandingPage.Audit.LastModifiedAt)
-    {
-        //Branding page has been saved or the file is missing. Rewrite the file to disc.
-        if (brandingPageId > 0)
-        {
-            var brandingPageview = Dynamicweb.Frontend.PageView.GetPageviewByPageID(brandingPageId);
-            brandingPageview.Redirect = false;
-            brandingPageview.Output();
-        }
-    }
 
     // Schema.org details for PDP
     bool isProductDetailsPage = Dynamicweb.Context.Current.Request.QueryString.AllKeys.Contains("ProductID");
@@ -116,10 +76,6 @@
     {
         schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Article\"";
     }
-
-
-    var cssStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/css/swift.css"));
-    var jsFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/js/swift.js"));
 
     string favicon = Model.Area.Item.GetRawValueString("Favicon", "/Files/Templates/Designs/Swift-v2/Assets/Images/favicon.png");
     string appleTouchIcon = Model.Area.Item.GetRawValueString("AppleTouchIcon", "/Files/Templates/Designs/Swift-v2/Assets/Images/apple-touch-icon.png");
@@ -141,11 +97,12 @@
 
     bool allowTracking = AllowTracking();
 
+    var cssStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/css/swift.css"));
+    var jsFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/js/swift.js"));
     Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/css/swift.css?{cssStyleFileInfo.LastWriteTime.Ticks}>; rel=preload; as=style;");
-    Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/_parsed/Swift_css/Swift_styles_{Model.Area.ID}.min.css?{cssLastModified.Ticks}>; rel=preload; as=style;");
     Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js>; rel=preload; as=script;");
     Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/js/swift.js?{jsFileInfo.LastWriteTime.Ticks}>; rel=preload; as=script;");
-
+    
     SetMetaTags();
 
     List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
@@ -162,9 +119,10 @@
 
     Uri url = Dynamicweb.Context.Current.Request.Url;
     string hostName = url.Host;
+}
 
-    <!doctype html>
-    <html lang="@Pageview.Area.CultureInfo.TwoLetterISOLanguageName">
+<!doctype html>
+<html lang="@Pageview.Area.CultureInfo.TwoLetterISOLanguageName">
     <head>
         <!-- @swiftVersion -->
         @* Required meta tags *@
@@ -174,7 +132,7 @@
         <link rel="apple-touch-icon" href="@appleTouchIcon">
 
         @Model.MetaTags
-
+        
         @{
             var alreadyWrittenTwoletterIsos = new List<string>();
             @* Languages meta data *@
@@ -214,7 +172,6 @@
                         }
                         string href = $"{url.Scheme}://{hostName}{friendlyUrl}";
 
-
                         <link rel="alternate" hreflang="@language.Area.CultureInfo.Name.ToLower()" href="@href">
                         if (!alreadyWrittenTwoletterIsos.Contains(language.Area.CultureInfo.TwoLetterISOLanguageName))
                         {
@@ -245,8 +202,6 @@
                 }
             </style>
 
-
-
             if (disableWideBreakpoints != "disableUltraWideOnly")
             {
                 <style>
@@ -264,14 +219,12 @@
             }
         }
 
-        @* Branding and Color schemes stylesheets *@
-        <link href="/Files/Templates/Designs/Swift-v2/_parsed/Swift_css/Swift_styles_@(Model.Area.ID).min.css?@cssLastModified.Ticks" rel="stylesheet" media="all" type="text/css" data-last-modified-content="@cssLastModified">
-        <script src="/Files/Templates/Designs/Swift-v2/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-        
+        @* Color schemes stylesheets *@
         @if (Model.GetColorSchemeStyle() != null) {
             <link href="@Model.GetColorSchemeStyle()" rel="stylesheet" media="all" type="text/css">
         }
-
+        
+        <script src="/Files/Templates/Designs/Swift-v2/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
         <script src="/Files/Templates/Designs/Swift-v2/Assets/js/swift.js?@jsFileInfo.LastWriteTime.Ticks"></script>
         <script src="/Files/Templates/Designs/Swift-v2/Assets/lib/aos/dist/aos.js"></script>
         
@@ -351,7 +304,7 @@
             @RenderPartial($"Components/Custom/{customHeaderInclude}")
         }
     </head>
-    <body class="brand" id="page@(Model.ID)">
+    <body id="page@(Model.ID)">
 
         @* Google tag manager *@
         @if (!string.IsNullOrWhiteSpace(googleTagManagerID) && allowTracking)
@@ -411,10 +364,6 @@
         @* Render any offcanvas menu here *@
         @RenderSnippet("offcanvas")
 
-        @{
-            bool isErpConnectionDown = !Dynamicweb.Core.Converter.ToBoolean(Context.Current.Items["IsWebServiceConnectionAvailable"]);
-        }
-
         @* Language selector modal *@
         <div class="modal fade" id="PreferencesModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered modal-sm" id="PreferencesModalContent">
@@ -439,25 +388,23 @@
         </div>
 
         @* Modal for dynamic content *@
-        <div class="modal fade js-product" id="DynamicModal" tabindex="-1" aria-hidden="true">
+        <div class="modal fade js-product bg-body" id="DynamicModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered modal-md">
-                <div class="modal-content theme light" id="DynamicModalContent">
+                <div class="modal-content" id="DynamicModalContent">
                     @* The content here comes from an external request *@
                 </div>
             </div>
         </div>
 
         @* Offcanvas for dynamic content *@
-		<div class="offcanvas offcanvas-end theme light" tabindex="-1" id="DynamicOffcanvas">
+		<div class="offcanvas offcanvas-end bg-body" tabindex="-1" id="DynamicOffcanvas">
             @* The content here comes from an external request *@
         </div>
 
         @if (Model.Area.Item.GetBoolean("ShowErpDownMessage") && !Dynamicweb.Core.Converter.ToBoolean(Context.Current.Items["IsWebServiceConnectionAvailable"]))
         {
-            string erpDownMessageTheme = !string.IsNullOrWhiteSpace(Model.Area.Item.GetRawValueString("ErpDownMessageTheme")) ? " theme " + Model.Area.Item.GetRawValueString("ErpDownMessageTheme").Replace(" ", "").Trim().ToLower() : "theme light";
-
             <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1040">
-                <div class="toast fade show border-0 @erpDownMessageTheme" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast fade show border-0" role="alert" aria-live="assertive" aria-atomic="true">
                     <div class="toast-header">
                         <strong class="me-auto">@Translate("Connection down")</strong>
                         <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
@@ -534,36 +481,6 @@
 	</body>
 
 </html>
-
-}
-else if (Pageview.IsVisualEditorMode)
-{
-    <head>
-        <title>@Model.Title</title>
-        @* Bootstrap + Swift stylesheet *@
-        <link href="/Files/Templates/Designs/Swift-v2/Assets/css/swift.css" rel="stylesheet" media="all" type="text/css">
-    </head>
-    <body class="p-3">
-        <div class="alert alert-danger" role="alert">
-            @Translate("Basic Swift setup is needed!")
-        </div>
-
-        @if (brandingPage == null)
-        {
-            <div class="alert alert-warning" role="alert">
-                @Translate("Please add a Branding page and reference it in website settings")
-            </div>
-        }
-
-        @if (themesParagraphs == null)
-        {
-            <div class="alert alert-warning" role="alert">
-                @Translate("Please add a Themes collection page and reference it in website settings")
-            </div>
-        }
-    </body>
-}
-
 
 @functions {
     void SetMetaTags()
