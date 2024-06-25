@@ -3,7 +3,9 @@ const Scroll = (function () {
 
   return {
     handleAlternativeTheme() {
-      var themeChangers = document.querySelectorAll("[data-alternative-theme]");
+      var themeChangers = document.querySelectorAll(
+        "header[id] [data-alternative-theme]"
+      );
 
       if (typeof themeChangers != "undefined" && themeChangers != null) {
         document.addEventListener(

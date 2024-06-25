@@ -2,6 +2,18 @@
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Core.Encoders
+@using System.Globalization
+
+@functions{
+	string DoubleToString(double? value)
+	{
+		if (value.HasValue)
+		{
+			return value.Value.ToString(CultureInfo.InvariantCulture);
+		}
+		return null;
+	}
+}
 
 @{
 	var productList = Model.Products;
@@ -27,7 +39,7 @@
 	List<string> selectedDisplayGroupsList = selectedDisplayGroups != null ? selectedDisplayGroups.Split(',').ToList() : new List<string>();
 
 	bool userHasPendingQuote = Dynamicweb.Ecommerce.Common.Context.Cart != null && Dynamicweb.Ecommerce.Common.Context.Cart.IsQuote;
-	
+
 	//Collect the titles for all available fields
 	List<string> fieldsHeaders = new List<string>();
 	foreach (var product in productList)
@@ -108,22 +120,6 @@
 	bool quantitySelector = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["QuantitySelector"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["QuantitySelector"].ToString()) : false;
 	string addToCartColWidth = quantitySelector ? "calc(var(--swift-button-primary-padding-x) * 2 + 1rem + 7rem)" : "calc(var(--swift-button-primary-padding-x) * 2 + 1rem)"; @* Set the width of the column to: button-primary-padding-x × 2 + 1rem for the icon + 7rem for the quantity input *@
 	bool hideFilters = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["HideFilters"]) ? Convert.ToBoolean(Dynamicweb.Context.Current.Request.Form["HideFilters"].ToString()) : false;
-
-	string saleBadgeType = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("SaleBadgeType")) ? Dynamicweb.Context.Current.Request.Form.Get("SaleBadgeType") : string.Empty;
-	string saleBadgeCssClassName = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("SaleBadgeCssClassName")) ? Dynamicweb.Context.Current.Request.Form.Get("SaleBadgeCssClassName") : string.Empty;
-	string newBadgeCssClassName = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("NewBadgeCssClassName")) ? Dynamicweb.Context.Current.Request.Form.Get("NewBadgeCssClassName") : string.Empty;
-	int newPublicationDays = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("NewPublicationDays")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.Form.Get("NewPublicationDays")) : 0;
-	string campaignBadgesValues = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("CampaignBadgesValues")) ? Dynamicweb.Context.Current.Request.Form.Get("CampaignBadgesValues") : string.Empty;
-
-	var badgeParms = new Dictionary<string, object>();
-	badgeParms.Add("saleBadgeType", saleBadgeType);
-	badgeParms.Add("saleBadgeCssClassName", saleBadgeCssClassName);
-	badgeParms.Add("newBadgeCssClassName", newBadgeCssClassName);
-	badgeParms.Add("campaignBadgesValues", campaignBadgesValues);
-	badgeParms.Add("newPublicationDays", newPublicationDays);
-
-	bool saleBadgeEnabled = !string.IsNullOrWhiteSpace(saleBadgeCssClassName) && saleBadgeCssClassName != "none" ? true : false;
-	bool newBadgeEnabled = !string.IsNullOrWhiteSpace(newBadgeCssClassName) && newBadgeCssClassName != "none" ? true : false;
 
 	string theme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["Theme"]) ? Dynamicweb.Context.Current.Request.Form["Theme"].ToString() : string.Empty;
 	string modalTheme = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form["ModalTheme"]) ? Dynamicweb.Context.Current.Request.Form["ModalTheme"].ToString() : "theme light";
@@ -221,17 +217,7 @@
 		{
 			<input type="hidden" name="ProductvariantId" value="@productVariantIds">
 		}
-
-		<input type="hidden" name="SaleBadgeType" value="@saleBadgeType">
-		<input type="hidden" name="SaleBadgeCssClassName" value="@saleBadgeCssClassName">
-		<input type="hidden" name="NewBadgeCssClassName" value="@newBadgeCssClassName">
-		<input type="hidden" name="NewPublicationDays" value="@newPublicationDays">
-
-		@if (campaignBadgesValues != string.Empty)
-		{
-			<input type="hidden" name="CampaignBadgesValues" value="@campaignBadgesValues">
-		}
-
+		
 		@if (facetsFound && !hideFilters)
 		{
 			<div class="modal" id="FacetsModal_@paragraphID">
@@ -412,12 +398,6 @@
 					{
 						string image = product.DefaultImage.Value;
 						image = $"/Admin/Public/GetImage.ashx?image={image}&width=30&format=webp";
-
-						DateTime createdDate = product.Created.Value;
-						bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
-						showBadges = (newBadgeEnabled && newPublicationDays == 0) || (newBadgeEnabled && (createdDate.AddDays(newPublicationDays) > DateTime.Now)) ? true : showBadges;
-						showBadges = !string.IsNullOrEmpty(campaignBadgesValues) ? true : showBadges;
-
 						List<CategoryFieldViewModel> categories = new List<CategoryFieldViewModel>();
 						foreach (var selection in selectedDisplayGroupsList)
 						{
@@ -451,15 +431,6 @@
 									else
 									{
 										@product.Name
-									}
-
-									@if (showBadges)
-									{
-										<div class="fs-7">
-											@{
-												@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
-											}
-										</div>
 									}
 								</td>
 							}
@@ -679,7 +650,7 @@
 										@if (quantitySelector)
 										{
 											<div class="input-group input-primary-button-group flex-nowrap">
-												<input id="Quantity_@(product.Id)_@product.VariantId.Replace(".", "_")" aria-label="@Translate("Quantity")" name="Quantity" value="@valueQty" step="@stepQty" min="@minQty" max="@maxQty" class="form-control swift_quantity-field" type="number" onchange="swift.Cart.UpdateOnEnterKey(event)" onkeyup="swift.Cart.UpdateOnEnterKey(event)" @disableAddToCart>
+												<input id="Quantity_@(product.Id)_@product.VariantId.Replace(".", "_")" aria-label="@Translate("Quantity")" name="Quantity" value="@valueQty" step="@DoubleToString(stepQty)" min="@DoubleToString(minQty)" max="@DoubleToString(maxQty)" class="form-control swift_quantity-field" type="number" onchange="swift.Cart.UpdateOnEnterKey(event)" onkeyup="swift.Cart.UpdateOnEnterKey(event)" @disableAddToCart>
 												<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary js-add-to-cart-button @(disableAddToCart)" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)@(product.VariantId.Replace(".", "_"))">
 													<span class="icon-2">
 														@ReadFile(iconPath + "shopping-cart.svg")
@@ -693,7 +664,7 @@
 										}
 										else
 										{
-											<input id="Quantity_@(product.Id)_@product.VariantId.Replace(".", "_")" aria-label="@Translate("Quantity")" class="swift_quantity-field" name="Quantity" value="@valueQty" type="hidden" @disableAddToCart>
+											<input id="Quantity_@(product.Id)_@product.VariantId.Replace(".", "_")" aria-label="@Translate("Quantity")" class="swift_quantity-field" name="Quantity" value="@DoubleToString(valueQty)" type="hidden" @disableAddToCart>
 											<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary js-add-to-cart-button @(disableAddToCart)" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)@(product.VariantId.Replace(".", "_"))">
 												<span class="icon-2">
 													@ReadFile(iconPath + "shopping-cart.svg")
@@ -701,38 +672,48 @@
 											</button>
 										}
 
-											<template class="js-step-quantity-warning">
-												<div class="modal-header">
-													<h1 class="modal-title fs-5">@Translate("The quantity is not valid")</h1>
-												</div>
-												<div class="modal-body">
-													@Translate("Please select a quantity that is dividable by") @stepQty
-												</div>
-											</template>
-						
-											<template class="js-min-quantity-warning">
-												<div class="modal-header">
-													<h1 class="modal-title fs-5">@Translate("The product could not be added to the cart")</h1>
-												</div>
-												<div class="modal-body">
-													@Translate("The quantity is not valid. You must buy at least") @product.PurchaseMinimumQuantity
-												</div>
-											</template>
-										
+										<template class="js-step-quantity-warning">
+											<div class="modal-header">
+												<h1 class="modal-title fs-5">@Translate("The quantity is not valid")</h1>
+											</div>
+											<div class="modal-body">
+												@Translate("Please select a quantity that is dividable by") @stepQty
+											</div>
+										</template>
+
+										<template class="js-min-quantity-warning">
+											<div class="modal-header">
+												<h1 class="modal-title fs-5">@Translate("The product could not be added to the cart")</h1>
+											</div>
+											<div class="modal-body">
+												@Translate("The quantity is not valid. You must buy at least") @product.PurchaseMinimumQuantity
+											</div>
+										</template>
+
+										<template class="js-value-missing-warning">
+											<div class="modal-header">
+												<h1 class="modal-title fs-5">@Translate("No amount specified")</h1>
+												<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+											</div>
+											<div class="modal-body">
+												@Translate("Specify an amount to add to the cart")
+											</div>
+										</template>
+
 										@if (userHasPendingQuote)
-                                        {
-                                        	<input type="hidden" name="PendingQuote" value="true">
-                                        	
-                                        	<template class="js-pending-quote-notice">
-                                        		<div class="modal-header">
-                                        			<h1 class="modal-title fs-5">@Translate("Pending Quote")</h1>
-                                        			<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
-                                        		</div>
-                                        		<div class="modal-body">
-                                        			@Translate("You need to complete your current quote or empty the cart before adding this product to cart.")
-                                        		</div>
-                                        	</template>
-                                        }
+										{
+											<input type="hidden" name="PendingQuote" value="true">
+
+											<template class="js-pending-quote-notice">
+												<div class="modal-header">
+													<h1 class="modal-title fs-5">@Translate("Pending Quote")</h1>
+													<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
+												</div>
+												<div class="modal-body">
+													@Translate("You need to complete your current quote or empty the cart before adding this product to cart.")
+												</div>
+											</template>
+										}
 									</form>
 								</td>
 							}

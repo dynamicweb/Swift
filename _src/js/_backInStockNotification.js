@@ -1,4 +1,4 @@
-import { Modal } from "bootstrap";
+const bootstrap = window.bootstrap;
 
 const BackInStockNotification = (function () {
   return {
@@ -13,7 +13,7 @@ const BackInStockNotification = (function () {
       if (!form.reportValidity()) return;
 
       const formData = new FormData(form);
-      const modal = Modal.getInstance(
+      const modal = bootstrap.Modal.getInstance(
         document.getElementById(modalId)
       );
       const notifiedMessage = document.getElementById(notifiedMessageId);

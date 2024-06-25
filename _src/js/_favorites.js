@@ -1,5 +1,5 @@
 import { PageUpdater } from "./_pageupdater.js";
-import { Offcanvas, Toast } from "bootstrap";
+const bootstrap = window.bootstrap;
 
 const Favorites = (function () {
   return {
@@ -19,7 +19,7 @@ const Favorites = (function () {
         );
         PageUpdater.UpdateFromUrl(e, url);
 
-        var dynamicOffcanvas = new Offcanvas(
+        var dynamicOffcanvas = new bootstrap.Offcanvas(
           document.querySelector("#DynamicOffcanvas")
         );
         dynamicOffcanvas.show();
@@ -141,7 +141,7 @@ const Favorites = (function () {
             command == "addproducttofavoritelist" ||
             command == "removeproductfromfavoritelist"
           ) {
-            var favoriteToast = new Toast(favoriteNotification);
+            var favoriteToast = new bootstrap.Toast(favoriteNotification);
             favoriteToast.show();
 
             if (data.Thumbnail != "") {

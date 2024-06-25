@@ -29,6 +29,7 @@ export default [
           },
         }),
       eslint({
+        fix: true,
         include: srcPath + ["js/**"],
         exclude: ["node_modules/**", distPath + "**"],
         throwOnError: true,
