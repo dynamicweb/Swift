@@ -52,7 +52,7 @@ const Cart = function () {
 					quantityField.classList.remove("is-invalid");
 
 					if (isPendingQuote == "true") {
-						PromptPendingQuoteMessage();
+						this.PromptPendingQuoteMessage(form);
 					} else if (validityState.rangeUnderflow) {
 						this.PromptMinQuantityFailedWarning(quantityField, form);
 					} else if (validityState.rangeOverflow) {
@@ -66,10 +66,18 @@ const Cart = function () {
 					} else {
 						this.AddToCart(clickedButton, form, formData);
 					}
+				}	
+				else 
+				{
+					if (isPendingQuote == "true") {
+						PromptPendingQuoteMessage();
+					}
+
+					this.AddToCart(clickedButton, form, formData);
 				}
 			}
 		},
-		PromptPendingQuoteMessage: function () {
+		PromptPendingQuoteMessage: function (form) {
 			const pendingQuoteMessage = form.querySelector(".js-pending-quote-notice").innerHTML;
 			document.querySelector("#DynamicModalContent").innerHTML = pendingQuoteMessage;
 
