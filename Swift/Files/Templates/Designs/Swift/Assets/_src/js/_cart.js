@@ -70,7 +70,7 @@ const Cart = function () {
 				else 
 				{
 					if (isPendingQuote == "true") {
-						PromptPendingQuoteMessage();
+						this.PromptPendingQuoteMessage(form);
 					}
 
 					this.AddToCart(clickedButton, form, formData);
