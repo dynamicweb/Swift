@@ -30,7 +30,7 @@ const Cart = function () {
 			addQuantity = formData.get("Quantity") ? formData.get("Quantity") : 1;
 			isPendingQuote = formData.get("PendingQuote") ? formData.get("PendingQuote") : "false";
 
-			this.PushDataToGoogleAnalytics();
+			Cart.PushDataToGoogleAnalytics();
 			let event = new CustomEvent("update.swift.cart", {
 				//Fire the 'update' event
 				cancelable: true,
@@ -52,24 +52,32 @@ const Cart = function () {
 					quantityField.classList.remove("is-invalid");
 
 					if (isPendingQuote == "true") {
-						PromptPendingQuoteMessage();
+						Cart.PromptPendingQuoteMessage(form);
 					} else if (validityState.rangeUnderflow) {
-						this.PromptMinQuantityFailedWarning(quantityField, form);
+						Cart.PromptMinQuantityFailedWarning(quantityField, form);
 					} else if (validityState.rangeOverflow) {
 						quantityField.value = quantityField.max;
 						quantityField.classList.add("is-invalid");
 
 					} else if (validityState.stepMismatch) {
-						this.PromptStepQuantityFailedWarning(form);
+						Cart.PromptStepQuantityFailedWarning(form);
 					} else if (!quantityField.value) {
-						this.PromptMissingValueWarning(form);
+						Cart.PromptMissingValueWarning(form);
 					} else {
-						this.AddToCart(clickedButton, form, formData);
+						Cart.AddToCart(clickedButton, form, formData);
 					}
+				}	
+				else 
+				{
+					if (isPendingQuote == "true") {
+						Cart.PromptPendingQuoteMessage(form);
+					}
+
+					Cart.AddToCart(clickedButton, form, formData);
 				}
 			}
 		},
-		PromptPendingQuoteMessage: function () {
+		PromptPendingQuoteMessage: function (form) {
 			const pendingQuoteMessage = form.querySelector(".js-pending-quote-notice").innerHTML;
 			document.querySelector("#DynamicModalContent").innerHTML = pendingQuoteMessage;
 
