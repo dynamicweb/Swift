@@ -1,4 +1,5 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @functions {
@@ -9,114 +10,76 @@
 }
 
 @{
-	string blockType = "image_block";
-
-	var page = Dynamicweb.Content.Services.Pages.GetPage(Model.PageID);
-	var settings = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page?.Parent).Item;
-	var blockId = Model.ID;
-	var block = Model.Item;
-
-	var emailContentThemeId = settings.GetRawValueString("EmailContentTheme");
-	var emailContentThemeParagraph = emailContentThemeId != null && emailContentThemeId != string.Empty ? Dynamicweb.Content.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(emailContentThemeId)) : null;
-	var emailContentTheme = emailContentThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph)?.Item : null;
-
-	var rowId = Dynamicweb.Content.Services.Paragraphs.GetParagraph(blockId).GridRowId;
-	var row = Dynamicweb.Content.Services.Grids.GetGridRowById(rowId);
-	var rowItem = Dynamicweb.Content.Services.Items.GetItem(row.ItemType, row.ItemId);
-	var rowThemeId = Dynamicweb.Core.Converter.ToString(rowItem["ColumnBackground"]);
-	var rowThemeParagraph = rowThemeId != null && rowThemeId != string.Empty ? Dynamicweb.Content.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(rowThemeId)) : null;
-	var rowTheme = rowThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph)?.Item : null;
-
-	var blockThemeId = block.GetRawValueString("Theme");
-	var blockThemeParagraph = blockThemeId != null && blockThemeId != string.Empty ? Dynamicweb.Content.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(blockThemeId)) : null;
-	var blockTheme = blockThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph)?.Item : rowTheme is object ? rowTheme : emailContentTheme;
-
-	string padding = block.GetRawValueString("Padding", "0");
+	string backgroundColor = $"background-color:{Model.ColorScheme?.BackgroundColor?.Hex ?? string.Empty};";
+	string foregroundColor = $"color:{Model.ColorScheme?.ForegroundColor?.Hex ?? string.Empty};";
+	string padding = Model.Item.GetRawValueString("Padding", "0");
+	
 	var link = new Dynamicweb.Frontend.LinkViewModel();
-	string linkType = block.GetRawValueString("LinkType", "page");
+	string linkType = Model.Item.GetRawValueString("LinkType", "page");
 
-	if (linkType == "page" && block.GetLink("PageLink") != null)
+	if (linkType == "page" && Model.Item.TryGetLink("PageLink", out var pageLink))
 	{
-		if (!block.GetLink("PageLink").IsExternal)
-		{
-			link = new Dynamicweb.Frontend.LinkViewModel()
-			{
-				Url = Dynamicweb.Context.Current.Request.Url.Scheme + "://" + Dynamicweb.Context.Current.Request.Url.Host + "/Default.aspx?ID=" + block.GetLink("PageLink").PageId
-			};
-		}
-		else
-		{
-			link = new Dynamicweb.Frontend.LinkViewModel()
-			{
-				Url = block.GetLink("PageLink").Url
-			};
-		}
+		link.Url = pageLink.Url;
 	}
 
-	if (linkType == "product-group")
+	if (linkType == "product-group" && Model.Item.TryGetValue<IList<ProductGroupViewModel>>("ProductGroupLink", out var selectedGroups))
 	{
-		IList<ProductGroupViewModel> selectedGroups = block.GetValue<IList<ProductGroupViewModel>>("ProductGroupLink");
 		IList<string> groupIds = new List<string> { };
 
-		if (selectedGroups != null)
+		foreach (var fromGroup in selectedGroups)
 		{
-			foreach (var fromGroup in selectedGroups)
-			{
-				groupIds.Add(fromGroup.Id);
-			}
+			groupIds.Add(fromGroup.Id);
 		}
 
-		link = new Dynamicweb.Frontend.LinkViewModel()
-		{
-			Url = Dynamicweb.Context.Current.Request.Url.Scheme + "://" + Dynamicweb.Context.Current.Request.Url.Host + "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds)
-		};
+		link.Url = "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&GroupID=" + string.Join(",", groupIds);
 	}
 
-	if (linkType == "product")
+	if (linkType == "product" && Model.Item.TryGetValue<ProductListViewModel>("ProductLink", out var products))
 	{
-		ProductListViewModel products = block.GetValue<ProductListViewModel>("ProductLink");
 		IList<string> productIds = new List<string> { };
 
-		if (products != null && products.Products.Any())
+		if (products.Products.Any())
 		{
 			foreach (var product in products.Products)
 			{
 				productIds.Add(product.Id);
 			}
+
 			string productParameter = productIds.Count == 1 ? "ProductID" : "MainProductId";
-			string productLink = "/" + products.Products?.FirstOrDefault()?.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
+			string productLink = products.Products.FirstOrDefault().GetProductLink(GetPageIdByNavigationTag("Shop"), false);
 			productLink = productIds.Count != 1 ? "/Default.aspx?ID=" + GetPageIdByNavigationTag("Shop") + "&" + productParameter + "=" + string.Join(",", productIds).Trim() : productLink;
 
-			link = new Dynamicweb.Frontend.LinkViewModel()
-			{
-				Url = Dynamicweb.Context.Current.Request.Url.Scheme + "://" + Dynamicweb.Context.Current.Request.Url.Host + productLink
-			};
+			link.Url = productLink;
 		}
 	}
-
-	var imageRatio = Model.Item.GetRawValueString("ImageAspectRatio", "4-3").ToLower();
-	var parms = new Dictionary<string, object>();
-	parms.Add("alt", Model.Item.GetString("ImageAltText"));
-	parms.Add("columns", Model.GridRowColumnCount);
-	parms.Add("padding", Dynamicweb.Core.Converter.ToInt32(padding) * 2);
-	parms.Add("imageRatio", imageRatio);
 }
 
-<table id="@blockId" class="@blockType" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;mso-line-height-rule:exactly;@GetTableReset()color:inherit;width:100%;">
+<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;mso-line-height-rule:exactly;@GetTableReset()color:inherit;width:100%;@(backgroundColor)">
 	<tbody>
 		<tr style="@GetTableReset()">
-			<td style="mso-table-lspace:0pt;mso-table-rspace:0pt;mso-line-height-rule:exactly;text-align:left;@GetTableReset()vertical-align:top;padding:@(padding)px" width="100%">
+			<td style="mso-table-lspace:0pt;mso-table-rspace:0pt;mso-line-height-rule:exactly;text-align:left;@GetTableReset()vertical-align:top;@(backgroundColor)@(foregroundColor)padding:@(padding)px" width="100%">
 				<div align="left">
-					@if (link is object && !string.IsNullOrEmpty(link.Url))
+					@if (Model.Item.TryGetImageFile("Image", out ImageFileViewModel image))
 					{
-						@:<a href="@link" target="_blank" style="display:block;">
-					}
+						var parms = new Dictionary<string, object>();
+						parms.Add("alt", Model.Item.GetString("ImageAltText"));
+						parms.Add("columns", Model.GridRowColumnCount);
+						parms.Add("padding", (Dynamicweb.Core.Converter.ToInt32(padding) * 2) * Model.GridRowColumnCount);
+						parms.Add("imageRatio", image.Ratio);
 
-					@RenderPartial("Swift-v2_Email/Components/Image.cshtml", Model.Item.GetFile("Image") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+						<div align="left">
+							@if (link is object && !string.IsNullOrEmpty(link.Url))
+							{
+								@:<a href="@link" target="_blank" style="display:block;">
+							}
 
-					@if (link is object && !string.IsNullOrEmpty(link.Url))
-					{
-						@:</a>
+							@RenderPartial("Swift-v2_Email/Components/Image.cshtml", image ?? new Dynamicweb.Frontend.FileViewModel(), parms)
+
+							@if (link is object && !string.IsNullOrEmpty(link.Url))
+							{
+								@:</a>
+							}
+						</div>
 					}
 				</div>
 			</td>
