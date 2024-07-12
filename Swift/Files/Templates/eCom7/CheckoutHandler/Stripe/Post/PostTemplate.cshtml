@@ -1,0 +1,77 @@
+﻿<form action="/Default.aspx?ID=<!--@Global:Page.ID-->" method="POST">
+    <script src="https://js.stripe.com/v3/"></script>
+    <input type="hidden" name="Action" id="Action" value="Approve" />
+    <input type="hidden" name="CheckoutHandlerOrderID" id="CheckoutHandlerOrderID" value="<!--@Ecom:Order.ID-->" />
+    <div id="card-element">
+        <!-- a Stripe Element will be inserted here. -->
+    </div>
+    <button id="PayButton">PAY</button>
+    <p>@GetString("Stripe.publishablekey")</p>
+</form>
+
+<script>
+    const stripe = Stripe("@GetString("Stripe.publishablekey")");
+    const amount = "@GetString("Stripe.amount")";
+    const basketId = "@GetString("Ecom:Order.ID")"
+    const payNowButton = document.getElementById('PayButton')
+    const form = document.getElementById("ordersubmit");
+    const card = stripe.elements().create('card', {
+        hidePostalCode: true
+    });
+    form.addEventListener("submit", async function (event) {
+        // Prevent default form submission to the server
+        event.preventDefault();
+
+        // Your logic here
+        console.log("Form submitted");
+        let clientSecret = await tryCreatePaymentIntent()
+
+        if (clientSecret) {
+            const result = await stripe.confirmCardPayment(clientSecret, {
+                payment_method: {
+                    card: card
+                },
+                setup_future_usage: 'off_session'
+            });
+
+            if (!result.error) {
+                if (result.paymentIntent.status === paymentIntentStatus.SUCCEEDED) {
+                    baseClassObj.stripeOnSuccessHandler(result.paymentIntent);
+                }
+            } else {
+                alert(result.error.message)
+                //   classObj.cardPayNowButton.disabled = false;
+                //   await baseClassObj.displayError(result);
+            }
+        } else {
+            //classObj.cardPayNowButton.disabled = false;
+            let errorObj = {error: {message: 'Unable to process payment, please try again.'}}
+            alert(errorObj.error.message)
+            //  await baseClassObj.displayError(errorObj);
+        }
+
+    });
+
+
+    card.mount('#card-element');
+
+
+    async function tryCreatePaymentIntent() {
+        const result = await fetch('/checkout/create-intent',
+            {
+                method: 'post',
+                headers: {
+                    'Content-type': 'application/json',
+                },
+                body: JSON.stringify({
+
+                    OrderId: basketId
+
+                }),
+            });
+
+        const data = await result.json();
+
+        return data.ClientSecret;
+    }
+</script>

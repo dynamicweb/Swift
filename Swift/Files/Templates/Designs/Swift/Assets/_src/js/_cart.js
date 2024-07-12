@@ -30,9 +30,9 @@ const Cart = function () {
 			addQuantity = formData.get("Quantity") ? formData.get("Quantity") : 1;
 			isPendingQuote = formData.get("PendingQuote") ? formData.get("PendingQuote") : "false";
 
-			Cart.PushDataToGoogleAnalytics();
+			this.PushDataToGoogleAnalytics();
 			let event = new CustomEvent("update.swift.cart", {
-				//Fire the 'update' event
+			//Fire the 'update' event
 				cancelable: true,
 				detail: {
 					formData: formData,
@@ -41,43 +41,43 @@ const Cart = function () {
 			});
 			let globalDispatcher = document.dispatchEvent(event);
 			let localDispatcher = clickedButton.dispatchEvent(event);
-
+			
 			if (globalDispatcher != false && localDispatcher != false) {
 
 				//The actual cart call (add to cart)
 				if (quantityField != null) {
 					//Validation
-					const validityState = quantityField.validity
+					const isMinQuantityValid = this.ValidateMinQuantity(quantityField);
+					const isStepQuantityValid = this.ValidateStepQuantity(quantityField);
+					const isMaxQuantityValid = this.ValidateMaxQuantity(quantityField);
+					const isValid = isMinQuantityValid && isStepQuantityValid && isMaxQuantityValid;
 
 					quantityField.classList.remove("is-invalid");
 
 					if (isPendingQuote == "true") {
-						Cart.PromptPendingQuoteMessage(form);
-					} else if (validityState.rangeUnderflow) {
-						Cart.PromptMinQuantityFailedWarning(quantityField, form);
-					} else if (validityState.rangeOverflow) {
-						quantityField.value = quantityField.max;
-						quantityField.classList.add("is-invalid");
-
-					} else if (validityState.stepMismatch) {
-						Cart.PromptStepQuantityFailedWarning(form);
-					} else if (!quantityField.value) {
-						Cart.PromptMissingValueWarning(form);
-					} else {
-						Cart.AddToCart(clickedButton, form, formData);
+						PromptPendingQuoteMessage();
 					}
-				}	
+					else if (isValid) {
+						this.AddToCart(clickedButton, form, formData);
+					} else if (!isMinQuantityValid) {
+						this.PromptMinQuantityFailedWarning(quantityField, form);
+					} else if (!isStepQuantityValid) {
+						this.PromptStepQuantityFailedWarning(form);
+					} else if (!isMaxQuantityValid) {
+						quantityField.classList.add("is-invalid");
+					} 			
+				}
 				else 
 				{
 					if (isPendingQuote == "true") {
-						Cart.PromptPendingQuoteMessage(form);
+						PromptPendingQuoteMessage();
 					}
 
-					Cart.AddToCart(clickedButton, form, formData);
+					this.AddToCart(clickedButton, form, formData);
 				}
 			}
 		},
-		PromptPendingQuoteMessage: function (form) {
+		PromptPendingQuoteMessage: function () {
 			const pendingQuoteMessage = form.querySelector(".js-pending-quote-notice").innerHTML;
 			document.querySelector("#DynamicModalContent").innerHTML = pendingQuoteMessage;
 
@@ -160,7 +160,7 @@ const Cart = function () {
 				Cart.GetMiniCarts(formData.get("minicartid")).forEach(function (el) {
 					el.innerHTML = totalQuantity.trim();
 				});
-
+				
 			}
 		},
 
@@ -178,11 +178,11 @@ const Cart = function () {
 			clickedButton.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 512 512"><title>circle-notch</title><g fill="#ffffff"><path d="M288 24.103v8.169a11.995 11.995 0 0 0 9.698 11.768C396.638 63.425 472 150.461 472 256c0 118.663-96.055 216-216 216-118.663 0-216-96.055-216-216 0-104.534 74.546-192.509 174.297-211.978A11.993 11.993 0 0 0 224 32.253v-8.147c0-7.523-6.845-13.193-14.237-11.798C94.472 34.048 7.364 135.575 8.004 257.332c.72 137.052 111.477 246.956 248.531 246.667C393.255 503.711 504 392.789 504 256c0-121.187-86.924-222.067-201.824-243.704C294.807 10.908 288 16.604 288 24.103z"></path></g></svg>';
 		},
 
-		PushDataToGoogleAnalytics: function () {
+		PushDataToGoogleAnalytics: function() {
 			if (typeof gtag !== "undefined") {
 				gtag("event", "add_to_cart", {
 					currency: productCurrency,
-					value: (parseFloat(productPrice) * parseFloat(addQuantity)),
+					value: productPrice,
 					items: [
 						{
 							item_id: productId,
@@ -197,6 +197,7 @@ const Cart = function () {
 				});
 			}
 		},
+
 		GetMiniCarts: function (miniCartId) {
 			let miniCarts = [];
 
@@ -214,23 +215,48 @@ const Cart = function () {
 
 			return miniCarts;
 		},
-		UpdateCart: async function (e) {
-			const inputElement = e.currentTarget;
+		ValidateMinQuantity: function (quantityField) {
+			let isValid = true;
+
+			if (quantityField != null && quantityField.min) {
+				const quantity = parseFloat(quantityField.value);
+				const minQuantity = parseFloat(quantityField.min);
+				isValid = quantity < minQuantity ? false : isValid;
+			}
+
+			return isValid;
+		},
+		ValidateMaxQuantity: function (quantityField) {
+			if (quantityField != null && quantityField.max) {
+				const enteredValue = parseFloat(quantityField.value);
+				const maxValue = parseFloat(quantityField.max);
+				if (enteredValue > maxValue) {
+					quantityField.value = maxValue;
+					return false;
+				}
+			}
+			return true;
+		},
+		ValidateCartQuantity: function (inputElement) {
 			const enteredValue = parseFloat(inputElement.value);
 			const maxValue = parseFloat(inputElement.max);
-			const minValue = parseFloat(inputElement.min);
 
 			if (maxValue && enteredValue > maxValue) {
 				inputElement.value = maxValue;
 			}
-			if (minValue && enteredValue < minValue) {
-				inputElement.value = minValue;
+		},
+		
+		ValidateStepQuantity: function (quantityField) {
+			let isValid = true;
+
+			if (quantityField != null && quantityField.step) {
+				const quantity = parseFloat(quantityField.value);
+				const stepQty = parseFloat(quantityField.step);
+				
+				isValid = quantity % stepQty == 0;
 			}
-
-			let form = e.currentTarget.closest("form");
-			form.action = '?cartcmd=updateorderlines';
-			form.submit();
-
+			
+			return isValid;
 		},
 		PromptStepQuantityFailedWarning: function (form) {
 			const dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), {});
@@ -244,29 +270,19 @@ const Cart = function () {
 			}
 		},
 		PromptMinQuantityFailedWarning: function (quantityField, form) {
-			const dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), {});
+			const dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), { });
 			const minQuantityWarning = form.querySelector(".js-min-quantity-warning");
 
 			const message = minQuantityWarning.innerHTML;
+			const minQuantity = parseFloat(quantityField.min);
 			document.querySelector("#DynamicModalContent").innerHTML = message;
 
 			if (!document.querySelector('#DynamicModal').classList.contains("show")) {
 				dynamicModal.show();
 			}
-
-			quantityField.value = quantityField.min;
-
-		},
-		PromptMissingValueWarning: function (form) {
-			const dynamicModal = new bootstrap.Modal(document.querySelector('#DynamicModal'), {});
-			const stepQuantityWarning = form.querySelector(".js-value-missing-warning");
-
-			const message = stepQuantityWarning.innerHTML;
-			document.querySelector("#DynamicModalContent").innerHTML = message;
-
-			if (!document.querySelector('#DynamicModal').classList.contains("show")) {
-				dynamicModal.show();
-			}
+			
+			quantityField.value = minQuantity;
+			
 		}
 	}
 }();

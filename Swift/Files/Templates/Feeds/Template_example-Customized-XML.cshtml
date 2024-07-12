@@ -1,0 +1,230 @@
+﻿@using Dynamicweb.Rendering;
+@using Dynamicweb.Ecommerce.ProductCatalog;
+@using Dynamicweb.Environment;
+@using Newtonsoft.Json;
+@using System.Xml.Linq;
+@inherits ViewModelTemplate<ProductListViewModel>
+@functions
+{
+    public enum FieldType
+    {
+        System,
+        Standard,
+        Custom,
+        CategoryField
+    };
+
+    public class Field
+    {
+        public string ID { get; set; }
+        public FieldType FieldType { get; set; }
+        public string Label { get; set; }
+        public string Prefix { get; set; }
+        public bool IsRTE { get; set; }
+
+        public Field(string id, string label, string prefix, FieldType type, bool isRTE)
+        {
+            ID = id;
+            Label = label;
+            FieldType = type;
+            Prefix = prefix;
+            IsRTE = isRTE;
+        }
+    }
+
+    private class Utf8StringWriter : System.IO.StringWriter
+    {
+        public override System.Text.Encoding Encoding { get { return System.Text.Encoding.UTF8; } }
+    }
+
+
+    public string GenerateXML()
+    {
+        var fields = GetFields();
+
+        XDocument xdoc = new XDocument();
+        xdoc.Declaration = new XDeclaration("1.0", "utf-8", null);
+
+        var rootElement = new XElement("Root");
+        var productsElement = new XElement("Products");
+
+        foreach (ProductViewModel product in Model.Products)
+        {
+            ProcessProductXml(productsElement, fields, product);
+        }
+
+        rootElement.Add(productsElement);
+        xdoc.Add(rootElement);
+
+        var wr = new Utf8StringWriter();
+        xdoc.Save(wr);
+        return wr.ToString();
+    }
+
+    public List<Field> GetFields()
+    {
+        var fields = new List<Field>();
+
+        fields.Add(new Field("Id", "Id", "s", FieldType.Standard, false));
+        fields.Add(new Field("VariantId", "Variant id", "s", FieldType.Standard, false));
+        fields.Add(new Field("LanguageId", "Language id", "s", FieldType.Standard, false));
+        fields.Add(new Field("Name", "Name", "v", FieldType.Standard, false));
+        fields.Add(new Field("Number", "Number", "v", FieldType.Standard, false));
+        fields.Add(new Field("ShortDescription", "Short description", "v", FieldType.Standard, true));
+        fields.Add(new Field("LongDescription", "Long description", "v", FieldType.Standard, true));
+        fields.Add(new Field("Price", "Price", "v", FieldType.Standard, false));
+        fields.Add(new Field("Created", "Created", "s", FieldType.System, false));
+
+        fields.Add(new Field("DefaultImage", "DefaultImage", "a", FieldType.Standard, false));
+        fields.Add(new Field("DefaultStockUnit", "DefaultStockUnit", "v", FieldType.Standard, false));
+        fields.Add(new Field("Discount", "Discount", "v", FieldType.Standard, false));
+        fields.Add(new Field("ImagePatternImages", "ImagePatternImages", "a", FieldType.Standard, false));
+        fields.Add(new Field("Images", "Images", "a", FieldType.Standard, false));
+        fields.Add(new Field("Keywords", "Keywords", "v", FieldType.Standard, false));
+        fields.Add(new Field("Manufacturer", "Manufacturer", "v", FieldType.Standard, false));
+        fields.Add(new Field("PriceBeforeDiscount", "PriceBeforeDiscount", "v", FieldType.Standard, false));
+        fields.Add(new Field("RelatedGroups", "RelatedGroups", "v", FieldType.Standard, false));
+        fields.Add(new Field("Rewards", "Rewards", "v", FieldType.Standard, false));
+        fields.Add(new Field("StockLevel", "StockLevel", "v", FieldType.Standard, false));
+        fields.Add(new Field("StockUnits", "StockUnits", "v", FieldType.Standard, false));
+        fields.Add(new Field("Updated", "Updated", "s", FieldType.Standard, false));
+        fields.Add(new Field("Variants", "Variants", "v", FieldType.Standard, false));
+        fields.Add(new Field("Weight", "Weight", "v", FieldType.Standard, false));
+
+        return fields;
+    }
+
+    private void ProcessProductXml(XElement rootElement, IEnumerable<Field> fields, ProductViewModel product)
+    {
+        var productElement = new XElement("Product");
+
+        foreach (var field in fields)
+        {
+            if (field.FieldType == FieldType.System)
+            {
+            }
+            else if (field.FieldType == FieldType.Standard)
+            {
+                if (field.ID == "Price")
+                {
+                    foreach (var priceProp in product.Price.GetType().GetProperties())
+                    {
+                        productElement.Add(createElement(priceProp.Name, "v", Dynamicweb.Core.Converter.ToString(priceProp.GetValue(product.Price)), false));
+                    }
+                }
+                else
+                {
+                    var value = getValue(field, product);
+
+                    if (value != null)
+                    {
+                        if(value is Dynamicweb.Ecommerce.ProductCatalog.MediaViewModel)
+                        {
+                            var castedValue = value as Dynamicweb.Ecommerce.ProductCatalog.MediaViewModel;
+							var imageRelativePath = castedValue.Value;
+							if(imageRelativePath.StartsWith("/Files/Files/"))
+							{
+								imageRelativePath = imageRelativePath.Replace("/Files/Files/", "/Files/");
+							}
+
+							imageRelativePath = System.Uri.EscapeUriString(imageRelativePath);
+							
+                            value = string.Format("{0}", imageRelativePath);
+                        }
+
+                        productElement.Add(createElement(field.ID, field.Prefix, value, field.IsRTE));
+                    }
+                }
+            }
+        }
+
+        if (product.ProductFields != null && product.ProductFields.Any())
+        {
+            foreach (var field in product.ProductFields)
+            {
+                CreateLabelValueSection(productElement, null, field.Value);
+            }
+        }
+
+        if (product.ProductCategories != null && product.ProductCategories.Any())
+        {
+            foreach (var category in product.ProductCategories)
+            {
+                foreach (var field in category.Value.Fields)
+                {
+                    CreateLabelValueSection(productElement, category.Key, field.Value);
+                }
+            }
+        }
+
+        var relations = Dynamicweb.Ecommerce.Products.ProductGroupRelation.GetProductGroupRelations(product.Id);
+        foreach (var group in relations.GroupCollection.Where(g => g.ShopId == Dynamicweb.Context.Current.Request.GetString("Shopid")))
+        {
+            productElement.Add(createElement("Group", string.Empty, group.Name, false));
+            var parentGroup = group.ParentGroups.FirstOrDefault();
+            if (parentGroup != null)
+            {
+                productElement.Add(createElement("MainGroup", string.Empty, parentGroup.Name, false));
+            }
+        }
+
+        rootElement.Add(productElement);
+    }
+
+    private string ReplaceFirst(string text, string search, string replace)
+    {
+        int pos = text.IndexOf(search);
+        if (pos < 0)
+        {
+            return text;
+        }
+        return text.Substring(0, pos) + replace + text.Substring(pos + search.Length);
+    }
+
+    private void CreateLabelValueSection(XElement section, string categoryId, FieldValueViewModel field)
+    {
+        var value = "";
+        if (field.Value != null && field.Value is List<FieldOptionValueViewModel>)
+        {
+            var options = (List<FieldOptionValueViewModel>)field.Value;
+            value = string.Join(",", options.Select(x => x.Value));
+        }
+        else
+        {
+            value = Dynamicweb.Core.Converter.ToString(field.Value);
+        }
+        //Values
+        //AE 20190309: Special case for images
+        if (field.SystemName == "ProductImagePath")
+        {
+            value = ReplaceFirst(value, "\\", ":");
+        }
+
+        var fieldId = field.SystemName;
+        if(!string.IsNullOrEmpty(categoryId))
+        {
+            fieldId = string.Format("{0}_{1}", categoryId, field.SystemName);
+        }
+        section.Add(createElement(fieldId, "v", value, false));
+    }
+
+    private object getValue(Field field, ProductViewModel product)
+    {
+        var value = product.GetType().GetProperty(field.ID)?.GetValue(product, null);
+        return value;
+    }
+
+    public XElement createElement(string fieldId, string prefix, object value, bool wrapInCdata)
+    {
+        var valueElement = new XElement(string.Format("{0}_{1}", prefix, fieldId));
+        valueElement.Value = Dynamicweb.Core.Converter.ToString(value);
+
+        if(wrapInCdata)
+        {
+            valueElement.ReplaceNodes(new XCData(Dynamicweb.Core.Converter.ToString(value)));
+        }
+
+        return valueElement;
+    }
+    }
+@GenerateXML()

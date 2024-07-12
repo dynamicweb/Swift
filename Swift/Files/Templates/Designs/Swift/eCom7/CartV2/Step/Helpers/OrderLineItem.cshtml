@@ -1,18 +1,4 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
-@using System.Globalization
-@using System
-
-@functions{
-
-	string DoubleToString(double? value)
-	{
-		if (value.HasValue)
-		{
-			return Math.Round(value.Value, 2).ToString(CultureInfo.InvariantCulture); 
-		}
-		return null;
-	}
-}
 
 @{
 	var orderlines = GetLoop("OrderLines");
@@ -23,10 +9,9 @@
 	var orderline = orderlines[i];
 	bool neverOutOfStock = orderline.GetBoolean("Ecom:Product.NeverOutOfStock");
 	string name = orderline.GetString("Ecom:Order:OrderLine.ProductName");
-	string primaryImage = orderline.GetString("Ecom:Product.PrimaryImage");
-    primaryImage = primaryImage.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? primaryImage : $"/Files/{primaryImage}";
-    string image = $"/Admin/Public/GetImage.ashx?width=180&height=180&image={primaryImage}&format=webp";
-	
+	string image = orderline.GetString("Ecom:Product.PrimaryImage");
+	image = "/Admin/Public/GetImage.ashx?width=" + 180 + "&height=" + 180 + "&image=" + image + "&format=webp";
+	image = !orderline.GetString("Ecom:Product.PrimaryImage").StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? orderline.GetString("Ecom:Product.PrimaryImage") : image;
 	string removeFromBasketLink = orderline.GetString("Ecom:Order:OrderLine.DeleteLink");
 	string priceTotalWithDiscounts = orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.PriceFormatted");
 	string priceTotalWithDiscountsClean = orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.Price");
@@ -37,7 +22,6 @@
 	string discountTotal = orderline.GetString("Ecom:Order:OrderLine.TotalDiscount.PriceFormatted");
 	string variantText = orderline.GetString("Ecom:Order:OrderLine.ProductVariantText");
 	var orderlineId = orderline.GetValue("Ecom:Order:OrderLine.Id");
-	double? stepQty = orderline.GetDouble("Ecom:Product.PurchaseQuantityStep") > 0 ? orderline.GetDouble("Ecom:Product.PurchaseQuantityStep") : 1;
 	var quantity = orderline.GetDouble("Ecom:Order:OrderLine.Quantity");
 	var unitName = orderline.GetString("Ecom:Order:OrderLine.UnitName");
 	string primaryGroupId = orderline.GetString("Ecom:Order:OrderLine.PrimaryOrDefaultGroupId");
@@ -47,10 +31,11 @@
 	string productType = orderline.GetString("Ecom.Product.Type");
 	double? stockQuantity = orderline.GetDouble("Ecom:Product.Stock");
 	double? minQty = orderline.GetDouble("Ecom:Product.PurchaseMinimumQuantity") > 0 ? orderline.GetDouble("Ecom:Product.PurchaseMinimumQuantity") : 1;
+	double? stepQty = orderline.GetDouble("Ecom:Product.PurchaseQuantityStep") > 0 ? orderline.GetDouble("Ecom:Product.PurchaseQuantityStep") : 1;
 	bool isStockType = orderline.GetInteger("Ecom.Product.Type") == 0;
 	bool setMaxQty = isStockType && !neverOutOfStock;
 	double? maxQty = setMaxQty ? stockQuantity : null;
-	
+
 	string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
 	link += $"&GroupID={primaryGroupId}";
 	link += $"&ProductID={productId}";
@@ -121,7 +106,8 @@
 								@* Quantity *@
 								<div class="input-group js-input-group">
 									<label for="QuantityOrderLine@(orderlineId)" class="visually-hidden">@Translate("Quantity"):</label>
-									<input type="number" id="QuantityOrderLine@(orderlineId)" step="@DoubleToString(stepQty)" min="@DoubleToString(minQty)" max="@DoubleToString(maxQty)" class="form-control text-center swift_quantity-field" onchange="swift.Cart.UpdateCart(event);" value="@DoubleToString(quantity)" name="QuantityOrderLine@(orderlineId)" style="width: 5.5rem;">
+									<input type="number" id="QuantityOrderLine@(orderlineId)" step="@stepQty" min="@minQty" max="@maxQty" class="form-control text-center swift_quantity-field" onchange="swift.Cart.ValidateCartQuantity(this); this.form.submit();" value="@quantity" name="QuantityOrderLine@(orderlineId)" style="width: 5.5rem;">
+									
 									<div class="invalid-feedback d-none">
 										@Translate("Please select a quantity that is dividable by") @stepQty
 									</div>
@@ -155,29 +141,29 @@
 							<a href="@removeFromBasketLink" class="btn btn-link btn-sm p-0 m-0 fs-8" title="@Translate("Remove")" @clickProductLink>@Translate("Remove")</a>
 						}
 
-						<script>
-							function removeProductLink(productId, productName, productVariant, productCurrency, productPrice, productQuantity) {
-								if (typeof gtag !== "undefined") {
-									gtag("event", "remove_from_cart", {
-										currency: productCurrency,
-										value: (parseFloat(productPrice) * parseFloat(productQuantity)),
-										items: [
-											{
-												item_id: productId,
-												item_name: productName,
-												item_variant: productVariant,
-												currency: productCurrency,
-												price: productPrice,
-												item_list_id: "cart",
-												item_list_name: "Cart",
-												quantity: productQuantity
-											}
-										]
-									});
+							<script>
+								function removeProductLink(productId, productName, productVariant, productCurrency, productPrice, productQuantity) {
+									if (typeof gtag !== "undefined") {
+										gtag("event", "remove_from_cart", {
+											currency: productCurrency,
+											value: productPrice,
+											items: [
+												{
+													item_id: productId,
+													item_name: productName,
+													item_variant: productVariant,
+													currency: productCurrency,
+													price: productPrice,
+													item_list_id: "cart",
+													item_list_name: "Cart",
+													quantity: productQuantity
+												}
+											]
+										});
+									}
 								}
-							}
-						</script>
-
+							</script>
+						
 					</div>
 				</div>
 			</div>
