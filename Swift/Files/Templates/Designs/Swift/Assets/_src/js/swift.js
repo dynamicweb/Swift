@@ -12,7 +12,7 @@ import { VariantSelector } from './_variantselector';
 import { Video } from './_video';
 import { Image } from './_image';
 import { Typeahead } from './_typeahead';
-import { AssetLoader } from './_assetoader';
+import { AssetLoader } from './_assetloader';
 import { LiveProductInfo } from './_live-product-info';
 import { BackInStockNotification } from './_backInStockNotification';
 import { ExpressBuy } from './_expressBuy';
