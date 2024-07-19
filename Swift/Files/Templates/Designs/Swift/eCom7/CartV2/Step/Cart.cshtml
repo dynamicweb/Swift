@@ -1,90 +1,941 @@
-@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+﻿@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 @using Dynamicweb
 
 @{
 
-	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
-	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", string.Empty).Trim().ToLower() : string.Empty;
+var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
+string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", string.Empty).Trim().ToLower() : string.Empty;
 
-	bool anonymousUser = Pageview.User == null;
-	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
-	int currentUserId = Dynamicweb.Core.Converter.ToInt32(GetGlobalValue("Global:Extranet.UserID"));
-	var shopPageId = GetPageIdByNavigationTag("Shop");
-	var cart = Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(Pageview.CurrentParagraph)?.Item ?? null;
-	var checkoutAnonymousLink = cart.GetLink("CheckoutAnonymousPageLink") is object ? cart.GetLink("CheckoutAnonymousPageLink").Url : string.Empty;
-	var checkoutSignedInLink = cart.GetLink("CheckoutSignedInPageLink") is object ? cart.GetLink("CheckoutSignedInPageLink").Url : string.Empty;
-	string checkoutLink = currentUserId == 0 ? checkoutAnonymousLink : checkoutSignedInLink;
-	var quoteCheckoutLink = cart.GetLink("QuoteCheckoutPageLink") is object ? cart.GetLink("QuoteCheckoutPageLink").Url : string.Empty;
-	bool isQuote = Dynamicweb.Ecommerce.Services.Orders.GetById(GetString("Ecom:Order.ID")).IsQuote;	
+bool anonymousUser = Pageview.User == null;
+string stepsIconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+int currentUserId = Dynamicweb.Core.Converter.ToInt32(GetGlobalValue("Global:Extranet.UserID"));
+var shopPageId = GetPageIdByNavigationTag("Shop");
+var cart = Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(Pageview.CurrentParagraph)?.Item ?? null;
+var checkoutAnonymousLink = cart.GetLink("CheckoutAnonymousPageLink") is object ? cart.GetLink("CheckoutAnonymousPageLink").Url : string.Empty;
+var checkoutSignedInLink = cart.GetLink("CheckoutSignedInPageLink") is object ? cart.GetLink("CheckoutSignedInPageLink").Url : string.Empty;
+string checkoutLink = currentUserId == 0 ? checkoutAnonymousLink : checkoutSignedInLink;
+var quoteCheckoutLink = cart.GetLink("QuoteCheckoutPageLink") is object ? cart.GetLink("QuoteCheckoutPageLink").Url : string.Empty;
+bool isQuote = Dynamicweb.Ecommerce.Services.Orders.GetById(GetString("Ecom:Order.ID")).IsQuote;
+
+var orderlines = GetLoop("OrderLines");
 }
 
-<div class="grid gap-0" id="Cart">
-	<header class="g-col-12">
-		<div class="pb-3 pb-lg-0 pt-3 pt-lg-5">
-			<h1 class="h3 mb-2">@Translate("Shopping Cart")</h1>
-			<p class="mb-0"><span>@Translate("Items in your shopping cart"):</span> <span>@GetString("Ecom:Order.OrderLines.TotalProductQuantity")</span></p>
-		</div>
-	</header>
 
-	<div class="g-col-12 g-col-lg-8 pe-lg-5 pb-md-5">
-		@Include("Helpers/Errors.cshtml")
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<div class="container">
+  <script>
+    gtag("event", "view_cart", {
+      currency: "@GetString("Ecom:Order.Currency.Code")",
+      value: @GetDouble("Ecom:Order.Price.PriceWithVAT.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+      items: [
+        @foreach (LoopItem orderline in GetLoop("OrderLines"))
+        {
+        <text>
+        {
+          item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
+          item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(orderline.GetString("Ecom:Order:OrderLine.ProductName"))",
+          currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
+          price: @orderline.GetDouble("Ecom:Order:OrderLine.UnitPrice.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+          quantity: @orderline.GetDouble("Ecom:Order:OrderLine.Quantity").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+        },</text>
+        }
+      ]
+    });
+  </script>
+  <div class="alert">
+    <div class="basket-information">
+    @ReadFile(stepsIconPath + "basket.svg") @Translate("You have ") @GetString("Ecom:Order.OrderLines.TotalProductQuantity") @Translate("items at a total cost of") @GetString("Ecom:Order.Currency.Symbol")@GetString("Ecom:Order.Price.PriceWithVAT.Value")
+    </div>
+    <span class="checkoutNowButtonSpan"><button class="button button4">Checkout Now</button></span>
+  </div>
+
+  <section class="CheckoutFlowWrapper">
+
+    <div class="row parent-row">
+      <div class="column sidenav-column">
+        <div class="sidenav">
+          <a href="#">@Translate("Back to Shop")</a>
+        </div>
+      </div>
+      <div class="column-active checkout-information-container">
+        <section class="delivery-segment">
+          <div class="row">
+            <div class="delivery-method column">@ReadFile(stepsIconPath + "van.svg") @Translate("DELIVERY METHOD")</div>
+            <div class="column estimated-delivery-container">
+              <div>
+                <div>@ReadFile(stepsIconPath + "dhl.svg")</div>
+                <div class="estimated-delivery">
+                  @Translate("Est. Delivery")
+                <strong>14.07.2024</strong></div>
+              </div>
+            </div>
+          </div>
+        </section>
 		<form name="ordersubmit" id="ordersubmit" method="post" autocomplete="off">
+        <section class="orderlines-segment">
+          @for (int i = orderlines.Count - 1; i >= 0; i--)
+          {
+var orderline = orderlines[i];
+	bool neverOutOfStock = orderline.GetBoolean("Ecom:Product.NeverOutOfStock");
+	string name = orderline.GetString("Ecom:Order:OrderLine.ProductName");
+	string image = orderline.GetString("Ecom:Product.PrimaryImage");
+	image = "/Admin/Public/GetImage.ashx?width=" + 180 + "&height=" + 180 + "&image=/Files" + image + "&format=webp&quality=100";
+	//image = !orderline.GetString("Ecom:Product.PrimaryImage").StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? orderline.GetString("Ecom:Product.PrimaryImage") : image;
+	string removeFromBasketLink = orderline.GetString("Ecom:Order:OrderLine.DeleteLink");
+	string priceTotalWithDiscounts = orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.PriceFormatted");
+	string priceTotalWithDiscountsClean = orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.Price");
+	string unitPrice = orderline.GetString("Ecom:Order:OrderLine.UnitPrice.PriceFormatted");
+	string unitPriceClean = orderline.GetDouble("Ecom:Order:OrderLine.UnitPrice.Price").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+	string unitPriceCurrency = orderline.GetString("Ecom:Order:OrderLine.Price.CurrencyCode");
+	string discountPrice = orderline.GetString("Ecom:Order:OrderLine.UnitPriceWithProductDiscount.PriceFormatted");
+	string discountTotal = orderline.GetString("Ecom:Order:OrderLine.TotalDiscount.PriceFormatted");
+	string variantText = orderline.GetString("Ecom:Order:OrderLine.ProductVariantText");
+	var orderlineId = orderline.GetValue("Ecom:Order:OrderLine.Id");
+	var quantity = orderline.GetDouble("Ecom:Order:OrderLine.Quantity");
+	var unitName = orderline.GetString("Ecom:Order:OrderLine.UnitName");
+	string primaryGroupId = orderline.GetString("Ecom:Order:OrderLine.PrimaryOrDefaultGroupId");
+	string productId = orderline.GetString("Ecom:Order:OrderLine.ProductID");
+	string variantId = orderline.GetString("Ecom:Order:OrderLine.ProductVariantID");
+	string unitId = orderline.GetString("Ecom:Order:OrderLine.UnitID");
+	string productType = orderline.GetString("Ecom.Product.Type");
+	double? stockQuantity = orderline.GetDouble("Ecom:Product.Stock");
+	double? minQty = orderline.GetDouble("Ecom:Product.PurchaseMinimumQuantity") > 0 ? orderline.GetDouble("Ecom:Product.PurchaseMinimumQuantity") : 1;
+	double? stepQty = orderline.GetDouble("Ecom:Product.PurchaseQuantityStep") > 0 ? orderline.GetDouble("Ecom:Product.PurchaseQuantityStep") : 1;
+	bool isStockType = orderline.GetInteger("Ecom.Product.Type") == 0;
+	bool setMaxQty = isStockType && !neverOutOfStock;
+	double? maxQty = setMaxQty ? stockQuantity : null;
 
-			<header class="py-2 pt-lg-5 border-bottom d-none d-lg-block">
-				<div class="grid" style="line-height: 1;">
-					<div class="g-col-2">@Translate("Product")</div>
-					<div class="g-col-9 grid">
-						<div class="g-col-10 g-col-md-6 g-start-8"></div>
-						<div class="g-col-2 g-col-md-3 g-start-8">@Translate("Quantity")</div>
-					</div>
-					<div class="g-col-1 text-end">@Translate("Total")</div>
-				</div>
-			</header>
+	string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
+	link += $"&GroupID={primaryGroupId}";
+	link += $"&ProductID={productId}";
+	link += !string.IsNullOrEmpty(variantId) ? $"&VariantID={variantId}" : "";
 
-			<script>
-				gtag("event", "view_cart", {
-					currency: "@GetString("Ecom:Order.Currency.Code")",
-					value: @GetDouble("Ecom:Order.Price.PriceWithVAT.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
-					items: [
-						@foreach (LoopItem orderline in GetLoop("OrderLines"))
-						{
-							<text>
-							{
-								item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
-								item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(orderline.GetString("Ecom:Order:OrderLine.ProductName"))",
-								currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
-								price: @orderline.GetDouble("Ecom:Order:OrderLine.UnitPrice.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
-								quantity: @orderline.GetDouble("Ecom:Order:OrderLine.Quantity").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
-							},</text>
-						}
-					]
-				});
-			</script>
+	bool isProductIdOrNumber = !string.IsNullOrEmpty(orderline.GetString("Ecom:Order:OrderLine.ProductID")) || !string.IsNullOrEmpty(orderline.GetString("Ecom:Order:OrderLine.ProductNumber"));  //Live Cart orderlines may not return ProductId. Manually entered products may not have ProductNumber
+	bool isProduct = orderline.GetBoolean("Ecom:Order:OrderLine.IsProduct") || (orderline.GetBoolean("Ecom:Order:OrderLine.IsDiscount") && isProductIdOrNumber);
+	bool orderIsQuote = Dynamicweb.Ecommerce.Services.Orders.GetById(GetString("Ecom:Order.ID")).IsQuote;
 
-			@Include("Helpers/OrderLineItem.cshtml")
-			
-			@if(Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Desktop)
-			{
-				<text>@Include("Helpers/CartNavigation.cshtml")</text>
-			}
+	if (isProduct)
+	{
+      <div class="breakpoint"></div>
+          <div class="row order-parent-row">
+            <div class="column rfb-container">
+              @if (!orderIsQuote)
+              {
+              string clickProductLink = "onclick=\"return removeProductLink('" + @productId + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(name) + "', '" + @Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(variantText) + "', '" + @unitPriceCurrency + "', '" + @unitPriceClean + "', '" + @quantity.ToString().Replace(",", ".") + "')\"";
 
-		</form>
-	</div>
+              <a href="@removeFromBasketLink" class="btn btn-link btn-sm p-0 m-0 fs-8 circle-button remove-from-basket" title="@Translate("Remove")" @clickProductLink>@ReadFile(stepsIconPath + "icon_button_small.svg")</a>
+              }
 
-	<aside class="g-col-12 g-col-lg-4 position-relative">
-		<div class="p-3 p-lg-5 pb-lg-4@(theme)">
-			<header>
-				<h4 class="fs-6 fw-normal mb-2">@Translate("Order summary")</h4>
-			</header>
-
-			@Include("Helpers/OrderSummary.cshtml")
-
-			@if(Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Mobile || Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Tablet)
-			{
-				<text>@Include("Helpers/CartNavigation.cshtml")</text>
-			}
-			
-		</div>
-	</aside>
+              <script>
+                function removeProductLink(productId, productName, productVariant, productCurrency, productPrice, productQuantity) {
+                  if (typeof gtag !== "undefined") {
+                    gtag("event", "remove_from_cart", {
+                      currency: productCurrency,
+                      value: productPrice,
+                      items: [
+                        {
+                          item_id: productId,
+                          item_name: productName,
+                          item_variant: productVariant,
+                          currency: productCurrency,
+                          price: productPrice,
+                          item_list_id: "cart",
+                          item_list_name: "Cart",
+                          quantity: productQuantity
+                        }
+                      ]
+                    });
+                  }
+                }
+              </script>
+            
+            </div>
+            <div class="column"><a href="@link" class="ratio ratio-1x1 d-block" title="@name">
+                <img class="cart-item-img" src="@image" style="object-fit: contain;" alt="@name">
+              </a></div>
+            <div class="column">
+              <div class="row">
+                <div class="column"><h3 class="h6 fs-7 fs-md-6 mb-0">
+                    <a href="@link" class="text-decoration-none" title="@name">@name</a>
+                  </h3></div>
+              </div>
+              <div class="row">
+                <span>DS-2CE78H0T-1T1F(2.4mm)(c) TODO</span>
+              </div>
+            </div>
+            <div class="column">
+              <div class="row price-container">
+                <div class="column">
+                  @if (orderline.GetBoolean("Ecom:Order:OrderLine.IsDiscount"))
+                  {
+                  @* Free product notice *@
+                  <p class=" mb-0 fs-7 fs-md-6 opacity-75">@Translate("Free product")</p>
+                  }
+                  else
+                  {
+                  @* Unit price *@
+                  <p class="fs-7 fs-md-6  mb-0">
+                    @if (!string.IsNullOrEmpty(unitName))
+                    {
+                    <span>@unitName: </span>
+                    }
+                    @if (discountPrice == unitPrice)
+                    {
+                    <span class="text-price">@unitPrice each</span>
+                    }
+                    else
+                    {
+                    <span class="text-price">@discountPrice each</span>
+                    <span class="text-decoration-line-through fs-7">
+											<span class="text-price">@unitPrice</span>
+										</span>
+                    }
+                  </p>
+                  }
 </div>
+                <div class="column">
+                  <div class="g-col-12 g-col-md-4 text-end">
+                    @* Total *@
+                    <span class="h6 mb-0 d-block fs-7 fs-md-6">
+							<span class="text-price">@priceTotalWithDiscounts</span>
+						</span>
+                    @if (orderline.GetDouble("Ecom:Order:OrderLine.TotalDiscount.Price.Value") != 0)
+                    {
+                    <span class="m-0 d-block fs-8">
+								<span class="text-price">@discountTotal</span>
+							</span>
+                    }
+                  </div>
+</div>
+              </div>
+              <div class="change-quantity-container">
+                <div class="change-quantity">
+                  @if (!orderline.GetBoolean("Ecom:Order:OrderLine.IsDiscount") && !orderIsQuote)
+                  {
+                  <button class="button circle-button" onclick="changeQuantity(false, @stepQty, this)" type="button" >-</button>
+                  @* Quantity *@
+                  <div class="input-group js-input-group">
+                    <label for="QuantityOrderLine@(orderlineId)" class="visually-hidden">@Translate("Quantity"):</label>
+                    <input type="number" id="QuantityOrderLine@(orderlineId)" step="@stepQty" min="@minQty" max="@maxQty" class="form-control text-center swift_quantity-field" onchange="swift.Cart.ValidateCartQuantity(this); this.form.submit();" value="@quantity" name="QuantityOrderLine@(orderlineId)" style="width: 5.5rem;">
+
+                    <div class="invalid-feedback d-none">
+                      @Translate("Please select a quantity that is divisable by") @stepQty
+                    </div>
+                  </div>
+                  <button class="button circle-button" onclick="changeQuantity(true, @stepQty, this)" type="button">+</button>
+                  }
+                  else
+                  {
+                  <span>@quantity</span>
+                  }
+                  
+            
+                </div>
+              </div>
+            </div>
+          </div>
+}
+         }
+        </section>
+	</form>
+  
+<section class="order-totals-segment">
+  <div class="row shipping-vat-row">
+    <div class="column shipping-row">
+      <div class="shipping-label">@Translate("Shipping:")</div>
+      <div class="shipping-value"><strong>@GetString("Ecom:Order.ShippingFee")</strong></div>
+    </div>
+    <div class="column vat-row">
+      <div class="vat-label">VAT (20%):</div>
+      <div class="vat-value"><strong>@GetString("Ecom:Order.VAT")</strong></div>
+    </div>
+  </div>
+
+  <div class="row next-step-button">
+    <div class="column">
+      <button class="button button4" onclick="location.href='@checkoutLink';" type="button">Total: @GetString("Ecom:Order.OrderLines.Total.PriceWithVAT") @ReadFile(stepsIconPath + "arrow-right.svg")</button>
+    </div>
+  </div>
+
+  <div class="row discount-code">
+    <div class="column">
+      <a href="#"><strong>@Translate("Got a discount code?")</strong></a>
+    </div>
+  </div>
+
+  <div class="row save-quote">
+    <div class="column">
+      <input class="save-as-quote-input" placeholder="Quote name">
+    </div>
+    <div class="column">
+      <button class="button button4">@Translate("SAVE QUOTE") @ReadFile(stepsIconPath + "save.svg")</button>
+    </div>
+  </div>
+
+  <div class="payment-images">
+    <div>@ReadFile(stepsIconPath + "applepay.svg")</div>
+    <div>@ReadFile(stepsIconPath + "googlepay.svg")</div>
+    <div>@ReadFile(stepsIconPath + "paypal.svg")</div>
+    <div>@ReadFile(stepsIconPath + "visacredit.svg")</div>
+    <div>@ReadFile(stepsIconPath + "visadebit.svg")</div>
+    <div>@ReadFile(stepsIconPath + "mastercard.svg")</div>
+    <div>@ReadFile(stepsIconPath + "americanexpress.svg")</div>
+  </div>
+</section>
+
+
+
+      </div>
+      <!-- These can be components -->
+    <div class="column-step-container">
+      <div class="column column-step">
+        <div class="next-section">
+            <h1 class="numberHeader">1</h1>
+            <p class="section-text">@Translate("SHIPPING INFORMATION")</p>
+        </div>
+        <div class="arrow-grey">@ReadFile(stepsIconPath + "arrowgrey.svg")</div>
+      </div>
+
+      <div class="column column-step">
+        <div class="next-section">
+            <h1 class="numberHeader">2</h1>
+            <p class="section-text">@Translate("PAYMENT DETAILS")</p>
+        </div>
+        <div class="arrow-grey">@ReadFile(stepsIconPath + "arrowgrey.svg")</div>
+      </div>
+
+      <div class="column column-step">
+        <div class="next-section">
+           <h1 class="numberHeader">3</h1>
+            <p class="section-text">@Translate("ORDER COMPLETE")</p>
+        </div>
+        <div class="arrow-grey">@ReadFile(stepsIconPath + "arrowgrey.svg")</div>
+      </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+
+
+<style>
+
+.breakpoint {
+  width: 100%;
+  border: 1px solid #3B3E414D;
+  margin-bottom: 20px;
+}
+.delivery-method {
+  display: flex;
+  gap: 10px;
+  flex-direction: row !important;
+}
+.arrow-grey {
+  margin-bottom: 20px;
+}
+
+.estimated-delivery-container {
+  align-items: flex-end;
+}
+
+.estimated-delivery-container div:nth-of-type(1) {
+    display: flex;
+    gap: 20px;
+}
+
+.estimated-delivery {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+  }
+
+  input[type=number]:focus {
+    background-color: #3B3E410F !important;
+    border: 0px !important;
+    outline: none !important;
+    box-shadow: none !important;
+    box-sizing: border-box !important;
+}
+
+  .price-container {
+  gap: 10px;
+  }
+
+  .rfb-container {
+    display: flex !important;
+    margin-left: 20px !important;
+    justify-content: center;
+    align-items: flex-start;  
+  }
+
+  .remove-from-basket {
+    height: 20px;
+    background-color: #3B3E41;
+    aspect-ratio: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px !important;
+    border: none;
+    color: white !important;
+    text-align: center;
+    text-decoration: none;
+  
+  }
+
+  .checkout-information-container {
+  padding-bottom: 20px;
+  border-top-right-radius: 10px;
+  border-bottom-right-radius: 10px;
+  border-botton-left-radius: 10px;
+  border-top-left-radius: 0px;
+  }
+ strong, .numberHeader {
+  color: #3B3E41;
+ }
+  .shipping-vat-row {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .shipping-row, .vat-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    flex-direction: row !important;
+  }
+
+  a {
+  text-decoration: none;
+  }
+
+  .sidenav-column {
+    background-color: transparent !important;
+  }
+
+  .sidenav {
+  transform: rotate(0deg) !important;
+  }
+
+  .sidenav a {
+    transform: rotate(180deg);
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    text-decoration: none;
+    background-color: #3B3E41;
+    color: white;
+    width: 100%;
+    border-bottom-right-radius: 10px;
+    border-top-right-radius: 10px;
+    padding: 20px; 
+    font-weight: 700;
+    font-size: 16px;
+    text-transform: uppercase;
+  }
+
+  .item_swift_cart .pb-5 {
+    background-color: #F4F6F9;
+  }
+
+.order-totals-segment {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(5, auto);
+  grid-row-gap: 20px !important;
+  gap: 10px; 
+  background-color: white;
+}
+
+.order-totals-segment .shipping-vat-row {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.order-totals-segment .next-step-button {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.next-step-button button {
+    text-transform: uppercase;
+    font-weight: bold;
+    height: 50px;
+    display: flex;
+    gap: 5px;
+    justify-content: center;
+    align-items: center;
+}
+
+.order-totals-segment .discount-code {
+  grid-column: 3;
+  grid-row: 3;
+}
+
+.order-totals-segment .save-quote {
+  grid-column: span 3;
+  grid-row: 4;
+  padding-left: 20px;
+}
+
+.order-totals-segment .payment-images {
+    grid-column: 1 / span 3;
+    grid-row: 5;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+    margin-right: 20px;
+}
+
+.payment-images .column {
+  flex: 1;
+  width: 20px;
+}
+
+.column-step .next-section {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: column;
+    padding-top: 20px;
+    height: 180px;
+
+}
+
+.column-step .next-section .section-text {
+    color: #D5352D;
+    font-weight: 600;
+    line-height: 15px;
+}
+
+  .orderlines-segment .order-parent-row {
+    display: grid;
+    grid-template-columns: 0.1fr 0.5fr 2fr 1fr;
+    grid-template-rows: 1fr;
+    grid-column-gap: 20px;
+    grid-row-gap: 0px;
+  }
+
+    .order-parent-row .column:nth-of-type(3){
+      margin-left: 10px;
+  }
+
+  .order-parent-row :nth-child(3) .row span {
+    padding-left: 0px !important;
+    padding-right: 0px !important;
+  }
+
+.delivery-segment {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-top: 20px;
+}
+
+
+.delivery-segment .row {
+  align-items: center;
+}
+
+
+
+.delivery-segment .row .column:nth-of-type(1) {
+  color: #D5352D;
+  font-size: 14px;
+  font-weight: 600;
+  }
+
+
+
+  .CheckoutFlowWrapper .parent-row {
+    display: grid;
+    grid-template-columns: 0.1fr 2fr 1fr;
+    grid-template-rows: 1fr;
+    grid-column-gap: 0px;
+    grid-row-gap: 0px;
+    margin: 0px !important;
+  }
+
+    .CheckoutFlowWrapper .column-active, .column, .columm-step-container {
+      background-color: white;
+  }
+
+  .save-quote {
+  align-items: center;
+  }
+
+  .save-quote .column:nth-of-type(2) {
+  flex-basis: 50%;
+  }
+
+  .save-quote .row, .column {
+  padding: 0;
+  margin: 0;
+  }
+
+  .save-quote button {
+  margin: 0;
+  border-top-left-radius: 0px;
+    border-bottom-left-radius: 0px;
+        display: flex;
+    align-items: center;
+    gap: 5px;
+    justify-content: center;
+        text-transform: uppercase;
+    font-weight: bold;
+    background-color: #D5352D;
+  }
+
+   .save-quote button, input {
+    height: 50px;
+  }
+  
+  .save-quote input {
+      border-bottom-left-radius: 10px;
+    border-top-left-radius: 10px;
+    border-color: #9599A0;
+  }
+
+  .column-step {
+    flex-grow: 0 !important;
+    border-radius: 10px;
+    min-width: 29%;
+    display: flex;
+    justify-content: space-between;
+}
+
+.column-step-container {
+  display: flex;
+  gap: 20px;
+  padding-right: 0px !important;
+}
+
+.column-step .row .section-text {
+  padding-right: 0 !important;
+}
+
+.checkoutNowButtonSpan button {
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.change-quantity-container {
+  justify-content: flex-end;
+  display: flex;
+}
+
+.change-quantity {
+    display: flex !important;
+    flex-direction: row !important;
+    border-radius: 20px;
+    flex-grow: 0 !important; 
+    background-color: #3B3E410F;
+    border-radius: 20px;
+    width: 186px;
+
+  }
+
+  .change-quantity input {
+  background-color: #3B3E410F;
+  border-color: transparent;
+  }
+
+  .change-quantity button {
+    cursor: pointer;
+    height: 20px;
+    background-color: #3B3E41;
+    aspect-ratio: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 32px !important;
+  }
+
+
+  .button {
+    background-color: #04AA6D;
+    border: none;
+    color: white;
+    padding: 20px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    border-radius: 12px;
+  }
+
+  .alert {
+    padding: 5px;
+    background-color: #3B3E410F;
+    color: white;
+    margin-bottom: 25px;
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    color: black;
+    margin-top: 50px;
+    border-radius: 20px;
+  }
+
+  .alert .basket-information {
+    display: flex;
+    gap: 10px;
+    margin-left: 10px;
+  
+  }
+
+    .alert div:first-of-type(1) {
+    background-color: #3B3E410F !important;
+  }
+
+
+  .sidenav {
+    transform: rotate(270deg);
+  }
+
+  .section-text {
+    transform: rotate(270deg);
+  }
+
+  .circle-button {
+    border-radius: 100%;
+  }
+
+
+  /* Use media queries for responsive layout */
+@@media (max-width: 768px) {
+
+.basket-information {
+  margin-top: 10px;
+}
+.order-totals-segment {
+ grid-row-gap: 20px;
+}
+
+.order-totals-segment .payment-images {
+ flex-wrap: wrap;
+}
+
+.order-totals-segment .discount-code {
+    grid-column: span 3;
+    text-align: center;
+    grid-row: 3;
+}
+
+.order-totals-segment .next-step-button {
+    grid-column: span 3;
+    grid-row: 2;
+    padding-left: 20px;
+  }
+  
+.orderlines-segment .order-parent-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto; 
+  grid-template-rows: auto auto; 
+  grid-gap: 10px;
+}
+
+.orderlines-segment .order-parent-row .column {
+  padding: 10px;
+}
+
+.orderlines-segment .order-parent-row .column:nth-child(1) {
+  grid-row: 1;
+  grid-column: 1; 
+}
+
+.orderlines-segment .order-parent-row .column:nth-child(1) {
+  padding-left: 0px !important;
+}
+
+.orderlines-segment .order-parent-row .column:nth-child(2) {
+  grid-row: 2;
+  grid-column: 2; 
+}
+
+.orderlines-segment .order-parent-row .column:nth-child(3) {
+  grid-row: 1 / span 2; 
+  grid-column: 2 / span 2;
+}
+
+.orderlines-segment .order-parent-row .column:nth-child(3) span {
+  z-index: 10;
+}
+
+.orderlines-segment .order-parent-row .column:nth-child(4) {
+  grid-row: 2; 
+  grid-column: 3;
+}
+
+
+
+  .alert {
+    flex-direction: column;
+    gap: 10px;
+    justify-content: center;
+    text-align: left;
+}
+
+.alert button {
+  width: 100%;
+}
+}
+  
+@@media (max-width: 992px) {
+
+  .CheckoutFlowWrapper {
+  margin-top: 40px;
+}
+    .CheckoutFlowWrapper .parent-row {
+        display: grid;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        grid-column-gap: 0px;
+        grid-row-gap: 20px;
+    }
+
+    .sidenav-column {
+        grid-column: 1;
+        grid-row: 1;
+        width: 100%;
+    }
+
+    .checkout-information-container {
+        grid-column: 1;
+        grid-row: 2;
+        width: 100%;
+    }
+
+    .column-step-container {
+        grid-column: 1;
+        grid-row: 3;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: 1fr;
+        width: 100%;
+        padding-left: 0px !important;
+    }
+
+    .column-step {
+        width: 100%;
+        text-align: center; /* Optional: Center align text within each step */
+    }
+
+    .sidenav {
+      transform: revert !important;
+    }
+
+    .sidenav a {
+    transform: revert;
+    writing-mode: revert;
+    text-orientation: revert;
+    text-decoration: none;
+    background-color: #3B3E41;
+    color: white;
+    width: 50%;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 0;
+    padding: 20px 10px;
+    font-weight: 700;
+    font-size: 16px;
+    text-transform: uppercase;
+}
+
+.column-step .next-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 20px;
+    gap: 10px;
+ }
+
+ .column-step .section-text {
+    transform: revert !important;
+ }
+}
+
+
+  @@media(max-width: 800px)
+  {
+  .column {
+    flex: 100%;
+  }
+
+  }
+
+  /*font-awesome icons style */
+  .fa {
+    padding: 20px;
+    font-size: 30px;
+    text-align: center;
+    text-decoration: none;
+  }
+
+
+  /* Define the columns */
+  .column {
+    display: flex;
+    flex-direction: column;
+    flex-basis: 100%;
+    flex: 1 1 auto;
+  }
+
+  /* For the .column-active, add your specific styles */
+  .column-active {
+    display: flex;
+    flex-direction: column;
+    flex-basis: 100%;
+    flex: 0.8 2 auto;
+    gap: 40px;
+    /* Add CSS properties here for active column */
+  }
+
+  /* Keep all top-level columns in one row, non-wrapping  */
+  .row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap; /* This will prevent wrapping */
+    width: 100%;
+  }
+
+@@media(max-width: 466px) {
+    .order-parent-row a {
+      margin-top: 30px;
+    }
+  }
+
+  @@media(max-width: 500px) {
+    .section-text {
+      font-size: 12px;
+    }
+  }
+</style>
+<script>
+  function changeQuantity(increase, step, buttonElement)
+  {
+  const element = buttonElement.parentNode.querySelector('input');
+  let currentValue = parseInt(element.value)
+  console.log(increase);
+
+  let newValue = increase ? currentValue + step : currentValue - step
+
+  element.value = newValue
+
+  //swift.Cart.ValidateCartQuantity(element); 
+  
+  const formToSubmit = document.getElementById("ordersubmit");
+  formToSubmit.submit();
+  }
+
+  function isDisabled(buttonElement)
+  {
+    const element = buttonElement.parentNode.querySelector('input');
+    let currentValue = element.value 
+
+    return currentValue == 1
+  }
+</script>

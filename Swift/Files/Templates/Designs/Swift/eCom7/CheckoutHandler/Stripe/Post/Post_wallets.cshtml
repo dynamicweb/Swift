@@ -1,0 +1,137 @@
+﻿@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+<form action="/Default.aspx?ID=@GetString("Global:Page.ID")" method="POST">
+    <script src="https://js.stripe.com/v3/"></script>
+    <input type="hidden" name="CheckoutHandlerOrderID" id="CheckoutHandlerOrderID" value="@GetString("Ecom:Order.ID")"/>
+    <div id="paypal-message">
+        <div id="express-checkout-element">
+            <!-- Express Checkout Element will be inserted here -->
+        </div>
+        <div id="error-message">
+            <!-- Display error message to your customers here -->
+        </div>
+    </div>
+</form>
+
+<script>
+    const paymentIntentStatus = Object.freeze({
+        REQUIRES_ACTION: 'requires_action',
+        REQUIRES_PAYMENT_METHOD: 'requires_payment_method',
+        SUCCEEDED: 'succeeded'
+    });
+    document.addEventListener("DOMContentLoaded", function() {
+
+        const stripe = Stripe("@GetString("Stripe.publishablekey")");
+        const basketId = "@GetString("Ecom:Order.ID")"
+        const payButton = document.getElementById("CartV2.GotoStep3");
+        const paymentForm = document.getElementById("ordersubmit");
+        const termsAndConditionsCheck = document.getElementById("EcomOrderCustomerAccepted");
+        const expressCheckoutElementPlaceholder = document.getElementById("express-checkout-element");
+        const pageId = "@GetString("Global:Page.ID")";
+        console.log(`PageId ${pageId}`)
+        const options = {
+            mode: 'payment',
+            amount: @GetString("Ecom:Order.Price.PricePIP"),
+            currency: '@GetString("Ecom:Order.CurrencyCode").ToLower()',
+            //setupFutureUsage: 'off_session',
+            //paymentMethodTypes: ['paypal']
+        };
+        const elements = stripe.elements(options);
+        const expressCheckoutElement = elements.create('expressCheckout');
+        expressCheckoutElement.mount('#express-checkout-element');
+        console.log('Element Mounted')
+        expressCheckoutElement.addEventListener('ready', ({availablePaymentMethods}) => {
+            console.log('Ready Event Hit! Showing PaymentMethods')
+            console.log(availablePaymentMethods)
+            expressCheckoutElementPlaceholder.style.visibility = 'initial';
+            if (!availablePaymentMethods) {
+                console.log("no buttons rendered")
+                // No buttons will show
+            } else {
+                // Optional: Animate in the Element
+                expressCheckoutElementPlaceholder.style.visibility = 'initial';
+            }
+        });
+
+        async function tryCreatePaymentIntent(confirmationToken) {
+            const result = await fetch('/checkout/create-intent',
+                {
+                    method: 'post',
+                    headers: {
+                        'Content-type': 'application/json',
+                    },
+                    body: JSON.stringify(
+                    {OrderId: basketId}),
+                });
+
+            return await result.json();
+        }
+
+        const handleError = (error) => {
+            console.log('Error Occurred')
+            console.log(error.message)
+            const messageContainer = document.querySelector('#error-message');
+            messageContainer.textContent = error.message;
+        }
+
+        expressCheckoutElement.addEventListener("click", async function (event) {
+            console.log('Express Button Clicked')
+            const options = {
+                billingAddressRequired : false,
+                shippingAddressRequired: false,
+                emailRequired: true,
+                phoneNumberRequired: true
+            };
+            event.resolve(options);
+        });
+
+        expressCheckoutElement.addEventListener('cancel', () => {
+            console.log('EVENT CANCEL')
+            elements.update({amount: @GetString("Ecom:Order.Price.PricePIP")})
+        });
+        
+        expressCheckoutElement.addEventListener('confirm', async (event) => {
+            console.log('EVENT CONFIRM')
+            const {error: submitError} = await elements.submit();
+            if (submitError) {
+                handleError(submitError);
+                return;
+            }
+            
+            console.log('Creating Payment Intent')
+            let paymentIntent = await tryCreatePaymentIntent(null)
+            console.log(paymentIntent);
+          
+            if (paymentIntent.clientSecret) {
+                
+                console.log(paymentIntent.clientSecret);
+                console.log('Confirming payment')
+                
+                const {error} = await stripe.confirmPayment({
+                // `elements` instance used to create the Express Checkout Element
+                elements,
+                // `clientSecret` from the created PaymentIntent
+                clientSecret: paymentIntent.clientSecret,
+                    confirmParams: {
+                        return_url: `${window.location.origin}/checkout?CheckoutHandlerOrderID=${basketId}`
+                    },
+            });
+
+                if (error) {
+                // This point is only reached if there's an immediate error when
+                // confirming the payment. Show the error to your customer (for example, payment details incomplete)
+                handleError(error);
+            } else {
+                    console.log('Payment Confirmed.. Redirecting')
+                // The payment UI automatically closes with a success animation.
+                // Your customer is redirected to your `return_url`.
+                }   
+            }
+            else
+            {
+            let errorObj = {error: {message: 'Unable to process payment, please try again.'}}
+            handleError(errorObj.error);
+            alert(errorObj.error.message)
+            }
+        });
+    });
+</script>

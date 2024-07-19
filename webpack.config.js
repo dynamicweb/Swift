@@ -84,6 +84,7 @@ module.exports = [
     {
         name: 'styles',
         mode: mode,
+        devtool: isProduction ? false : 'source-map',
         entry: {
 			'styles': './Swift/Files/Templates/Designs/Swift/Assets/_src/scss/swift.scss'
         },
@@ -110,11 +111,22 @@ module.exports = [
 						{
 							loader: 'css-loader',
 							options: {
-								importLoaders: 1
+								importLoaders: 1,
+                                sourceMap: !isProduction
 							}
 						},
-						'postcss-loader',
-						'sass-loader'
+                        {
+						    loader: 'postcss-loader',
+                            options: {
+                                sourceMap: !isProduction
+                            },
+                        },
+                        {
+						    loader: 'sass-loader',
+                            options: {
+                                sourceMap: !isProduction
+                            },
+                        }
 					],
 				},
 				{
