@@ -1,0 +1,192 @@
+﻿@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	ProductViewModel product = null;
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Page.Item["DummyProduct"] != null && Pageview.IsVisualEditorMode)
+	{
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+
+		if (productList?.Products is object)
+		{
+			product = productList.Products[0];
+		}
+	}
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+	hidePrice = Pageview.IsVisualEditorMode ? false : hidePrice;
+	var count1 = 0;
+	var count2 = 0;
+	double qtyHelper = 0;
+	double oriPrice = 0;
+	double discountHelper = 0;
+	string percentageString = "";
+}
+
+@if (product is object && !hidePrice)
+{
+	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
+
+	if (Pageview.IsVisualEditorMode && product.Prices.Count == 0)
+	{
+		product.Prices.Add(new PriceListViewModel { Price = new PriceViewModel { Price = 95, PriceFormatted = "€95" }, Quantity = 1 });
+		product.Prices.Add(new PriceListViewModel { Price = new PriceViewModel { Price = 85, PriceFormatted = "€85" }, Quantity = 2 });
+	}
+
+	string layout = Model.Item.GetRawValueString("Layout", "list");
+
+	if (product.Prices.Count > 0)
+	{
+		
+
+		if (isLazyLoadingForProductInfoEnabled)
+		{
+			<div class="product-prices-container d-none" data-show-if="LiveProductInfo.product.Prices.length > 0">
+				@if (layout == "list")
+				{
+					<div class="product-prices item_@Model.Item.SystemName.ToLower() list">
+						<small class="d-block opacity-75 product-prices-template"><span><span class="js-text-price-quantity"></span> @Translate("PCS")</span> - <span class="fw-bold"><span class="js-text-price-price"></span> <span class="d-none" data-show-if="LiveProductInfo.productPrice.Quantity > 1">@Translate("pr. PCS")</span></span></small>
+					</div>
+				}
+				else if (layout == "table")
+				{
+					<div class="item_@Model.Item.SystemName.ToLower() grid">
+						<table class="table table-sm mt-3 g-col-12 g-col-lg-6">
+							<thead>
+								<tr>
+									<th>@Translate("Quantity")</th>
+									@foreach (PriceListViewModel quantityPrice in product.Prices)
+									{
+										if (count1 == 0)
+										{
+											<th>1 - @quantityPrice.Quantity</th>
+										}
+										else
+										{
+											<th>@qtyHelper - @quantityPrice.Quantity</th>
+										}	
+										count1++;
+										qtyHelper = quantityPrice.Quantity + 1;
+									}
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>@Translate("Unit Price")</td>
+									@foreach (PriceListViewModel quantityPrice in product.Prices)
+									{
+										<td>@quantityPrice.Price.PriceFormatted</td>
+									}
+								</tr>
+								<tr>
+									<td>@Translate("Discount")</td>
+									@foreach (PriceListViewModel quantityPrice in product.Prices)
+									{
+										if (count2 == 0)
+										{
+											oriPrice = quantityPrice.Price.Price;
+											<th>&nbsp;</th>
+										}
+										else
+										{
+											discountHelper = (oriPrice - quantityPrice.Price.Price)/oriPrice;
+											percentageString = (discountHelper * 100).ToString("0.##") + "%";
+											<th>@percentageString</th>
+										}	
+										count2++;
+									}
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				}
+			</div>
+		}
+		else
+		{
+			if (layout == "list")
+			{
+				<div class="item_@Model.Item.SystemName.ToLower() list">
+					@foreach (PriceListViewModel quantityPrice in product.Prices)
+					{
+						string quantityLabel = Translate("PCS");
+						string quantityPriceSuffix = quantityPrice.Quantity > 1 ? Translate("pr. PCS") : "";
+
+						<small class="d-block opacity-75"><span>@quantityPrice.Quantity @quantityLabel</span> - <span class="fw-bold">@quantityPrice.Price.PriceFormatted @quantityPriceSuffix</span></small>
+					}
+				</div>
+			}
+			else if (layout == "table")
+			{
+				<div class="item_@Model.Item.SystemName.ToLower() grid">
+					<table class="table table-sm mt-3 g-col-12 g-col-lg-6">
+						<thead>
+							<tr>
+								<th>@Translate("Quantity")</th>
+								@foreach (PriceListViewModel quantityPrice in product.Prices)
+								{
+									if (count1 == 0)
+									{
+										<th>1 - @quantityPrice.Quantity</th>
+									}
+									else
+									{
+										<th>@qtyHelper - @quantityPrice.Quantity</th>
+									}	
+									count1++;
+									qtyHelper = quantityPrice.Quantity + 1;
+								}
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td>@Translate("Unit Price")</td>
+								@foreach (PriceListViewModel quantityPrice in product.Prices)
+								{
+									<td>@quantityPrice.Price.PriceFormatted</td>
+								}
+							</tr>
+							<tr>
+								<td>@Translate("Discount")</td>
+								@foreach (PriceListViewModel quantityPrice in product.Prices)
+								{
+									if (count2 == 0)
+									{
+										oriPrice = quantityPrice.Price.Price;
+										<th>&nbsp;</th>
+									}
+									else
+									{
+										discountHelper = (oriPrice - quantityPrice.Price.Price)/oriPrice;
+    									percentageString = (discountHelper * 100).ToString("0.##") + "%";
+										<th>@percentageString</th>
+									}	
+									count2++;
+								}
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			}
+		}
+	}
+	else if (Pageview.IsVisualEditorMode)
+	{
+		<div class="alert alert-dark m-0" role="alert">
+			<span>@Translate("No products available")</span>
+		</div>
+	}
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0" role="alert">
+		<span>@Translate("No products available")</span>
+	</div>
+}

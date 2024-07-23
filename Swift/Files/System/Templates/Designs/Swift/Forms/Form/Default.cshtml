@@ -1,0 +1,224 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using System.Collections.Generic
+@using System.Linq
+
+@functions {
+
+	public static string GetTextAreaHeight(int rows)
+	{
+		// Bootstrap with floating labels requires style instead of row attribute https://getbootstrap.com/docs/5.0/forms/floating-labels/#textareas
+		int swiftLineHeight = 20; // Magic number from https://stackoverflow.com/questions/17475652/html-one-row-of-textarea-is-of-how-much-height
+		int formControlPadding = 16; // Magic number from top padding on form controls
+		int formControlBorder = 1; // Magic number from top border on form controls
+		int formControlFixToAvoidScroll = 4; // Magic number from top border on form controls
+		int formControlSpacing = formControlPadding * 2 + formControlBorder * 2 + formControlFixToAvoidScroll;
+		
+		if (rows < 1)
+		{
+			rows = 1;
+		}
+		return $"height:{(rows * swiftLineHeight) + formControlSpacing }px;";  
+	}
+
+}
+@{
+	List<LoopItem> fields = GetLoop("Fields");
+	bool hasDateFields = fields.Any(f => f.GetString("Field.Type") == "Date");
+	
+    @GetString("Form.FormStart") 
+    <div class="item-inner grid">
+        @GetString("Form.SystemFields")
+
+        @foreach (LoopItem field in fields)
+        {
+	        const string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	        string fieldType = field.GetString("Field.Type");
+            string inputType = fieldType.ToLower().Replace("textinput", "text");
+            bool required = field.GetBoolean("Field.Required");
+            string systemName = field.GetString("Field.SystemName");
+            string value = field.GetString("Field.ValueFromAutoOrDefault");
+            string placeholder = Translate(field.GetString("Field.Placeholder"));
+            string label = Translate(field.GetString("Field.Name"));
+            string description = Translate(field.GetString("Field.Description"));
+            string control = field.GetString("Field.Control");
+            string name = field.GetString("Field.Name");
+	        string cssClass = field.GetString("Field.CssClass");
+	        string pattern = field.GetString("Field.InputPattern");
+	        
+	        // Fix for browsers that cannot handle an empty pattern attribute if the field is required
+	        pattern = !string.IsNullOrEmpty(pattern) ? "pattern='" + pattern + "'" : "";
+
+	        <div class="mb-3 g-col-12 @cssClass">
+                @switch (fieldType)
+                {
+                    case "TextInput":
+                    case "Email":
+                    case "Password":
+                    case "Tel":
+                    case "Number":
+	                    <div class="form-floating">
+	                        <input id="@systemName" class="form-control" type="@inputType" name="@systemName" placeholder="@placeholder" value="@value" required="@required" @pattern />
+	                        <label for="@systemName" class="form-label">@label@(required ? $" ({Translate("required")})" : "")</label>
+                        </div>
+                        break;
+
+                    case "Color":
+	                    <label for="@systemName" class="form-label">@label</label>
+	                    <input type="color" class="form-control form-control-color" value="@value" id="@systemName" name="@systemName" title="@label">
+                        break;
+
+	                case "Textarea":
+	                    string textAreaHeight = GetTextAreaHeight(field.GetInteger("Field.TextareaHeight"));
+                    
+						<div class="form-floating">
+	                        <textarea id="@systemName" class="form-control" name="@systemName" placeholder="@placeholder" required="@required" style="@textAreaHeight">@value</textarea>
+	                        <label for="@systemName" class="form-label">@label@(required ? $" ({Translate("required")})" : "")</label>
+                        </div>
+                        break;
+
+                    case "Hidden":
+                        <input type="@inputType" id="@systemName" name="@systemName" value="@value">
+						break;
+
+					case "File":
+						<label for="@systemName" class="form-label">@name@(required ? $" ({Translate("required")})" : "")</label>
+						<input class="form-control" type="@inputType" id="@systemName" name="@systemName" required="@required">
+                        break;
+	                    
+	                case "Range":
+		                <label for="@systemName" class="form-label">@label</label>
+                        <input type="range" class="form-range" name="@systemName" id="@systemName">
+		                break;
+		                
+	                case "Week":
+	                case "Time":
+	                case "Month":
+	                case "Search":
+	                case "Url":
+                    case "Datetime":
+                    case "Datetime-Local":
+                        //Missing component
+                        break;
+		                
+		            case "Date":
+                        <div class="form-floating input-group flatpickr">
+	                        <input type="text" class="form-control" id="@systemName" name="@systemName" placeholder="@placeholder" data-input>
+	                        <label for="@systemName" class="form-label">@label@(required ? $" ({Translate("required")})" : "")</label>
+
+                        	<button class="btn btn-outline-primary d-flex justify-content-center align-items-center" type="button" data-toggle id="ToggleDateCalendar">
+                        		<span class="icon-2">
+                        			@ReadFile(iconPath + "calendar.svg")
+                        		</span>
+                        	</button>
+
+                        	<button class="btn btn-outline-primary d-flex justify-content-center align-items-center" type="button" data-clear id="DeleteDeliveryDate">
+                        		<span class="icon-2">
+                        			@ReadFile(iconPath + "x.svg")
+                        		</span>
+                        	</button>
+                        </div>
+			            break;
+
+                    case "CheckBox":
+                        string isChecked = value.ToLower() == "true" ? "checked" : ""; 
+	                    
+                        <div class="form-check">
+                            <input class="form-check-input" type="@inputType" id="@systemName" name="@systemName" required="@required" @isChecked>
+                            <label class="form-check-label" for="@systemName">@label@(required ? $" ({Translate("required")})" : "")</label>
+                        </div>
+                        break;
+
+                    case "Radio":
+                    case "CheckBoxList":
+                        string type = fieldType.ToLower() == "radio" ? "radio" : "checkbox";
+	                    
+                        <label class="form-label d-block">@label@(required ? $" ({Translate("required")})" : "")</label>
+                        foreach (LoopItem option in field.GetLoop("Options"))
+                        {
+                            string optionChecked = option.GetBoolean("Option.DefaultSelected") ? "checked" : "";
+                            string id = systemName + option.GetString("Option.ID");
+                            string optionValue = option.GetString("Option.Value");
+                            string optionText = Translate(option.GetString("Option.Text"));
+
+                            <div class="form-check @cssClass">
+                                <input class="form-check-input" type="@type" id="@id" name="@systemName" value="@optionValue" required="@required" @optionChecked>
+                                <label class="form-check-label" for="@id">@optionText</label>
+                            </div>
+                        }
+                        break;
+
+                    case "Select":
+                        <div class="form-floating">
+                            <select class="form-select" id="@systemName" name="@systemName" required="@required">
+                                @foreach (var option in field.GetLoop("Options"))
+                                {
+                                    string optionSelected = option.GetBoolean("Option.DefaultSelected") == true ? "selected" : "";
+                                    string id = systemName + option.GetString("Option.ID");
+                                    string optionValue = option.GetString("Option.Value");
+                                    string optionText = Translate(option.GetString("Option.Text"));
+
+                                    <option @optionSelected value="@optionValue" id="@id" >@optionText</option>
+                                }
+                            </select>
+                            <label for="@systemName" class="form-label">@label@(required ? $" ({Translate("required")})" : "")</label>
+                        </div>
+                        break;
+
+                    case "Submit":
+                        <button class="btn btn-primary" type="submit" onclick="Buttons.LockButton(event)" id="@systemName">@label</button>
+                        break;
+
+                    case "Reset":
+                        <button class="btn btn-secondary" type="reset" onclick="Buttons.LockButton(event)" id="@systemName">@label</button>
+                        break;
+                    case "Text":
+                        <div class="form-text">@control</div>
+                        break;
+
+                    case "Image":
+                        string imagePath = field.GetString("Field.Image");
+                        if (!string.IsNullOrEmpty(imagePath))
+                        {
+                            <img class="img-fluid" src="@imagePath" alt="@name">
+                        }
+                        break;
+
+                    case "PageShift":
+                         <label>@label</label><span class="formPageShift"></span>
+                        break;
+                }
+                @if (!string.IsNullOrEmpty(description)) {
+                    <div class="form-text">@description</div>
+                }
+            </div>
+        }
+    </div>
+
+    @GetString("Form.FormEnd")
+
+	if (hasDateFields)
+	{
+		<script type="module">
+			swift.AssetLoader.Load('/Files/Templates/Designs/Swift/Assets/css/flatpickr.min.css', 'css');
+
+			@* Wait for flatpickr styles and then import the js and load the flatpick instance *@
+			document.addEventListener('load.swift.assetloader', function () {
+				import('/Files/Templates/Designs/Swift/Assets/js/flatpickr.js').then(function(){
+
+					@* Set the flatpickr locale language from culture info *@
+					flatpickr.localize(flatpickr.l10ns.@(Pageview.Area.CultureInfo.TwoLetterISOLanguageName));
+
+					flatpickr(".flatpickr", {
+						altInput: true,
+						weekNumbers: true,
+						wrap: true,
+						formatDate: (date, format, locale) => {
+							return date.toLocaleDateString('@(Pageview.Area.CultureInfo)');
+						},
+					});
+				});
+			})
+
+		</script>
+	}
+}

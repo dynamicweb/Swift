@@ -1,0 +1,85 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+
+@functions
+{
+	private string RenderCustomCSS(IEnumerable<string> decorations)
+	{
+		var cssClasses = new List<string>();
+
+		foreach (var itemId in decorations)
+		{
+			var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
+			item.TryGetValue("Class", out object classes);
+
+			if (classes is null)
+			{
+				continue;
+			}
+
+			var cssString = (string)classes;
+
+			if (cssString.StartsWith("["))
+			{
+				var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+				cssClasses.AddRange(cssArray);
+			}
+			else
+			{
+				cssClasses.Add(cssString.Replace(",", " "));
+			}
+		}
+
+		return string.Join(" ", cssClasses).Trim();
+	}
+}
+
+@{
+	string layout = Model.Item.GetRawValueString("Layout", "text-start");
+
+	string layoutClasses = layout == "text-start" ? "" : "";
+	layoutClasses = layout == "text-center" ? " align-items-center text-center" : layoutClasses;
+	layoutClasses = layout == "text-end" ? " align-items-end text-end" : layoutClasses;
+	layoutClasses = layout == "alignLeftMiddle" ? " justify-content-center" : layoutClasses;
+	layoutClasses = layout == "alignCenterMiddle" ? " align-items-center justify-content-center text-center" : layoutClasses;
+
+	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
+	contentPadding = contentPadding == "none" ? "p-0" : contentPadding;
+	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
+	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
+
+	string maxWidth = Model.Item.GetRawValueString("TextReadability", "max-width-on");
+	maxWidth = maxWidth == "max-width-on" ? " mw-75ch d-inline-block" : "";
+
+	string titleColor = Model.Item.GetString("TitleColor", "text-inherit");
+	string titleOpacity = Model.Item.GetString("TitleOpacity", "opacity-100");
+	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-4");
+	string headingLevel = Model.Item.GetString("HeadingLevel", "h2");
+	string headingLevelStart = $"<{headingLevel} class=\"{titleFontSize} {titleColor} {titleOpacity}{maxWidth} m-0\">";
+	string headingLevelStop = $"</{headingLevel}>";
+
+	string subtitleFontSize = Model.Item.GetRawValueString("SubtitleFontSize", "fs-5");
+	string subtitleColor = Model.Item.GetString("SubtitleColor", "text-inherit");
+	string subtitleOpacity = Model.Item.GetString("SubtitleOpacity", "opacity-100");
+
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	var decorations = Model.Item?.GetList("CssDecorations")?.GetRawValue().OfType<string>() ?? Enumerable.Empty<string>();
+	string css = RenderCustomCSS(decorations);
+}
+
+<div class="h-100 @(contentPadding)@(theme) @(css) item_@Model.Item.SystemName.ToLower()">
+	<div id="@Model.ID" class="user-select-none" style="scroll-margin-top:var(--header-height,150px)"></div>
+	<div class="d-flex flex-column h-100@(layoutClasses)">
+		@if (!string.IsNullOrEmpty(Model.Item.GetString("Text")))
+		{
+			<p class="@subtitleFontSize @subtitleColor @subtitleOpacity lead d-block mb-2">
+				<span class="@maxWidth">@Model.Item.GetString("Text")</span>
+			</p>
+		}
+		@if (!string.IsNullOrEmpty(Model.Item.GetString("Title")))
+		{
+			@headingLevelStart
+			@Model.Item.GetString("Title")
+			@headingLevelStop
+		}
+	</div>
+</div>

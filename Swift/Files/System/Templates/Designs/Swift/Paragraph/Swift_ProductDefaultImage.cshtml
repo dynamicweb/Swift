@@ -1,0 +1,169 @@
+﻿@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+
+@{
+	ProductViewModel product = null;
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Page.Item["DummyProduct"] != null && Pageview.IsVisualEditorMode)
+	{
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+
+		if (productList?.Products is object)
+		{
+			product = productList.Products[0];
+		}
+	}
+}
+
+@if (product is object)
+{
+	string cdnPath = Dynamicweb.Frontend.PageView.Current().CdnHostNameForImage;
+	string imagePath = product?.DefaultImage?.Value ?? "";
+	string imagePathUrlEncoded = Dynamicweb.Context.Current.Server.UrlEncode(imagePath);
+
+	string ratio = Model.Item.GetRawValueString("ImageAspectRatio", "");
+	ratio = ratio != "0" ? ratio : "";
+	string ratioCssClass = ratio != "" ? " ratio" : "";
+	string ratioVariable = ratio != "" ? "--bs-aspect-ratio: " + ratio : "";
+
+	string width = Model.Item.GetRawValueString("Width", "auto");
+	int smallImageSize = 640;
+	int largeImageSize = width == "auto" ? 1280 : Convert.ToInt32(width);
+
+	string ImageObjectFit = Model.Item.GetRawValueString("ImageObjectFit", "contain");
+
+	string imagePathXs = cdnPath + "/Admin/Public/GetImage.ashx?width=" + smallImageSize + "&image=" + imagePathUrlEncoded + "&format=webp";
+	string imagePathS =  cdnPath + "/Admin/Public/GetImage.ashx?width=" + largeImageSize + "&image=" + imagePathUrlEncoded + "&format=webp";
+	string imagePathFallBack = cdnPath + "/Admin/Public/GetImage.ashx?width=" + largeImageSize + "&image=" + imagePathUrlEncoded + "&format=webp";
+
+	var badgeParms = new Dictionary<string, object>();
+	badgeParms.Add("size", "h7");
+	badgeParms.Add("saleBadgeType", Model.Item.GetRawValue("SaleBadgeType"));
+	badgeParms.Add("saleBadgeCssClassName", Model.Item.GetRawValue("SaleBadgeDesign"));
+	badgeParms.Add("newBadgeCssClassName", Model.Item.GetRawValue("NewBadgeDesign"));
+	badgeParms.Add("newPublicationDays", Model.Item.GetInt32("NewPublicationDays"));
+	badgeParms.Add("campaignBadgesValues", Model.Item.GetList("CampaignBadges")?.GetRawValue().OfType<string>().ToList());
+
+	string badgeSize = Model.Item.GetRawValueString("BadgeSize", "fs-2");
+
+	bool showFavoritesSelector = !string.IsNullOrEmpty(Model.Item.GetString("ShowAddToFavorites")) ? Model.Item.GetBoolean("ShowAddToFavorites") : false;
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+
+	var favoriteParameters = new Dictionary<string, object>();
+	if (!anonymousUser && showFavoritesSelector)
+	{
+		int defaultFavoriteListId = 0;
+
+		IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
+		if (favoreiteLists.Count() == 1)
+		{
+			foreach (FavoriteList list in favoreiteLists)
+			{
+				defaultFavoriteListId = list.ListId;
+			}
+		}
+
+		favoriteParameters.Add("ListId", defaultFavoriteListId);
+	}
+
+	MediaViewModel alternativeImage = new MediaViewModel();
+	if (Model.Item.GetBoolean("ShowAlternativeImageOnHover")) {
+		var selectedImageCategories = Model.Item.GetList("GetAlternativeImageFrom")?.GetRawValue().OfType<string>().ToList();
+		List<MediaViewModel> allAssetsImages = product.AssetCategories.Where(x => selectedImageCategories.Contains(x.SystemName)).SelectMany(x => x.Assets).ToList();
+		allAssetsImages.RemoveAll(x => x.Value == product.DefaultImage.Value);
+		alternativeImage = allAssetsImages.FirstOrDefault();
+	}
+
+	string altImagePathXs = string.Empty;
+	string altImagePathS = string.Empty;
+
+	if (!string.IsNullOrEmpty(alternativeImage?.Value))
+	{
+		altImagePathXs = "/Admin/Public/GetImage.ashx?width=" + smallImageSize + "&image=" + Dynamicweb.Context.Current.Server.UrlEncode(alternativeImage.Value) + "&format=webp";
+		altImagePathS = "/Admin/Public/GetImage.ashx?width=" + largeImageSize + "&image=" + Dynamicweb.Context.Current.Server.UrlEncode(alternativeImage.Value) + "&format=webp";
+	}
+
+	@* Theme settings *@
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	string themeBorder = !string.IsNullOrWhiteSpace(theme) ? "border: 1px solid rgba(0,0,0,0)" : "";
+	string themePadding = !string.IsNullOrWhiteSpace(theme) ? "p-2 p-lg-3" : "";
+
+	string imageId = "ProductImage_" + product.Id + product.VariantId.Replace(".", "_");
+
+	bool saleBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("SaleBadgeDesign")) && Model.Item.GetRawValueString("SaleBadgeDesign") != "none" ? true : false;
+	bool newBadgeEnabled = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("NewBadgeDesign")) && Model.Item.GetRawValueString("NewBadgeDesign") != "none" ? true : false;
+	DateTime createdDate = product.Created.Value;
+	bool showBadges = saleBadgeEnabled && product.Discount.Price != 0 ? true : false;
+	showBadges = (newBadgeEnabled && Model.Item.GetInt32("NewPublicationDays") == 0) || (newBadgeEnabled && (createdDate.AddDays(Model.Item.GetInt32("NewPublicationDays")) > DateTime.Now)) ? true : showBadges;
+	showBadges = !string.IsNullOrEmpty(Model.Item.GetRawValueString("CampaignBadges")) ? true : showBadges;
+
+	string fullWidth = width == "auto" ? "w-100" : "";
+	string customWidth = width != "auto" ? "style=\"width: " + width + "px\"" : "style=\"min-width: 60px\"";
+
+
+	if (!string.IsNullOrEmpty(imagePath))
+	{
+		<div class="h-100 @fullWidth @theme position-relative item_@Model.Item.SystemName.ToLower()" @customWidth>
+			<div class="ratio" style="@(ratioVariable)">
+				<div class="d-flex justify-content-center align-items-center">
+					@if (imagePath.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase))
+					{
+						<img id="@imageId"
+							 srcset="
+								@imagePathXs @(smallImageSize)w,
+								@imagePathS  @(largeImageSize)w"
+							 sizes="(max-width: 992px) 50vw, 25vw"
+							 src="@imagePathFallBack"
+							 @if (Model.Item.GetBoolean("ShowAlternativeImageOnHover") && !string.IsNullOrEmpty(alternativeImage?.Value)) { <text>
+							 data-alternative-image="
+									@altImagePathXs @(smallImageSize)w,
+									@altImagePathS  @(largeImageSize)w"
+							 onmouseover="swift.Image.swapImage(event)"
+							 onmouseout="swift.Image.swapImage(event)"
+							 </text> }
+							 loading="lazy"
+							 decoding="async"
+							 class="h-100 w-100 @themePadding"
+						 style="object-fit: @ImageObjectFit; @themeBorder"
+							 alt="@product.Name">
+					}
+					else
+					{
+						<img src="@product.DefaultImage.Value"
+							 loading="lazy"
+							 class="h-100 w-100 @themePadding"
+							 style="object-fit: contain; @themeBorder"
+							 alt="@product.Name">
+					}
+				</div>
+			</div>
+
+			@if (showBadges)
+			{
+				<div class="position-absolute top-0 left-0 p-2 p-lg-3 ps-0 ps-lg-0 @badgeSize">
+					@RenderPartial("Components/EcommerceBadge.cshtml", product, badgeParms)
+				</div>
+			}
+
+			@if (!anonymousUser)
+			{
+				if (showFavoritesSelector)
+				{
+					<div class="position-absolute top-0 end-0 my-3" style="z-index: 2">
+						@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+					</div>
+				}
+			}
+		</div>
+	}
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0">@Translate("No products available")</div>
+}

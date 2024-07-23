@@ -1,0 +1,73 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@functions {
+
+	ProductViewModel GetProduct()
+	{
+		ProductViewModel product = null;
+
+		if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+		{
+			product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+		}
+
+		return product;
+	}
+
+	List<FieldGroupViewModel> GetDisplayGroups(ProductViewModel product)
+	{
+
+		bool hideFieldsWithZeroValue = Model.Item.GetBoolean("HideFieldsWithZeroValue");
+		var selectedDisplayGroupSystemName = Model.Item.GetList("DisplayGroups")?.GetRawValue().OfType<string>();
+		var displayGroups = product.GetProductDisplayGroupFieldsByGroupSystemNames(selectedDisplayGroupSystemName, hideFieldsWithZeroValue);
+
+		return displayGroups.ToList();
+	}
+
+	public static string FirstCharToUpper(string input)
+	{
+		return input[0].ToString().ToUpper() + input.Substring(1);
+	}
+}
+
+@{
+	ProductViewModel product = GetProduct();
+
+	if (product is object)
+	{
+
+		string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+		string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
+		contentPadding = contentPadding == "none" ? string.Empty : contentPadding;
+		contentPadding = contentPadding == "small" ? " p-2 p-md-3" : contentPadding;
+		contentPadding = contentPadding == "large" ? " p-4 p-md-5" : contentPadding;
+
+		string size = "compact";
+		string gapCss = size == "full" ? " gap-4" : " gap-2";
+
+		var displayGroups = GetDisplayGroups(product);
+
+		var templateParams = new Dictionary<string, object>
+	{
+				{ "Groups", displayGroups },
+				{ "Size", size },
+				{ "HideGroupHeaders", Model.Item.GetBoolean("HideGroupHeaders") },
+				{ "HideTitle", Model.Item.GetBoolean("HideTitle") }
+			};
+
+		string templateLayout = Model.Item.GetRawValueString("Layout", "list");
+		string templateLayoutPath = $"Components/Specifications/{FirstCharToUpper(templateLayout)}.cshtml";
+
+		<div class="h-100@(theme)@(contentPadding) item_@Model.Item.SystemName.ToLower()">
+			<div class="grid@(gapCss)">
+				@RenderPartial(templateLayoutPath, Model, templateParams)
+			</div>
+		</div>
+
+	}
+	else
+	{
+		<div class="alert alert-warning m-0">@Translate("Product Specification will be shown here if any")</div>
+	}
+}

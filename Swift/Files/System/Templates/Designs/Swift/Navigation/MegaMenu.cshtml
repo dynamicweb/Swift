@@ -1,0 +1,570 @@
+﻿@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using Dynamicweb
+@using Dynamicweb.Ecommerce.Orders
+@using System.IO
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.Common
+@using System.Text
+@using Dynamicweb.Frontend.Navigation
+@using Newtonsoft.Json
+
+@{
+string stepsIconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+}
+
+
+
+@functions {
+	
+	
+	string RenderNavigationItem(Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel node, string pageType, string pageIcon, string iconSize, string layout)
+	{
+
+		var page = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
+		string totalProductsRender = string.Empty;
+		bool pageTypeSwiftCart = pageType == "Swift_Cart";
+		if(pageTypeSwiftCart)
+		{
+			string cartId = !string.IsNullOrEmpty(page.Item["ContextCart"].ToString()) ? $"ID=\"Cart_{page.Item["ContextCart"].ToString()}\"" : string.Empty;
+			string jsCartClass = string.IsNullOrEmpty(cartId) ? "js-cart-qty" : string.Empty;
+			double totalProducts = 0;
+			Dynamicweb.Ecommerce.Common.Context.CartContext = null;
+			if (page.Item["ContextCart"] != null)
+			{
+				var orderContext = Dynamicweb.Ecommerce.Services.OrderContexts.GetOrderContextById(page.Item["ContextCart"].ToString());
+				Dynamicweb.Ecommerce.Common.Context.CartContext = orderContext;
+			}
+
+			if (Dynamicweb.Ecommerce.Common.Context.Cart != null && pageTypeSwiftCart)
+			{
+				bool renderOrderlineCountInsteadOfProductCount = page.Item["RenderOrderlineCountInsteadOfProductCount"] != null ? Convert.ToBoolean(page.Item["RenderOrderlineCountInsteadOfProductCount"]) : false;
+				if (!renderOrderlineCountInsteadOfProductCount)
+				{
+					totalProducts = Dynamicweb.Ecommerce.Common.Context.Cart.GetParentProductLineQuantityCount(Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines);
+				}
+				else
+				{
+					foreach (var orderline in Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines)
+					{
+						if (orderline.HasType(new[] { OrderLineType.Product, OrderLineType.Fixed, OrderLineType.PointProduct, OrderLineType.GiftCard }))
+						{
+							totalProducts++;
+						}
+					}
+				}
+			}
+			totalProductsRender = $"<span class=\"{jsCartClass} mini-cart-quantity pe-none\" {cartId} data-order-context=\"{page.Item["ContextCart"]}\">{totalProducts}</span>";
+		}
+
+		bool iconValid = pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) && !pageIcon.EndsWith("none.svg", StringComparison.OrdinalIgnoreCase);
+		string iconPath = iconValid ? Dynamicweb.Context.Current.Server.MapPath(pageIcon) : string.Empty;
+
+		string iconRender = iconValid ? $"<span class=\"{iconSize}\">{ReadFile(iconPath)}</span>" : string.Empty;
+		string nameRender = $"<span class=\"text-wrap-nowrap\">{node.Name}</span>";
+
+		List<string> navigationItemBuilder = new List<string>();
+		navigationItemBuilder.Add(layout.ToLower().StartsWith("link") ? nameRender : iconRender);
+		navigationItemBuilder.Add(totalProductsRender);
+		navigationItemBuilder.Add(layout.ToLower().EndsWith("icons") ? iconRender : layout.ToLower().EndsWith("links") ? nameRender : string.Empty);
+
+		return string.Join(" ", navigationItemBuilder);
+	}
+
+	Dictionary<string, object> GetGroupImageParams()
+	{
+		Dictionary<string, object> groupImageParams = new Dictionary<string, object>();
+		string productGroupImageShape = Model.Parameters["ProductGroupImageShape"] != null ? Model.Parameters["ProductGroupImageShape"].ToString() : string.Empty;
+		string productGroupImageSize = Model.Parameters["ProductGroupImageSize"] != null ? Model.Parameters["ProductGroupImageSize"].ToString() : string.Empty;
+		string ratio = productGroupImageSize.Contains("%") ? Model.Parameters["ProductGroupImageSize"].ToString() : string.Empty;
+		groupImageParams.Add("ProductGroupImageShape", productGroupImageShape);
+		groupImageParams.Add("ProductGroupImageSize", productGroupImageSize);
+		groupImageParams.Add("Ratio", ratio);
+		return groupImageParams;
+	}
+
+	public string GetImagePathSanitized(string imagePath)
+	{
+		if (!imagePath.StartsWith("/Files", StringComparison.OrdinalIgnoreCase))
+		{
+			if (!imagePath.StartsWith("Files/", StringComparison.OrdinalIgnoreCase))
+			{
+				imagePath = $"/Files/Images/{imagePath}";
+			}
+		}
+		return imagePath;
+	}
+	
+	private static List<object> GetNodeData(IEnumerable<NavigationTreeNodeViewModel> incomingNodesList, int currentParagraphId, int level)
+	{
+		var parentNodes = new List<object>();
+		foreach (var node in incomingNodesList)
+		{
+			var page = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
+			var subMenuType = "auto";
+			if (page.PropertyItem != null && page.PropertyItem.TryGetValue("SubmenuType", out var submenuTypeValue))
+			{
+				subMenuType = Dynamicweb.Core.Converter.ToString(submenuTypeValue);
+			}
+			var pageIcon = string.Empty;
+			if (page.PropertyItem != null && page.PropertyItem.TryGetValue("Icon", out var pageIconValue))
+			{
+				pageIcon = Dynamicweb.Core.Converter.ToString(pageIconValue);
+			}
+		
+			var nodeId = !string.IsNullOrEmpty(node.GroupId) ? "Megamenu_" + node.GroupId + "_" + currentParagraphId : "Megamenu_Page_" + node.PageId.ToString() + "_" + currentParagraphId;
+			var dataType = !string.IsNullOrEmpty(node.GroupId) ? "group" : "page";
+			var hasChildren = node.Nodes.Any();
+		
+			parentNodes.Add( new
+			{
+				Level = level,
+				IsClickable = node.IsClickable,
+				SubMenuType = subMenuType,
+				PageIcon = pageIcon,
+				HasChildren = hasChildren,
+				NodeId = nodeId,
+				DataType = dataType,
+				Name = node.Name,
+				Link = node.Link,
+				ChildNodes = hasChildren ? GetNodeData(node.Nodes, currentParagraphId, level + 1) : []
+			});
+		}
+
+		return parentNodes;
+	}
+		}
+
+@{
+	string theme = !string.IsNullOrEmpty(Model.Parameters["theme"].ToString()) ? Model.Parameters["theme"].ToString() : string.Empty;
+	string navAlignment = !string.IsNullOrEmpty(Model.Parameters["NavAlignment"].ToString()) ? Model.Parameters["NavAlignment"].ToString() : string.Empty;
+	string linkFontWeight = !string.IsNullOrEmpty(Model.Parameters["LinkFontWeight"].ToString()) ? Model.Parameters["LinkFontWeight"].ToString() : string.Empty;
+	string linkCasing = !string.IsNullOrEmpty(Model.Parameters["LinkCasing"].ToString()) ? Model.Parameters["LinkCasing"].ToString() : string.Empty;
+	string linkFontSize = !string.IsNullOrEmpty(Model.Parameters["LinkFontSize"].ToString()) ? Model.Parameters["LinkFontSize"].ToString() : string.Empty;
+	string layout = !string.IsNullOrEmpty(Model.Parameters["Layout"].ToString()) ? Model.Parameters["Layout"].ToString() : string.Empty;
+	string iconSize = "icon-3";
+
+	if (linkFontSize == "fs-7")
+	{
+		iconSize = "icon-2";
+	}
+	if (linkFontSize == "fs-5")
+	{
+		iconSize = "icon-4";
+	}
+
+	string dropdownAlignment = Model.Parameters["DropdownAlignment"] != null ? Model.Parameters["DropdownAlignment"].ToString() : string.Empty;
+	string dropdownLinkHeaderFontWeight = Model.Parameters["DropdownLinkHeaderFontWeight"] != null ? Model.Parameters["DropdownLinkHeaderFontWeight"].ToString() : string.Empty;
+	string dropdownLinkHeaderCasing = Model.Parameters["DropdownLinkHeaderCasing"] != null ? Model.Parameters["DropdownLinkHeaderCasing"].ToString() : string.Empty;
+	string dropdownLinkHeaderFontSize = Model.Parameters["DropdownLinkHeaderFontSize"] != null ? Model.Parameters["DropdownLinkHeaderFontSize"].ToString() : string.Empty;
+	string dropdownLinkFontWeight = Model.Parameters["DropdownLinkFontWeight"] != null ? Model.Parameters["DropdownLinkFontWeight"].ToString() : string.Empty;
+	string dropdownLinkCasing = Model.Parameters["DropdownLinkCasing"] != null ? Model.Parameters["DropdownLinkCasing"].ToString() : string.Empty;
+	string dropdownLinkFontSize = Model.Parameters["DropdownLinkFontSize"] != null ? Model.Parameters["DropdownLinkFontSize"].ToString() : string.Empty;
+	string productGroupImagePlacement = Model.Parameters["ProductGroupImagePlacement"] != null ? Model.Parameters["ProductGroupImagePlacement"].ToString() : string.Empty;
+	string imageAlignment = "";
+	imageAlignment = dropdownAlignment == "justify-content-start text-start" && productGroupImagePlacement == "flex-row" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-start text-start" && productGroupImagePlacement == "flex-row-reverse" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-start text-start" && productGroupImagePlacement == "flex-column" ? "align-items-start" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-center text-center" && productGroupImagePlacement == "flex-row" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-center text-center" && productGroupImagePlacement == "flex-row-reverse" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-center text-center" && productGroupImagePlacement == "flex-column" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-end text-end" && productGroupImagePlacement == "flex-row" ? "align-items-center" : imageAlignment;
+	imageAlignment = dropdownAlignment == "justify-content-end text-end" && productGroupImagePlacement == "flex-row-reverse" ? "align-items-center" : imageAlignment;
+	bool showProductGroupPromotionImage = Model.Parameters.ContainsKey("ShowProductGroupPromotionImage") ? Convert.ToBoolean(Model.Parameters["ShowProductGroupPromotionImage"].ToString()) : false;
+	string menuId = Model.Parameters.ContainsKey("menu-id") ? $"menu_{Model.Parameters["menu-id"].ToString().ToLower()}" : string.Empty;
+	int currentParagraphId = Pageview.CurrentParagraph.ID;
+	var incomingNodesList = Model.Nodes;
+	var parentNodes = GetNodeData(incomingNodesList, currentParagraphId, 0);
+	var nodesJson = JsonConvert.SerializeObject(parentNodes);
+
+}
+
+<nav id="top-level-menu">
+    <ul class="nav-list">
+        @foreach (var node in Model.Nodes)
+        {
+            <li class="nav-menu-item">
+                <a href="@node.Link" data-is-link="@(!node.Nodes.Any())" data-heirachy="@node.Name">@node.Name</a></li>
+        }        
+    </ul>
+</nav>
+
+
+    <div class="flex-container">
+    <div class="flex-container-child">
+      @foreach (var node in Model.Nodes)
+        {
+            <div class="flex-item no-border" data-heirachy="@node.Name"> 
+                <ul class="sub-menu-list">
+             @foreach (var subNode in node.Nodes)
+        {
+            
+       <li class="menu-item">
+        <a href="@subNode.Link" data-is-link="@(!subNode.Nodes.Any())" data-heirachy-addition="@subNode.Name" class="sub-nav-text">@subNode.Name</a>
+        </li>
+                  
+        }
+         </ul>   
+        </div>
+        }    
+
+
+              @foreach (var node in Model.Nodes)
+        {
+           
+             @foreach (var subNode in node.Nodes)
+        {
+             <div class="flex-item" data-heirachy="@($"{node.Name}/{subNode.Name}")"> 
+             <ul class="sub-menu-list">
+                 @foreach (var subsubNode in subNode.Nodes)
+        {
+            
+       <li class="menu-item">
+        <a href="@subsubNode.Link" data-is-link="@(!subsubNode.Nodes.Any())" data-heirachy-addition="@subsubNode.Name" class="sub-nav-text">@subsubNode.Name</a>
+        </li>
+                  
+        }
+        </ul>    
+           </div>
+        }
+
+        }  
+
+               @foreach (var node in Model.Nodes)
+        {
+           
+             @foreach (var subNode in node.Nodes)
+        {
+                 @foreach (var subsubNode in subNode.Nodes)
+        {
+             <div class="flex-item" data-heirachy="@($"{node.Name}/{subNode.Name}/{subsubNode.Name}")"> 
+               <ul class="sub-menu-list">
+                       @foreach (var subsubsubNode in subsubNode.Nodes)
+        {
+          
+       <li class="menu-item">
+        <a href="@subsubsubNode.Link" data-is-link="@(!subsubsubNode.Nodes.Any())" data-heirachy-addition="@subsubsubNode.Name" class="sub-nav-text">@subsubsubNode.Name</a>
+        </li>
+                 
+        }
+        </ul>     
+         </div>
+        }}
+  
+        }  
+
+                  @foreach (var node in Model.Nodes)
+        {
+           
+             @foreach (var subNode in node.Nodes)
+        {
+                 @foreach (var subsubNode in subNode.Nodes)
+        {
+                       @foreach (var subsubsubNode in subsubNode.Nodes)
+        {
+             <div class="flex-item" data-heirachy="@($"{node.Name}/{subNode.Name}/{subsubNode.Name}/{subsubsubNode.Name}")"> 
+             <ul class="sub-menu-list">
+                            @foreach (var subsubsubsubNode in subsubsubNode.Nodes)
+        {
+            
+       <li class="menu-item">
+        <a href="@subsubsubsubNode.Link" data-is-link="@(!subsubsubsubNode.Nodes.Any())" data-heirachy-addition="@subsubsubsubNode.Name" class="sub-nav-text">@subsubsubsubNode.Name</a>
+        </li>
+                 
+        }
+         </ul>    
+           </div>
+        }}}
+
+        } 
+        </div> 
+        <div class="feature-image">
+        <div>
+        <p>Featured Item</p>
+        <img src="https://placehold.co/200x200" alt="Feature Image">
+        </div>
+        <div>
+            <p>MP Turret Camera</p>
+            <p>£29.99<p>
+        </div>
+        </div>
+
+   </div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var featureImage = document.querySelector('.feature-image');
+    var subNavMega = document.querySelector('.flex-container');
+    var isSubNavMegaVisible = false;
+
+    function updateFeatureImageVisibility() {
+        if (isSubNavMegaVisible) {
+            featureImage.style.display = 'flex';
+        } else {
+            featureImage.style.display = 'none';
+        }
+    }
+
+    function showSubNavMega() {
+        if (subNavMega) {
+            subNavMega.style.display = 'flex';
+            isSubNavMegaVisible = true;
+            updateFeatureImageVisibility();
+        }
+    }
+
+    function closeSubNavMega() {
+        if (subNavMega) {
+            subNavMega.style.display = 'none';
+            isSubNavMegaVisible = false;
+            updateFeatureImageVisibility();
+        }
+    }
+
+    document.addEventListener('click', function(event) {
+        if (subNavMega && !subNavMega.contains(event.target) && !event.target.closest('.nav-menu-item')) {
+            closeSubNavMega();
+        }
+    });
+
+    if (subNavMega) {
+        subNavMega.addEventListener('mouseleave', closeSubNavMega);
+    }
+
+    document.querySelectorAll('.nav-menu-item').forEach(item => {
+        item.addEventListener('click', function (event) {
+            event.preventDefault();
+            var parentName = this.querySelector('a:first-child').getAttribute('data-heirachy');
+            displayFlexItems(parentName);
+
+            this.style.borderBottom = '5px solid #fff';
+
+            document.querySelectorAll('.nav-menu-item').forEach(el => {
+                if (el !== this) {
+                    el.style.borderBottom = 'none';
+                }
+            });
+
+            showSubNavMega();
+        });
+    });
+
+    var chevron = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+
+    document.querySelectorAll('.menu-item a[data-is-link="False"]').forEach(el => {
+        el.innerHTML += chevron;
+    });
+
+    function getHeirachyPaths(path) {
+        let pathSegments = path.split('/');
+
+        let hierarchicalPath = pathSegments.reduce((accumulator, currentValue, index) => {
+            if (index === 0) {
+                accumulator.push(currentValue);
+            } else {
+                accumulator.push(`${accumulator[index - 1]}/${currentValue}`);
+            }
+            return accumulator;
+        }, []);
+
+        return hierarchicalPath;
+    }
+
+    let flexItems = document.querySelectorAll('.flex-item');
+
+    flexItems.forEach(item => item.style.display = 'none');
+
+    document.querySelectorAll('.menu-item').forEach(item => {
+        item.addEventListener('click', function(event) {
+            let siblingMenuItems = this.closest('.flex-item').querySelectorAll('.menu-item');
+
+            siblingMenuItems.forEach(siblingMenuItem => {
+                siblingMenuItem.classList.remove('hover-effect');
+            });
+
+            this.classList.add('hover-effect');
+            if (this.querySelector('a:first-child').getAttribute('data-is-link') !== 'True') {
+                event.preventDefault();
+                var currentHeirachy = this.closest('.flex-item').getAttribute('data-heirachy');
+                var heirachyAddition = this.querySelector('a:first-child').getAttribute('data-heirachy-addition');
+                displayFlexItems(currentHeirachy, heirachyAddition);
+            }
+        });
+    });
+
+    function displayFlexItems(currentHeirachy, heirachyAddition) {
+        flexItems.forEach(item => {
+            var itemHeirachy = item.getAttribute('data-heirachy');
+            var checkHeirachy = currentHeirachy;
+            if (heirachyAddition) {
+                checkHeirachy += '/' + heirachyAddition;
+            }
+
+            let allPaths = getHeirachyPaths(checkHeirachy);
+
+            if (allPaths.includes(itemHeirachy)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
+
+
+<style>
+.feature-image {
+    display: none;
+    width: auto;
+    height: 200px;
+    align-items: center;
+    gap: 20px;
+}
+
+.feature-image div:first-of-type {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.feature-image p {
+    font-weight: bold;
+}
+
+.sub-nav-mega {
+    background-color: #CB2D25;
+}
+.hover-effect {
+background-color: #BB2922;
+border-radius: 10px;
+}
+
+.mega-menu ul li {
+    border: 10px solid transparent;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 10px;
+    justify-content: flex-end;
+    align-items: center;
+    text-align: left;
+}
+
+.mega-menu ul li ul li {
+    border: 10px solid transparent;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 10px;
+    justify-content: flex-end;
+    align-items: center;
+    text-align: left;
+}
+
+.second-level-nav {
+	grid-row-gap: 5px;
+}
+
+a {
+text-decoration: none;
+}
+	ol, ul {
+    list-style: none outside none;
+	cursor: pointer;
+}
+
+.top-level-nav {
+	display: flex;
+    gap: 20px;
+    justify-content: flex-start;
+    align-items: center;
+	border: 10px solid transparent;
+}
+
+.top-level-nav li {
+	background-color: none !important;
+}
+
+.second-level-nav {
+    display: none;
+}
+
+.mega-menu {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+
+p {
+	margin: 0 !important;
+}
+
+
+.nav-list {
+    display: flex;
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+.flex-container {
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  justify-content: space-between;
+}
+
+.flex-item {
+position: relative;
+   display: flex;
+    flex-direction: column;
+  justify-content: flex-start;
+ border-left: 0.1px solid  #BB2922;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.no-border {
+    border-left: none !important;
+}
+
+.flex-container-child {
+    display: flex;
+}
+
+.container {
+  width: 100%;
+  background-color: #f0f0f0; /* Change this to your desired background color */
+}
+
+.nav-menu-item {
+    margin-right: 20px; // you can adjust the space between items here
+}
+
+/* Style the chevron icon normally */
+.menu-item svg.feather {
+    stroke:   #A6201B;
+}
+
+/* Style the chevron icon when its menu item has the hover-effect */
+.menu-item.hover-effect svg.feather {
+    stroke: white;
+}
+
+.sub-nav-text {
+ padding: 10px;
+  display: block ; 
+  text-align: left;
+}
+
+a[data-is-link='False'] {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; /* This is optional, only if you want vertical alignment as well */
+}
+.sub-menu-list{
+padding: 0;
+}
+
+
+</style>

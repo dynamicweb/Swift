@@ -1,98 +1,83 @@
 ﻿@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 @using Dynamicweb
-
+@using Dynamicweb.Security.UserManagement
+@using Dynamicweb.Ecommerce
 @{
 	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
 	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", "").Trim().ToLower() : "";
-	string stepsIconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
-}
+	string stepsIconPath = "/Files/Icons/";
+	var creditBalance = UserContext.Current.User.CustomFieldValues.Find(value =>
+		value.CustomField.SystemName == "AccessUser_CreditBalance");
+	var orderId = GetString("Ecom:Order.ID");
+	var order = Services.Orders.GetById(orderId);
+	var orderCost = order.Price.Price;
+	var validCustomerBalance = double.TryParse(creditBalance?.Value.ToString(), out var creditRemaining);
 
+	var canPayOnAccount = validCustomerBalance && creditRemaining >= orderCost;
+}
+@Include("Helpers/StripeHelper.cshtml")
 <div class="h-100" id="DeliveryUser">
 	<div class=" checkout-grid order-last order-lg-first@(theme)">
 		@Include("Helpers/TSDSummarySidebar.cshtml")
 		@Include("Helpers/TSDDeliverySidebar.cshtml")
 				<form name="ordersubmit" id="ordersubmit" method="post" autocomplete="off" >
-		<div class="billing-details">
-			<h2>Billing Address</h2>
-			<div class="billing-address">
-				<input type="radio" id="billingAddress" name="billingAddress" value="billingAddress">
-				<strong><label for="billingAddress">Name, Address Line One, Address Line Two, Town/City, County, Postcode</label></strong>
-			</div>
-			<div class="billing-address">
-				<input type="radio" id="billingAddress" name="billingAddress" value="billingAddress">
-				<strong><label for="billingAddress">New Address</label></strong>
-			</div>
-			<div class="breakpoint"></div>
-			<h2>Please select payment method:</h2>
-			<div class="payment-options">
-				<label class="payment" for="cardPayment1">
-					<input type="radio" id="cardPayment1" name="cardPayment1" value="cardPayment1">
-					<div class="payment-icon">@ReadFile(stepsIconPath + "applepay.svg")</div>
-				</label>
-				<label class="payment" for="cardPayment1">
-					<input type="radio" id="cardPayment1" name="cardPayment1" value="cardPayment1">
-					<div class="payment-icon">@ReadFile(stepsIconPath + "googlepay.svg")</div>
-				</label>
-				<label class="payment" for="cardPayment1">
-					<input type="radio" id="cardPayment1" name="cardPayment1" value="cardPayment1">
-					<div class="payment-icons">
-					<div>@ReadFile(stepsIconPath + "visacredit.svg")</div>
-					<div>@ReadFile(stepsIconPath + "visadebit.svg")</div>
-					<div>@ReadFile(stepsIconPath + "mastercard.svg")</div>
-					<div>@ReadFile(stepsIconPath + "americanexpress.svg")</div>
-					</div>
-				</label>
-				<label class="payment" for="cardPayment1">
-					<input type="radio" id="cardPayment1" name="cardPayment1" value="cardPayment1">
-					<div class="payment-icon">@ReadFile(stepsIconPath + "paypal.svg")</div>
-				</label>
-				<label class="payment" for="cardPayment1">
-					<input type="radio" id="cardPayment1" name="cardPayment1" value="cardPayment1">
-					<div class="payment-icon"><p>Account</p></div>
-				</label>
-				<label class="payment" for="cardPayment1">
-					<input type="radio" id="cardPayment1" name="cardPayment1" value="cardPayment1">
-					<div class="payment-icon"><p>Bank Transfer</p></div>
-				</label>
-				<label class="payment" for="cardPayment1">
-					<div class="card-payment-container">
-						<div class="payment-input">
-						<strong>Pay by credit card</strong>
-						<span>@ReadFile(stepsIconPath + "locktsd.svg")<strong>Enter your 16 digit card number, expiry & CVC</strong></span>
-						<input type="text">
-						</div>
-						<div class="lock">@ReadFile(stepsIconPath + "locktsd.svg")</div>
-					</div>
-				</label>
-			</div>
-			<div class="breakpoint"></div>
-					<!-- <button type="submit" class="next-step-button" id="GoToCheckoutButton">
-		Pay by card</button> -->
 
-<button type="submit" name="@GetString("CartV2.NextStepButtonName")" id="PayButton" class="next-step-button" >
-			Pay by card
-		</button>
+					@Include("Helpers/TSD_BillingAddressComponent.cshtml")
+			<div class="breakpoint"></div>
+			
 
+			<div class="payment-area">
+
+				
+				<div id="payment-selector">
+					<h2>Please select payment method:</h2>
+
+					<div class="d-flex flex-row justify-content-around" id="spinner-container">
+<div class="loader" id="loader-spinner">
+</div>
+</div>
+				<div id="payment-details-section" class="hidden">
+					@Include("Helpers/TSDPaymentMethods.cshtml")
+					<div class="shimmer hidden" id="shimmer-loader"></div>
+					@GetString("Ecom:Cart.PaymentInlineForm")
+				
+				</div>
+					<div class="breakpoint"></div>
+	
+
+					<div class="button-bar">
+						<button type="submit" name="@GetString("CartV2.NextStepButtonName")" id="PayButton" class="next-step-button hidden" >
+							<div id="button-non-load" class="button-content"><div class="pay-button-text">Pay by credit card</div> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-arrow-right"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg></div>
+							<div id="button-load" class="hidden"><div class="button-loader" id="button-loader"></div></div>
+						</button>
+					</div>
+				</div>
+				
+			</div>
+			
 			<input type="hidden" id="CurrentStep">
 		</form>
-		</div>
-		<div class="column-step-container">
-		<div class="column column-step">
-			<div class="next-section">
-			<h1 class="numberHeader">3</h1>
-				<p class="section-text">@Translate("ORDER COMPLETE")</p>
-			</div>
-			<div class="arrow-grey">@ReadFile(stepsIconPath + "arrowgrey.svg")</div>
-		</div>
-		</div>
-	</div>
-</div>
 
-<script>
+		<div class="column-step-container">
+			<div class="column column-step">
+				<div class="next-section">
+					<h1 class="numberHeader">3</h1>
+					<p class="section-text">@Translate("ORDER COMPLETE")</p>
+				</div>
+				<div class="arrow-grey">@ReadFile(stepsIconPath + "arrowgrey.svg")</div>
+			</div>
+		</div>
+
+	</div>
+	</div>
+
+				<script>
 	function submitForm() {
 		document.querySelector("#CurrentStep").name = "@GetString("CartV2.CurrentStepButtonName")";
 		swift.PageUpdater.Update(document.querySelector("#ordersubmit"));
 	}
+
+
 </script>
 
 	<script>
@@ -114,54 +99,24 @@
 			]
 		});
 	</script>
-
-@* Address format helper methods *@
+				@* Address format helper methods *@
 @Include("../Helpers/DeliveryAddressDisplayFormatted.cshtml")
 @Include("../Helpers/UserAddressDisplayFormatted.cshtml")
 
 
 <style>
-
-.lock {
-    display: flex;
-    align-items: center;
-}
-
-.card-payment-container {
-	display: flex;
-    justify-content: space-between;
-    width: 100%;
-}
-
-.payment-input {
-	display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.payment-input :nth-child(1) {
-	color: #19C07A;
-}
-
-.payment-input span {
-	display: flex;
-    gap: 10px;
-	align-items: center;
-}
-
-.payment-input span svg{
-	height: 40px;
-	width: 40px;
-}
-
-.payment-options label:last-of-type {
-	border: 1px solid #19C07AB2;
-    background-color: #19C07A1A;
-}
-
-.payment-options label:last-of-type svg {
-	color: #19C07A;
-}
+	.button-content {
+		display: inline-flex;
+		align-items: center; 
+		padding: 10px;
+		
+	}
+	.button-bar
+	{
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+	}
 
 .payment-icons {
 	display: grid;
@@ -205,21 +160,6 @@ input[type="radio"]:checked + .payment {
 	margin: 0px !important;
 }
 
-.payment-options {
-	display: grid;
-	grid-template-columns: 1fr 1fr 1fr;
-	grid-template-rows: 1fr 1fr 1fr;
-	grid-column-gap: 20px;
-	grid-row-gap: 20px;
-	background-color: transparent;
-}
-
-.payment-options .payment:last-of-type {
-	grid-column: 1 / span 3;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
 
 
 
@@ -233,26 +173,30 @@ input[type="radio"]:checked + .payment {
 	background-color: white;
 }
 
-.next-step-button {
-	background-color: #04AA6D;
-    border: none;
-    color: white;
-    padding: 20px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    margin: 4px 2px;
-    border-radius: 12px;
-	text-transform: uppercase;
-    font-weight: bold;
-    height: 50px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-	width: 100%;
-    margin-top: 20px;
-}
+	.next-step-button {
+		background-color: #04AA6D;
+		border: none;
+		color: white;
+		padding: 20px;
+		text-align: center;
+		text-decoration: none;
+		font-size: 16px;
+		margin: 4px 2px;
+		border-radius: 12px;
+		text-transform: uppercase;
+		font-weight: bold;
+		height: 50px;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		margin-top: 20px;
+		width: auto;
+	}
+
+	.next-step-button:disabled {
+		background-color: #cccccc; /* Use the shade of grey you want */
+		color: #888888;            /* Grey out the text as well */
+	}
 
 .breakpoint {
 	width: 100%;
@@ -262,7 +206,7 @@ input[type="radio"]:checked + .payment {
 }
 
 input[type='radio'] {
-    accent-color: #D5352D;
+    accent-color: #D5352D !important;
 }
 
 
@@ -397,4 +341,268 @@ grid-template-columns: 1fr 1fr;
 }
 
 }
+
+
+	.loader-container{
+		display: flex;
+		justify-content: center;
+	}
+
+	.loader {
+		width: 50px;
+		aspect-ratio: 1;
+		display: grid;
+		border: 4px solid #0000;
+		border-radius: 50%;
+		border-color: #ccc #0000;
+		animation: l16 1s infinite linear;
+	}
+	.loader::before,
+	.loader::after {
+		content: "";
+		grid-area: 1/1;
+		margin: 2px;
+		border: inherit;
+		border-radius: 50%;
+	}
+	.loader::before {
+		border-color: #f03355 #0000;
+		animation: inherit;
+		animation-duration: .5s;
+		animation-direction: reverse;
+	}
+	.loader::after {
+		margin: 8px;
+	}
+	@@keyframes l16 {
+		 100%{transform: rotate(1turn)}
+	 }
+	 
+	 #payment-selector
+	 {
+		 /*display: none;*/
+	 }
+	 
+	 .payment-area
+	 {
+		 min-height:  60vh;
+	 }
+
+
+
+	/* Hide the standard radio button */
+	.custom-radio-input {
+		display: none;
+	}
+
+	/* Create a new custom radio button */
+	.custom-radio-button {
+		display: inline-block;
+		height: 22px;
+		width: 22px;
+		margin: 5px;
+		background-color: #ffffff;
+		border: 1px solid #9599A0;
+		border-radius: 50%; /* Makes it circular */
+		position: relative;
+		
+		
+	}
+
+	/* Show the indicator (the dot) when checked */
+	.custom-radio-input:checked ~ .custom-radio-button:after {
+		content: '';
+		display: block;
+		height: 10px;
+		width: 10px;
+		background-color: red;
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		transform: translate(-50%, -50%); /* Centers the dot */
+		border-radius: 50%; /* Makes the indicator dot circular */
+		
+	}
+
+	
+
+	.text-label-black {
+		color: #000000;
+		font-weight: 600;
+		font-size: 16px;
+		padding-bottom: 5px;
+	}
+
+	.text-label-red {
+		color: #D5352D;
+		text-transform: uppercase;
+		font-weight: 600;
+		font-size: 14px;
+		padding-bottom: 5px;
+	}
+
+	
+	.loader {
+		width: 50px;
+		aspect-ratio: 1;
+		display: grid;
+		border: 4px solid #0000;
+		border-radius: 50%;
+		border-color: #ccc #0000;
+		animation: l16 1s infinite linear;
+	}
+	.loader::before,
+	.loader::after {
+		content: "";
+		grid-area: 1/1;
+		margin: 2px;
+		border: inherit;
+		border-radius: 50%;
+	}
+	.loader::before {
+		border-color: #f03355 #0000;
+		animation: inherit;
+		animation-duration: .5s;
+		animation-direction: reverse;
+	}
+	.loader::after {
+		margin: 8px;
+	}
+	@@keyframes l16 {
+		100%{transform: rotate(1turn)}
+	}
+
+	.card-info div
+	{
+		color:  black;
+		font-weight: bold;
+		text-align: left;
+	}
+
+	.card-info span svg
+	{
+		width: 25px !important;  /* replace values as needed */
+		height: 25px !important; /* replace values as needed */
+	}
+
+
+	.psuedo-card-box
+	{
+		border: 1px solid lightgray;
+		padding-left: 15px;
+		padding-right: 15px;
+		padding-top: 15px;
+		padding-bottom: 15px;
+		background-color: white;
+
+	}
+	.card-text{
+		color: rgba(25, 192, 122, 1);
+		font-weight: bold;
+	}
+
+	.lock {
+		display: flex;
+		align-items: center;
+		padding: 20px;
+
+	}
+
+	.lock svg {
+		width: 100px;  /* replace values as needed */
+		height: 100px; /* replace values as needed */
+	}
+
+	.card-payment-container {
+		display: flex;
+		justify-content: space-between;
+		width: 100%;
+	}
+
+	.payment-input {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		flex-grow: 1;
+	}
+
+	.payment-input {
+		padding: 15px;
+		color: rgba(25, 192, 122, 1);
+	}
+
+	.payment-input span {
+		display: flex;
+		gap: 10px;
+		align-items: center;
+	}
+
+	.payment-input span svg{
+		height: 40px;
+		width: 40px;
+	}
+
+	.card-payment-box {
+		border: 1px solid rgba(25, 192, 122, 1);
+		background-color: #19C07A1A;
+	}
+
+	.payment-options label:last-of-type svg {
+		color: #19C07A;
+	}
+
+	#error-message
+	{
+		margin-left:  15px;
+		color: red;
+		font-weight: bold;
+	}
+
+	.shimmer {
+		height:  45px;
+		border-radius: 10px; /* define the height of the rectangle */
+		background: #f6f7f8;
+		background: linear-gradient(to right, #eeeeee 8%, #dddddd 18%, #eeeeee 33%);
+		background-size: 800px 104px;
+		position: relative;
+		animation: shimmer 1s infinite;
+	}
+
+	@@keyframes shimmer {
+		 0% {
+			 background-position: -468px 0;
+		 }
+		 100% {
+			 background-position: 468px 0;
+		 }
+	 }
+
+	#error-message
+	{
+		margin-left:  15px;
+		color: red;
+		font-weight: bold;
+	}
+
+	.account-payment-box
+	{
+		margin-left: 10px;
+	}
+
+	
+	.button-loader {
+		width: 60px;
+		aspect-ratio: 4;
+		--c:#000 90%,#0000;
+		background:
+			radial-gradient(circle closest-side at left  6px top 50%,var(--c)),
+			radial-gradient(circle closest-side                     ,var(--c)),
+			radial-gradient(circle closest-side at right 6px top 50%,var(--c));
+		background-size: 100% 100%;
+		background-repeat: no-repeat;
+		animation: l4 1s infinite alternate;
+	}
+	@@keyframes l4 {
+		to{width:25px;aspect-ratio: 1}
+	}
 </style>

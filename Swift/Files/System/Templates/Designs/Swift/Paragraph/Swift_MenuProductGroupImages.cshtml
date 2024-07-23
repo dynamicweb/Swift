@@ -1,0 +1,261 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend.Navigation
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Frontend
+
+@functions {
+
+	NavigationTreeViewModel GetNavigationTreeFromPageId(int pageId = 0, int startLevel = 1, int stopLevel = 9)
+	{
+
+		var navigationSettings = new NavigationSettings()
+		{
+			StartLevel = startLevel,
+			StopLevel = stopLevel,
+			RootPageId = pageId,
+			ExpandMode = ExpandMode.All,
+		};
+
+		return Navigation.GetNavigationViewModel(navigationSettings);
+	}
+
+	string GetSubmenuType(NavigationTreeNodeViewModel rootNode)
+	{
+		string submenuType = string.Empty;
+		var page = Dynamicweb.Content.Services.Pages.GetPage(rootNode.PageId);
+		var pageType = !string.IsNullOrEmpty(page.ItemType) ? page.ItemType : "Swift_Page";
+		if (page.PropertyItem is object && page.PropertyItem.TryGetValue("SubmenuType", out object submenuTypeValue))
+		{
+			submenuType = Dynamicweb.Core.Converter.ToString(submenuTypeValue);
+		}
+		return submenuType;
+	}
+
+	bool IsMegaMenu(NavigationTreeNodeViewModel rootNode, string submenuType)
+	{
+		switch (submenuType)
+		{
+			case "dropdown":
+				return false;
+			case "auto":
+				return NavigationTreeHasChildren(rootNode);
+			default:
+				return true;
+		}
+	}
+
+	bool NavigationTreeHasChildren(NavigationTreeNodeViewModel rootNode)
+	{
+		foreach (var subNode in rootNode.Nodes)
+		{
+			if (subNode.Nodes.Any())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public string GetGroupFieldValue(string systemName, IList<FieldValueViewModel> groupFields)
+	{
+		string groupField = string.Empty;
+
+		if (groupFields is object)
+		{
+
+			groupField = groupFields != null ? groupFields.FirstOrDefault(field => field?.SystemName == systemName)?.Value?.ToString() : string.Empty;
+		}
+
+		return groupField;
+	}
+
+	string isActive(NavigationTreeNodeViewModel node)
+	{
+		return node.IsActive ? "aria-current='page'" : string.Empty;
+	}
+
+	string isActiveDropdown(NavigationTreeNodeViewModel node)
+	{
+		return node.IsActive ? "class=\"active\"" : string.Empty;
+	}
+
+	public string GetImagePathSanitized(string imagePath)
+	{
+		if (!imagePath.StartsWith("/Files", StringComparison.OrdinalIgnoreCase))
+		{
+			if (!imagePath.StartsWith("Files/", StringComparison.OrdinalIgnoreCase))
+			{
+				imagePath = $"/Files/Images/{imagePath}";
+			}
+		}
+		return imagePath;
+	}
+}
+
+@{
+	// Page settings
+	var navigationRootLink = Model.Item.GetLink("NavigationRoot");
+	int navigationRootPageId = navigationRootLink?.PageId ?? 0;
+	var navigationRoot = GetNavigationTreeFromPageId(navigationRootPageId);
+	bool showProductGroupImages = Model.Item.GetBoolean("ShowProductGroupImages");
+
+	//CSS Settings
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? "theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	string promotionImageTheme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("ProductGroupPromotionImageTheme")) ? "theme " + Model.Item.GetRawValueString("ProductGroupPromotionImageTheme").Replace(" ", "").Trim().ToLower() : "";
+	string headerAlignment = Model.Item.GetRawValueString("HeaderAlignment", "start");
+	headerAlignment = $"justify-content-{headerAlignment} text-{headerAlignment}";
+	string menuAlignment = Model.Item.GetRawValueString("MenuAlignment", "start");
+	menuAlignment = $"justify-content-{menuAlignment}";
+	string textAlignment = Model.Item.GetRawValueString("TextAlignment", "center");
+	textAlignment = $"text-{textAlignment}";
+	string headerLinkAnimation = Model.Item.GetRawValueString("HeaderLinkAnimation", "left");
+	headerLinkAnimation = headerLinkAnimation == "none" ? "text-decoration-underline-hover" : $"hover-underline-animation-{headerLinkAnimation}";
+	string promotionImageRatio = Model.Item.GetRawValueString("ProductGroupPromotionImageRatio");
+	string navigationImageRatio = Model.Item.GetRawValueString("ProductGroupImageRatio");
+	string clickable = "text-decoration-underline-hover text-decoration-accent-hover";
+
+}
+
+<div class="nav-wrapper megamenu-wrapper item_@Model.Item.SystemName.ToLower()" id="Menu_@Model.ID">
+	<nav class="d-flex gap-2 @headerAlignment">
+		@foreach (var rootNode in navigationRoot.Nodes.Where(node => node.ShowInMenu))
+		{
+			var rootNodeProductGroup = rootNode.GetProductGroup() ?? null;
+			var rootNodeGroupFields = rootNodeProductGroup.GroupFields ?? null;
+			string promotionImage = GetGroupFieldValue("ProductGroupPromotionImage", rootNodeGroupFields);
+			bool promotionImageExists = !string.IsNullOrEmpty(promotionImage);
+			var nodesExist = rootNode.Nodes.Any();
+			
+			string submenuType = GetSubmenuType(rootNode);
+			bool isMegaMenu = IsMegaMenu(rootNode, submenuType);
+			string submenuTypeCss = isMegaMenu ? "position-static" : string.Empty;
+			string dropdown = nodesExist ? "dropdown" : string.Empty;
+			string dropdownAttributes = nodesExist ? "role=\"button\" data-bs-toggle=\"dropdown\" data-bs-offset=\"0,0\" aria-expanded=\"false\"" : string.Empty;
+
+			<div class="nav-item @dropdown @submenuTypeCss">
+				@if (rootNode.IsClickable)
+				{
+					<a class="nav-link p-2 fw-bold text-uppercase @headerLinkAnimation" href="@rootNode.Link" @dropdownAttributes @isActive(rootNode)>
+						<span class="text-wrap-nowrap">@rootNode.Name</span>
+					</a>
+				}
+				else
+				{
+					<span class="nav-link p-2 fw-bold text-uppercase pe-none @headerLinkAnimation" @dropdownAttributes>
+						<span class="text-wrap-nowrap">@rootNode.Name</span>
+					</span>
+				}
+				@if (nodesExist)
+				{
+					if (isMegaMenu)
+					{
+						<div class="dropdown-menu border-0 megamenu py-4 @theme">
+							<div class="container-xl overflow-y-auto">
+								<div class="grid">
+									<div class="g-col-@(promotionImageExists ? "8" : "12")">
+										<div class="d-flex flex-wrap gap-3 @menuAlignment">
+											@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
+											{
+												var groupFields = subNode.GetProductGroup().GroupFields ?? null;
+												string groupImage = GetGroupFieldValue("ProductGroupNavigationImage", groupFields);
+												var imagePath = Dynamicweb.Context.Current.Server.UrlEncode(GetImagePathSanitized(groupImage));
+												var imageSrc = $"/Admin/Public/GetImage.ashx?Image={imagePath}&Width=420";
+
+												<div class="megamenu-product-group-image-col">
+
+													@if (subNode.IsClickable)
+													{
+														<a href="@subNode.Link" class="text-decoration-none" @isActive(subNode)>
+															@if (showProductGroupImages && !string.IsNullOrEmpty(groupImage))
+															{
+																<figure class="ratio m-0" style="--bs-aspect-ratio: @navigationImageRatio">
+																	<img loading="lazy" alt="@subNode.Name" src="@imageSrc" style="object-fit: cover">
+																</figure>
+															}
+															<div class="nav-link px-0 @textAlignment @clickable">
+																@(subNode.Name)
+															</div>
+														</a>
+													}
+													else
+													{
+														<div class="text-decoration-none">
+															@if (showProductGroupImages && !string.IsNullOrEmpty(groupImage))
+															{
+																<figure class="ratio m-0" style="--bs-aspect-ratio: @navigationImageRatio">
+																	<img loading="lazy" alt="@subNode.Name" src="@imageSrc" style="object-fit: cover">
+																</figure>
+															}
+															<div class="nav-link px-0 pe-none @textAlignment">
+																@(subNode.Name)
+															</div>
+
+														</div>
+													}
+												</div>
+											}
+										</div>
+									</div>
+
+									@{
+										if (promotionImageExists)
+										{
+											string promotionImageSrc = GetImagePathSanitized(promotionImage);
+											string promotionDescription = GetGroupFieldValue("ProductGroupPromotionDescription", rootNodeGroupFields);
+											string promotionLinkLabel = GetGroupFieldValue("ProductGroupPromotionLinkLabel", rootNodeGroupFields);
+											string promotionLink = GetGroupFieldValue("ProductGroupPromotionLink", rootNodeGroupFields);
+											promotionLink = !string.IsNullOrEmpty(promotionLink) ? promotionLink : rootNode.Link;
+											var groupName = rootNodeProductGroup.Name;
+
+											var promotionImageParams = new Dictionary<string, object>();
+											promotionImageParams.Add("Ratio", promotionImageRatio);
+											<div class="g-col-4 grid grid-3 align-items-start">
+												<figure class="g-col-2 g-start-2 m-0">
+													<div class="ratio @promotionImageTheme" style="--bs-aspect-ratio: @promotionImageRatio" title="@groupName">
+
+														@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = promotionImageSrc }, promotionImageParams)
+														<div class="align-items-baseline d-flex flex-column justify-content-end gap-3 p-3 bg-dark bg-opacity-10">
+															<h4 class="lh-1 mb-0">@promotionDescription</h4>
+															<a href="@promotionLink" title="@groupName" id="NavGroupPromoFigureLink_@(rootNodeProductGroup.Id)" class="btn btn-primary stretched-link">@promotionLinkLabel</a>
+														</div>
+													</div>
+												</figure>
+											</div>
+										}
+									}
+								</div>
+							</div>
+						</div>
+					}
+					else
+					{
+						<ul class="dropdown-menu dropdown-menu-shadow @theme @textAlignment">
+
+							@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
+							{
+								<li @isActiveDropdown(subNode)>
+									@if (subNode.IsClickable)
+									{
+										<a class="dropdown-item nav-link @clickable" href="@subNode.Link" @isActive(subNode)>
+											<strong>@subNode.Name</strong>
+										</a>
+									}
+									else
+									{
+										<span class="dropdown-item nav-link pe-none">
+											<strong>@subNode.Name</strong>
+										</span>
+									}
+								</li>
+							}
+						</ul>
+					}
+				}
+			</div>
+		}
+	</nav>
+</div>
+
+<script type="module">
+	swift.Menu.setMenuContentOffset('Menu_@Model.ID');
+</script>

@@ -1,0 +1,127 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using System
+
+@functions
+{
+	public enum RmaDetailView
+	{
+		CreateNewRequest,
+		ViewOpenRequest,
+		ViewClosedRequest
+	}
+
+	public string GetFormText(RmaDetailView viewTemplate)
+	{
+		string paragraphId = GetString("ParagraphID");
+		switch (viewTemplate)
+		{
+			default:
+			case RmaDetailView.CreateNewRequest:
+				return paragraphId + "AddRmaForm";
+			case RmaDetailView.ViewOpenRequest:
+				return paragraphId + "AddRmaCommentForm";
+			case RmaDetailView.ViewClosedRequest:
+				return paragraphId + "CancelRmaForm";
+		}
+	}
+	
+	public string GetFormAction(RmaDetailView viewTemplate)
+	{
+		switch (viewTemplate)
+		{
+			default:
+			case RmaDetailView.CreateNewRequest:
+				return GetString("Ecom:CustomerCenter.RMA.AddURL");
+			case RmaDetailView.ViewOpenRequest:
+				return GetString("Ecom:CustomerCenter.RMA.AddCommentURL");
+			case RmaDetailView.ViewClosedRequest:
+				return GetString("Ecom:RMA.CancelURL");
+		}
+	}
+
+	public RmaDetailView GetDetailTemplateView()
+	{
+		bool hasAddContent = GetBoolean("Ecom:CustomerCenter.RMA.HasAddContent");
+		bool hasCancelContent = GetBoolean("Ecom:CustomerCenter.RMA.HasCancelContent");
+
+		if (hasCancelContent) return RmaDetailView.ViewClosedRequest;
+		if (hasAddContent) return RmaDetailView.CreateNewRequest;
+		
+		return RmaDetailView.ViewOpenRequest;
+	}
+}
+
+@{
+	string contentPadding = Pageview.CurrentParagraph.Item["ContentPadding"] != null ? Pageview.CurrentParagraph.Item["ContentPadding"].ToString() : string.Empty;
+	contentPadding = contentPadding == "none" ? "px-0" : contentPadding;
+	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
+	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
+	string themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " h-100 theme " + themeRaw.Replace(" ", string.Empty).Trim().ToLower() : string.Empty;
+
+	RmaDetailView detailTemplateView = GetDetailTemplateView();
+
+	string rmaIdFieldName = GetString("ParagraphID") + "RMAID";
+	string hasSubmitFieldName = GetString("ParagraphID") + "HasSubmit";
+
+	string title = Translate("Create new request");
+	title = detailTemplateView == RmaDetailView.ViewOpenRequest ? Translate("View request") : title;
+	title = detailTemplateView == RmaDetailView.ViewClosedRequest ? Translate("Cancel request") : title;
+}
+
+<div class="@(contentPadding)@(theme)">
+	<form id="RMAForm" name="@GetFormText(detailTemplateView)" action="@GetFormAction(detailTemplateView)" method="post">
+		<input type="hidden" id="@rmaIdFieldName" value="@GetString("Ecom:RMA.ID")" name="@rmaIdFieldName">
+		<input type="hidden" id="@hasSubmitFieldName" value="1" name="@hasSubmitFieldName">
+
+		<header class="p-3 border-bottom">
+			<h1 class="h6 m-0 flex-fill text-muted">@title</h1>
+		</header>
+
+		@if (detailTemplateView != RmaDetailView.CreateNewRequest)
+		{
+			<text>
+				@Include("Helpers/RmaInfo.cshtml")
+			</text>
+		}
+
+		@if (detailTemplateView == RmaDetailView.CreateNewRequest)
+		{
+			<text>
+				@Include("Helpers/RmaCreateNewRequestFields.cshtml")
+			</text>
+			<text>
+				@Include("Helpers/RmaCreateRequestOrderLines.cshtml")
+			</text>
+			<text>
+				@Include("Helpers/RmaCreateNewRequest.cshtml")
+			</text>
+		}
+
+		@if (detailTemplateView == RmaDetailView.ViewOpenRequest)
+		{
+			<text>
+				@Include("Helpers/RmaOrderLines.cshtml")
+			</text>
+			<text>
+				@Include("Helpers/RmaAddCommentFields.cshtml")
+			</text>
+		}
+
+		@if (detailTemplateView == RmaDetailView.ViewClosedRequest)
+		{
+			<text>
+				@Include("Helpers/RmaOrderLines.cshtml")
+			</text>
+		}
+
+		@if (detailTemplateView != RmaDetailView.CreateNewRequest)
+		{
+			<text>
+				@Include("Helpers/RmaHistory.cshtml")
+			</text>
+		}
+	</form>
+</div>
+
+

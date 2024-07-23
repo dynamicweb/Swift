@@ -1,0 +1,183 @@
+﻿@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+
+@functions
+{
+	private string RenderCustomCSS(IEnumerable<string> decorations)
+	{
+		var cssClasses = new List<string>();
+
+		foreach (var itemId in decorations)
+		{
+			var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
+			item.TryGetValue("Class", out object classes);
+
+			if (classes is null)
+			{
+				continue;
+			}
+
+			var cssString = (string)classes;
+
+			if (cssString.StartsWith("["))
+			{
+				var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+				cssClasses.AddRange(cssArray);
+			}
+			else
+			{
+				cssClasses.Add(cssString.Replace(",", " "));
+			}
+		}
+
+		return string.Join(" ", cssClasses).Trim();
+	}
+}
+
+@{
+	string shopPage = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl($"Default.aspx?ID={GetPageIdByNavigationTag("Shop")}");
+
+	string layout = Model.Item.GetRawValueString("Layout", "field");
+	string horizontalAlign = !string.IsNullOrEmpty(Model.Item.GetRawValueString("HorizontalAlignment")) ? " justify-content-" + Model.Item.GetRawValueString("HorizontalAlignment") : "";
+	string paragraphId = Model.ID.ToString();
+
+	var decorations = Model.Item?.GetList("CssDecorations")?.GetRawValue().OfType<string>() ?? Enumerable.Empty<string>();
+	string css = RenderCustomCSS(decorations);
+
+	string searchLayout = Model.Item.GetRawValueString("Layout", "");
+	searchLayout = searchLayout == "icon" ? "nav-wrapper" : searchLayout;
+
+	string size = layout == "field" || layout == "icon" ? "normal" : "small";
+	string width = size == "small" ? "style=\"width: 260px\"" : "style=\"width: 100%\"";
+
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+
+	string searchTerm = string.Empty;
+	if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request["q"]))
+	{
+		searchTerm = System.Net.WebUtility.HtmlEncode(Dynamicweb.Context.Current.Request["q"]);
+
+	}
+	string groupIdQueryParameter = string.Empty;
+	if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request["GroupID"]))
+	{
+		groupIdQueryParameter = "&GroupID=" + System.Net.WebUtility.HtmlEncode(Dynamicweb.Context.Current.Request["GroupID"]).Trim();
+	}
+}
+
+<div class="d-flex align-items-center h-100 my-auto search-modal @searchLayout@(horizontalAlign) @(css) item_@Model.Item.SystemName.ToLower()">
+	@if (layout != "icon")
+	{
+		<div class="js-async-fetch-placeholder" @width>
+			<div class="dropdown js-type-ahead-dropdown type-ahead-dropdown">
+				<form method="get"
+					  action="@shopPage"
+					  data-search-results-page="@(Model.Item?.GetLink("SearchResultsPage")?.PageId)"
+					  data-product-details-page="@shopPage"
+					  data-product-list-page="@shopPage"
+					  data-search-layout="@(layout)"
+					  class="js-suggest-form suggest-form">
+
+					<input type="hidden" class="js-type-ahead-parameter">
+					<input type="hidden" name="redirect" value="false">
+					<input type="hidden" name="SearchLayout" value="@(layout)">
+
+					<label for="searchField_@paragraphId" class="visually-hidden">@Translate("Search here")</label>
+
+					<span class="position-absolute top-0 icon-2 px-3 d-flex align-items-center h-100 search-icon">
+						@ReadFile(iconPath + "search.svg")
+					</span>
+
+					<input id="searchField_@paragraphId"
+						   class="form-control js-type-ahead-field type-ahead-field py-2 ps-5 pe-3"
+						   type="search"
+						   placeholder="@Translate("Search here")"
+						   autocomplete="off"
+						   maxlength="255"
+						   name="q"
+						   value="@searchTerm"
+						   data-original="@searchTerm"
+						   onfocus="swift.Typeahead.init()">
+
+					<button type="button"
+							onclick="var f = document.getElementById('searchField_@paragraphId'); f.value = ''; f.focus();"
+							class="btn h-100 icon-2 reset-search"
+							aria-label="@Translate("Clear search")"
+							style="opacity: 0; position: absolute; top: 0; right: 0; visibility: hidden;">
+						@ReadFile(iconPath + "x.svg")
+					</button>
+				</form>
+				<ul class="dropdown-menu w-100 js-type-ahead-menu type-ahead-menu"></ul>
+			</div>
+		</div>
+	}
+	else
+	{
+		<button type="button" role="button" class="p-2 bg-transparent border-0 text-reset" data-bs-toggle="modal" data-bs-target="#searchModal_@paragraphId">
+			<span class="icon-3" aria-hidden="true">
+				@ReadFile(iconPath + "search.svg")
+			</span>
+			<span class="visually-hidden">@Translate("Open search modal")</span>
+		</button>
+
+		<div class="modal fade" id="searchModal_@paragraphId" tabindex="-1" data-bs-backdrop="false">
+			<div class="modal-dialog modal-fullscreen">
+				<div class="modal-content">
+					<div class="modal-header justify-content-between">
+						<h5 class="modal-title">@Translate("Search")</h5>
+						<button type="button" data-bs-dismiss="modal" class="bg-transparent border-0 p-0 text-reset">
+							<span class="icon-3" aria-hidden="true">
+								@ReadFile(iconPath + "x.svg")
+							</span>
+							<span class="visually-hidden">@Translate("Close search modal")</span>
+						</button>
+					</div>
+					<div class="modal-body">
+						<div class="js-async-fetch-placeholder" @width>
+							<div class="dropdown js-type-ahead-dropdown type-ahead-dropdown">
+								<form method="post"
+									  action="@shopPage"
+									  data-search-results-page="@(Model.Item?.GetLink("SearchResultsPage")?.PageId)"
+									  data-product-details-page="@shopPage"
+									  data-product-list-page="@shopPage"
+									  data-search-layout="@(layout)"
+									  class="js-suggest-form suggest-form">
+
+									<input type="hidden" class="js-type-ahead-parameter">
+									<input type="hidden" name="redirect" value="false">
+									<input type="hidden" name="SearchLayout" value="@(layout)">
+
+									<label for="searchField_@paragraphId" class="visually-hidden">@Translate("Search here")</label>
+
+									<span class="position-absolute top-0 icon-2 px-3 d-flex align-items-center h-100 search-icon">
+										@ReadFile(iconPath + "search.svg")
+									</span>
+
+									<input id="searchField_@paragraphId"
+										   class="form-control js-type-ahead-field type-ahead-field py-2 ps-5 pe-3"
+										   type="search"
+										   placeholder="@Translate("Search here")"
+										   autocomplete="off"
+										   maxlength="255"
+										   name="q"
+										   value="@searchTerm"
+										   data-original="@searchTerm"
+										   onfocus="swift.Typeahead.init()">
+
+									<button type="button"
+											onclick="var f = document.getElementById('searchField_@paragraphId'); f.value = ''; f.focus();"
+											class="btn h-100 icon-2 reset-search"
+											aria-label="@Translate("Clear search")"
+											style="opacity: 0; position: absolute; top: 0; right: 0; visibility: hidden;">
+										@ReadFile(iconPath + "x.svg")
+									</button>
+								</form>
+								<ul class="dropdown-menu w-100 js-type-ahead-menu type-ahead-menu"></ul>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+</div>
+

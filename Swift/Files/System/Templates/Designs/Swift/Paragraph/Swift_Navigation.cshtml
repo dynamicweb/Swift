@@ -1,0 +1,79 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend.Navigation
+
+@{ 
+	string navAlignment = Model.Item.GetRawValueString("navAlignment", "start");
+	string navOrientation = Model.Item.GetRawValueString("navOrientation", "flex-row");
+	navOrientation = navOrientation == "horizontal" ? "flex-row" : navOrientation;
+	navOrientation = navOrientation == "vertical" ? "flex-column" : navOrientation;
+
+	navAlignment = navOrientation == "flex-row" && navAlignment == "start" ? "justify-content-start text-start" : navAlignment;
+	navAlignment = navOrientation == "flex-row" && navAlignment == "center" ? "justify-content-center text-center" : navAlignment;
+	navAlignment = navOrientation == "flex-row" && navAlignment == "end" ? "justify-content-end text-end" : navAlignment;
+	navAlignment = navOrientation == "flex-column" && navAlignment == "start" ? "align-items-start text-start" : navAlignment;
+	navAlignment = navOrientation == "flex-column" && navAlignment == "center" ? "align-items-center text-center" : navAlignment;
+	navAlignment = navOrientation == "flex-column" && navAlignment == "end" ? "align-items-end text-end" : navAlignment;
+
+	string layout = Model.Item.GetRawValueString("Layout", "linksOnly");
+
+	string linkFontWeight = $"fw-{Model.Item.GetRawValueString("LinkFontWeight", "normal")}";
+	string navTitleFontWeight = $"fw-{Model.Item.GetRawValueString("navTitleFontWeight", "bold")}";
+	string NavTitleCasing = !string.IsNullOrEmpty(Model.Item.GetRawValueString("NavTitleCasing", string.Empty)) ? $"text-{Model.Item.GetString("NavTitleCasing")}" : string.Empty;
+	string linkCasing = !string.IsNullOrEmpty(Model.Item.GetRawValueString("LinkCasing", string.Empty)) ? $"text-{Model.Item.GetString("LinkCasing")}" : string.Empty;
+	string linkFontSize = Model.Item.GetRawValueString("LinkFontSize", "regular");
+	linkFontSize = linkFontSize == "small" ? "fs-7" : linkFontSize;
+	linkFontSize = linkFontSize == "regular" ? "fs-6" : linkFontSize;
+	linkFontSize = linkFontSize == "large" ? "fs-5" : linkFontSize;
+
+	string navTitleFontSize = Model.Item.GetRawValueString("NavTitleFontSize", "regular");
+	navTitleFontSize = navTitleFontSize == "regular" ? "h6" : navTitleFontSize;
+	navTitleFontSize = navTitleFontSize == "large" ? "h4" : navTitleFontSize;
+
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+
+	var navigationSettings = new NavigationSettings();
+	navigationSettings.StartLevel = 1;
+	navigationSettings.StopLevel = 10;
+	navigationSettings.ExpandMode = ExpandMode.All;
+
+	navigationSettings.Parameters.Add("Layout", layout);
+	navigationSettings.Parameters.Add("LinkFontSize", linkFontSize);
+	navigationSettings.Parameters.Add("NavOrientation", navOrientation);
+	navigationSettings.Parameters.Add("LinkFontWeight", linkFontWeight);
+	navigationSettings.Parameters.Add("NavAlignment", navAlignment);
+	navigationSettings.Parameters.Add("LinkCasing", linkCasing);
+	navigationSettings.Parameters.Add("Theme", theme);
+	navigationSettings.Parameters.Add("ShowOnlyFirstNavLevel", Model.Item.GetBoolean("ShowOnlyFirstNavLevel"));
+
+	if (!string.IsNullOrEmpty(Model.Item.GetString("NavigationRoot")))
+	{
+		string root = Model.Item.GetString("NavigationRoot");
+
+		if (root.Contains("="))
+		{
+			int rootPageId = Convert.ToInt32(root.Substring(root.LastIndexOf('=') + 1));
+			navigationSettings.RootPageId = rootPageId;
+
+			var page = Dynamicweb.Content.Services.Pages.GetPage(rootPageId);
+			if (page != null && !string.IsNullOrEmpty(page.NavigationTag))
+			{
+				navigationSettings.Parameters.Add("menu-id", page.NavigationTag.ToLower());
+			}
+		}
+	}
+	else
+	{
+		navigationSettings.Parameters.Add("menu-id", "root");
+	}
+}
+
+<div class="nav-wrapper item_@Model.Item.SystemName.ToLower()">
+	@if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle"))
+	{
+		<div class="d-flex @(navOrientation) @(navAlignment)">
+			<h3 class="px-2 @(navTitleFontSize) @(navTitleFontWeight) @(NavTitleCasing)">@Model.Item.GetString("Title")</h3>
+		</div>
+	}
+	@Navigation.RenderNavigation("Navigation/Navigation.cshtml", navigationSettings)
+</div>
+

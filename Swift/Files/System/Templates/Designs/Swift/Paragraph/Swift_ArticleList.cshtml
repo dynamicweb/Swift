@@ -1,0 +1,154 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+
+@functions
+{
+	private object GetArticles(string itemType)
+	{
+		string listSource = Model.Item.GetRawValueString("ListSource", Model.PageID.ToString());
+		string articleListSortOrder = Model.Item.GetRawValueString("ArticleListSortOrder", "Descending");
+		var parent = Dynamicweb.Context.Current.Request.QueryString.Get("list");
+		var query = string.IsNullOrEmpty(parent) ? listSource : parent;
+		var includeAllChildren = Model.Item.GetRawValueString("ListDepth", "all") == "all" ? true : false;
+		var listContext = Model.Item?.GetList("ListContext")?.GetRawValue().OfType<string>();
+		var filterString = string.Join(" or ", listContext.Select(item => $"Tags == \"{item}\" or Tags ends with \",{item}\" or Tags starts with \"{item},\" or Tags contains \",{item},\""));
+		int maxItemsInList = !string.IsNullOrEmpty(Model.Item.GetInt32("MaxItemsInList").ToString()) ? Model.Item.GetInt32("MaxItemsInList") : 10;
+
+		return RenderItemList(new
+		{
+			ItemType = itemType,
+			ListTemplate = "ItemPublisher/List/List.cshtml",
+			ItemFieldsList = "*",
+			ListSourceType = "Page",
+			ListSourcePage = query,
+			ListPageSize = maxItemsInList,
+			IncludeParagraphItems = true,
+			ListOrderBy = "PublishedDate",
+			ListSecondOrderBy = "Updated",
+			ListOrderByDirection = articleListSortOrder,
+			IncludeAllChildItems = includeAllChildren,
+			Filter = itemType == "Swift_Article" ? filterString : null // Filter only if "articles only"
+		});
+	}
+}
+
+@{
+	string listBehaviour = Model.Item.GetRawValueString("ListBehaviour", "articles");
+	string articleListLayout = Model.Item.GetRawValueString("ArticleListLayout", "grid");
+	string columnTheme = Model.Item.GetRawValueString("ColumnTheme", string.Empty).ToString().Replace(" ", "").Trim().ToLower();
+	string columnThemeClass = columnTheme != string.Empty ? " theme " + columnTheme + " p-3" + (articleListLayout == "carousel" ? " px-lg-4" : string.Empty) : string.Empty;
+
+	int maxItemsInList = !string.IsNullOrEmpty(Model.Item.GetInt32("MaxItemsInList").ToString()) ? Model.Item.GetInt32("MaxItemsInList") : 10;
+	
+	<div class="h-100@(columnThemeClass) item_@Model.Item.SystemName.ToLower()">
+		<div id="@Model.ID" class="user-select-none" style="scroll-margin-top:var(--header-height,150px)"></div>
+
+		@switch (articleListLayout)
+		{
+			case "grid":
+
+				{
+					if (listBehaviour == "articles")
+					{
+						@GetArticles("Swift_Article")
+					}
+					if (listBehaviour == "lists")
+					{
+						@GetArticles("Swift_ArticleListPage")
+					}
+				}
+
+				break;
+
+			case "carousel":
+				var carouselSettings = Model.Item.GetRawValueString("CarouselSettings", "4");
+				string slidesPerPage = $"slider-item-show{carouselSettings}";
+				string navigationStyle = $"{Model.Item.GetRawValueString("NavigationStyle", "slider-nav-round")}";
+				string navigationPlacement = $"{Model.Item.GetRawValueString("NavigationPlacement", "slider-nav-on-slides")}";
+				string indicatorStyle = $"{Model.Item.GetRawValueString("IndicatorStyle", string.Empty)}";
+				string revealSlides = Model.Item.GetRawValueString("RevealSlides", "reveal") == "reveal" ? "slider-item-reveal" : string.Empty;
+				string sliderItemsGap = Model.Item.GetRawValueString("SliderItemsGap", "slider-item-gap") == "slider-item-nogap" ? "slider-item-nogap" : string.Empty;
+				string navigationAlwaysVisible = (Model.Item.GetBoolean("NavigationAlwaysVisible")) ? "slider-nav-visible" : string.Empty;
+				string navigationVisibleOnTouch = (Model.Item.GetBoolean("NavigationVisibleOnTouch")) ? "slider-nav-touch" : string.Empty;
+				string navigationShowScrollbar = (Model.Item.GetBoolean("NavigationShowScrollbar")) ? "slider-nav-scrollbar" : string.Empty;
+				string scrollBarForceMobile = (Model.Item.GetBoolean("NavigationShowScrollbar")) ? "--swiffy-slider-track-height:0.5rem !important;" : string.Empty;
+				string navigationSmall = (Model.Item.GetBoolean("NavigationSmall")) ? "slider-nav-sm" : string.Empty;
+				string navigationInvertColors = (Model.Item.GetBoolean("NavigationInvertColors")) ? "slider-nav-dark" : string.Empty;
+				string navigationSlideEntirePage = (Model.Item.GetBoolean("NavigationSlideEntirePage")) ? "slider-nav-page" : string.Empty;
+				string navigationNoLoop = (Model.Item.GetBoolean("NavigationNoLoop")) ? "slider-nav-noloop" : string.Empty;
+				string indicatorsOutsideSlider = (Model.Item.GetBoolean("IndicatorsOutsideSlider") && indicatorStyle != string.Empty) ? "slider-indicators-outside" : string.Empty;
+				string indicatorsHighlightActive = (Model.Item.GetBoolean("IndicatorsHighlightActive")) ? "slider-indicators-highlight" : string.Empty;
+				string indicatorsInvertColors = (Model.Item.GetBoolean("IndicatorsInvertedColors")) ? "slider-indicators-dark" : string.Empty;
+				string indicatorsVisibleOnSmallDevices = (Model.Item.GetBoolean("IndicatorsVisibleOnSmallDevices")) ? "slider-indicators-sm" : string.Empty;
+				string animation = Model.Item.GetRawValueString("Animation", string.Empty) != string.Empty ? $"slider-nav-animation {Model.Item.GetRawValueString("Animation")}" : string.Empty;
+				string autoplay = (Model.Item.GetBoolean("Autoplay")) ? "slider-nav-autoplay" : string.Empty;
+				string autoplayInterval = Model.Item.GetRawValueString("AutoplayInterval", string.Empty);
+				bool hideSliderNavigation = false;
+
+				if (navigationStyle == "slider-nav-none")
+				{
+					hideSliderNavigation = true;
+				}
+
+				<div id="Slider_@Model.ID" class="swiffy-slider @(slidesPerPage) @(navigationStyle) @(revealSlides) @(navigationPlacement) @(navigationAlwaysVisible) @(navigationVisibleOnTouch) @(sliderItemsGap) @(indicatorStyle) @(navigationShowScrollbar) @(navigationSmall) @(navigationInvertColors) @(indicatorsOutsideSlider) @(navigationNoLoop) @(indicatorsHighlightActive) @(indicatorsInvertColors) @(indicatorsVisibleOnSmallDevices) @(navigationSlideEntirePage) @(animation) @(autoplay) item_@Model.Item.SystemName.ToLower()" style="--swiffy-slider-nav-light:var(--swift-foreground-color);--swiffy-slider-nav-dark:var(--swift-background-color);visibility:hidden;opacity:0;@(scrollBarForceMobile)" data-slider-nav-autoplay-interval="@(autoplayInterval)">
+					<div class="slider-container pb-3 py-lg-3 px-lg-3 mt-lg-n3 mx-lg-n3">
+						@{
+							if (listBehaviour == "articles")
+							{
+								@GetArticles("Swift_Article")
+							}
+							if (listBehaviour == "lists")
+							{
+								@GetArticles("Swift_ArticleListPage")
+							}
+						}
+					</div>
+
+					@if (!hideSliderNavigation)
+					{
+						<button type="button" title="@Translate("Previous slide")" class="slider-nav" style="z-index:1;">
+							<span class="visually-hidden">@Translate("Previous slide")</span>
+						</button>
+						<button type="button" title="@Translate("Next slide")" class="slider-nav slider-nav-next" style="z-index:1;">
+							<span class="visually-hidden">@Translate("Next slide")</span>
+						</button>
+					}
+					@if (indicatorStyle != "slider-indicators-hidden")
+					{
+						<div class="slider-indicators" style="z-index:1;"></div>
+					}
+
+					<script type="module" src="/Files/Templates/Designs/Swift/Assets/js/swiffy-slider.js"></script>
+					<script>
+						window.addEventListener("load", () => {
+							swift.AssetLoader.Load('/Files/Templates/Designs/Swift/Assets/css/swiffy-slider.min.css', 'css');
+							window.swiffyslider.initSlider(document.querySelector('#Slider_@Model.ID'));
+							document.querySelector('#Slider_@Model.ID').style.opacity = 1;
+							document.querySelector('#Slider_@Model.ID').style.visibility = "visible";
+						});
+					</script>
+
+					@if (indicatorStyle != "slider-indicators-hidden")
+					{
+						<script type="module">
+						const slider = document.querySelector('#Slider_@Model.ID');
+						const sliderContainer = slider.querySelector('.slider-container');
+						let slides = sliderContainer.querySelectorAll('article');
+						const sliderIndicators = slider.querySelector('.slider-indicators');
+
+						slides.forEach((slide,index) => {
+							const indicator = document.createElement('template');
+							indicator.innerHTML = `
+								<button type="button" class="${index == 0 ? "active" : ""}" title='@Translate("Go to slide") ${index + 1}'>
+									<span class="visually-hidden">@Translate("Go to slide") ${index + 1}</span>
+								</button>
+								`;
+							sliderIndicators.appendChild(indicator.content);
+						});
+						</script>
+					}
+				</div>
+
+				break;
+		}
+	</div>
+}

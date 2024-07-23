@@ -1,0 +1,157 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using System.Linq
+
+@functions {
+
+	class ContentSetting
+	{
+		public FieldGroupViewModel FieldDisplayGroup { get; set; }
+		public string LayoutPath { get; set; }
+
+		public ContentSetting(FieldGroupViewModel fieldDisplayGroup, string layoutPath)
+		{
+			FieldDisplayGroup = fieldDisplayGroup;
+			LayoutPath = GetLayoutPathFormatted(layoutPath);
+		}
+	}
+
+	ProductViewModel GetProduct()
+	{
+		ProductViewModel product = null;
+
+		if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+		{
+			product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+		}
+
+		return product;
+	}
+
+	List<ContentSetting> GetContentSettings(ProductViewModel product)
+	{
+		var displayGroups = GetDisplayGroups(product);
+		string defaultLayout = Model.Item.GetRawValueString("Layout", "list");
+		var contentSettings = displayGroups.Select(displayGroup => new ContentSetting(displayGroup, defaultLayout)).ToList();
+		bool layoutsCustomized = Model.Item.GetBoolean("CustomizeLayouts");
+
+		return layoutsCustomized ? GetContentSettingsCustomizedLayoutSelection(contentSettings) : contentSettings;
+	}
+
+	List<FieldGroupViewModel> GetDisplayGroups(ProductViewModel product)
+	{
+
+		bool hideFieldsWithZeroValue = Model.Item.GetBoolean("HideFieldsWithZeroValue");
+		var selectedDisplayGroupSystemName = Model.Item.GetList("FieldDisplayGroups")?.GetRawValue().OfType<string>();
+		var displayGroups = product.GetProductDisplayGroupFieldsByGroupSystemNames(selectedDisplayGroupSystemName, hideFieldsWithZeroValue);
+
+		return displayGroups.ToList();
+	}
+
+	List<ContentSetting> GetContentSettingsCustomizedLayoutSelection(List<ContentSetting> contentSettings)
+	{
+		var selections = Model.Item.GetItems("FieldDisplayGroupLayoutSelector");
+
+		foreach (var contentSetting in contentSettings)
+		{
+			foreach (var selection in selections)
+			{
+				string displayGroupSystemName = string.Empty;
+				string layoutPath = string.Empty;
+
+				foreach (var field in selection.Fields)
+				{
+					displayGroupSystemName = field.SystemName == "FieldDisplayGroups" ? field.GetRawValueString() : displayGroupSystemName;
+					layoutPath = field.SystemName == "Layout" ? field.GetRawValueString() : layoutPath;
+				}
+
+				if (displayGroupSystemName == contentSetting.FieldDisplayGroup.SystemName)
+				{
+					contentSetting.LayoutPath = GetLayoutPathFormatted(layoutPath);
+				}
+			}
+		}
+
+		return contentSettings;
+	}
+
+	public static string GetLayoutPathFormatted(string layout)
+	{
+		string layoutPathInCapitalCase = layout[0].ToString().ToUpper() + layout.Substring(1);
+		return $"Components/Specifications/{layoutPathInCapitalCase}.cshtml";
+	}
+
+}
+
+@{
+	var product = GetProduct();
+
+	if (product is object)
+	{
+		
+		var accordionContentSettings = GetContentSettings(product);
+
+		string title = Model.Item.GetString("Title");
+		bool hideLabels = Model.Item.GetBoolean("HideFieldLabels");
+		bool hideTitle = Model.Item.GetBoolean("HideTitle");
+		string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-4");
+		var templateParams = new Dictionary<string, object>
+	{
+				{"Size", "compact" },
+				//Hide title and group headers only apply to the accordion layout, not its tab content layouts
+				{ "HideGroupHeaders", true },
+				{ "HideTitle", true }
+			};
+
+		string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+		string gapCss = "gap-2";
+		string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
+		contentPadding = contentPadding == "none" ? string.Empty : contentPadding;
+		contentPadding = contentPadding == "small" ? " p-2 p-md-3" : contentPadding;
+		contentPadding = contentPadding == "large" ? " p-4 p-md-5" : contentPadding;
+
+		<div class="h-100@(theme)@(contentPadding) item_@Model.Item.SystemName.ToLower()">
+			<div class="grid @(gapCss)">
+				@if (!hideTitle)
+				{
+					<h2 class="g-col-12 @titleFontSize">@Model.Item.GetString("Title")</h2>
+				}
+				<div class="g-col-12">
+					<div class="accordion accordion-flush w-100" id="Specifications_@Model.ID">
+						@foreach (var contentSetting in accordionContentSettings)
+						{
+							var id = Guid.NewGuid().ToString();
+							string groupHeadingId = $"SpecificationHeading_{Model.ID}_{id}";
+							string groupItemId = $"SpecificationItem_{Model.ID}_{id}";
+
+							<div class="accordion-item">
+								<h2 class="accordion-header" id="@groupHeadingId">
+									<button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@groupItemId" aria-expanded="false" aria-controls="@groupItemId">
+										@contentSetting.FieldDisplayGroup.Name
+									</button>
+								</h2>
+
+								<div id="@groupItemId" class="accordion-collapse collapse" aria-labelledby="@groupHeadingId" data-bs-parent="#Specifications_@Model.ID">
+									<div class="accordion-body">
+										<div class="g-col-12">
+											<dl class="grid @(gapCss)">
+												@{
+													templateParams["Groups"] = new List<FieldGroupViewModel> { contentSetting.FieldDisplayGroup };
+													@RenderPartial(contentSetting.LayoutPath, Model, templateParams);
+												}
+											</dl>
+										</div>
+									</div>
+								</div>
+							</div>
+						}
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+	else
+	{
+		<div class="alert alert-warning m-0">@Translate("Product Specification will be shown here if any")</div>
+	}
+}

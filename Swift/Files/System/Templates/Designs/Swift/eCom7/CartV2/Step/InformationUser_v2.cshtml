@@ -1,0 +1,549 @@
+﻿@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb
+
+@{
+	string stepsIconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	string nextButtonName = Translate("Next");
+	string previousButtonName = Translate("Back");
+
+	Dictionary<string, LoopItem> deliveryMethods = new Dictionary<string, LoopItem>();
+	var shippingMethods = GetLoop("Shippingmethods");
+
+	foreach(var shippingMethod in shippingMethods)
+	{
+		var shippingMethodName = shippingMethod.GetString("Ecom:Cart.Shippingmethod.Name");
+		deliveryMethods.Add(shippingMethodName, shippingMethod);
+	}
+		
+	List<string> addressList = new List<string>();
+	if (!string.IsNullOrEmpty(GetString("UserManagement:User.Address")))
+	{
+		addressList.Add(GetString("UserManagement:User.Address"));
+	}
+	if (!string.IsNullOrEmpty(GetString("UserManagement:User.Zip")))
+	{
+		addressList.Add(GetString("UserManagement:User.Zip"));
+	}
+	if (!string.IsNullOrEmpty(GetString("UserManagement:User.City")))
+	{
+		addressList.Add(GetString("UserManagement:User.City"));
+	}
+	string addressString = (string.Join(",", addressList.Select(x => x.ToString()).ToArray()));
+	var themeRaw = Pageview.CurrentParagraph.Item["Theme"]?.ToString();
+	string theme = !string.IsNullOrEmpty(themeRaw) ? " theme " + themeRaw.Replace(" ", string.Empty).Trim().ToLower() : string.Empty;
+
+}
+
+	<div class="h-100">
+		<div class=" checkout-grid order-last order-lg-first@(theme)">
+			@Include("Helpers/TSDSummarySidebar.cshtml")
+			<form name="ordersubmit" id="ordersubmit" method="post" autocomplete="off">
+				<h2>About You</h2>
+				<div class="personal-information">
+					<div>
+					<label for="EcomOrderCustomerFirstName">First name *</label>
+					<input value="@GetString("Ecom:Order.Customer.FirstName")" name="EcomOrderCustomerFirstName" id="EcomOrderCustomerFirstName" type="text" required="true" placeholder="First Name">
+					</div>
+					<div>
+					<label for="EcomOrderCustomerSurname">Last Name *</label>
+					<input id="EcomOrderCustomerSurname" name="EcomOrderCustomerSurname" value="@GetString("Ecom:Order.Customer.Surname")" type="text" required="true" placeholder="Last Name">
+					</div>
+					<div>
+					<label for="EcomOrderCustomerEmail"> Email *</label>
+					<input id="EcomOrderCustomerEmail"  name="EcomOrderCustomerEmail" value="@GetString("Ecom:Order.Customer.Email")" type="email" required="true" placeholder="Email">
+					</div>
+					<div>
+					<label for="EcomOrderCustomerPhone" >Phone Number *</label>
+					<input  value="@GetString("Ecom:Order.Customer.Phone")" name="EcomOrderCustomerPhone" id="EcomOrderCustomerPhone" type="number" required="true" placeholder="Phone Number">
+					</div>
+				</div>
+				@Include("Helpers/Logo.cshtml")
+
+				@Include("Helpers/Errors.cshtml")
+
+				<!-- @Include("Shared/Helpers/StepSummary_v2.cshtml") -->
+
+				<input type="hidden" id="CurrentStep">
+
+				@Include("Shared/Helpers/AddressUser_v2.cshtml")
+
+				<div class="breakpoint"></div>
+
+				<div class="order-information">
+				<label for="PoNumber">PO Number</label>
+					<input id="PoNumber" type="text" placeholder="PO Number">
+				<label for="OrderComments">Order Comments</label>
+					<textarea id="OrderComments" type="text" placeholder="Order Comments"></textarea>
+				</div>
+				
+				<div class="breakpoint"></div>
+
+				<div class="delivery-method">
+					<h2>Delivery Method</h2>
+					<div class="delivery-types-container">
+
+						<label class="delivery-type" for="NextWorkingDay">
+							Next working day
+							<input type="radio" onclick="openTab(event, 'NextWorkingDay')" name="deliveryType" value="NextWorkingDay">
+						</label>
+						<label class="delivery-type" for="Weekend">
+							Weekend
+							<input type="radio" onclick="openTab(event, 'Weekend')" name="deliveryType" value="Weekend">
+						</label>
+						<label class="delivery-type" for="Collect">
+							Collect
+							<input type="radio" onclick="openTab(event, 'ClickCollect')" name="deliveryType" value="Collect">
+						</label>
+					</div>
+					<div id="NextWorkingDay" class="hidden delivery-options-container">
+						@foreach(var shippingMethod in deliveryMethods)
+						{
+							@if(shippingMethod.Key.StartsWith("NextWorkingDay_"))
+							{
+								<div class="delivery-options">											
+									<div class="day">
+										<input type="radio" name="EcomCartShippingmethodID" id="EcomCartShippingmethodID_@shippingMethod.Value.GetString("Ecom:Cart.Shippingmethod.ID")" value="@shippingMethod.Value.GetString("Ecom:Cart.Shippingmethod.ID")" @if (!string.IsNullOrWhiteSpace(shippingMethod.Value.GetString("Ecom:Cart.Shippingmethod.IsSelected"))) { <text> checked="checked" </text> } onchange="submitForm()">
+										<!-- <input type="radio" id="Weekend1" name="deliveryOptions" value="Weekend1"> -->
+										<label for="Weekend1">@shippingMethod.Value.GetString("Ecom:Cart.Shippingmethod.Description")</label>
+									</div>
+									<div class="time">
+										<p>@shippingMethod.Key.Split("_")[1]</p>
+									</div>
+									<div class="price">
+										<strong>@shippingMethod.Value.GetString("Ecom:Cart.ShippingMethod.Price")</strong>
+									</div>
+								</div>
+							}
+						}
+					</div>
+					<div id="Weekend" class="hidden delivery-options-container">
+						@foreach(var shippingMethod in deliveryMethods)
+						{
+							@if(shippingMethod.Key.StartsWith("WeekendSaturday_") || shippingMethod.Key.StartsWith("WeekendSunday_") )
+							{
+								<div class="delivery-options">											
+									<div class="day">
+																				<input type="radio" name="EcomCartShippingmethodID" id="EcomCartShippingmethodID_@shippingMethod.Value.GetString("Ecom:Cart.Shippingmethod.ID")" value="@shippingMethod.Value.GetString("Ecom:Cart.Shippingmethod.ID")" @if (!string.IsNullOrWhiteSpace(shippingMethod.Value.GetString("Ecom:Cart.Shippingmethod.IsSelected"))) { <text> checked="checked" </text> } onchange="submitForm()">
+										<label for="Weekend1">@shippingMethod.Value.GetString("Ecom:Cart.Shippingmethod.Description")</label>
+									</div>
+									<div class="time">
+										<p>@shippingMethod.Key.Split("_")[1]</p>
+									</div>
+									<div class="price">
+										<strong>@shippingMethod.Value.GetString("Ecom:Cart.ShippingMethod.Price")</strong>
+									</div>
+								</div>
+							}
+						}
+					</div>
+					<div id="ClickCollect" class="hidden delivery-options-container">
+						@foreach(var shippingMethod in deliveryMethods)
+						{
+							@if(shippingMethod.Key.StartsWith("ClickCollect_") )
+							{
+								<div class="delivery-options">											
+									<div class="day">
+																				<input type="radio" name="EcomCartShippingmethodID" id="EcomCartShippingmethodID_@shippingMethod.Value.GetString("Ecom:Cart.Shippingmethod.ID")" value="@shippingMethod.Value.GetString("Ecom:Cart.Shippingmethod.ID")" @if (!string.IsNullOrWhiteSpace(shippingMethod.Value.GetString("Ecom:Cart.Shippingmethod.IsSelected"))) { <text> checked="checked" </text> } onchange="submitForm()">
+										<label for="Weekend1">@shippingMethod.Value.GetString("Ecom:Cart.Shippingmethod.Description")</label>
+									</div>
+									<div class="time">
+										<p>@shippingMethod.Key.Split("_")[1]</p>
+									</div>
+									<div class="price">
+										<strong>@shippingMethod.Value.GetString("Ecom:Cart.ShippingMethod.Price")</strong>
+									</div>
+								</div>
+							}
+						}
+					</div>
+				</div>
+				<div class="delivery-method-mobile">
+				<div class="delivery-type" >
+					<div class="delivery-date-mobile">
+						<div>
+						<input type="radio" id="NextDay2" name="deliveryType" value="NextDay2"></input>
+						<label>Next working day</label>
+						</div>
+						<div class="breakpoint"></div>
+						<div class="delivery-times">
+						<div class="select-day">
+						<div>
+						<input type="radio" id="NextDay2" name="deliveryType" value="NextDay2"></input>
+						<label>Saturday/Sunday</label>
+						</div>
+						<p>Before 12:00</p>
+						<strong>£15</strong>
+						</div>
+						</div>
+					</div>
+				</div>
+				<label class="delivery-type" for="NextDay2">
+					Next working day
+					<input type="radio" id="NextDay2" name="deliveryType" value="NextDay2">
+				</label>
+				<label class="delivery-type" for="NextDay3">
+					Next working day
+					<input type="radio" id="NextDay3" name="deliveryType" value="NextDay3">
+				</label>
+				<label class="delivery-type" for="NextDay4">
+					Next working day
+					<input type="radio" id="NextDay4" name="deliveryType" value="NextDay4">
+				</label>
+			</div>
+			<button type="submit" name="@GetString("CartV2.NextStepButtonName")" id="@GetString("CartV2.NextStepButtonName")" class="next-step-button" >
+				<div>
+					<span>@nextButtonName</span>
+					<span class="icon-2 ms-1 position-absolute position-md-static end-0">
+						@ReadFile(stepsIconPath + "arrow-right.svg")
+					</span>
+				</div>
+			</button>
+			</form>
+			<div class="column-step-container">
+			<div class="column column-step">
+				<div class="next-section">
+					<h1 class="numberHeader">2</h1>
+					<p class="section-text">@Translate("PAYMENT DETAILS")</p>
+				</div>
+				<div class="arrow-grey">@ReadFile(stepsIconPath + "arrowgrey.svg")</div>
+			</div>
+
+			<div class="column column-step">
+				<div class="next-section">
+				<h1 class="numberHeader">3</h1>
+					<p class="section-text">@Translate("ORDER COMPLETE")</p>
+				</div>
+				<div class="arrow-grey">@ReadFile(stepsIconPath + "arrowgrey.svg")</div>
+			</div>
+			</div>
+		</div>
+	</div>
+
+	<script>
+		function submitForm() {
+			document.querySelector("#CurrentStep").name = "@GetString("CartV2.CurrentStepButtonName")";
+			swift.PageUpdater.Update(document.querySelector("#ordersubmit"));
+		}
+
+		function openTab(evt, openTab) {
+		    document.querySelectorAll('.delivery-options-container').forEach(t => t.classList.add('hidden'));
+    		document.querySelector(`#${openTab}`).classList.remove('hidden');
+		}
+	</script>
+
+	<script>
+		gtag("event", "begin_checkout", {
+			currency: "@GetString("Ecom:Order.CurrencyCode")",
+			value: @GetDouble("Ecom:Order.Price.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+			items: [
+				@foreach (LoopItem orderline in GetLoop("OrderLines")) {
+					<text>
+					{
+						item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
+						item_name: "@orderline.GetString("Ecom:Order:OrderLine.ProductName")",
+						currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
+						price: @orderline.GetDouble("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+						quantity: @orderline.GetDouble("Ecom:Order:OrderLine.Quantity").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+					},
+					</text>
+				}
+			]
+		});
+	</script>
+
+	@* Address format helper methods *@
+	@Include("../Helpers/DeliveryAddressDisplayFormatted.cshtml")
+	@Include("../Helpers/UserAddressDisplayFormatted.cshtml")
+
+
+	<style>
+	.hidden {
+  		display:none;
+	}
+	.form-check {
+		display: flex;
+		align-items: center;
+		gap: 20px;
+	}
+
+	.arrow-grey {
+	margin-bottom: 20px;
+	}
+
+	.delivery-method-mobile {
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
+	}
+
+	.delivery-date-mobile {
+		width: 100%;
+		text-align: left;
+	}
+
+	.delivery-date-mobile .select-day {
+		display: flex;
+		justify-content: space-between;
+	}
+
+	.delivery-method-mobile .delivery-type {
+		display: flex;
+		flex-direction: row-reverse;
+		gap: 20px;
+		border: solid 1px #CED3DC;
+		border-radius: 10px;
+		padding: 20px;
+		justify-content: flex-end;
+		aspect-ratio: revert;
+	}
+	.next-step-button {
+		background-color: #04AA6D;
+		border: none;
+		color: white;
+		padding: 20px;
+		text-align: center;
+		text-decoration: none;
+		display: inline-block;
+		font-size: 16px;
+		margin: 4px 2px;
+		border-radius: 12px;
+		text-transform: uppercase;
+		font-weight: bold;
+		height: 50px;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		width: 100%;
+		margin-top: 20px;
+	}
+
+	.breakpoint {
+		width: 100%;
+		border: solid 1px #CED3DC;
+		margin-top: 40px;
+		margin-bottom: 40px !important;
+	}
+
+	input[type='radio'] {
+		accent-color: #D5352D;
+	}
+
+	.delivery-type.active:before {
+	display: block;
+	}
+
+	.delivery-type.active {
+		border-bottom: 0px;
+		border-bottom-left-radius: 0px;
+		border-bottom-right-radius: 0px;
+	}
+
+
+	.delivery-type:before {
+		content: "";
+		position: absolute;
+		border-left: solid 1px #CED3DC;
+		border-right: solid 1px #CED3DC;
+		border-bottom: 10px solid white;
+		height: 19%;
+		bottom: -19%;
+		left: -0.5%;
+		width: 102%;
+		border-top: 0px;
+		display: none;
+	}
+
+	h2 {
+		font-size: 28px;
+	}
+
+	.delivery-method {
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
+		margin-top: 20px;
+	}
+
+	.delivery-options-container, .delivery-date {
+		border: solid 1px #CED3DC;
+		border-radius: 10px;
+		padding: 20px;
+	}
+
+	.delivery-options {
+		display: flex;
+		justify-content: space-between;
+	}
+
+	.delivery-types-container {
+		display: flex;
+		justify-content: space-between;
+		gap: 20px;
+	}
+
+	.delivery-type {
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
+		border: solid 1px #CED3DC;
+		border-radius: 10px;
+		padding: 20px;
+		text-align: center;
+		flex-grow: 1;
+		aspect-ratio: 2/1;
+		justify-content: center;
+		cursor: pointer;
+		position: relative;
+	}
+
+	.order-information {
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
+		margin-top: 20px;
+	}
+
+	.order-information label {
+		color: #3B3E41;
+		font-weight: 700;
+		font-size: 18px;
+		text-transform: revert;
+	}
+
+	.personal-information {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		grid-template-rows: repeat(2, 1fr);
+		grid-column-gap: 20px;
+		grid-row-gap: 20px;
+		margin-top: 20px;
+	}
+
+	.personal-information div {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+	}
+
+	div, form, input, textarea {
+		border-radius: 10px;
+	}
+
+	form {
+		background-color: white;
+		padding: 20px;
+	}
+
+	form label {
+		color: #D5352D;
+		text-transform: uppercase;
+		font-weight: 600;
+		font-size: 14px;
+	}
+
+	form input, textarea {
+		padding: 14px;
+		border: 1px solid #9599A0;
+	}
+
+	.checkout-grid {
+		display: grid;
+		grid-template-columns: 0.2fr 1fr 0.3fr;
+		grid-template-rows: 1fr;
+		grid-column-gap: 20px;
+		grid-row-gap: 0px;
+		background-color: transparent;
+	}
+
+	.column-step .next-section {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-direction: column;
+		padding-top: 20px;
+		height: 180px;
+	}
+
+	.column-step .next-section .section-text {
+		color: #D5352D;
+		font-weight: 600;
+		line-height: 15px;
+		transform: rotate(270deg);
+	}
+
+	.column-step {
+		flex-grow: 0 !important;
+		border-radius: 10px;
+		min-width: 29%;
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+	}
+
+	.column-step-container {
+	display: flex;
+	gap: 20px;
+	padding-right: 0px !important;
+	}
+
+	@@media (min-width: 768px) {
+		.delivery-method {
+			display: flex;
+		}
+		.delivery-method-mobile {
+			display: none;
+		}
+	}
+
+	@@media (max-width: 768px) {
+		.delivery-method {
+			display: none;
+		}
+		.delivery-method-mobile {
+			display: flex;
+		}
+	}
+
+	@@media (max-width: 996px) {
+		form {
+			grid-column: 1 / span 2;
+		}
+
+		.checkout-grid {
+			grid-template-columns: 2fr;
+			grid-template-rows: 2fr; 
+			grid-row-gap: 20px;
+		}
+
+		.column-step .next-section {
+			justify-content: revert;
+		}
+
+		.column-step-container {
+			flex-direction: row; 
+			gap: 20px; 
+			grid-column: 2 / span 1;
+			grid-row: 2;
+		}
+
+		#summarySidebar {
+			order: 2; 
+			margin-top: 20px;
+			grid-column: 1 / span 1;
+			grid-row: 2;
+			margin-top: 0px !important;
+		}
+
+		.column-step {
+			order: 1;
+			align-items: center;
+		}
+
+		.column-step .next-section .section-text {
+		transform: revert;
+		padding: 20px;
+		text-align: center;
+		}
+	}
+
+	</style>

@@ -1,102 +1,23 @@
-﻿@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
-<form action="/Default.aspx?ID=@GetString("Global:Page.ID")" method="POST">
-    <script src="https://js.stripe.com/v3/"></script>
-    <input type="hidden" name="CheckoutHandlerOrderID" id="CheckoutHandlerOrderID" value="@GetString("Ecom:Order.ID")"/>
-    <div id="card-element">
-        <!-- a Stripe Element will be inserted here. -->
-    </div>
-</form>
-
-<script>
-    const paymentIntentStatus = Object.freeze({
-        REQUIRES_ACTION: 'requires_action',
-        REQUIRES_PAYMENT_METHOD: 'requires_payment_method',
-        SUCCEEDED: 'succeeded'
-    });
-    document.addEventListener("DOMContentLoaded", function() {
-
-        const stripe = Stripe("@GetString("Stripe.publishablekey")");
-        const basketId = "@GetString("Ecom:Order.ID")"
-        const payButton = document.getElementById("CartV2.GotoStep3");
-        const paymentForm = document.getElementById("ordersubmit");
-        const termsAndConditionsCheck = document.getElementById("EcomOrderCustomerAccepted");
-        const tokenField = document.getElementById("token");
-        const actionField = document.getElementById("Action");
-        const card = stripe.elements().create('card', {
-            hidePostalCode: true
-        });
-        
-        card.mount('#card-element');
-
-        card.addEventListener('change', function (event) {
-            payButton.disabled = !event.complete || !termsAndConditionsCheck.checked;
-        });
-
-        async function renderHiddenField(parentElement, nameAndId, value)
-        {
-            const newInput = document.createElement('input');
-            newInput.setAttribute('type', 'hidden');
-            newInput.setAttribute('name', parentElement);
-            newInput.setAttribute('id', parentElement);
-            newInput.setAttribute('value', value);
-        }
-
-
-        async function tryCreatePaymentIntent() {
-            const result = await fetch('/checkout/create-intent',
-                {
-                    method: 'post',
-                    headers: {
-                        'Content-type': 'application/json',
-                    },
-                    body: JSON.stringify({OrderId: basketId}),
-                });
-
-            return await result.json();
-        }
-    
-    
-      
-        payButton.addEventListener("click", async function (event) {
-            event.preventDefault()
-            payButton.disabled = true;
-            event.preventDefault();
-
-            // Your logic here
-            console.log(card);
-            let paymentIntent = await tryCreatePaymentIntent()
-            console.log(paymentIntent);
-            if (paymentIntent.clientSecret) {
-
-                await renderHiddenField(paymentForm, 'token', paymentIntent.id)
-        
-
-                const result = await stripe.confirmCardPayment(paymentIntent.clientSecret, {
-                    payment_method: {
-                        card: card
-                    },
-                    setup_future_usage: 'off_session'
-                });
-
-                console.log(result);
-
-                if (!result.error) {
-                    if (result.paymentIntent.status === paymentIntentStatus.SUCCEEDED) {
-                        await renderHiddenField(paymentForm, 'Action', 'Approve')
-               
-                        paymentForm.submit();
-                    }
-                } else {
-                    alert(result.error.message)
-                    //   classObj.cardPayNowButton.disabled = false;
-                    //   await baseClassObj.displayError(result);
-                }
-            } else {
-                //classObj.cardPayNowButton.disabled = false;
-                let errorObj = {error: {message: 'Unable to process payment, please try again.'}}
-                alert(errorObj.error.message)
-                //  await baseClassObj.displayError(errorObj);
-            }
-        })
-    });
-</script>
+﻿@{
+	string stepsIconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+}
+<div id="payment-details-placeholder" class="hidden">
+<div class="card-payment-box" >
+	<div class="card-payment-container">
+		<div class="payment-input">
+			<div class="card-text">@Translate("Pay by credit card")</div>
+			<div class="card-info"><span>@ReadFile(stepsIconPath + "locktsd.svg")<div>@Translate("Enter your 16 digit card number, expiry & CVC")</div></span></div>
+			<div class="psuedo-card-box">
+				<div id="card-element">
+					<!-- a Stripe Element will be inserted here. -->
+				</div>
+			</div>
+		</div>
+		<div class="lock">@ReadFile(stepsIconPath + "locktsd.svg")</div>
+	</div>
+	<div id="error-message">
+		<!-- Display error message to your customers here -->
+	</div>
+</div>
+	<div class="hidden" id="card-pay-button-text">@Translate("Pay with Card")</div>
+</div>

@@ -1,0 +1,47 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using System
+@using Dynamicweb.Ecommerce.Products
+
+@if (GetBoolean("Ecom:CustomerCenter.RMA.HasRMAOrderLines"))
+{
+	<section class="p-3 mt-3 d-flex flex-column gap-3">
+		@foreach (LoopItem orderline in GetLoop("RMAOrderLines"))
+		{
+			string productId = !string.IsNullOrEmpty(orderline.GetString("Ecom:RMA:OrderLine.ProductID")) ? orderline.GetString("Ecom:RMA:OrderLine.ProductID") : Guid.NewGuid().ToString("N");
+			string detailsPageLink = GetPageIdByNavigationTag("ProductDetailPage").ToString();
+			Product rmaProduct = Dynamicweb.Ecommerce.Services.Products.GetProductById(orderline.GetString("Ecom:RMA:OrderLine.ProductID"), string.Empty, Pageview.Area.EcomLanguageId);
+			string defaultGroupId = rmaProduct?.GetDefaultGroupByShopId(Pageview.Area.EcomShopId)?.Id ?? string.Empty;
+			string selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
+			string link = string.IsNullOrEmpty(selectedDetailPage) ? $"/Default.aspx?ID={detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
+			link += "&productid=" + productId;
+			ProductImageService productImageService = new ProductImageService();
+			string productImagePath = rmaProduct != null ? productImageService.GetImagePath(rmaProduct) : "/Files/Images/missing_image.jpg";
+			string productImage = "/Admin/Public/GetImage.ashx?image=" + productImagePath + "&width=315&height=315&format=webp";
+			productImage = !productImagePath.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? productImagePath : productImage;
+
+			<article class="grid">
+				<div class="g-col-3">
+					<a href="@link" class="ratio ratio-1x1 d-block bg-light">
+						<img src="@productImage" style="object-fit: contain;" alt="@orderline.GetString("Ecom:RMA:OrderLine.ProductName")" height="315" width="315">
+					</a>
+				</div>
+				<div class="g-col-9">
+					<div class="grid grid-9 h-100">
+
+						<div class="g-col-9 g-col-md-5">
+							<h2 class="h6 mb-3 fw-bold">
+								<a href="@link" class="text-dark text-decoration-none">@orderline.GetString("Ecom:RMA:OrderLine.ProductName")</a>
+							</h2>
+						</div>
+
+						<div class="g-col-9 g-col-md-4 text-end">
+							<h6 class="h6 fw-bold m-0">
+								<span class="text-price">@orderline.GetString("Ecom:RMA:OrderLine.Price")</span>
+							</h6>
+						</div>
+					</div>
+				</div>
+			</article>
+		}
+	</section>
+}

@@ -1,0 +1,355 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend.Navigation
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@functions {
+
+	NavigationTreeViewModel GetNavigationTreeFromPageId(int pageId = 0, bool includeFolders = false, int startLevel = 1, int stopLevel = 9)
+	{
+		var navigationSettings = new NavigationSettings()
+		{
+			StartLevel = startLevel,
+			StopLevel = stopLevel,
+			RootPageId = pageId,
+			IncludeFoldersAndHidden = includeFolders,
+			ExpandMode = ExpandMode.All,
+		};
+
+		return Navigation.GetNavigationViewModel(navigationSettings);
+	}
+
+	string GetGroupFieldValue(string fieldSystemName, NavigationTreeNodeViewModel node)
+	{
+		ProductGroupViewModel productGroup = node.GetProductGroup();
+		string fieldValue = string.Empty;
+		IList<FieldValueViewModel> groupFields = productGroup.GroupFields != null ? productGroup.GroupFields : null;
+		if (groupFields != null)
+		{
+			foreach (FieldValueViewModel field in groupFields)
+			{
+
+				if (field.SystemName == fieldSystemName)
+				{
+					fieldValue = field != null ? field.Value.ToString() : string.Empty;
+				}
+			}
+		}
+
+		return fieldValue;
+	}
+
+	bool NavigationTreeHasChildren(NavigationTreeNodeViewModel rootNode)
+	{
+		foreach (var subNode in rootNode.Nodes)
+		{
+			if (subNode.Nodes.Any())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	int GetPageIdFromLink(string pageLink)
+	{
+		return !string.IsNullOrEmpty(pageLink) ? Convert.ToInt32(pageLink.Substring(pageLink.LastIndexOf('=') + 1)) : 0;
+
+	}
+
+	string GetSubmenuType(NavigationTreeNodeViewModel rootNode)
+	{
+		string submenuType = string.Empty;
+		var page = Dynamicweb.Content.Services.Pages.GetPage(rootNode.PageId);
+		var pageType = !string.IsNullOrEmpty(page.ItemType) ? page.ItemType : "Swift_Page";
+		if (page.PropertyItem is object && page.PropertyItem.TryGetValue("SubmenuType", out object submenuTypeValue))
+		{
+			submenuType = Dynamicweb.Core.Converter.ToString(submenuTypeValue);
+		}
+		return submenuType;
+	}
+
+	bool IsMegaMenu(NavigationTreeNodeViewModel rootNode, string submenuType)
+	{
+		switch (submenuType)
+		{
+			case "dropdown":
+				return false;
+			case "auto":
+				return NavigationTreeHasChildren(rootNode);
+			default:
+				return true;
+		}
+	}
+
+	string isActive(NavigationTreeNodeViewModel node)
+	{
+		return node.IsActive ? "aria-current='page'" : string.Empty;
+	}
+
+	string isActiveDropdown(NavigationTreeNodeViewModel node)
+	{
+		return node.IsActive ? "class=\"active\"" : string.Empty;
+	}
+
+	bool GetRelatedContentStructure(IEnumerable<NavigationTreeNodeViewModel> relatedContentNodes)
+	{
+		bool relatedContentIsNested = false;
+
+		foreach (var relatedContentNode in relatedContentNodes.Where(node => node.ShowInMenu))
+		{
+			if (relatedContentNode.Nodes.Any())
+			{
+				return relatedContentIsNested = true;
+			}
+		}
+
+		return relatedContentIsNested;
+	}
+
+}
+
+@{
+	// Page settings
+	int navigationRootPageId = !string.IsNullOrEmpty(Model.Item.GetString("NavigationRoot")) ? Model.Item.GetLink("NavigationRoot").PageId : 0;
+	var rootNavigation = GetNavigationTreeFromPageId(navigationRootPageId);
+	int maxEndNodes = Model.Item.GetInt32("MaxEndNodes");
+	string maxEndNodesText = Model.Item.GetString("ShowAllLinkLabel");
+
+	//CSS Settings
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? "theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	string spacing = Model.Item.GetRawValueString("Spacing", "compact");
+	string headerSpacing = spacing == "wide" ? "mb-2" : "mb-1";
+	string itemSpacing = spacing == "normal" ? "pb-2" : spacing == "wide" ? "pb-3" : "pb-1";
+
+	string headerAlignment = Model.Item.GetRawValueString("HeaderAlignment", "start");
+	headerAlignment = $"justify-content-{headerAlignment} text-{headerAlignment}";
+
+	string textAlignment = Model.Item.GetRawValueString("TextAlignment", "start");
+	textAlignment = $"text-{textAlignment}";
+
+	string headerLinkAnimation = Model.Item.GetRawValueString("HeaderLinkAnimation", "left");
+	headerLinkAnimation = headerLinkAnimation == "none" ? "text-decoration-underline-hover" : $"hover-underline-animation-{headerLinkAnimation}";
+
+	string menuAlignment = Model.Item.GetRawValueString("MenuAlignment", "start");
+	menuAlignment = $"justify-content-{menuAlignment}";
+
+	string clickable = "text-decoration-underline-hover text-decoration-accent-hover";
+
+}
+
+<div class="nav-wrapper megamenu-wrapper item_@Model.Item.SystemName.ToLower()" id="Menu_@Model.ID">
+	<nav class="d-flex gap-2 @headerAlignment">
+		@foreach (var rootNode in rootNavigation.Nodes.Where(node => node.ShowInMenu))
+		{
+			string relatedContentNavigationRoot = GetGroupFieldValue("ProductGroupRelatedContent", rootNode);
+			int relatedContentPageId = !string.IsNullOrEmpty(relatedContentNavigationRoot) ? GetPageIdFromLink(relatedContentNavigationRoot) : 0;
+			var relatedContentNodes = GetNavigationTreeFromPageId(relatedContentPageId, true).Nodes;
+			bool hasRelatedContent = relatedContentNodes.Any() && relatedContentPageId != 0;
+			bool relatedContentIsNested = hasRelatedContent ? GetRelatedContentStructure(relatedContentNodes) : false;
+			bool nodesExist = rootNode.Nodes.Any() || hasRelatedContent;
+			string relatedContentGap = spacing == "wide" ? "gap-4" : "gap-3";
+			relatedContentGap = relatedContentIsNested ? relatedContentGap : string.Empty;
+			string submenuType = GetSubmenuType(rootNode);
+			bool isMegaMenu = IsMegaMenu(rootNode, submenuType);
+			string submenuTypeCss = isMegaMenu ? "position-static" : string.Empty;
+			string dropdown = nodesExist ? "dropdown" : string.Empty;
+			string dropdownAttributes = nodesExist ? "role=\"button\" data-bs-toggle=\"dropdown\" data-bs-offset=\"0,0\" aria-expanded=\"false\"" : string.Empty;
+		
+			<div class="nav-item @dropdown @submenuTypeCss">
+				@if (rootNode.IsClickable)
+				{
+
+					<a class="nav-link p-2 fw-bold text-uppercase @headerLinkAnimation" href="@rootNode.Link" @dropdownAttributes @isActive(rootNode)>
+						<span class="text-wrap-nowrap">@rootNode.Name</span>
+					</a>
+				}
+				else
+				{
+					<span class="nav-link p-2 fw-bold text-uppercase @headerLinkAnimation" @dropdownAttributes>
+						<span class="text-wrap-nowrap">@rootNode.Name</span>
+					</span>
+				}
+
+				@if (nodesExist)
+				{
+					if (isMegaMenu)
+					{
+						<div class="dropdown-menu border-0 megamenu @theme">
+							<div class="container-xl overflow-y-auto">
+								<div class="d-flex py-2 gap-3">
+
+									@if (hasRelatedContent)
+									{
+										<div class="col-auto megamenu-col d-flex flex-column me-4 pe-4 border-end @relatedContentGap @textAlignment @menuAlignment">
+											@foreach (var relatedContentNode in relatedContentNodes.Where(node => node.ShowInMenu))
+											{
+												<div>
+													@if (relatedContentNode.IsClickable)
+													{
+														<a class="nav-link px-0 lh-1 @itemSpacing @headerSpacing @clickable" href="@relatedContentNode.Link" @isActive(relatedContentNode)>
+															<strong>@relatedContentNode.Name</strong>
+														</a>
+													}
+													else
+													{
+														<div class="nav-link px-0 lh-1 pe-none @itemSpacing @headerSpacing" href="@relatedContentNode.Link" @isActive(relatedContentNode)>
+															<strong>@relatedContentNode.Name</strong>
+														</div>
+													}
+
+													@foreach (var relatedContentSubNode in relatedContentNode.Nodes.Where(node => node.ShowInMenu))
+													{
+														if (relatedContentSubNode.IsClickable)
+														{
+															<a class="nav-link px-0 lh-1 @itemSpacing @clickable" href="@relatedContentSubNode.Link" @isActive(relatedContentSubNode)>
+																<span>@relatedContentSubNode.Name</span>
+															</a>
+														}
+														else
+														{
+															<div class="nav-link px-0 lh-1 pe-none @itemSpacing" href="@relatedContentSubNode.Link">
+																<span>@relatedContentSubNode.Name</span>
+															</div>
+														}
+													}
+												</div>
+											}
+										</div>
+
+									}
+
+									<div class="col d-flex flex-wrap gap-3 @menuAlignment @textAlignment">
+
+										@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
+										{
+											<div class="col-auto megamenu-col @textAlignment">
+												@if (subNode.IsClickable)
+												{
+													<a class="nav-link px-0 lh-1 @itemSpacing @headerSpacing @clickable" href="@subNode.Link" @isActive(subNode)>
+														<strong>@subNode.Name</strong>
+													</a>
+												}
+												else
+												{
+													<div class="nav-link px-0 lh-1 pe-none @itemSpacing @headerSpacing">
+														<strong>@subNode.Name</strong>
+													</div>
+												}
+
+												@foreach (var (endNode, index) in subNode.Nodes.Select((node, i) => (node, i)))
+												{
+													if (index < maxEndNodes && endNode.ShowInMenu)
+													{
+														if (endNode.IsClickable)
+														{
+															<a class="nav-link px-0 lh-1 @itemSpacing @clickable" href="@endNode.Link" @isActive(endNode)>
+																@endNode.Name
+															</a>
+														}
+														else
+														{
+															<div class="nav-link px-0 lh-1 pe-none @itemSpacing">
+																@endNode.Name
+															</div>
+														}
+
+														continue;
+													}
+
+													if (!string.IsNullOrWhiteSpace(maxEndNodesText))
+													{
+														<a class="nav-link px-0 text-decoration-underline mt-1 lh-1 @itemSpacing" href="@subNode.Link">
+															@Translate(maxEndNodesText)
+														</a>
+													}
+
+													break;
+												}
+											</div>
+
+										}
+									</div>
+								</div>
+							</div>
+						</div>
+					}
+					else
+					{
+						<ul class="dropdown-menu dropdown-menu-shadow @theme @textAlignment">
+
+							@if (hasRelatedContent)
+							{
+								foreach (var relatedContentNode in relatedContentNodes)
+								{
+									if (relatedContentNode.IsClickable)
+									{
+										<li @isActiveDropdown(relatedContentNode)>
+											<a class="dropdown-item py-2 lh-1 @clickable" href="@relatedContentNode.Link" @isActive(relatedContentNode)>
+												<strong>@relatedContentNode.Name</strong>
+											</a>
+										</li>
+									}
+									else
+									{
+										<li>
+											<span class="dropdown-item py-2 lh-1 pe-none">
+												<strong>@relatedContentNode.Name</strong>
+											</span>
+										</li>
+
+									}
+
+									foreach (var relatedContentSubNode in relatedContentNode.Nodes.Where(node => node.ShowInMenu))
+									{
+										if (relatedContentSubNode.IsClickable)
+										{
+											<li @isActiveDropdown(relatedContentSubNode)>
+												<a class="dropdown-item py-2 lh-1 @clickable" href="@relatedContentSubNode.Link" @isActive(relatedContentSubNode)>
+													<strong>@relatedContentSubNode.Name</strong>
+												</a>
+											</li>
+										}
+										else
+										{
+											<li>
+												<span class="dropdown-item py-2 lh-1 pe-none">
+													<strong>@relatedContentSubNode.Name</strong>
+												</span>
+											</li>
+										}
+									}
+								}
+
+								<li class="dropdown-divider"></li>
+							}
+
+							@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
+							{
+								if (subNode.IsClickable)
+								{
+
+									<li @isActiveDropdown(subNode)>
+										<a class="dropdown-item py-2 lh-1 @clickable" href="@subNode.Link" @isActive(subNode)>
+											<strong>@subNode.Name</strong>
+										</a>
+									</li>
+								}
+								else
+								{ 
+									<li>
+										<span class="dropdown-item py-2 lh-1 pe-none">
+											<strong>@subNode.Name</strong>
+										</span>
+									</li>
+								}
+							}
+						</ul>
+					}
+				}
+			</div>
+		}
+	</nav>
+</div>
+<script type="module">
+	swift.Menu.setMenuContentOffset('Menu_@Model.ID');
+</script>

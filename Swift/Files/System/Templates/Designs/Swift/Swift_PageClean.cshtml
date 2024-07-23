@@ -1,0 +1,64 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
+
+@{
+	string productIdFromUrl = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ProductID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ProductID") : string.Empty;
+	bool isProductDetail = !string.IsNullOrEmpty(productIdFromUrl) && Pageview.Page.NavigationTag.ToLower() == "shop";
+	string paragraphId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ParagraphID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ParagraphID") : string.Empty;
+	bool isArticleListPage = Model.ItemType == "Swift_ArticleListPage";
+	var gridContent = Model.Grid("Grid", "Grid", "default:true;sort:1", "Page");
+}
+
+@MasterPageFile("Swift_MasterClean.cshtml")
+
+@* Render the grid, if any *@
+@if (!isProductDetail)
+{
+	if (isArticleListPage)
+	{
+		var hx = $"hx-get=\"{Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(Model.ID)}\" hx-select=\"#content\" hx-target=\"#content\" hx-swap=\"outerHTML\" hx-trigger=\"change\" hx-headers='{{\"feed\": \"true\"}}' hx-push-url=\"true\" hx-indicator=\"#ArticleFacetForm\"";
+
+		<form @hx id="ArticleFacetForm">
+			@gridContent
+		</form>
+		<script type="module" src="/Files/Templates/Designs/Swift/Assets/js/htmx.js"></script>
+		<script type="module">
+			document.addEventListener('htmx:confirm', (event) => {
+				let filters = event.detail.elt.querySelectorAll('select');
+				for (var i = 0; i < filters.length; i++) {
+					let input = filters[i];
+					if (input.name && !input.value) {
+						input.name = '';
+					}
+				}
+			});
+
+			document.addEventListener('htmx:beforeOnLoad', (event) => {
+				swift.Scroll.stopIntersectionObserver();
+			});
+
+			document.addEventListener('htmx:afterOnLoad', () => {
+				swift.Scroll.hideHeadersOnScroll();
+				swift.Scroll.handleAlternativeTheme();
+			});
+		</script>
+	}
+	else if (!string.IsNullOrEmpty(paragraphId))
+	{ 
+		@RenderParagraphContent(Convert.ToInt32(paragraphId))
+	}
+	else
+	{
+		@gridContent
+	}
+}
+else
+{
+	var productObject = Dynamicweb.Ecommerce.Services.Products.GetProductById(productIdFromUrl, "", Pageview.Area.EcomLanguageId);
+	var detailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(productObject.PrimaryGroupId)?.Meta.PrimaryPage ?? string.Empty;
+	var detailPageId = detailPage != string.Empty ? Convert.ToInt16(detailPage.Substring(detailPage.LastIndexOf('=') + 1)) : GetPageIdByNavigationTag("ProductDetailPage");
+
+	@RenderGrid(detailPageId)
+}
+
+@* Render classic content, if any *@
+@Model.Placeholder("dwcontent", "content", "default:true;sort:1")

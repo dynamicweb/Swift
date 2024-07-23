@@ -1,0 +1,76 @@
+﻿@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@model Order
+
+    <script src="https://js.stripe.com/v3/"></script>
+
+@GetString("Ecom:Cart.PaymentInlineForm")
+
+<h2>Card</h2>
+
+<p>@GetString("Ecom:Order.ID")</p>
+
+
+    <div id="card-element">
+        <!-- Stripe card element will be inserted here. -->
+    </div>
+
+
+
+<script type="text/javascript">
+        var stripe = Stripe('@GetString("Stripe.publishablekey")'); 
+        
+const options = {
+  hidePostalCode: true,
+ disableLink: true
+};
+   var elements = stripe.elements();
+        // Setting up Stripe's Card Element
+        var card = elements.create("card", options);
+        card.mount('#card-element');
+        
+
+
+        var form = document.getElementById('ordersubmit');
+    form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        
+        // Creates a token
+        stripe.createToken(card).then(function(result) {
+            if (result.error) {
+                // Inform the user if there was an error
+                var errorElement = document.getElementById('card-errors');
+                errorElement.textContent = result.error.message;
+            } else {
+                // Send the created token to your server
+                stripeTokenHandler(result.token);
+            }
+        });
+    });
+
+    function stripeTokenHandler(token) {
+        // Insert the token ID into the form so it gets submitted to the server
+        var form = document.getElementById('ordersubmit');
+        var hiddenInput = document.createElement('input');
+        hiddenInput.setAttribute('type', 'hidden');
+        hiddenInput.setAttribute('name', 'stripeToken');
+        hiddenInput.setAttribute('value', token.id);
+        form.appendChild(hiddenInput);
+
+        var actionInput = document.createElement('input');
+        actionInput.setAttribute('type', 'hidden');
+        actionInput.setAttribute('name', 'action');
+        actionInput.setAttribute('value', 'Approve');
+        form.appendChild(actionInput);
+
+        var orderIdInput = document.createElement('input');
+        orderIdInput.setAttribute('type', 'hidden');
+        orderIdInput.setAttribute('name', 'OrderIdRequestName');
+        orderIdInput.setAttribute('value', '@GetString("Ecom:Order.ID")');
+        form.appendChild(orderIdInput);
+        
+        
+        // Submit the form
+        form.submit();
+    }
+        
+    </script>  

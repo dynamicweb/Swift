@@ -1,0 +1,94 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
+@using System
+@using Dynamicweb.Ecommerce.ProductCatalog
+@MasterPageFile("Swift_MasterClean.cshtml")
+@{
+	string theme = "";
+	string gridContent = "";
+
+	if (Model.PropertyItem != null)
+	{
+		theme = !string.IsNullOrWhiteSpace(Model.PropertyItem.GetRawValueString("Theme")) ? " theme " + Model.PropertyItem.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+	}
+
+	if (Model.Item != null)
+	{
+		gridContent = Model.Grid("Grid", "Grid", "default:true;sort:1", "Page");
+	}
+
+	bool doNotRenderPage = false;
+
+	//Check if we are on the poduct detail page, and if there is data to render
+	ProductViewModel product = new ProductViewModel();
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+		if (string.IsNullOrEmpty(product.Id))
+		{
+			doNotRenderPage = true;
+		}
+	}
+
+	//Render the page
+	if (!doNotRenderPage)
+	{
+		if (theme != "")
+		{
+			<div class="@theme item_@Model.Item.SystemName.ToLower()">
+				@gridContent
+			</div>
+		}
+		else
+		{
+			<div class="item_@Model.Item.SystemName.ToLower()">
+				@gridContent
+			</div>
+		}
+	}
+	else
+	{
+		<div class="container">
+			<div class="alert alert-info" role="alert">@Translate("Sorry. There is nothing to view here")</div>
+		</div>
+	}
+
+	if (!Model.IsCurrentUserAllowed)
+	{
+		int signInPage = GetPageIdByNavigationTag("SignInPage");
+		int dashboardPage = GetPageIdByNavigationTag("MyAccountDashboardPage");
+
+		if (!Pageview.IsVisualEditorMode)
+		{
+			if (signInPage != 0)
+			{
+				if (signInPage != Model.ID)
+				{
+					Dynamicweb.Context.Current.Response.Redirect("/Default.aspx?ID=" + signInPage);
+				}
+				else
+				{
+					if (dashboardPage != 0)
+					{
+						Dynamicweb.Context.Current.Response.Redirect("/Default.aspx?ID=" + dashboardPage);
+					}
+					else
+					{
+						Dynamicweb.Context.Current.Response.Redirect("/");
+					}
+				}
+			}
+			else
+			{
+				<div class="alert alert-dark m-0" role="alert">
+					<span>@Translate("You do not have access to this page")</span>
+				</div>
+			}
+		}
+		else
+		{
+			<div class="alert alert-dark m-0" role="alert">
+				<span>@Translate("To work on this page, you must be signed in, in the frontend")</span>
+			</div>
+		}
+	}
+}

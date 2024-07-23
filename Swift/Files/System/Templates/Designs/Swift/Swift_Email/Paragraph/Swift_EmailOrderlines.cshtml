@@ -1,0 +1,84 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+
+@functions {
+	private string GetTableReset()
+	{
+		return "border:0;margin:0;outline:0;padding:0;";
+	}
+}
+
+@{
+	//Put the Model up in context items
+	if (Dynamicweb.Context.Current.Items.Contains("CurrentParagraph"))
+	{
+		Dynamicweb.Context.Current.Items["CurrentParagraph"] = Model;
+	}
+	else
+	{
+		Dynamicweb.Context.Current.Items.Add("CurrentParagraph", Model);
+	}
+
+	if (Dynamicweb.Context.Current.Items.Contains("CurrentPageId"))
+	{
+		Dynamicweb.Context.Current.Items["CurrentPageId"] = Pageview.ID;
+	}
+	else
+	{
+		Dynamicweb.Context.Current.Items.Add("CurrentPageId", Pageview.ID);
+	}
+
+	if (Dynamicweb.Context.Current.Items.Contains("CurrentGridRowId"))
+	{
+		Dynamicweb.Context.Current.Items["CurrentGridRowId"] = Pageview.CurrentParagraph.GridRowId;
+	}
+	else
+	{
+		Dynamicweb.Context.Current.Items.Add("CurrentGridRowId", Pageview.CurrentParagraph.GridRowId);
+	}
+
+	string blockType = "orderlines_block";
+
+	var page = Dynamicweb.Content.Services.Pages.GetPage(Model.PageID);
+	var settings = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page?.Parent).Item;
+	var blockId = Model.ID;
+	var block = Model.Item;
+
+	var emailContentThemeId = settings.GetRawValueString("EmailContentTheme");
+	var emailContentThemeParagraph = emailContentThemeId != null && emailContentThemeId != string.Empty ? Dynamicweb.Content.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(emailContentThemeId)) : null;
+	var emailContentTheme = emailContentThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph)?.Item : null;
+
+	var rowId = Dynamicweb.Content.Services.Paragraphs.GetParagraph(blockId).GridRowId;
+	var row = Dynamicweb.Content.Services.Grids.GetGridRowById(rowId);
+	var rowItem = Dynamicweb.Content.Services.Items.GetItem(row.ItemType, row.ItemId);
+	var rowThemeId = Dynamicweb.Core.Converter.ToString(rowItem["ColumnBackground"]);
+	var rowThemeParagraph = rowThemeId != null && rowThemeId != string.Empty ? Dynamicweb.Content.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(rowThemeId)) : null;
+	var rowTheme = rowThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph)?.Item : null;
+
+	var blockThemeId = block.GetRawValueString("Theme");
+	var blockThemeParagraph = blockThemeId != null && blockThemeId != string.Empty ? Dynamicweb.Content.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(blockThemeId)) : null;
+	var blockTheme = blockThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph)?.Item : rowTheme is object ? rowTheme : emailContentTheme;
+
+	string backgroundColor = blockTheme != null ? "background-color: " + blockTheme.GetString("BackgroundColor") + ";" : string.Empty;
+	string foregroundColor = blockTheme != null ? "color:" + blockTheme.GetString("ForegroundColor", "inherit") + ";" : string.Empty;
+
+	int padding = Dynamicweb.Core.Converter.ToInt32(block.GetRawValueString("Padding", "0"));
+	string align = block.GetRawValueString("Align", "left");
+	string lineHeight = "line-height:" + (16 * Dynamicweb.Core.Converter.ToDouble(block.GetRawValueString("LineHeight", "1.5"))).ToString() + "px;";
+
+	var uri = Dynamicweb.Context.Current.Request.Url;
+	var hostname = uri.Scheme + Uri.SchemeDelimiter + uri.Host;
+}
+
+<table id="@blockId" class="@blockType" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;mso-line-height-rule:exactly;@GetTableReset()color:inherit;width:100%;@(backgroundColor)">
+	<tbody>
+		<tr style="@GetTableReset()">
+			<td style="@GetTableReset()padding:@(padding)px">
+				
+				@Model.GetModuleOutput()
+				
+				<!--[if mso]><br/><![endif]-->
+			</td>
+		</tr>
+
+	</tbody>
+</table>

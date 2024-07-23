@@ -1,0 +1,349 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+
+@functions
+{
+	private string RenderCustomCSS(IEnumerable<string> decorations)
+	{
+		var cssClasses = new List<string>();
+
+		foreach (var itemId in decorations)
+		{
+			var item = Dynamicweb.Content.Services.Items.GetItem("Swift_Css", itemId);
+			item.TryGetValue("Class", out object classes);
+
+			if (classes is null)
+			{
+				continue;
+			}
+
+			var cssString = (string)classes;
+
+			if (cssString.StartsWith("["))
+			{
+				var cssArray = Dynamicweb.Core.Converter.Deserialize<string[]>(cssString);
+				cssClasses.AddRange(cssArray);
+			}
+			else
+			{
+				cssClasses.Add(cssString.Replace(",", " "));
+			}
+		}
+
+		return string.Join(" ", cssClasses).Trim();
+	}
+}
+
+@{
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : string.Empty;
+	var decorations = Model.Item?.GetList("CssDecorations")?.GetRawValue().OfType<string>() ?? Enumerable.Empty<string>();
+	string css = RenderCustomCSS(decorations);
+	string iconPath = "/Files/Templates/Designs/Swift/Assets/icons/";
+	var image = Model.Item.GetFile("QuoteAuthorImage");
+	int xPos = image?.FocalPositionFromLeft ?? 50;
+	int yPos = image?.FocalPositionFromTop ?? 50;
+	string imagePosition = $"{xPos}% {yPos}%";
+	int imageWidth = 32;
+	int imageheight = 32;
+	string imageClass = "rounded-circle";
+	string imageStyle = $"object-fit:cover;object-position:{imagePosition};";
+	string quote = Model.Item.GetRawValueString("Quote", string.Empty);
+	string quoteAuthor = Model.Item.GetRawValueString("QuoteAuthor", string.Empty);
+	string layout = Model.Item.GetRawValueString("Layout", "QuoteOnly");
+	string fontSize = Model.Item.GetRawValueString("FontSize", "Regular");
+	string fontSizeClass = " fs-6";
+	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "None");
+	string contentPaddingClass = string.Empty;
+	string quoteIconSize = "icon-3";
+	string borderLeftLayoutColor = !string.IsNullOrEmpty(theme) ? "var(--swift-border-color)" : "var(--swift-foreground-color)";
+	string borderLeftLayout = $"style=\"border-left:0.375rem solid {borderLeftLayoutColor};box-shadow:none;\"";
+	string quoteIcon = "<svg viewBox=\"0 0 32 28\"><path d= \"M40.333,28,38,0H52L49.667,28Zm-18,0L20,0H34L31.667,28Z\" transform=\"translate(-20)\" fill=\"currentColor\"/></svg>";
+	bool openInNewTab = Pageview.AreaSettings.GetBoolean("OpenLinksInNewTab");
+	string quoteSource = Model.Item.GetString("QuoteSource", string.Empty);
+	var link = Model.Item.GetLink("QuoteSourceLink");
+
+	string target = link is object && (openInNewTab && link.IsExternal) ? "target=\"_blank\"" : string.Empty;
+	string rel = link is object && (openInNewTab && link.IsExternal) ? "rel=\"noopener\"" : string.Empty;
+
+	switch (contentPadding)
+	{
+		case "Small":
+			contentPaddingClass = " p-3";
+			break;
+		case "Large":
+			contentPaddingClass = " p-5";
+			break;
+	}
+
+	switch (fontSize)
+	{
+		case "Small":
+			fontSizeClass = " fs-7";
+			quoteIconSize = "icon-2";
+			break;
+		case "Large":
+			fontSizeClass = " fs-3";
+			quoteIconSize = "icon-4";
+			break;
+	}
+}
+
+<div id="@Model.ID" class="user-select-none" style="scroll-margin-top:var(--header-height,150px)"></div>
+
+@if (layout == "QuoteOnly")
+{
+	<figure class="position-relative d-flex flex-column gap-3 h-100 m-0@(contentPaddingClass)@(theme) @(css)" itemscope itemtype="https://schema.org/Quotation">
+		<blockquote class="m-0 blockquote mb-0-last-child@(fontSizeClass)" itemprop="text">
+			@quote
+		</blockquote>
+		@if (!string.IsNullOrEmpty(quoteAuthor))
+		{
+			<figcaption class="d-flex gap-3 align-items-center m-0">
+				@if (image is object)
+				{
+					<img src="/Admin/Public/GetImage.ashx?image=@(image.PathUrlEncoded)&width=@(imageWidth*2)&crop=0&format=webp&compression=75" width="@imageWidth" height="@imageheight" class="@imageClass" alt="@quoteAuthor" loading="lazy" decoding="async" style="@imageStyle">
+				}
+				else
+				{
+					<div class="p-2 icon-2 rounded-circle" style="background-color:var(--swift-foreground-color);color:var(--swift-background-color);">
+						@ReadFile(iconPath + "user.svg")
+					</div>
+				}
+				<div class="opacity-85 fs-7" itemprop="author">
+					@quoteAuthor
+
+					@if (link is object)
+					{
+						@:<a class="stretched-link text-decoration-none text-decoration-underline-hover" style="color:currentColor" href="@link.Url" @target @rel>
+						}
+					<cite title="@quoteSource">@quoteSource</cite>
+					@if (link is object)
+					{
+					@:</a>
+				}
+				</div>
+			</figcaption>
+		}
+	</figure>
+}
+
+@if (layout == "QuoteLeftBorder")
+{
+	<figure class="position-relative d-flex flex-column gap-3 h-100 m-0@(contentPaddingClass)@(theme) @(css)" @borderLeftLayout itemscope itemtype="https://schema.org/Quotation">
+		<blockquote class="m-0 blockquote mb-0-last-child@(fontSizeClass)" itemprop="text">
+			@quote
+		</blockquote>
+		@if (!string.IsNullOrEmpty(quoteAuthor))
+		{
+			<figcaption class="d-flex gap-3 align-items-center m-0">
+				@if (image is object)
+				{
+					<img src="/Admin/Public/GetImage.ashx?image=@(image.PathUrlEncoded)&width=@(imageWidth*2)&crop=0&format=webp&compression=75" width="@imageWidth" height="@imageheight" class="@imageClass" alt="@quoteAuthor" loading="lazy" decoding="async" style="@imageStyle">
+				}
+				else
+				{
+					<div class="p-2 icon-2 rounded-circle" style="background-color:var(--swift-foreground-color);color:var(--swift-background-color);">
+						@ReadFile(iconPath + "user.svg")
+					</div>
+				}
+				<div class="opacity-85 fs-7" itemprop="author">
+					@quoteAuthor
+
+					@if (link is object)
+					{
+						@:<a class="stretched-link text-decoration-none text-decoration-underline-hover" style="color:currentColor" href="@link.Url" @target @rel>
+						}
+					<cite title="@quoteSource">@quoteSource</cite>
+					@if (link is object)
+					{
+					@:</a>
+				}
+				</div>
+			</figcaption>
+		}
+	</figure>
+}
+
+@if (layout == "QuoteLeftBorderIconTop")
+{
+	<div class="position-relative d-flex flex-column gap-3 h-100@(contentPaddingClass)@(theme) @(css)" @borderLeftLayout itemscope itemtype="https://schema.org/Quotation">
+		<div class="@quoteIconSize justify-content-start">
+			@quoteIcon
+		</div>
+		<figure class="d-flex flex-column gap-3 m-0">
+			<blockquote class="m-0 blockquote mb-0-last-child@(fontSizeClass)" itemprop="text">
+				@quote
+			</blockquote>
+			@if (!string.IsNullOrEmpty(quoteAuthor))
+			{
+				<figcaption class="d-flex gap-3 align-items-center m-0">
+					@if (image is object)
+					{
+						<img src="/Admin/Public/GetImage.ashx?image=@(image.PathUrlEncoded)&width=@(imageWidth*2)&crop=0&format=webp&compression=75" width="@imageWidth" height="@imageheight" class="@imageClass" alt="@quoteAuthor" loading="lazy" decoding="async" style="@imageStyle">
+					}
+					else
+					{
+						<div class="p-2 icon-2 rounded-circle" style="background-color:var(--swift-foreground-color);color:var(--swift-background-color);">
+							@ReadFile(iconPath + "user.svg")
+						</div>
+					}
+					<div class="opacity-85 fs-7" itemprop="author">
+						@quoteAuthor
+						@if (link is object)
+						{
+							@:<a class="stretched-link text-decoration-none text-decoration-underline-hover" style="color:currentColor" href="@link.Url" @target @rel>
+							}
+						<cite title="@quoteSource">@quoteSource</cite>
+						@if (link is object)
+						{
+						@:</a>
+					}
+					</div>
+				</figcaption>
+			}
+		</figure>
+	</div>
+}
+
+@if (layout == "QuoteLeftBorderIconLeft")
+{
+	<div class="position-relative d-flex flex-row h-100 gap-3@(contentPaddingClass)@(theme) @(css)" @borderLeftLayout itemscope itemtype="https://schema.org/Quotation">
+		<div class="@quoteIconSize align-items-baseline mt-1">
+			@quoteIcon
+		</div>
+		<figure class="d-flex flex-column gap-3 m-0">
+			<blockquote class="m-0 blockquote mb-0-last-child@(fontSizeClass)" itemprop="text">
+				@quote
+			</blockquote>
+			@if (!string.IsNullOrEmpty(quoteAuthor))
+			{
+				<figcaption class="d-flex gap-3 align-items-center m-0">
+					@if (image is object)
+					{
+						<img src="/Admin/Public/GetImage.ashx?image=@(image.PathUrlEncoded)&width=@(imageWidth*2)&crop=0&format=webp&compression=75" width="@imageWidth" height="@imageheight" class="@imageClass" alt="@quoteAuthor" loading="lazy" decoding="async" style="@imageStyle">
+					}
+					else
+					{
+						<div class="p-2 icon-2 rounded-circle" style="background-color:var(--swift-foreground-color);color:var(--swift-background-color);">
+							@ReadFile(iconPath + "user.svg")
+						</div>
+					}
+					<div class="opacity-85 fs-7" itemprop="author">
+						@quoteAuthor
+						@if (link is object)
+						{
+							@:<a class="stretched-link text-decoration-none text-decoration-underline-hover" style="color:currentColor" href="@link.Url" @target @rel>
+							}
+						<cite title="@quoteSource">@quoteSource</cite>
+						@if (link is object)
+						{
+						@:</a>
+					}
+					</div>
+				</figcaption>
+			}
+		</figure>
+	</div>
+}
+
+@if (layout == "QuoteTopImageCenter")
+{
+	string blockquotePadding = " pb-5";
+	string figcaptionPadding = " pt-4";
+
+	switch (contentPadding)
+	{
+		case "Small":
+			blockquotePadding = " px-3 pt-3 pb-5";
+			figcaptionPadding = " px-3 pt-4 pb-3";
+			break;
+		case "Large":
+			blockquotePadding = " p-5";
+			figcaptionPadding = " px-5 py-4";
+			break;
+	}
+	imageWidth = 68;
+	imageheight = 68;
+	imageClass += " position-absolute top-0 start-50 translate-middle";
+
+	<figure class="position-relative d-flex flex-column h-100 m-0" itemscope itemtype="https://schema.org/Quotation">
+		<blockquote class="flex-grow-1 m-0 blockquote mb-0-last-child text-center@(fontSizeClass)@(blockquotePadding)@(theme) @(css)" itemprop="text">
+			@quote
+		</blockquote>
+		@if (!string.IsNullOrEmpty(quoteAuthor))
+		{
+			string quoteAuthorWrapperColor = theme != string.Empty ? "bg-white text-black " : string.Empty;
+
+			<figcaption class="d-flex gap-3 justify-content-center text-center position-relative m-0@(figcaptionPadding)@theme" style="background-color:var(--swift-foreground-color);color:var(--swift-background-color);">
+
+				@if (image is object)
+				{
+					<img src="/Admin/Public/GetImage.ashx?image=@(image.PathUrlEncoded)&width=@(imageWidth*2)&crop=0&format=webp&compression=75" width="@imageWidth" height="@imageheight" class="@imageClass" alt="@quoteAuthor" loading="lazy" decoding="async" style="@imageStyle">
+				}
+				else
+				{
+					<div class="p-3 icon-4 shadow-none @imageClass@(theme)" style="background-color:var(--swift-foreground-color);color:var(--swift-background-color);border:2px solid var(--swift-background-color)">
+						@ReadFile(iconPath + "user.svg")
+					</div>
+				}
+
+				<div class="opacity-85 fs-7 pt-3" itemprop="author">
+					@quoteAuthor
+					@if (link is object)
+					{
+						@:<a class="stretched-link text-decoration-none text-decoration-underline-hover" style="color:currentColor" href="@link.Url" @target @rel>
+						}
+					<cite title="@quoteSource">@quoteSource</cite>
+					@if (link is object)
+					{
+					@:</a>
+				}
+				</div>
+			</figcaption>
+		}
+	</figure>
+}
+
+@if (layout == "QuoteLeftImageRight")
+{
+	imageWidth = 400;
+	imageheight = 225;
+	imageClass = "w-100 h-100";
+	imageStyle += "aspect-ratio:16/9;";
+
+	<figure class="position-relative grid grid-12 gap-0 h-100 m-0" itemscope itemtype="https://schema.org/Quotation">
+		<div class="g-col-12 g-col-md-8 order-last order-md-first d-flex flex-column gap-3 h-100 align-items-start@(contentPaddingClass)@(theme) @(css)">
+			<blockquote class="m-0 blockquote mb-0-last-child@(fontSizeClass)" itemprop="text">
+				@quote
+			</blockquote>
+			@if (!string.IsNullOrEmpty(quoteAuthor))
+			{
+				<figcaption class="opacity-85 fs-7" itemprop="author">
+					@quoteAuthor
+					@if (link is object)
+					{
+						@:<a class="stretched-link text-decoration-none text-decoration-underline-hover" style="color:currentColor" href="@link.Url" @target @rel>
+						}
+					<cite title="@quoteSource">@quoteSource</cite>
+					@if (link is object)
+					{
+					@:</a>
+				}
+				</figcaption>
+			}
+		</div>
+		@if (image is object)
+		{
+			<div class="g-col-12 g-col-md-4 order-first order-md-last">
+				<img src="/Admin/Public/GetImage.ashx?image=@(image.PathUrlEncoded)&width=@(imageWidth*2)&crop=0&format=webp&compression=75" width="@imageWidth" height="@imageheight" class="@imageClass" alt="@quoteAuthor" loading="lazy" decoding="async" style="@imageStyle">
+			</div>
+		}
+		else
+		{
+			<div class="g-col-12 g-col-md-4 order-first order-md-last h-100 w-100@(theme)" style="aspect-ratio: 16/9;background-color:var(--swift-foreground-color);color:var(--swift-background-color);">
+				<div class="d-flex align-items-center justify-content-center icon-5 h-100">
+					@ReadFile(iconPath + "user.svg")
+				</div>
+			</div>
+		}
+	</figure>
+}

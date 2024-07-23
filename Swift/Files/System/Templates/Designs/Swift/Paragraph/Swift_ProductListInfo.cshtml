@@ -1,0 +1,82 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend.Navigation
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Environment
+
+@{
+	ProductListViewModel productList = null;
+	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
+	{
+		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
+	}
+	else if (Pageview.Page.Item["DummyProductGroup"] != null && Pageview.IsVisualEditorMode)
+	{
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel groupList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+
+		if (groupList?.Products is object)
+		{
+			productList = groupList;
+		}
+	}
+}
+
+@if (productList is object)
+{
+	string searchParameter = Dynamicweb.Context.Current.Request.GetString("q");
+
+	bool hideTitle = Model.Item.GetBoolean("HideGroupTitle");
+	string titleFontSize = Model.Item.GetRawValueString("TitleFontSize", "display-4");
+
+	string groupName = productList?.Group?.Name != null ? productList.Group.Name : "";
+	string headerName = searchParameter != "" ? Translate("Search results for") + ": " + searchParameter : groupName;
+
+	bool hideDescription = Model.Item.GetBoolean("HideGroupDescription");
+	string groupDescription = productList?.Group?.Description != null ? productList.Group.Description : "";
+	string descriptionFontSize = Model.Item.GetRawValueString("DescriptionFontSize", "fs-6");
+
+	string contentPadding = Model.Item.GetRawValueString("ContentPadding", "");
+	contentPadding = contentPadding == "none" ? "p-0" : contentPadding;
+	contentPadding = contentPadding == "small" ? "p-2 p-md-3" : contentPadding;
+	contentPadding = contentPadding == "large" ? "p-4 p-md-5" : contentPadding;
+
+	string maxWidth = Model.Item.GetRawValueString("TextReadability", "max-width-on");
+	maxWidth = maxWidth == "max-width-on" ? " mw-75ch" : maxWidth;
+	maxWidth = maxWidth == "max-width-off" ? "" : maxWidth;
+
+	string layout = Model.Item.GetRawValueString("Layout", "text-start");
+	string autoMargin = layout == "text-start" ? "my-auto" : "m-auto";
+	string theme = !string.IsNullOrWhiteSpace(Model.Item.GetRawValueString("Theme")) ? " theme " + Model.Item.GetRawValueString("Theme").Replace(" ", "").Trim().ToLower() : "";
+
+	if ((!string.IsNullOrEmpty(headerName) && !hideTitle) || !string.IsNullOrEmpty(groupDescription))
+	{
+		<div class="h-100 @(contentPadding)@(theme) item_@Model.Item.SystemName.ToLower()">
+			<div class="@(layout) @(maxWidth) w-100 @autoMargin">
+				@if (!hideTitle)
+				{
+					<h1 class="@titleFontSize">@headerName</h1>
+				}
+
+				@if (!hideDescription && !string.IsNullOrEmpty(groupDescription))
+				{
+					<div class="@descriptionFontSize">
+						@groupDescription
+					</div>
+				}
+			</div>
+		</div>
+	}
+	else if (Pageview.IsVisualEditorMode)
+	{
+		<div class="alert alert-dark m-0" role="alert">
+			<span>@Translate("Product list info: The info paragraph will be shown here, if any")</span>
+		</div>
+	}
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0" role="alert">
+		<span>@Translate("Product list info: The info paragraph will be shown here, if any")</span>
+	</div>
+}
+

@@ -1,0 +1,503 @@
+<script>
+    class StripeHelper {
+        static CardPaymentMethodId
+        static GooglePayPaymentMethodId
+        static ApplePayPaymentMethodId
+        static InitialSelectionForced
+        static PublicKey
+        static StripeInstance
+        static StripeWalletElementsObj
+        static StripeCardElementsObj
+        static WalletAvailable
+        static AvailableWalletElement
+        static BasketId
+        static OrderAmount
+        static OrderAmountInPence
+        static OrderCurrency
+        static OrderCountry
+        static CardElement
+        static PaymentIdSelectedOnPageLoad
+        static DefaultPayNowButton
+        static PaymentForm
+
+        static WalletsOptionAvailable = Object.freeze({
+            GOOGLE_PAY: "google",
+            APPLE_PAY: "apple",
+            NONE: "none"
+        });
+
+        static PaymentIntentStatuses = Object.freeze({
+            REQUIRES_ACTION: 'requires_action',
+            REQUIRES_PAYMENT_METHOD: 'requires_payment_method',
+            SUCCEEDED: 'succeeded'
+        });
+
+        static async GetPublishableKey() {
+
+            let keyRes = await fetch(`/checkout/get-stripe-key`);
+
+            if (!keyRes.ok) {
+                console.log('Failed to get the key response.');
+                return;
+            }
+
+            let keyPayLoad = await keyRes.json();
+
+            StripeHelper.PublicKey = keyPayLoad.key
+            StripeHelper.CardPaymentMethodId = keyPayLoad.cardPaymentId
+            StripeHelper.GooglePayPaymentMethodId = keyPayLoad.googlePayPaymentId
+            StripeHelper.ApplePayPaymentMethodId = keyPayLoad.applePayPaymentId
+
+        }
+
+        static async LoadStripeJs() {
+
+            return new Promise((resolve, reject) => {
+                if (!StripeHelper.StripeInstance && !window.StripeLoaded) {
+                    const script = document.createElement('script');
+                    script.src = 'https://js.stripe.com/v3/';
+                    script.onload = function () {
+                        const publicKey = StripeHelper.PublicKey;
+                        StripeHelper.StripeInstance = new Stripe(publicKey);
+                        window.StripeLoaded = true;
+                        StripeHelper.BasketId = "@GetString("Ecom:Order.ID")"
+                        StripeHelper.OrderAmountInPence = parseInt("@GetString("Ecom:Order.Price.PricePIP")")
+                        StripeHelper.OrderAmount = "@GetString("Ecom:Order.Price.Price")"
+                        StripeHelper.OrderCurrency = "@GetString("Ecom:Order.CurrencyCode").ToLower()"
+                        StripeHelper.OrderCountry = "@GetString("UserManagement:User.CountryCode")"
+                        StripeHelper.PaymentIdSelectedOnPageLoad = "@GetString("Ecom:Order.PaymentMethodID")"
+                        StripeHelper.DefaultPayNowButton = document.getElementById('PayButton')
+                        StripeHelper.PaymentForm = document.getElementById("ordersubmit")
+                        resolve();
+                    };
+
+                    script.onerror = function () {
+                        reject(); // Reject the promise if script fails to load
+                    }
+
+                    document.head.appendChild(script);
+                } else {
+                    resolve(); // Resolve immediately if script is already loaded.
+                }
+            });
+        }
+
+        static async CheckAvailableWallets() {
+
+            const paymentRequest = StripeHelper.StripeInstance.paymentRequest({
+                country: StripeHelper.OrderCountry,
+                currency: StripeHelper.OrderCurrency,
+                total: {
+                    label: 'wallet check',
+                    amount: StripeHelper.OrderAmountInPence,
+                },
+                requestPayerName: false,
+                requestPayerEmail: false,
+            });
+
+            const methodsResult = await paymentRequest.canMakePayment();
+
+            if (methodsResult) {
+                if (methodsResult.googlePay) {
+                    StripeHelper.WalletAvailable = StripeHelper.WalletsOptionAvailable.GOOGLE_PAY
+                }
+                if (methodsResult.applePay || methodsResult.link) {
+                    StripeHelper.WalletAvailable = StripeHelper.WalletsOptionAvailable.APPLE_PAY
+                } else {
+                    StripeHelper.WalletAvailable = StripeHelper.WalletsOptionAvailable.NONE
+                }
+            } else {
+                StripeHelper.WalletAvailable = StripeHelper.WalletsOptionAvailable.NONE
+            }
+
+        }
+
+        static async GetCardElement() {
+            StripeHelper.StripeCardElementsObj = StripeHelper.StripeInstance.elements()
+            StripeHelper.CardElement = StripeHelper.StripeCardElementsObj.create('card', {
+                style: {
+                    base: {
+                        backgroundColor: '#fff',
+
+                        fontFamily: 'Montserrat, Roboto, Open Sans, Segoe UI, sans-serif',
+                        fontSize: '16px',
+                        fontWeight: '250'
+                    }
+                },
+                hidePostalCode: true
+            });
+        }
+
+        static async GetWalletsElement() {
+            if ((StripeHelper.GooglePayPaymentMethodId || StripeHelper.ApplePayPaymentMethodId) && StripeHelper.WalletAvailable !== StripeHelper.WalletsOptionAvailable.NONE) {
+
+                const options = {
+                    mode: 'payment',
+                    amount: StripeHelper.OrderAmountInPence,
+                    currency: StripeHelper.OrderCurrency,
+                };
+
+                StripeHelper.StripeWalletElementsObj = StripeHelper.StripeInstance.elements(options);
+
+                StripeHelper.StripeWalletElementsObj.create('expressCheckout', {
+                    paymentMethods: {
+                        amazonPay: 'never',
+                        applePay: StripeHelper.WalletAvailable === StripeHelper.WalletsOptionAvailable.APPLE_PAY ? 'auto' : 'never',
+                        googlePay: StripeHelper.WalletAvailable === StripeHelper.WalletsOptionAvailable.GOOGLE_PAY ? 'auto' : 'never',
+                        link: 'auto',
+                        paypal: 'never'
+                    }
+                });
+            }
+        }
+
+        static DisplayAvailablePaymentMethods() {
+            const excludedIds = []
+
+            if (StripeHelper.WalletAvailable === StripeHelper.WalletsOptionAvailable.GOOGLE_PAY || StripeHelper.WalletAvailable === StripeHelper.WalletsOptionAvailable.NONE) {
+                excludedIds.push(StripeHelper.ApplePayPaymentMethodId)
+            }
+
+            if (StripeHelper.WalletAvailable === StripeHelper.WalletsOptionAvailable.APPLE_PAY || StripeHelper.WalletAvailable === StripeHelper.WalletsOptionAvailable.NONE) {
+                excludedIds.push(StripeHelper.GooglePayPaymentMethodId)
+            }
+
+            const paymentMethodButtons = document.querySelectorAll('.payment');
+            paymentMethodButtons.forEach(function (element) {
+
+                let shouldBeHidden = false;
+
+                excludedIds.forEach(function (id) {
+                    if (element.classList.contains(`payment-${id}`)) {
+                        shouldBeHidden = true;
+                    }
+                })
+
+                if (!shouldBeHidden) {
+                    element.classList.remove('hidden')
+                }
+            });
+
+            document.getElementById('loader-spinner').classList.add('hidden')
+            document.getElementById('payment-details-section').classList.remove('hidden')
+
+
+            if (StripeHelper.WalletAvailable === StripeHelper.WalletsOptionAvailable.GOOGLE_PAY) {
+                let googleRadio = document.querySelector(`#EcomCartPaymentmethodID_${StripeHelper.GooglePayPaymentMethodId}`)
+                if (!googleRadio.checked) {
+                    googleRadio.click()
+                    return true
+                }
+            }
+            if (StripeHelper.WalletAvailable === StripeHelper.WalletsOptionAvailable.APPLE_PAY) {
+                let appleRadio = document.querySelector(`#EcomCartPaymentmethodID_${StripeHelper.ApplePayPaymentMethodId}`)
+                if (!appleRadio.checked) {
+                    appleRadio.click()
+                    return true
+                }
+            }
+
+            return false
+        }
+
+        static async TryCreatePaymentIntent() {
+            const result = await fetch('/checkout/create-intent',
+                {
+                    method: 'post',
+                    headers: {
+                        'Content-type': 'application/json',
+                    },
+                    body: JSON.stringify({OrderId: StripeHelper.BasketId}),
+                });
+
+            return await result.json();
+        }
+    }
+
+    class FormSubmissionHelper {
+
+        static DisplayError = (error) => {
+            console.log('Error Occurred')
+            const messageContainer = document.querySelector('#error-message');
+
+            if (messageContainer) {
+                messageContainer.textContent = error.message;
+            }
+        }
+
+        static ClearError() {
+            const messageContainer = document.querySelector('#error-message');
+            if (messageContainer) {
+                messageContainer.textContent = '';
+            }
+        }
+
+        static async SubmitNonRefreshingFormUpdate() {
+            try {
+              
+                let form = document.getElementById('ordersubmit')
+                let formData = new FormData(form);
+                formData.set("CartV2.GotoStep2", "")
+                let response = await fetch('/checkout', {
+                    method: 'POST',
+                    body: formData
+                })
+                let result = await response.text();
+             
+                return result
+            } catch (e) {
+                console.log(e)
+            }
+
+
+        }
+
+        static AddHiddenFieldToForm(parentElement, nameAndId, value) {
+            const newInput = document.createElement('input');
+            newInput.setAttribute('type', 'hidden');
+            newInput.setAttribute('name', nameAndId);
+            newInput.setAttribute('id', nameAndId);
+            newInput.setAttribute('value', value);
+
+            parentElement.appendChild(newInput);
+        }
+
+        static async UpdatePaymentMethod(paymentMethodId) {
+console.log(paymentMethodId)
+            StripeHelper.DefaultPayNowButton.classList.add('hidden')
+            StripeHelper.DefaultPayNowButton.disabled = true
+
+            let placeholderElement = document.getElementById('payment-details-placeholder')
+            if (placeholderElement) {
+                placeholderElement.classList.add('hidden')
+            }
+            const data = await FormSubmissionHelper.SubmitNonRefreshingFormUpdate()
+
+            let tempDiv = document.createElement('div');
+            tempDiv.innerHTML = data;
+
+            let targetElement = tempDiv.querySelector('#payment-details-placeholder');
+
+            if (targetElement) {
+                let paymentPlaceholder = document.getElementById('payment-details-placeholder');
+
+
+                if (paymentPlaceholder) {
+                    paymentPlaceholder.innerHTML = targetElement.innerHTML;
+
+                    if (paymentMethodId === StripeHelper.CardPaymentMethodId) {
+                        await PaymentMethodInitialiser.LoadStripeCardMethod()
+                    }
+                    else if (paymentMethodId === StripeHelper.GooglePayPaymentMethodId || paymentMethodId === StripeHelper.ApplePayPaymentMethodId) {
+                        await PaymentMethodInitialiser.LoadStripeWalletMethod()
+                    } else {
+                        await PaymentMethodInitialiser.LoadPayOnAccountMethod()
+                    }
+
+                }
+            }
+else
+{
+throw Error('No payment form found')
+}
+        }
+
+    }
+
+    class PaymentMethodInitialiser {
+        static async LoadStripeCardMethod() {
+           
+            if (StripeHelper.DefaultPayNowButton) {
+	            const accountTextElement = document.getElementById('card-pay-button-text')
+
+	            const buttonTextElement = StripeHelper.DefaultPayNowButton.querySelector('.pay-button-text')
+	            buttonTextElement.innerHTML = accountTextElement.innerHTML
+	            StripeHelper.DefaultPayNowButton.disabled = true
+                StripeHelper.DefaultPayNowButton.classList.remove('hidden')
+            }
+
+            const card = StripeHelper.StripeCardElementsObj.getElement('card')
+            card.mount('#card-element');
+            document.getElementById('shimmer-loader').classList.add('hidden')
+            document.getElementById('payment-details-placeholder').classList.remove('hidden')
+
+
+            card.addEventListener('change', function (event) {
+                StripeHelper.DefaultPayNowButton.disabled = !event.complete
+            });
+
+            StripeHelper.DefaultPayNowButton.addEventListener("click", async function (event) {
+                event.preventDefault()
+                StripeHelper.DefaultPayNowButton.disabled = true
+	            StripeHelper.DefaultPayNowButton.querySelector('#button-non-load').classList.add('hidden')
+	            StripeHelper.DefaultPayNowButton.querySelector('#button-load').classList.remove('hidden')
+                FormSubmissionHelper.ClearError()
+                const paymentIntent = await StripeHelper.TryCreatePaymentIntent()
+
+                if (paymentIntent.clientSecret) {
+
+                    await FormSubmissionHelper.AddHiddenFieldToForm(StripeHelper.PaymentForm, 'token', paymentIntent.id)
+
+
+                    const result = await StripeHelper.StripeInstance.confirmCardPayment(paymentIntent.clientSecret, {
+                        payment_method: {
+                            card: card
+                        },
+                        setup_future_usage: 'off_session'
+                    });
+
+                  
+
+                    if (!result.error) {
+                        if (result.paymentIntent.status === StripeHelper.PaymentIntentStatuses.SUCCEEDED) {
+                            await FormSubmissionHelper.AddHiddenFieldToForm(StripeHelper.PaymentForm, 'Action', 'Approve')
+                            await FormSubmissionHelper.AddHiddenFieldToForm(StripeHelper.PaymentForm, 'CheckoutHandlerOrderID', StripeHelper.BasketId)
+
+                            StripeHelper.PaymentForm.submit();
+                        }
+                    } else {
+                        FormSubmissionHelper.DisplayError(result.error)
+	                    StripeHelper.DefaultPayNowButton.querySelector('#button-non-load').classList.remove('hidden')
+	                    StripeHelper.DefaultPayNowButton.querySelector('#button-load').classList.add('hidden')
+                        StripeHelper.DefaultPayNowButton.disabled = false
+                    }
+                } else {
+	                StripeHelper.DefaultPayNowButton.querySelector('#button-non-load').classList.remove('hidden')
+	                StripeHelper.DefaultPayNowButton.querySelector('#button-load').classList.add('hidden')
+                    StripeHelper.DefaultPayNowButton.disabled = false
+                    let errorObj = {error: {message: 'Unable to process payment, please try again.'}}
+                    FormSubmissionHelper.DisplayError(errorObj.error)
+                }
+
+            })
+        }
+
+        static async LoadStripeWalletMethod() {
+     
+            if (StripeHelper.DefaultPayNowButton) {
+                StripeHelper.DefaultPayNowButton.classList.add('hidden')
+            }
+
+            const expressCheckout = StripeHelper.StripeWalletElementsObj.getElement('expressCheckout')
+            expressCheckout.mount('#express-checkout-element');
+
+
+            expressCheckout.addEventListener('ready', () => {
+                document.getElementById('shimmer-loader').classList.add('hidden')
+                document.getElementById('payment-details-placeholder').classList.remove('hidden')
+            });
+
+            expressCheckout.addEventListener('cancel', () => {
+                StripeHelper.StripeWalletElementsObj.update({amount: StripeHelper.OrderAmount})
+            });
+
+            expressCheckout.addEventListener("click", function (event) {
+                FormSubmissionHelper.ClearError()
+                const options = {
+                    billingAddressRequired: false,
+                    shippingAddressRequired: false,
+                    emailRequired: false,
+                    phoneNumberRequired: false
+                };
+                event.resolve(options);
+            });
+
+            expressCheckout.addEventListener('confirm', async (event) => {
+                const {error: submitError} = await StripeHelper.StripeWalletElementsObj.submit();
+
+                if (submitError) {
+                    FormSubmissionHelper.DisplayError(submitError);
+                    event.paymentFailed({reason: 'fail'})
+                    return;
+                }
+
+                let paymentIntent = await StripeHelper.TryCreatePaymentIntent()
+
+                if (paymentIntent.clientSecret) {
+
+                    try {
+                        const {error} = await StripeHelper.StripeInstance.confirmPayment({
+                            // `elements` instance used to create the Express Checkout Element 
+                            elements: StripeHelper.StripeWalletElementsObj,
+                            // `clientSecret` from the created PaymentIntent 
+                            clientSecret: paymentIntent.clientSecret,
+                            confirmParams: {
+                                return_url: `${window.location.origin}/checkout?CheckoutHandlerOrderID=${StripeHelper.BasketId}`
+                            },
+                        });
+
+                        if (error) {
+                            // This point is only reached if there's an immediate error when 
+                            // confirming the payment. Show the error to your customer (for example, payment details incomplete) 
+                            event.paymentFailed({reason: 'fail'})
+                            FormSubmissionHelper.DisplayError(error);
+
+                        } else {
+
+                            console.log('Payment Confirmed.. Redirecting')
+                        }
+
+
+                    } catch (errorRes) {
+                        console.log(errorRes)
+                        event.paymentFailed({reason: 'fail'})
+                    }
+                } else {
+                    let errorObj = {error: {message: 'Unable to process payment, please try again.'}}
+                    FormSubmissionHelper.DisplayError(errorObj.error);
+                    event.paymentFailed({reason: 'fail'})
+                }
+            });
+        }
+
+        static async LoadPayOnAccountMethod() {
+        
+            if (StripeHelper.DefaultPayNowButton) {
+                StripeHelper.DefaultPayNowButton.classList.remove('hidden')
+                StripeHelper.DefaultPayNowButton.disabled = false
+
+	            const accountTextElement = document.getElementById('account-pay-button-text')
+
+                const buttonTextElement = StripeHelper.DefaultPayNowButton.querySelector('.pay-button-text')
+	            buttonTextElement.innerHTML = accountTextElement.innerHTML
+            }
+            document.getElementById('shimmer-loader').classList.add('hidden')
+            document.getElementById('payment-details-placeholder').classList.remove('hidden')
+
+            StripeHelper.DefaultPayNowButton.addEventListener("click", async function (event) {
+                event.preventDefault()
+
+                await FormSubmissionHelper.AddHiddenFieldToForm(StripeHelper.PaymentForm, 'Action', 'Approve')
+                await FormSubmissionHelper.AddHiddenFieldToForm(StripeHelper.PaymentForm, 'CheckoutHandlerOrderID', StripeHelper.BasketId)
+
+                StripeHelper.PaymentForm.submit()
+
+            });
+        }
+
+        static async InitialiseCheckout() {
+
+            await StripeHelper.GetPublishableKey()
+            await StripeHelper.LoadStripeJs()
+            await StripeHelper.CheckAvailableWallets()
+            await StripeHelper.GetCardElement()
+            await StripeHelper.GetWalletsElement()
+            const initialMethodUpdated = StripeHelper.DisplayAvailablePaymentMethods()
+
+            if (!initialMethodUpdated) {
+                if (StripeHelper.PaymentIdSelectedOnPageLoad === StripeHelper.CardPaymentMethodId) {
+                    await PaymentMethodInitialiser.LoadStripeCardMethod()
+                }
+                if (StripeHelper.PaymentIdSelectedOnPageLoad === StripeHelper.GooglePayPaymentMethodId || StripeHelper.PaymentIdSelectedOnPageLoad === StripeHelper.ApplePayPaymentMethodId) {
+                    await PaymentMethodInitialiser.LoadStripeWalletMethod()
+                } else {
+                    await PaymentMethodInitialiser.LoadPayOnAccountMethod();
+                }
+            }
+        }
+    }
+
+    (async () => {
+        await PaymentMethodInitialiser.InitialiseCheckout()
+    })();
+</script>

@@ -1,0 +1,152 @@
+@inherits ViewModelTemplate<ListEditorViewModel<string>>
+@using Dynamicweb.Rendering
+@using Dynamicweb.Content.Items.Rendering
+
+@{
+	string editorId = Model.EditorId;
+
+	var websiteAreaId = Model.AreaId;
+	var websiteArea = Dynamicweb.Content.Services.Areas.GetArea(websiteAreaId);
+	int brandingPageId = websiteArea != null ? Convert.ToInt32(websiteArea.Item["BrandingPage"]) : 0;
+	int themePageId = websiteArea != null ? Convert.ToInt32(websiteArea.Item["ThemesPage"]) : 0;
+
+	var brandingPage = Dynamicweb.Content.Services.Pages?.GetPage(brandingPageId) ?? null;
+	var themesParagraphLastChanged = Dynamicweb.Content.Services.Paragraphs.GetParagraphsByPageId(themePageId).OrderByDescending(p => p.Audit.LastModifiedAt).FirstOrDefault();
+
+	var cssLastModified = brandingPage.Audit.LastModifiedAt > themesParagraphLastChanged.Audit.LastModifiedAt ? brandingPage.Audit.LastModifiedAt : themesParagraphLastChanged.Audit.LastModifiedAt;
+}
+
+@* Swift styles *@
+<link href="/Files/Templates/Items/Swift_Styles.css" rel="stylesheet" media="all" type="text/css">
+
+@* Branding and Themes min stylesheet *@
+<link href="/Files/Templates/Designs/Swift/_parsed/Swift_css/Swift_styles_@(websiteAreaId).min.css?@(cssLastModified.Ticks)" rel="stylesheet" media="all" type="text/css" data-last-modified-content="@cssLastModified">
+
+<style>
+	.swift-checkered {
+		background-image: linear-gradient(45deg, #a7a9ac 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #a7a9ac 75%), linear-gradient(45deg, transparent 75%, #a7a9ac 75%), linear-gradient(45deg, #a7a9ac 25%, #bcbec0 25%);
+		background-size: 20px 20px;
+		background-position: 0 0, 0 0, -10px -10px, 10px 10px;
+	}
+
+	.swift-theme-option {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		padding: 1em;
+		cursor: pointer;
+		line-height: 1;
+		min-width: 80px;
+	}
+
+	.swift-theme-option .swift-btn {
+		padding: 0.25rem 0.5rem;
+		font-size: 0.875rem;
+	}
+
+	.swift-option-label {
+		display: flex;
+		flex-grow: 1;
+	}
+
+	.swift-option-label .swift-theme-option {
+		border: 4px solid #F7F7F7;
+	}
+
+	.swift-option-input:checked ~ .swift-option-label .swift-theme-option {
+		border: 4px solid #0085CA;
+	}
+
+	.swift-no-theme {
+		display: flex;
+		height: 100%;
+	}
+
+	.swift-no-theme .swift-theme-option {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.swift-theme-item {
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		min-width: 80px;
+		overflow: hidden;
+	}
+
+	.swift-theme-item::after {
+		content: attr(data-name);
+		position: absolute;
+		transform: translateY(-100%);
+		background: rgb(48 48 48 / 60%);
+		top: 0;
+		inset-inline: 0;
+		display: grid;
+		align-items: center;
+		justify-content: center;
+		padding: .5rem;
+		font-size: 80%;
+		color: white;
+		transition: transform .2s;
+		user-select: none;
+		pointer-events: none;
+		text-transform: uppercase;
+	}
+
+	.swift-theme-item:hover::after {
+		transform: translateX(0%);
+	}
+
+	.swift-theme-items {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.3rem;
+		width: calc(100% - 100px);
+	}
+</style>
+
+<div class="brand swift-theme-items">
+	@if (Model.Items is object) {
+		bool containsDuplicates = Model.Options.GroupBy(x => x.Value).Any(g => g.Count() > 1);
+
+		if (containsDuplicates) { 
+			<div class="swift-alert" role="alert">@Translate("There are multiple themes with the same CSS class name. Please go to Swift tools -> Design -> Themes, and fix the naming")</div>
+		}
+
+		foreach(var item in Model.Items) {
+			string themeName = !string.IsNullOrWhiteSpace(item.GetString("Name")) ? item.GetString("Name") : "Default";
+			string themeClassName = !string.IsNullOrWhiteSpace(item.GetString("CSSClassName")) ? item.GetString("CSSClassName").Replace(" ", "").Trim().ToLower() : "";
+			string selectedBorder = Model.SelectedValue == themeClassName ? "selected-option" : "";
+			var itemValue = Model.Options.FirstOrDefault(o => new string[]{item.ParagraphID.ToString(), item.GetString("CSSClassName") }.Contains(o.Value.ToString()))?.Value ?? null;
+
+			<div class="swift-theme-item" data-name="@themeName">
+				@if (themeClassName != "") {
+					<input class="swift-option-input" type="radio" id="@(editorId)_@themeClassName" name="@editorId" value="@itemValue" checked="@(Model.SelectedValue == itemValue?.ToString())" style="display: none">
+					<label class="swift-option-label swift-checkered @selectedBorder" for="@(editorId)_@themeClassName">
+						<div class="swift-theme-option theme @themeClassName">
+							@if(item.GetString("AccentColor") != string.Empty){ 
+								<div style="display: flex; align-items: center; justify-content: center; text-align: center; color: var(--swift-accent-color); font-size: 75%;">Accent</div>
+							}
+							<div style="display: flex; flex-grow: 1; align-items: end; justify-content: center; font-size: 200%; text-align:center;">Aa</div>
+							<div class="swift-btn btn-primary" style="display: flex; align-items: center; justify-content: center; font-size: 65%;">Primary</div>
+							<div class="swift-btn btn-secondary" style="display: flex; align-items: center; justify-content: center; font-size: 65%;">Secondary</div>
+							<div class="swift-btn btn-link" style="display: flex; align-items: center; justify-content: center; font-size: 65%;">Link</div>
+						</div>
+					</label>
+				} else {
+					<input class="swift-option-input" type="radio" id="@(editorId)_@themeClassName" name="@editorId" value="@itemValue" @(Model.SelectedValue == itemValue.ToString() || Model.SelectedValue == string.Empty ? "checked" : "") style="display: none">
+					<label class="swift-option-label swift-no-theme @selectedBorder" for="@(editorId)_@themeClassName">
+						<div class="swift-theme-option">
+							<svg xmlns="http://www.w3.org/2000/svg" width="1.5rem" height="1.5rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-x"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+						</div>
+					</label>
+				}
+			</div>
+		}
+	} else {
+		<div class="swift-alert">@Translate("No themes found")</div>
+	}
+</div>

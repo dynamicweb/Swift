@@ -1,0 +1,156 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using Dynamicweb
+@using Dynamicweb.Ecommerce.Orders
+@using System.IO
+
+@{
+	string groupId = Dynamicweb.Context.Current.Request["GroupID"] != null ? Dynamicweb.Context.Current.Request["GroupID"].ToString() : string.Empty;
+	string productId = Dynamicweb.Context.Current.Request["ProductID"] != null ? Dynamicweb.Context.Current.Request["ProductID"].ToString() : string.Empty;
+	string variantId = Dynamicweb.Context.Current.Request["VariantID"] != null ? Dynamicweb.Context.Current.Request["VariantID"].ToString() : string.Empty;
+	string menuId = Model.Parameters.ContainsKey("menu-id") ? $"menu_{Model.Parameters["menu-id"].ToString().ToLower()}" : string.Empty;
+}
+
+<nav class="nav flex-nowrap offcanvas-utility-navigation @menuId pe-2" aria-label="@Translate("Utility navigation")">
+	@foreach (var node in Model.Nodes)
+	{
+		var page = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
+		string pageType = page.ItemType;
+
+		string icon = string.Empty;
+		if (page.PropertyItem != null)
+		{
+			icon = page.PropertyItem["Icon"] != null ? page.PropertyItem["Icon"].ToString() : string.Empty;
+		}
+
+		var inPathClass = node.InPath ? "in-path" : string.Empty;
+		var activeClass = node.IsActive ? "active fw-bold" : string.Empty;
+
+		<div class="nav-item@(node.IsActive ? " active" : string.Empty)">
+			@if (pageType != "Swift_Preferences")
+			{
+				if (node.IsClickable)
+				{
+					@:<a class="nav-link p-2 @(activeClass)" href="@node.Link">
+				}
+				else
+				{
+					@:<span class="nav-link p-2">
+				}
+
+				if (pageType == "Swift_Cart")
+				{
+					string cartId = page.Item["ContextCart"] != null && page.Item["ContextCart"] != string.Empty ? $"ID=\"Cart_{page.Item["ContextCart"].ToString()}\"" : string.Empty;
+					string jsCartClass = string.IsNullOrEmpty(cartId) ? "js-cart-qty" : string.Empty;
+					double totalProducts = 0;
+
+					Dynamicweb.Ecommerce.Common.Context.CartContext = null;
+					if (page.Item["ContextCart"] != null)
+					{
+						var orderContext = Dynamicweb.Ecommerce.Services.OrderContexts.GetOrderContextById(page.Item["ContextCart"].ToString());
+						Dynamicweb.Ecommerce.Common.Context.CartContext = orderContext;
+					}
+
+					if (Dynamicweb.Ecommerce.Common.Context.Cart != null)
+					{
+						bool renderOrderlineCountInsteadOfProductCount = page.Item["RenderOrderlineCountInsteadOfProductCount"] != null ? Convert.ToBoolean(page.Item["RenderOrderlineCountInsteadOfProductCount"]) : false;
+						if (!renderOrderlineCountInsteadOfProductCount)
+						{
+							totalProducts = Dynamicweb.Ecommerce.Common.Context.Cart.GetParentProductLineQuantityCount(Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines);
+						}
+						else
+						{
+							foreach (var orderline in Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines)
+							{
+								if (orderline.HasType(new[] { OrderLineType.Product, OrderLineType.Fixed, OrderLineType.PointProduct, OrderLineType.GiftCard }))
+								{
+									totalProducts++;
+								}
+							}
+						}
+					}
+
+					if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none"))
+					{
+						string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
+						<span class="icon-3 pe-none">@ReadFile(iconPath)</span>
+						<span class="@jsCartClass mini-cart-quantity pe-none" @cartId data-order-context="@page.Item["ContextCart"]">@totalProducts</span>
+					}
+				}
+				else
+				{
+					if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none"))
+					{
+						string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
+						<span class="icon-3 pe-none">@ReadFile(iconPath)</span>
+					}
+				}
+
+				if (node.IsClickable)
+				{
+					@:</a>
+				}
+				else
+				{
+					@:</span>
+				}
+			}
+			else
+			{
+				List<string> preferences = new List<string>();
+
+				bool countrySelector = page.Item?["CountrySelector"] != null ? Convert.ToBoolean(page.Item["CountrySelector"].ToString()) : false;
+				bool languageSelector = page.Item?["LanguageSelector"] != null ? Convert.ToBoolean(page.Item["LanguageSelector"].ToString()) : false;
+				bool currencySelector = page.Item?["CurrencySelector"] != null ? Convert.ToBoolean(page.Item["CurrencySelector"].ToString()) : false;
+				string name = Translate("Preferences");
+
+				if (countrySelector)
+				{
+					preferences.Add(Dynamicweb.Ecommerce.Common.Context.Country.Code2);
+				}
+
+				if (languageSelector)
+				{
+					bool hideIcon = page.Item?["HideIcon"] != null ? Convert.ToBoolean(page.Item["HideIcon"].ToString()) : false;
+
+					if (!hideIcon)
+					{
+						icon = $"/Files/FlagIcons/{Pageview.Area.CultureInfo.Name.ToLower()}.svg";
+					}
+				}
+
+				if (currencySelector)
+				{
+					string currencyName = Dynamicweb.Ecommerce.Common.Context.Currency.Code;
+					preferences.Add(currencyName);
+				}
+
+				if (preferences.Count != 0)
+				{
+					name = (string.Join(" / ", preferences.Select(x => x.ToString()).ToArray()));
+				}
+
+				<form action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift_Preferences.cshtml" data-preloader="inline">
+					<input type="hidden" name="Layout" value="modal">
+					<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+					<input type="hidden" name="GroupID" value="@groupId">
+					<input type="hidden" name="ProductID" value="@productId">
+					<input type="hidden" name="VariantID" value="@variantId">
+					<button type="button" onclick="swift.PageUpdater.Update(event)" class="nav-link position-relative d-flex flex-row gap-2 text-reset bg-transparent border-0 swift_open-preferences-modal @activeClass @inPathClass" @(node.IsActive ? "aria-current='page'" : string.Empty) data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+						@if (icon != string.Empty)
+						{
+							if (Path.GetExtension(icon).ToLower() == ".svg" && !icon.ToLower().Contains("none"))
+							{
+								string iconPath = Dynamicweb.Context.Current.Server.MapPath(icon);
+
+								<span class="icon-2">
+									@ReadFile(iconPath)
+								</span>
+							}
+						}
+						<span>@name</span>
+					</button>
+				</form>
+			}
+		</div>
+	}
+</nav>

@@ -1,0 +1,133 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using File = System.IO.File;
+@{
+
+int paymentMethodCount = GetLoop("Paymethods").Count();
+string basis = paymentMethodCount % 2 == 0 ? "50%" : "33.33%";
+string paymentErrorMessage = GetString("Ecom:Cart.ValidationError.EcomCartPaymethodId.ErrorMessage");
+
+<div class="payment-options" id="payment-options-container">
+
+    @foreach (LoopItem method in GetLoop("Paymethods"))
+    {
+
+    string paymentMethodId = GetString("Ecom:Order.PaymentMethodID");
+    string paymentMethodIdSaved = method.GetString("Ecom:Cart.Paymethod.ID");
+    string paymentMethodName = method.GetString("Ecom:Cart.Paymethod.Name");
+
+    // if(paymentMethodName.ToLower().Contains("account") && !canPayOnAccount)
+    // {
+    // continue;
+    // }
+
+    <div class="hidden payment payment-@method.GetString("Ecom:Cart.Paymethod.ID") radioContainerPayment">
+	    <label class="custom-radio">
+		    <input class="form-check-input custom-radio-input" type="radio"
+		           name="EcomCartPaymethodID"
+		           id="EcomCartPaymentmethodID_@method.GetString("Ecom:Cart.Paymethod.ID")"
+		           @if(String.Equals(paymentMethodId, paymentMethodIdSaved)) {<text> checked="checked" </text> }
+		           value="@method.GetString("Ecom:Cart.Paymethod.ID")"
+		           onchange="UpdatePaymentMethodSelection(event)"
+		           data-method-name='@paymentMethodName'
+		           data-method-id='@method.GetString("Ecom:Cart.Paymethod.ID")' />
+		    <span class="custom-radio-button"></span>
+	    </label>
+       
+        <div class="payment-icon">
+            @if(File.Exists(Dynamicweb.Context.Current.Server.MapPath(method.GetString("Ecom:Cart.Paymethod.Icon.Clean"))))
+            {
+            <img class="payment-method-image" src="@method.GetString("Ecom:Cart.Paymethod.Icon.Clean")"
+                 data-method-name='@paymentMethodName' alt="Payment Method Image">
+            }
+            else
+            {
+            <h2 class="payment-method-name">@method.GetString("Ecom:Cart.Paymethod.Name")</h2>
+            }
+        </div>
+
+
+
+
+        @if(!method.GetBoolean("Ecom:Cart.Paymethod.Price.IsZero"))
+        {
+        <span class="text-price">@method.GetString("Ecom:Cart.Paymethod.Price")</span>
+        }
+    </div>
+    }
+</div>
+<div>
+    @paymentErrorMessage
+</div>
+}
+
+<script type="text/javascript">
+	
+	async function UpdatePaymentMethodSelection(event)
+	{
+	document.getElementById('shimmer-loader').classList.remove('hidden')
+		
+	let paymentId = event.target.dataset.methodId
+	await FormSubmissionHelper.UpdatePaymentMethod(paymentId)
+	}
+	
+	document.querySelectorAll('.radioContainerPayment').forEach(container => {
+		container.addEventListener('click', e => {
+			if (e.target.type !== "radio") {
+				let radioButton = container.querySelector('input[type="radio"]');
+				radioButton.click();
+			}
+		});
+	});
+
+
+</script>
+<style>
+    .payment-options {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        padding-bottom: 10px;
+    }
+
+    .payment {
+        flex: 1 0 calc(@basis - 20px);
+        margin: 10px;
+        box-sizing: border-box;
+        align-items: center;
+    }
+
+    .payment {
+        flex: 1 0 calc(@basis - 20px);
+        margin: 10px;
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+    }
+
+
+    .payment-icon {
+        flex-grow: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+    }
+
+    .payment-method-name {
+        color: #D5352D;
+        margin-bottom: 0 !important;
+    }
+
+    .payment-method-image {
+        height: 5rem;
+    }
+
+    .hidden {
+        display: none !important;
+    }
+
+   
+
+</style>
+
+

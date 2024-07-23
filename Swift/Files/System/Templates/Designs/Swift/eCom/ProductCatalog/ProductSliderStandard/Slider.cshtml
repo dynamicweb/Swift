@@ -1,0 +1,115 @@
+﻿@inherits ViewModelTemplate<ProductListViewModel>
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@functions {
+	int parentColumnSize { get; set; }
+	string layoutSetting { get; set; }
+	Dictionary<string, object> favoriteParameters { get; set; }
+}
+
+@{
+	string sourceType = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("SourceType")) ? Dynamicweb.Context.Current.Request.Form.Get("SourceType") : string.Empty;
+	string modelId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("ModelID")) ? Dynamicweb.Context.Current.Request.Form.Get("ModelID") : string.Empty;
+
+	string navigationStyle = Dynamicweb.Context.Current.Request.Form.Get("NavigationStyle");
+	string navigationPlacement = Dynamicweb.Context.Current.Request.Form.Get("NavigationPlacement");
+	string indicatorStyle = Dynamicweb.Context.Current.Request.Form.Get("IndicatorStyle");
+	string revealSlides = Dynamicweb.Context.Current.Request.Form.Get("RevealSlides");
+
+	string navigationAlwaysVisible = Dynamicweb.Context.Current.Request.Form.Get("NavigationAlwaysVisible");
+	string navigationVisibleOnTouch = Dynamicweb.Context.Current.Request.Form.Get("NavigationVisibleOnTouch");
+	string navigationShowScrollbar = Dynamicweb.Context.Current.Request.Form.Get("NavigationShowScrollbar");
+	string scrollBarForceMobile = Dynamicweb.Context.Current.Request.Form.Get("NavigationShowScrollbar") != string.Empty ? "--swiffy-slider-track-height:0.5rem !important;" : string.Empty;
+	string navigationSmall = Dynamicweb.Context.Current.Request.Form.Get("NavigationSmall");
+	string navigationInvertColors = Dynamicweb.Context.Current.Request.Form.Get("NavigationInvertColors");
+	string navigationSlideEntirePage = Dynamicweb.Context.Current.Request.Form.Get("NavigationSlideEntirePage");
+	string navigationNoLoop = Dynamicweb.Context.Current.Request.Form.Get("NavigationNoLoop");
+	string indicatorsOutsideSlider = Dynamicweb.Context.Current.Request.Form.Get("IndicatorsOutsideSlider");
+	string indicatorsHighlightActive = Dynamicweb.Context.Current.Request.Form.Get("IndicatorsHighlightActive");
+	string indicatorsInvertColors = Dynamicweb.Context.Current.Request.Form.Get("IndicatorsInvertColors");
+	string indicatorsVisibleOnSmallDevices = Dynamicweb.Context.Current.Request.Form.Get("IndicatorsVisibleOnSmallDevices");
+	bool hideSliderNavigation = false;
+
+	int itemsShown = layoutSetting == "text-left" || layoutSetting == "text-right" ? 4 : 5;
+	switch (parentColumnSize)
+	{
+		case 10:
+		case 9:
+		case 8:
+			itemsShown = 4;
+			break;
+		case 6:
+			itemsShown = 3;
+			break;
+		case 4:
+		case 3:
+			itemsShown = 2;
+			break;
+	}
+
+	if (((navigationStyle == "slider-nav-none") || (Model.Products.Count <= itemsShown))
+		&& (Pageview.Device != Dynamicweb.Frontend.Devices.DeviceType.Mobile && Pageview.Device != Dynamicweb.Frontend.Devices.DeviceType.Tablet))
+	{
+		hideSliderNavigation = true;
+	}
+
+	if (sourceType == "selected")
+	{
+		string productIds = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("MainProductID")) ? Dynamicweb.Context.Current.Request.Form.Get("MainProductID") : string.Empty;
+		productIds = string.IsNullOrEmpty(productIds) ? Dynamicweb.Context.Current.Request.Form.Get("ProductVariantId") : productIds;
+
+		Model.Products = Model.Products.OrderBy(product => productIds.IndexOf(product.Id)).ToList();
+	}
+
+	if (Model.Products.Any() || Pageview.IsVisualEditorMode)
+	{
+<div id="slider_@(modelId)" class="swiffy-slider slider-item-show@(itemsShown) @(navigationStyle) @(revealSlides) @(navigationPlacement) @(navigationAlwaysVisible) @(navigationVisibleOnTouch) @(indicatorStyle) @(navigationShowScrollbar) @(navigationSmall) @(navigationInvertColors) @(indicatorsOutsideSlider) @(navigationNoLoop) @(indicatorsHighlightActive) @(indicatorsInvertColors) @(indicatorsVisibleOnSmallDevices) @(navigationSlideEntirePage)" style="--swiffy-slider-nav-light:var(--swift-foreground-color);--swiffy-slider-nav-dark:var(--swift-background-color);@(scrollBarForceMobile)">
+
+	<ul class="slider-container">
+		@foreach (ProductViewModel product in Model.Products)
+		{
+			<li>
+				@RenderPartial("eCom/ProductCatalog/ProductSliderStandard/Product.cshtml", product, favoriteParameters)
+			</li>
+		}
+	</ul>
+
+	@if (!hideSliderNavigation)
+	{
+		<button type="button" title="@Translate("Previous slide")" class="slider-nav" style="z-index:2;">
+			<span class="visually-hidden">@Translate("Previous slide")</span>
+		</button>
+		<button type="button" title="@Translate("Next slide")" class="slider-nav slider-nav-next" style="z-index:2;">
+			<span class="visually-hidden">@Translate("Next slide")</span>
+		</button>
+	}
+
+	@if (indicatorStyle != "slider-indicators-hidden")
+	{
+		<div class="slider-indicators" style="z-index:2;">
+			@{
+				bool isActive = true;
+				int slideCount = 1;
+			}
+
+			@foreach (var item in Model.Products)
+			{
+				<button @(isActive ? "class=\"active\"" : string.Empty) type="button" title='@Translate("Go to slide") @slideCount'>
+					<span class="visually-hidden">@Translate("Go to slide") @slideCount</span>
+				</button>
+				{
+					slideCount++;
+				}
+				isActive = false;
+			}
+		</div>
+	}
+
+</div>
+
+<script type="module">
+			swiffyslider.initSlider(document.querySelector('#slider_@(modelId)'));
+</script>
+	}
+}
