@@ -8,12 +8,14 @@ permissions:
 jobs:
   upload:
     runs-on: ubuntu-latest
+    environment: 
+      name: PROD
     steps:
       - uses: actions/checkout@v2
-      
+
       - name: Install Dependencies
         run: npm install
-      - name: Build for UAT
+      - name: Build for PROD
         run: npm run build:webpack
 
       - uses: azure/login@v1
@@ -22,9 +24,11 @@ jobs:
             tenant-id: ${{ secrets.AZURE_TENANT_ID }}
             subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - uses: cahaseler/azure-fileshare-upload@v1.0.0
+      - name: Deploy to storage using CLI
+        uses: azure/CLI@v1
         with:
-          account_name: ${{ secrets.ACCOUNT_NAME }}
-          account_key: ${{ secrets.ACCOUNT_KEY}}
-          share_name: ${{ secrets.SHARE_NAME }}
-          source_dir: ${{ secrets.SOURCE_DIR }}
+          azcliversion: latest
+          inlineScript: |
+            ls
+            # az storage account upload
+            az storage file upload-batch --account-key ${{ secrets.ACCOUNT_KEY}} --account-name ${{ secrets.ACCOUNT_NAME}} --destination ${{ secrets.SHARE_NAME }} --source '${{ vars.SOURCE_DIR }}' --destination-path '${{ vars.DEST_DIR }}' --no-progres
