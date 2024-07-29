@@ -12,7 +12,7 @@
 		return "border:0;margin:0;outline:0;padding:0;";
 	}
 
-	public Dynamicweb.Frontend.ColorViewModel GetMutedColor(string hex, int percent, double threshold = 0.5)
+	public Dynamicweb.Frontend.ColorViewModel GetMutedColor(string? hex, int percent, double threshold = 0.5)
 	{
 		/// <summary>
 		/// Return a color in either lighter or darker contrast based on the original color luminance.
@@ -25,55 +25,26 @@
 			threshold = 1;
 		if (threshold < 0)
 			threshold = 0;
-
+		if(hex == null)
+		{
+			return new Dynamicweb.Frontend.ColorViewModel() { Hex = "inherit" };
+		}
 		var color = Dynamicweb.Imaging.Colors.Color.FromHex(hex);
 		var luminance = (0.2126 * color.BaseColor.R) + (0.7152 * color.BaseColor.G) + (0.0722 * color.BaseColor.B);
 		/// == luminance = 0 is black, luminance = 1 is white == //
 		luminance = color.Brightness / 255;
-		if (luminance < threshold)
-		{
-			return new Dynamicweb.Frontend.ColorViewModel() { Hex = color.Lighten(percent).ToHex() };
-		}
-		else
-		{
-			return new Dynamicweb.Frontend.ColorViewModel() { Hex = color.Darken(percent).ToHex() };
-		}
+		return luminance < threshold ? new Dynamicweb.Frontend.ColorViewModel() { Hex = color.Lighten(percent).ToHex() } : new Dynamicweb.Frontend.ColorViewModel() { Hex = color.Darken(percent).ToHex() };
 	}
 }
 
 @{
-	string blockType = "productcatalog_block";
-
-	var page = Dynamicweb.Content.Services.Pages.GetPage(Model.PageID);
-	var settings = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(page?.Parent).Item;
-	var blockId = Model.ID;
-	var block = Model.Item;
-
-	var emailContentThemeId = settings.GetRawValueString("EmailContentTheme");
-	var emailContentThemeParagraph = emailContentThemeId != null && emailContentThemeId != string.Empty ? Dynamicweb.Content.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(emailContentThemeId)) : null;
-	var emailContentTheme = emailContentThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(emailContentThemeParagraph)?.Item : null;
-
-	var rowId = Dynamicweb.Content.Services.Paragraphs.GetParagraph(blockId).GridRowId;
-	var row = Dynamicweb.Content.Services.Grids.GetGridRowById(rowId);
-	var rowItem = Dynamicweb.Content.Services.Items.GetItem(row.ItemType, row.ItemId);
-	var rowThemeId = Dynamicweb.Core.Converter.ToString(rowItem["ColumnBackground"]);
-	var rowThemeParagraph = rowThemeId != null && rowThemeId != string.Empty ? Dynamicweb.Content.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(rowThemeId)) : null;
-	var rowTheme = rowThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(rowThemeParagraph)?.Item : null;
-
-	var blockThemeId = block.GetRawValueString("Theme");
-	var blockThemeParagraph = blockThemeId != null && blockThemeId != string.Empty ? Dynamicweb.Content.Services.Paragraphs.GetParagraph(Dynamicweb.Core.Converter.ToInt32(blockThemeId)) : null;
-	var blockTheme = blockThemeParagraph != null && Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph).Item.GetString("CssClassName") != string.Empty ? Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(blockThemeParagraph)?.Item : rowTheme is object ? rowTheme : emailContentTheme;
-
-	string backgroundColor = blockTheme != null ? "background-color: " + blockTheme.GetString("BackgroundColor") + ";" : string.Empty;
-	string foregroundColor = blockTheme != null ? "color:" + blockTheme.GetString("ForegroundColor", "inherit") + ";" : string.Empty;
-
-	string title = block.GetString("Title", string.Empty);
-	int padding = Dynamicweb.Core.Converter.ToInt32(block.GetRawValueString("Padding", "0"));
+	string title = Model.Item.GetString("Title", string.Empty);
+	string backgroundColor = $"background-color:{Model.ColorScheme?.BackgroundColor?.Hex ?? string.Empty};";
+	string foregroundColor = $"color:{Model.ColorScheme?.ForegroundColor?.Hex ?? string.Empty};";
+	string align = Model.Item.GetRawValueString("Align", "left");
+	int padding = Dynamicweb.Core.Converter.ToInt32(Model.Item.GetRawValueString("Padding", "0"));
 	int cellSpacing = 8;
-	string align = block.GetRawValueString("Align", "left");
-	string text = block.GetString("Text", string.Empty);
-	var layoutColumns = Dynamicweb.Core.Converter.ToInt32(block.GetRawValueString("Layout", "2"));
-
+	string text = Model.Item.GetString("Text", string.Empty);
 	int layout = Dynamicweb.Core.Converter.ToInt32(Model.Item.GetRawValueString("Layout", "2"));
 	var imageRatio = Model.Item.GetRawValueString("ImageAspectRatio", "4-3").ToLower();
 
@@ -84,32 +55,23 @@
 	imageParms.Add("nested", Model.GridRowColumnCount > 1);
 	imageParms.Add("padding", (padding * 2) + (8 * (layout - 1)));
 	imageParms.Add("imageRatio", imageRatio);
-
-	ProductListViewModel selectedProducts = block?.GetValue("Products") as ProductListViewModel;
-	IList<ProductViewModel> products = selectedProducts?.Products;
 }
 
-<table id="@blockId" class="@blockType" align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;@GetTableReset()color:inherit;width:100%;@(backgroundColor)">
+<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;@GetTableReset()color:inherit;width:100%;@(backgroundColor)">
 	<tbody>
 		<tr style="@GetTableReset()">
 			<td style="@GetTableReset()padding:@(padding)px">
 				<table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;@GetTableReset()color:inherit;width:100%;">
 					<tbody>
-						@if (products is object && products.Any())
+						@if (Model.Item.TryGetValue<ProductListViewModel>("Products", out ProductListViewModel selectedProducts))
 						{
 							@:<tr style="@GetTableReset()">
 
 							int index = 1;
-							int totalProducts = products.Count();
-							foreach (var product in products)
+							int totalProducts = selectedProducts.Products.Count();
+							foreach (var product in selectedProducts.Products)
 							{
-								var cellForegroundColor = blockTheme?.GetColor("ForegroundColor");
-
 								string link = product.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
-
-								var uri = Dynamicweb.Context.Current.Request.Url;
-								var hostname = uri.Scheme + Uri.SchemeDelimiter + uri.Host;
-
 								bool hideProductPrice = Model.Item?.GetBoolean("HideProductPrice") ?? false;
 								bool hideProductNumber = Model.Item?.GetBoolean("HideProductNumber") ?? false;
 
@@ -132,8 +94,8 @@
 													<table style="border-collapse:collapse;table-layout:fixed;@GetTableReset()" cellpadding="0" cellspacing="0" width="100%" role="presentation">
 														<tbody>
 															<tr style="@GetTableReset()">
-																<td style="@GetTableReset()padding-top:8px;text-align:@align;line-height:18px;font-size:13px;text-decoration:none;color:@cellForegroundColor;">
-																	<a style="text-decoration:none;color:@cellForegroundColor;@GetTableReset()@GetFontStack()" href="@link" target="_blank">
+																<td style="@GetTableReset()padding-top:8px;text-align:@align;line-height:18px;font-size:13px;text-decoration:none;@(foregroundColor)">
+																	<a style="text-decoration:none;@(foregroundColor)@GetTableReset()@GetFontStack()" href="@link" target="_blank">
 																		@product.Name
 																	</a>
 																</td>
@@ -142,7 +104,7 @@
 															@if (!hideProductNumber)
 															{
 																<tr>
-																	<td style="@GetTableReset()@GetFontStack()padding-top:8px;text-align:@align;line-height:18px;font-size:11px;color:@(GetMutedColor(cellForegroundColor.Hex, 20));">
+																	<td style="@GetTableReset()@GetFontStack()padding-top:8px;text-align:@align;line-height:18px;font-size:11px;color:@(GetMutedColor(Model.ColorScheme?.ForegroundColor?.Hex, 20));">
 																		@product.Number
 																	</td>
 																</tr>
@@ -151,12 +113,12 @@
 															@if (!hideProductPrice)
 															{
 																<tr>
-																	<td style="@GetTableReset()@GetFontStack()padding-top:8px;text-align:@align;line-height:13px;font-size:13px;break-inside:avoid;word-break:keep-all;white-space:nowrap;color:@(cellForegroundColor);">
+																	<td style="@GetTableReset()@GetFontStack()padding-top:8px;text-align:@align;line-height:13px;font-size:13px;break-inside:avoid;word-break:keep-all;white-space:nowrap;@(foregroundColor);">
 																		@product.Price.PriceFormatted
 
 																		@if (product.Discount.Price > 0)
 																		{
-																			<span style="line-height:13px;font-size:13px;text-decoration:line-through;break-inside:avoid;word-break:keep-all;white-space:nowrap;color:@(GetMutedColor(cellForegroundColor.Hex, 20));">@product.PriceBeforeDiscount.PriceFormatted</span>
+																			<span style="line-height:13px;font-size:13px;text-decoration:line-through;break-inside:avoid;word-break:keep-all;white-space:nowrap;color:@(GetMutedColor(Model.ColorScheme?.ForegroundColor?.Hex, 20));">@product.PriceBeforeDiscount.PriceFormatted</span>
 																		}
 																	</td>
 																</tr>
@@ -170,7 +132,7 @@
 									</table>
 								</td>
 
-								if (index % layoutColumns == 0 && !(index == totalProducts))
+								if (index % layout == 0 && !(index == totalProducts))
 								{
 									@:</tr>
 									@:<tr style="@GetTableReset()">
