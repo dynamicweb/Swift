@@ -1,0 +1,935 @@
+﻿@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@{
+	var showPages = Model.Item?.GetBoolean("Include_Pages_Results") ?? false;
+	var showProducts = Model.Item?.GetBoolean("Include_Products_Results") ?? false;
+	var showCategories = Model.Item?.GetBoolean("Include_Categories_Results") ?? false;
+	var showDidYouMean = Model.Item?.GetBoolean("Include_Did_You_Mean_Results") ?? false;
+
+	var pagesLimit = Model.Item?.GetInt32("Max_Page_Results") ?? 6;
+	var productsLimit = Model.Item?.GetInt32("Max_Product_Results") ?? 6;
+	var categoriesLimit = Model.Item?.GetInt32("Max_Category_Results") ?? 6;
+	var didYouMeanLimit = Model.Item?.GetInt32("Max_DYM_Results") ?? 6;
+	var didYouMeanScoreThreshold = Model.Item?.GetInt32("DYM_Score_Threshold") ?? 60;
+	var minCharacterCountForSearch = Model.Item?.GetInt32("Min_Char_Count") ?? 3;
+	var cookieValueForVatToggle = Dynamicweb.Context.Current.Request.GetCookie("ShowPricesWithVAT")?.Value ?? "true";
+	var showPriceWithVat = bool.Parse(cookieValueForVatToggle);
+}
+
+
+<div class="outer-container px-6 py-5">
+	<div class="row d-flex flex-column flex-lg-row g-5">
+		<div class="col-sm-12 col-xl-10" id="search-bar-container">
+
+			<div class="row d-flex flex-column flex-lg-row g-3">
+				<div class="col-12" id="search-bar-area">
+
+					<div class="row">
+						<h6 class="label">@Translate("Search")</h6>
+					</div>
+					<div class="row">
+						<input type="text" class="input-with-icon" id="widget-search-bar"/>
+					</div>
+
+				</div>
+				<div class="col-12 hidden" id="no-results-text">
+					<div class="row">
+						<p>@Translate("No results found")</p>
+					</div>
+				</div>
+
+
+				@if (showDidYouMean)
+				{
+					<div class="col-12 hidden pb-3" id="did-you-mean-results-container">
+						<div class="row">
+							<div class="col-auto">
+								<p class="label">@Translate("Did you mean...")</p>
+							</div>
+							<div class="col" id="did-you-mean-results-list">
+
+							</div>
+						</div>
+					</div>
+				}
+			</div>
+		</div>
+		@if (showPages)
+		{
+			<div class="col-sm-12 col-xl-2 flex-grow-1 hidden" id="pages-results-container">
+				<div class="row">
+					<h6 class="label label-underline">@Translate("Pages")</h6>
+				</div>
+				<div class="row" id="pages-results-list">
+					
+					
+				</div>
+			</div>
+		}
+	</div>
+
+	<div class="row d-flex flex-column flex-lg-row g-3">
+		@if (showProducts)
+		{
+			<div class="col-sm-12 col-xl-auto flex-grow-1 hidden" id="product-results-container">
+				<div class="row">
+					<h6 class="label label-underline">@Translate("Products")</h6>
+				</div>
+				<div class="row " id="product-results-list"></div>
+			</div>
+
+			<div class="col-sm-12 col-xl-auto flex-grow-1 hidden" id="products-in-categories-results-container">
+				<div class="row">
+					<h6 class="label label-underline">@Translate("Products In Categories")</h6>
+				</div>
+				<div class="row" id="products-in-categories-results-list"></div>
+			</div>
+		}
+		@if (showCategories)
+		{
+			<div class="col-sm-12 col-xl-auto flex-grow-1 hidden" id="category-results-container">
+				<div class="row">
+					<h6 class="label label-underline">@Translate("Categories")</h6>
+				</div>
+				<div class="row" id="category-results-list"></div>
+			</div>
+		}
+
+	</div>
+</div>
+
+
+<style>
+	.search-bar-toggle {
+		border-bottom: 5px solid #BB2922;
+	}
+	.search-bar-hover {
+		border-bottom: 3px solid #BB2922;
+	}
+	
+	.outer-container {
+	
+		min-height: 50vh;
+	}
+
+	
+
+	.product-name {
+		overflow-wrap: break-word;
+	}
+
+	ul {
+		list-style: none
+	}
+
+	.label {
+
+		text-transform: uppercase;
+		font-weight: 350;
+	}
+
+	.label-underline {
+		padding-left: 0;
+		padding-bottom: 10px;
+		border-bottom: 2px solid rgba(64, 64, 64, 0.4);
+	}
+	
+	.input-with-icon {
+		
+		position: relative;
+		width: 100%;
+		border: none;
+		border-bottom: 2px solid rgba(64, 64, 64, 0.5);
+		outline: none;
+		font-size: 30px;
+		color: #ffffff;
+		padding-right: 45px; /* space for the icon on the right end */
+		background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-line-join="round" class="feather feather-search"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>') no-repeat right 10px center; /* icon set to the right initially */
+		background-size: 30px 30px;
+	}
+
+	.input-with-icon:focus {
+		
+		background-color: rgba(0, 0, 0, 0.1); /* slightly darker background on focus */
+	}
+
+	.input-with-icon::after {
+		content: '';
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		right: 0;
+		height: 1px;
+		background: #ccc;
+	}
+	
+
+	.hidden {
+		display: none;
+	}
+
+	.hover-effect {
+		background-color: #BB2922;
+		border-radius: 10px;
+		
+		& svg {
+			stroke: white;
+		}
+	}
+	
+	.did-you-mean-link
+	{
+		padding:  5px;
+		font-weight: bold;
+	}
+
+	#search-widget-dropdown {
+		overflow-y: auto;
+		max-height: 70vh; /* Adjust as needed */
+	}
+
+	/* width */
+	#search-widget-dropdown::-webkit-scrollbar {
+		width: 20px;
+	}
+
+	/* Track */
+	#search-widget-dropdown::-webkit-scrollbar-track {
+		background: #D5352D;
+	}
+
+	/* Handle */
+	#search-widget-dropdown::-webkit-scrollbar-thumb {
+		background:  #BB2922;
+		border-radius: 10px;
+		transition: width 0.3s;
+	}
+
+
+
+	/* Upwards arrow button */
+	/* Upwards arrow button */
+	#search-widget-dropdown::-webkit-scrollbar-button:vertical:decrement {
+		background: #D5352D;
+		background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="darkred" d="M233.4 105.4c12.5-12.5 32.8-12.5 45.3 0l192 192c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L256 173.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l192-192z"/></svg>');
+	}
+
+	/* Downwards arrow button */
+	#search-widget-dropdown::-webkit-scrollbar-button:vertical:increment {
+		background: #D5352D;
+		background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="darkred" d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8 12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg>');
+	}
+
+
+	/* Handle buttons on hover */
+	#search-widget-dropdown::-webkit-scrollbar-button:vertical:decrement:hover{
+		background:  #BB2922;
+		background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="white" d="M233.4 105.4c12.5-12.5 32.8-12.5 45.3 0l192 192c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L256 173.3 86.6 342.6c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3l192-192z"/></svg>');
+		border-radius: 10px;
+	}
+
+	/* Handle buttons on hover */
+	#search-widget-dropdown::-webkit-scrollbar-button:vertical:increment:hover {
+		background:  #BB2922;
+		background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path fill="white" d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8 12.5-45.3 0s-12.5 32.8 0 45.3l192 192z"/></svg>');
+		border-radius: 10px;
+	}
+</style>
+
+<script>
+	const searchBarLinkElement = document.querySelector("a[href='/search-page']");
+	
+	if(searchBarLinkElement)
+	{
+	const searchHeaderIcon = searchBarLinkElement.parentNode
+	const thisWidget = document.getElementById('search-widget-dropdown')
+		searchHeaderIcon.addEventListener('mouseenter', function(e) {
+			// Mouse enter logic
+			if (!e.target.classList.contains('search-bar-toggle'))
+			{
+				e.target.classList.add('search-bar-hover')
+			}
+		});
+
+		searchHeaderIcon.addEventListener('mouseleave', function(e) {
+			// Mouse leave logic
+			e.target.classList.remove('search-bar-hover');
+		});
+
+		searchHeaderIcon.addEventListener('click', function(e) {
+			// Mouse leave logic
+			e.stopPropagation();
+e.preventDefault()
+			thisWidget.classList.toggle('hidden');
+			searchHeaderIcon.classList.toggle('search-bar-toggle');
+		});
+
+		document.addEventListener('click', function(e) {
+			if (!thisWidget.contains(e.target) && !thisWidget.classList.contains('hidden')) {
+				thisWidget.classList.add('hidden');
+				searchHeaderIcon.classList.remove('search-bar-toggle');
+			}
+		});
+
+
+	}
+	
+	
+	const chevron = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+	const searchBar = document.getElementById('widget-search-bar');
+
+	if (searchBar) {
+		// Debounce the GetResults function
+		let debouncedGetResults = debounce(GetResults, 300);
+		// Use the debounced function as the event handler
+		searchBar.addEventListener('keyup', function () {
+			debouncedGetResults(this.value);
+		});
+	}
+
+	function debounce(func, delay) {
+		let timeoutId;
+		return (...args) => {
+			clearTimeout(timeoutId);
+			timeoutId = setTimeout(() => func.apply(this, args), delay);
+		}
+	}
+	
+	function RenderElement(elementId) {
+		const element = document.getElementById(elementId);
+
+		if (element) {
+			element.classList.remove("hidden")
+		}
+	}
+
+	function HideElement(elementId) {
+		const element = document.getElementById(elementId);
+
+		if (element) {
+			element.classList.add("hidden")
+		}
+	}
+
+	function ClearElementContent(elementId) {
+		const element = document.getElementById(elementId);
+
+		if (element) {
+			element.innerHTML = ''
+		}
+	}
+	
+	function GetQueryParams(queryName, repositoryName, searchTerm)
+	{
+	return {
+			QueryName: queryName,
+			RepositoryName: repositoryName,
+			SearchTerm: searchTerm,
+			ShowFacetOptionsWithNoResult: false,
+			PageSize: 100,
+			CurrentPage: 0
+		};
+	}
+	
+
+	async function GetResults(searchTerm) {
+		HideElement("no-results-text")
+		HideElement("product-results-container")
+		HideElement("pages-results-container")
+		HideElement("category-results-container")
+		HideElement("products-in-categories-results-container")
+		HideElement("did-you-mean-results-container")
+		ClearElementContent('pages-results-list')
+		ClearElementContent('product-results-list')
+		ClearElementContent('category-results-list')
+		ClearElementContent('products-in-categories-results-list')
+		ClearElementContent('did-you-mean-results-list')
+		if (searchTerm.length < @minCharacterCountForSearch) {
+			return
+		}
+
+		let baseURL = window.location.origin;
+		let haveProducts = stringToBool('@showProducts') ? await SearchProducts(baseURL, searchTerm) : false;
+		let haveCategories = stringToBool('@showCategories') ? await SearchCategories(baseURL, searchTerm) : false;
+		let haveSimilarProductNames = stringToBool('@showDidYouMean') ? await SearchSimilarWords(baseURL, searchTerm) : false;
+		let havePages = stringToBool('@showPages') ? await SearchPages(baseURL, searchTerm) : false;
+		
+		if (!haveProducts && !haveCategories && !haveSimilarProductNames && !havePages)
+		{
+			RenderElement("no-results-text")
+		}
+
+	}
+	
+	async function SearchProducts(baseUrl, searchTerm)
+	{
+		let url = new URL(`${baseUrl}/tsd/product-search`);
+		let params = GetQueryParams('SearchProductsByKeyword', 'BCProducts', searchTerm)
+// Add parameters to the URL
+		Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+		
+		let response;
+
+		try {
+			response = await fetch(url);
+		}
+		catch (error)
+		{
+			console.log(error)
+			return false;
+		}
+
+
+		if (!response.ok) {
+			return false;
+		} else {
+			const data = await response.json();
+
+			if (data.results && data.results.length) {
+				let firstSix = data.results;
+
+			//Try show products in categories
+				if (firstSix.length > @productsLimit)
+				{
+					return TryRenderProductsInCategories(searchTerm, firstSix, data)
+				}
+				else
+				{
+					return RenderSmallProductsList(firstSix)
+				}
+				
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+
+	async function SearchPages(baseUrl, searchTerm)
+	{
+		let url = new URL(`${baseUrl}/tsd/page-search`);
+		let params = GetQueryParams('PageTextSearch', 'Content', searchTerm)
+// Add parameters to the URL
+		Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+
+		let response;
+
+		try {
+			response = await fetch(url);
+		}
+		catch (error)
+		{
+			console.log(error)
+			return false;
+		}
+
+
+		if (!response.ok) {
+			return false;
+		} else {
+			const data = await response.json();
+
+			if (data && data.length) {
+				let renderShowAllButton = data.length > @pagesLimit
+				let pagesList = document.getElementById("pages-results-list")
+				data.forEach((item, index) => {
+					// Create the main div
+					let listItem = document.createElement('div');
+					listItem.classList.add('col-12', 'page-result')
+			if (index >= @pagesLimit)
+			{
+				listItem.classList.add('hidden')
+			}
+					listItem.style.stroke = '#A6201B';
+					listItem.style.padding = '10px';
+					listItem.style.overflowWrap = 'break-word';
+
+					let contentContainer = document.createElement('div');
+					contentContainer.style.display = 'flex';
+					contentContainer.style.justifyContent = 'space-between';
+
+					let textContainer = document.createElement('div');
+					textContainer.style.display = 'flex';
+					textContainer.style.alignItems = 'center';
+					textContainer.style.height = '100%';
+					let textDiv = document.createElement('div');
+					textDiv.innerHTML = `<strong>${searchTerm}</strong> in ${item.pageTitle}`;
+					textContainer.appendChild(textDiv);
+
+					let chevronContainer = document.createElement('div');
+					chevronContainer.style.display = 'flex';
+					chevronContainer.style.alignItems = 'center';
+					chevronContainer.style.height = '100%';
+					let chevronDiv = document.createElement('div');
+					chevronDiv.innerHTML = `${chevron}`;
+					chevronContainer.appendChild(chevronDiv);
+
+					contentContainer.appendChild(textContainer);
+					contentContainer.appendChild(chevronContainer);
+
+					listItem.appendChild(contentContainer);
+
+					listItem.addEventListener('click', function () {
+						window.location.href = `${window.location.origin}${item.pageUrl}`
+					});
+
+					listItem.addEventListener('mouseenter', function () {
+						listItem.classList.add('hover-effect');
+					});
+					listItem.addEventListener('mouseleave', function () {
+						listItem.classList.remove('hover-effect');
+					});
+
+					pagesList.appendChild(listItem);
+				})
+				
+				if (renderShowAllButton)
+				{
+				const arrow = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" 
+					stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+					class="feather feather-arrow-right">
+					<line x1="5" y1="12" x2="19" y2="12"></line>
+					<polyline points="12 5 19 12 12 19"></polyline>
+				</svg>`
+					let pElement = document.createElement('p');
+					pElement.setAttribute('class', 'label pt-2');
+					pElement.setAttribute('id', 'all-page-results-link');
+					pElement.innerHTML = `All Page Results ${arrow}`;
+					
+					pElement.addEventListener('mouseenter', function () {
+						pElement.classList.add('hover-effect');
+					});
+					pElement.addEventListener('mouseleave', function () {
+						pElement.classList.remove('hover-effect');
+					});
+
+					pElement.addEventListener('click', function () {
+						pElement.classList.add('hidden')
+						let allPageResults = document.getElementsByClassName('page-result');
+
+						if (allPageResults.length > 0) {
+							Array.prototype.forEach.call(allPageResults, function(element) {
+								element.classList.remove('hidden');
+							});
+						}
+					});
+					pagesList.appendChild(pElement);
+
+				}
+				RenderElement("pages-results-container")
+				return true;
+
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+	
+	function TryRenderProductsInCategories(searchTerm, firstSix, data)
+	{
+		let result = GetProductsCategoriesGrouping(firstSix)
+
+		if(result.totalCount < @productsLimit + 1)
+		{
+			return TryRenderProductsWithCategoriesAsGrid(result, data)
+		}
+		else {
+			let productsInCategoriesList = document.getElementById("products-in-categories-results-list")
+			result.items.forEach(item => {
+				// Create the main div
+				let listItem = document.createElement('div');
+				listItem.classList.add('col-12')
+				listItem.classList.add('col-lg-6')
+				if (result.items % 2 === 0)
+				{
+					listItem.classList.add('col-xl-4')
+				}
+				listItem.style.stroke = '#A6201B';
+				listItem.style.padding = '10px';
+				listItem.style.overflowWrap = 'break-word';
+
+				let contentContainer = document.createElement('div');
+				contentContainer.style.display = 'flex';
+				contentContainer.style.justifyContent = 'space-between';
+
+				let textContainer = document.createElement('div');
+				textContainer.style.display = 'flex';
+				textContainer.style.alignItems = 'center';
+				textContainer.style.height = '100%';
+				let textDiv = document.createElement('div');
+				textDiv.innerHTML = `<strong>${searchTerm}</strong> in ${item.displayName} (${item.count})`;
+				textContainer.appendChild(textDiv);
+
+				let chevronContainer = document.createElement('div');
+				chevronContainer.style.display = 'flex';
+				chevronContainer.style.alignItems = 'center';
+				chevronContainer.style.height = '100%';
+				let chevronDiv = document.createElement('div');
+				chevronDiv.innerHTML = `${chevron}`;
+				chevronContainer.appendChild(chevronDiv);
+
+				contentContainer.appendChild(textContainer);
+				contentContainer.appendChild(chevronContainer);
+
+				listItem.appendChild(contentContainer);
+				
+				listItem.addEventListener('click', function () {
+					window.location.href = `${window.location.origin}/shop?GroupId=${item.productGroup}`
+				});
+
+				listItem.addEventListener('mouseenter', function () {
+					listItem.classList.add('hover-effect');
+				});
+				listItem.addEventListener('mouseleave', function () {
+					listItem.classList.remove('hover-effect');
+				});
+
+				productsInCategoriesList.appendChild(listItem);
+			})
+			RenderElement("products-in-categories-results-container")
+			return true;
+		}
+
+
+	}
+	
+	function TryRenderProductsWithCategoriesAsGrid(result, data)
+	{
+		let toRender;
+		if (result.totalCount > 1)
+		{
+			toRender = data.results.sort((a, b) => {
+				const aHasDisplayName = !!a.Product_Group_Display_Name;
+				const bHasDisplayName = !!b.Product_Group_Display_Name;
+
+				if (aHasDisplayName && !bHasDisplayName) {
+					return -1;
+				}
+
+				if (!aHasDisplayName && bHasDisplayName) {
+					return 1;
+				}
+
+				return 0;
+			}).slice(0, result.totalCount);
+		}
+		else
+		{
+		//Fall back getting first 6 uncategorised products
+			toRender = data.results.slice(0, @productsLimit);
+		}
+
+		return RenderSmallProductsList(toRender)
+	}
+	
+	function GetProductsCategoriesGrouping(firstSix)
+	{
+		let groupedData = firstSix.reduce((groups, item) => {
+			let groupName = item.Product_Group_Display_Name;
+
+			if (!groupName) {
+				return groups; // Skip the item if there is no displayName
+			}
+
+			if (!groups[groupName]) {
+				groups[groupName] = {
+					count: 1,
+					displayName: groupName,
+					productGroup: item.Product_Group
+				};
+			} else {
+				groups[groupName].count++;
+			}
+
+			return groups;
+		}, {});
+
+		let result = {
+			items: Object.values(groupedData)
+		};
+
+		result.totalCount = result.items.reduce((total, group) => total + group.count, 0);
+		
+		return result;
+	}
+	
+	function RenderSmallProductsList(firstSix)
+	{
+		let container = document.getElementById('product-results-list');
+
+		firstSix.forEach(item => {
+
+			// Flex-row Div
+			let rowDiv = document.createElement('div');
+			rowDiv.classList.add('d-flex', 'flex-column', 'flex-sm-row', 'align-items-center', 'col-12', 'col-md-6', 'col-lg-4');
+			rowDiv.style.justifyContent = 'space-between';
+			rowDiv.addEventListener('mouseenter', function(e) {
+				// Mouse enter logic
+				e.target.classList.add('hover-effect');
+			});
+
+			rowDiv.addEventListener('mouseleave', function(e) {
+				// Mouse leave logic
+				e.target.classList.remove('hover-effect');
+			});
+
+			// Info container (Image + text)
+			let infoContainer = document.createElement('div');
+			infoContainer.classList.add('d-flex', 'align-items-center');
+
+			// Image div
+			let imgDiv = document.createElement('div');
+			imgDiv.classList.add('mb-3', 'mb-sm-0');
+
+			let imageUrl = item.Product_Image ? item.Product_Image : "https://placehold.co/80";
+
+			// Image element
+			let img = document.createElement('img');
+			img.src = imageUrl;
+			img.style.paddingTop = '10px';
+			img.style.paddingBottom = '10px';
+			img.style.width = '80px';
+
+			imgDiv.appendChild(img);
+
+			// Col div
+			let col = document.createElement('div');
+			col.classList.add('d-flex', 'flex-column', 'justify-content-center');
+			col.style.paddingLeft = '10px';
+
+			// Product Name
+			let pName = document.createElement('div');
+			pName.style.paddingTop = '10px';
+			pName.style.wordBreak = 'break-word';
+			let nameText = document.createTextNode(item.Product_Name);
+			pName.appendChild(nameText);
+
+			// Product Price
+			let productPrice = stringToBool('@showPriceWithVat') ? item.Product_Price : item.Product_Price_Without_Vat_GBP;
+			let pPrice = document.createElement('div');
+			pPrice.classList.add('product-price');
+			const formatter = new Intl.NumberFormat('en-GB', {
+				style: 'currency',
+				currency: 'GBP',
+			});
+			let priceText = document.createTextNode(formatter.format(productPrice));
+			pPrice.appendChild(priceText);
+
+			// Append to col
+			col.appendChild(pName);
+			col.appendChild(pPrice);
+
+			// Append img and col to infoContainer
+			infoContainer.appendChild(imgDiv);
+			infoContainer.appendChild(col);
+
+			// Chevron div
+			let chevronContainer = document.createElement('div');
+			let chevronDiv = document.createElement('div');
+			chevronDiv.style.stroke = '#A6201B';
+			chevronDiv.innerHTML = chevron; // use chevron constant directly
+			chevronContainer.appendChild(chevronDiv);
+
+			// Append everything to the main div
+			rowDiv.appendChild(infoContainer);
+			rowDiv.appendChild(chevronContainer); // Append the chevron container to the 'rowDiv' div
+
+			// Ensure container is a div with class "row" when items are appended
+			container.appendChild(rowDiv);
+		});
+		
+		RenderElement("product-results-container")
+		return true;
+	}
+
+	async function SearchCategories(baseUrl,  searchTerm)
+	{
+		let url = new URL(`${baseUrl}/tsd/category-search`);
+		url.searchParams.append('searchTerm', searchTerm)
+		
+		let response;
+
+		try {
+			response = await fetch(url);
+		}
+		catch (error)
+		{
+			console.log(error)
+			return false;
+		}
+
+
+		if (!response.ok) {
+			return false;
+		} else {
+			const data = await response.json();
+
+			if (data && data.length) {
+				let firstSix = data;
+			
+				if (firstSix.length > @categoriesLimit)
+				{
+					firstSix = data.slice(0, @categoriesLimit);
+				}
+
+				let container = document.getElementById('category-results-list');
+
+				firstSix.forEach(item => {
+					// Create the main div
+					let listItem = document.createElement('div');
+					listItem.classList.add('col-xs-12');
+					listItem.classList.add('col-lg-6');
+					listItem.style.stroke = '#A6201B';
+					listItem.style.padding = '10px';
+					listItem.style.overflowWrap = 'break-word';
+
+					let contentContainer = document.createElement('div');
+					contentContainer.style.display = 'flex';
+					contentContainer.style.justifyContent = 'space-between';
+
+					let textContainer = document.createElement('div');
+					textContainer.style.display = 'flex';
+					textContainer.style.alignItems = 'center';
+					textContainer.style.height = '100%';
+					let textDiv = document.createElement('div');
+					textDiv.innerHTML = `<strong>${searchTerm}</strong> in ${item.displayHierarchyPath}`;
+					textContainer.appendChild(textDiv);
+
+					let chevronContainer = document.createElement('div');
+					chevronContainer.style.display = 'flex';
+					chevronContainer.style.alignItems = 'center';
+					chevronContainer.style.height = '100%';
+					let chevronDiv = document.createElement('div');
+					chevronDiv.innerHTML = `${chevron}`;
+					chevronContainer.appendChild(chevronDiv);
+
+					contentContainer.appendChild(textContainer);
+					contentContainer.appendChild(chevronContainer);
+
+					listItem.appendChild(contentContainer);
+
+					listItem.addEventListener('click', function () {
+						window.location.href = `${window.location.origin}/shop?GroupId=${item.groupId}`
+					});
+
+					listItem.addEventListener('mouseenter', function () {
+						listItem.classList.add('hover-effect');
+					});
+					listItem.addEventListener('mouseleave', function () {
+						listItem.classList.remove('hover-effect');
+					});
+
+					container.appendChild(listItem);
+				})
+				RenderElement("category-results-container")
+				return true;
+
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+
+	async function SearchSimilarWords(baseUrl,  searchTerm)
+	{
+		let url = new URL(`${baseUrl}/tsd/similar-search`);
+		url.searchParams.append('searchTerm', searchTerm)
+		url.searchParams.append('threshold', @didYouMeanScoreThreshold)
+
+		let response;
+
+		try {
+			response = await fetch(url);
+		}
+		catch (error)
+		{
+			console.log(error)
+			return false;
+		}
+
+
+		if (!response.ok) {
+			return false;
+		} else {
+			const data = await response.json();
+
+			if (data && data.length) {
+				let firstSix = data;
+
+				if (firstSix.length > @didYouMeanLimit)
+				{
+					firstSix = data.slice(0, @didYouMeanLimit);
+				}
+
+				let container = document.getElementById('did-you-mean-results-list');
+
+				let html = firstSix.map(item => {
+					// Create an anchor tag for each item
+					return `<a class="did-you-mean-link" href="${baseUrl}/shop?Productid=${encodeURIComponent(item.id)}">${item.text}</a>`;
+				}).join(", "); // Join the array using a comma and a space
+
+				container.innerHTML = html; // Set the innerHTML of the container
+				
+				let dymLinks = document.getElementsByClassName('did-you-mean-link')
+				for (let i = 0; i < dymLinks.length; i++) {
+					dymLinks[i].addEventListener('mouseenter', function(e) {
+						// Mouse enter logic
+						e.target.classList.add('hover-effect')
+					});
+
+					dymLinks[i].addEventListener('mouseleave', function(e) {
+						// Mouse leave logic
+						e.target.classList.remove('hover-effect')
+					});
+				}
+				RenderElement("did-you-mean-results-container")
+				return true;
+
+			}
+			else
+			{
+				return false;
+			}
+		}
+	}
+	
+
+function buildUrl(groups, productName)
+{
+
+	const name = productName.replace(/ /g, '').replace(/\//g, '-');
+	let newUrl = window.location.origin;
+	newUrl = `${newUrl}/shop`;
+	
+if(groups && groups.length)
+{
+	const orderedGroups = groups.reverse()
+	orderedGroups.forEach(group => {
+		let sanitisedGroup = group.replace(/ /g, '-')
+		newUrl = `${newUrl}/${sanitisedGroup}`;
+	});
+}
+
+	newUrl = `${newUrl}/${name}`;
+
+	return newUrl;
+}
+
+function deDuplicateArray(array, propertyName)
+{
+	return array.filter((obj, pos, array) =>
+		array.map(mapObj => mapObj[propertyName]).indexOf(obj[propertyName]) === pos
+	);
+}
+
+	function stringToBool(val) {
+		if (typeof val !== "string") return false;
+		return val.toLowerCase() === "true";
+	}
+
+
+</script>
