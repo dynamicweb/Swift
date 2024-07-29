@@ -41,6 +41,16 @@ jobs:
           main-branch-name: ${{ steps.branch-name.outputs.current_branch }} # Get the last successful commit for the current branch.
           workflow-id: 'changed-files-uat.yml'
 
+      - name: Get new file directories
+        id: changed-files-dir
+        uses: tj-actions/changed-files@v44
+        with:
+            base_sha: ${{ steps.last_successful_commit_push.outputs.base }}
+            dir_names: "true"
+            separator: ","
+            files: |
+              Swift/Files/**
+
       - name: Get changed files
         id: changed-files
         uses: tj-actions/changed-files@v44
@@ -49,6 +59,29 @@ jobs:
             separator: ","
             files: |
                 Swift/Files/**
+
+      - name: Create New Directories
+        run: |
+          IFS=$',' read -a ADDED_FILES_DIR_ARRAY <<< "${{ steps.changed-files-dir.outputs.added_files}}"
+              for directory in "${ADDED_FILES_DIR_ARRAY[@]}"; do
+                  newarr=$(echo $directory | tr "/" "\n")
+    
+                  partialPath=""
+                  for subDir in ${newarr[@]};
+                  do
+                      partialPath=${partialPath}${subDir}/
+                      
+                      answer=$(az storage directory exists --account-key ${{ secrets.ACCOUNT_KEY}} --account-name ${{ secrets.ACCOUNT_NAME}} --share-name ${{ secrets.SHARE_NAME }}  --name $partialPath)
+    
+                      if [fromJSON($answer).exists]; then
+                          echo "$partialPath exists, no need to create"
+                      else 
+                          echo "Creating path: $partialPath"
+                          az storage directory create --account-key ${{ secrets.ACCOUNT_KEY}} --account-name ${{ secrets.ACCOUNT_NAME}} --share-name ${{ secrets.SHARE_NAME }}  --name "${partialPath}"
+                      fi
+                  done
+              done
+          unset IFS
 
       - name: Manage Added Files
         run: |
