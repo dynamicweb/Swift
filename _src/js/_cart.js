@@ -15,8 +15,8 @@ const Cart = (function () {
       // ClickedButton is not always the button. Sometimes it is the qty input field if [enter] is pressed
       const clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
       const form = clickedButton.closest("form");
-      const quantityField = form.querySelector('[name="Quantity"]');
-
+      const quantityField = form.querySelector('[name^="Quantity"]');
+      
       //Setup the form data
       let formData = new FormData(form);
       productId = formData.get("ProductId");
@@ -64,6 +64,13 @@ const Cart = (function () {
           } else {
             this.AddToCart(clickedButton, form, formData);
           }
+        }	
+        else 
+        {
+          if (isPendingQuote == "true") {
+            this.PromptPendingQuoteMessage(form);
+          }
+          this.AddToCart(clickedButton, form, formData);
         }
       }
     },
@@ -107,6 +114,19 @@ const Cart = (function () {
 
       if (response.ok) {
         Cart.Success(response, clickedButton, formData);
+        
+        let event = new CustomEvent("added.swift.cart", {
+          //Fire the 'added' event
+          cancelable: true,
+          detail: {
+            formData: formData,
+            parentEvent: clickedButton.parentEvent
+          },
+        });
+        
+        document.dispatchEvent(event);
+        clickedButton.dispatchEvent(event);
+
       } else {
         Cart.Error(response, clickedButton);
       }
