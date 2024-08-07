@@ -53,34 +53,35 @@ window.onpopstate = function (event) {
 	swift.Typeahead.navigateToPage(document.location.href);
 };
 
-window.addEventListener('DOMContentLoaded', () => {
-	const dropdowns = document.querySelectorAll('.dropdown');
-
-	dropdowns.forEach(dropdown => {
-		const dropdownToggle = dropdown.querySelector('[data-bs-toggle="dropdown"]');
-		const dropdownMenu = dropdown.querySelector('.dropdown-menu');
-
-		if (dropdownToggle) {
-			
-			const bsMenu = new bootstrap.Dropdown(dropdownToggle);
-			
-			dropdown.addEventListener('mouseenter', () => {
-				dropdownMenu.classList.toggle('mouseover');
-				bsMenu.show();
-				dropdownToggle.style.outline = "none";
-			});
-
-			dropdown.addEventListener('mouseleave', () => {
-				dropdownMenu.classList.toggle('mouseover');
-				bsMenu.hide();
-			});
-
-			dropdownToggle.addEventListener('click', () => {
-				if (dropdownToggle.hasAttribute('href')) {
-					window.location = dropdownToggle.getAttribute('href');
-				}
-			});
-		}
+window.addEventListener("DOMContentLoaded", () => {
+	const dropdowns = document.querySelectorAll("#page-header-desktop .dropdown");
+  
+	dropdowns.forEach((dropdown) => {
+	  const dropdownToggle = dropdown.querySelector(
+		'[data-bs-toggle="dropdown"]'
+	  );
+	  const dropdownMenu = dropdown.querySelector(".dropdown-menu");
+  
+	  if (dropdownToggle) {
+		const bsMenu = new bootstrap.Dropdown(dropdownToggle);
+  
+		dropdown.addEventListener("mouseenter", () => {
+		  dropdownMenu.classList.toggle("mouseover");
+		  bsMenu.show();
+		  dropdownToggle.style.outline = "none";
+		});
+  
+		dropdown.addEventListener("mouseleave", () => {
+		  dropdownMenu.classList.toggle("mouseover");
+		  bsMenu.hide();
+		});
+  
+		dropdownToggle.addEventListener("click", () => {
+		  if (dropdownToggle.hasAttribute("href")) {
+			window.location = dropdownToggle.getAttribute("href");
+		  }
+		});
+	  }
 	});
-});
+  });
 
