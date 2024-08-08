@@ -230,7 +230,9 @@ const ProductList = (function () {
 
             document.getElementsByTagName("head")[0].appendChild(tag);
           } else {
-            eval(script.innerHTML);
+            if(script.type != "module") {
+              eval(script.innerHTML);
+            }
           }
         });
 

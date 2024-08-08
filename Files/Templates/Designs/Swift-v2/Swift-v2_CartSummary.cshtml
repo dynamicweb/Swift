@@ -3,27 +3,39 @@
 @using Dynamicweb.Core
 @using Dynamicweb.Ecommerce.Frontend
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using System.Globalization
+
+@functions {
+	string? DoubleToString(double? value)
+	{
+		if (value.HasValue)
+		{
+			return value.Value.ToString(CultureInfo.InvariantCulture);
+		}
+		return null;
+	}
+}
 
 @{
 	string iconPath = "/Files/Templates/Designs/Swift-v2/Assets/icons/";
 	bool anonymousUser = Pageview.User == null;
 	var cartServicePageId = GetPageIdByNavigationTag("CartService");
 	var cartSummaryPageId = GetPageIdByNavigationTag("CartSummary");
-	var cartType = Dynamicweb.Context.Current.Request["CartType"];
-	var requestPageId = Dynamicweb.Context.Current.Request["RequestPageID"];
-	var orderContext = Dynamicweb.Context.Current.Request["OrderContext"];
-	string cartUrl = Model.Item.GetLink("CartPageLink")?.Url;
-	string checkoutUrl = Dynamicweb.Context.Current.Request["checkoutUrl"];
-	checkoutUrl = string.IsNullOrEmpty(checkoutUrl) ? (!anonymousUser ? Model.Item.GetLink("CheckoutSignedInPageLink")?.Url : Model.Item.GetLink("CheckoutAnonymousPageLink")?.Url) : checkoutUrl;
-	string quoteCheckoutPageId = Dynamicweb.Context.Current.Request["quoteCheckoutPageLink"];
-	quoteCheckoutPageId = string.IsNullOrEmpty(quoteCheckoutPageId) ? Model.Item.GetLink("QuoteCheckoutPageLink")?.PageId.ToString() : quoteCheckoutPageId;
-	var order = Dynamicweb.Ecommerce.Services.Orders.GetById(Model.Cart.ID);
+	var cartType = Dynamicweb.Context.Current?.Request["CartType"];
+	var requestPageId = Dynamicweb.Context.Current?.Request["RequestPageID"];
+	var orderContext = Dynamicweb.Context.Current?.Request["OrderContext"];
+	string? cartUrl = Model.Item?.GetLink("CartPageLink")?.Url;
+	string? checkoutUrl = Dynamicweb.Context.Current?.Request["checkoutUrl"];
+	checkoutUrl = string.IsNullOrEmpty(checkoutUrl) ? (!anonymousUser ? Model.Item?.GetLink("CheckoutSignedInPageLink")?.Url : Model.Item?.GetLink("CheckoutAnonymousPageLink")?.Url) : checkoutUrl;
+	string? quoteCheckoutPageId = Dynamicweb.Context.Current?.Request["quoteCheckoutPageLink"];
+	quoteCheckoutPageId = string.IsNullOrEmpty(quoteCheckoutPageId) ? Model.Item?.GetLink("QuoteCheckoutPageLink")?.PageId.ToString() : quoteCheckoutPageId;
+	var order = Dynamicweb.Ecommerce.Services.Orders.GetById(Model.Cart?.ID);
 	bool isMiniCart = cartType == "minicart";
 }
 
 @if (isMiniCart)
 {
-	<div class="modal-header sticky-top justify-content-between py-1 py-lg-3 ps-3 ps-lg-4 pe-0 pe-lg-3" style="box-shadow: 0 10px 10px -12px var(--bs-gray-300);">
+	<div class="modal-header sticky-top justify-content-between py-1 py-lg-3 ps-3 ps-lg-4 pe-0 pe-lg-3 bg-body" style="box-shadow: 0 10px 10px -12px var(--bs-gray-300);">
 		<span class="h5 m-0">@Translate("Your cart")</span>
 
 		<button type="button" class="btn btn-sm p-2 d-flex align-items-center" data-bs-dismiss="offcanvas" aria-label="Close" id="CloseMiniCart">
@@ -35,8 +47,8 @@
 	</div>
 }
 
-<div class="item_@Model.Item.SystemName.ToLower() @(isMiniCart ? "p-3 p-lg-4 h-100" : null)">
-	@if (Model.Cart.TotalProductsCount > 0)
+<div class="item_@Model.Item?.SystemName.ToLower() @(isMiniCart ? "p-3 p-lg-4 h-100" : null)">
+	@if (Model.Cart?.TotalProductsCount > 0)
 	{
 		if (!isMiniCart)
 		{
@@ -72,24 +84,28 @@
 				@foreach (var orderline in Model.Cart.CartOrderlines.Reverse())
 				{
 					var product = orderline?.GetProduct() ?? null;
-					string name = orderline.ProductName;
+					string? name = orderline?.ProductName;
 					string image = product?.DefaultImage?.Value ?? string.Empty;
 					string imagePath = $"/Admin/Public/GetImage.ashx?image={image}&width=80&height=80&crop=5&fillcanvas=true&Background=ffffff&format=webp";
 					imagePath = !string.IsNullOrWhiteSpace(image) && !image.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? imagePath : image;
-					string priceTotalWithDiscounts = orderline.TotalPriceWithProductDiscounts.Price.Formatted;
-					string priceBefore = orderline.UnitPriceBeforeDiscount.Price.Formatted;
-					string unitPrice = orderline.UnitPrice.Price.Formatted;
-					string discountPrice = orderline.UnitPriceWithProductDiscount.Price.Formatted;
-					string discountTotal = orderline.TotalDiscount.Price.Formatted;
-					string variantText = orderline.ProductVariantText;
-					string unitName = orderline.UnitName;
-					var orderlineId = orderline.ID;
+					string? priceTotalWithDiscounts = orderline?.TotalPriceWithProductDiscounts.Price.Formatted;
+					string? priceBefore = orderline?.UnitPriceBeforeDiscount.Price.Formatted;
+					string? unitPrice = orderline?.UnitPrice.Price.Formatted;
+					string? discountPrice = orderline?.UnitPriceWithProductDiscount.Price.Formatted;
+					string? discountTotal = orderline?.TotalDiscount.Price.Formatted;
+					string? variantText = orderline?.ProductVariantText;
+					string? unitName = orderline?.UnitName;
+					var orderlineId = orderline?.ID;
 					var quantity = Math.Round(orderline.Quantity, 2);
-
+					double? stepQty = product?.PurchaseQuantityStep > 0 ? product.PurchaseQuantityStep : 1;
+					double? minQty = product?.PurchaseMinimumQuantity > 0 ? product.PurchaseMinimumQuantity : 1;
+					double? maxQty = null;				
+					if (product?.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock && !product.NeverOutOfstock)
+					{
+						maxQty = product.StockLevel;
+					}
 					string link = product?.GetProductLink(GetPageIdByNavigationTag("Shop"), false) ?? string.Empty;
-
 					bool isProductIdOrNumber = !string.IsNullOrEmpty(orderline.ProductID) || !string.IsNullOrEmpty(orderline.ProductNumber);  //Live Cart orderlines may not return ProductId. Manually entered products may not have ProductNumber
-
 					bool isProduct = orderline.IsProduct || (orderline.IsDiscount && isProductIdOrNumber);
 
 					if (isProduct)
@@ -145,7 +161,44 @@
 									}
 
 									@* Quantity *@
-									<span class="fs-8 d-block">@Translate("Qty"): @quantity</span>
+									@if (isMiniCart)
+									{
+										<form method="post" autocomplete="off" action="Default.aspx?ID=@cartServicePageId" data-response-target-element="CartSummary">
+											<input type="hidden" name="requestPageId" value="@requestPageId">
+											<input type="hidden" name="redirect" value="false">
+											<input type="hidden" name="OrderContext" value="@orderContext">
+											<input type="hidden" name="cartcmd" value="updateorderlines">
+											<input type="hidden" name="checkoutUrl" value="@checkoutUrl">
+											<input type="hidden" name="key" value="@orderline.ID">
+											<input type="hidden" name="CartType" value="@cartType">
+											<input type="submit" class="d-none" onclick="event.preventDefault();"> @* Fix for enterKey should not redirect *@
+											
+											<div class="d-flex align-items-center justify-content-between position-relative" style="width:fit-content;">
+
+												<input id="QuantityOrderLine@(orderlineId)" name="QuantityOrderLine@(orderlineId)" value="@DoubleToString(quantity)" step="@DoubleToString(stepQty)" min="@DoubleToString(minQty)" max="@DoubleToString(maxQty)" class="form-control border-0 rounded-0 px-1 flex-grow-0 text-center" type="number" inputmode="numeric" data-qty onchange="swift.Cart.Update(event);">
+												<span class="visually-hidden">@Translate("Type a number, or use the decrease or increase button to change the quantity")</span>
+
+												<button type="button" data-qty-step="decrease" aria-label="@Translate("The button to decrease the quantity")" class="d-flex btn btn-outline-secondary p-2 m-1 border-0 order-first" onclick="this.parentNode.querySelector('[data-qty]').stepDown(); swift.Cart.Update(event);">
+													<svg class="pe-none" focusable="false" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+														<path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M19 13H5v-2h14v2z"></path>
+													</svg>
+												</button>
+
+												<button type="button" data-qty-step="increase" aria-label="@Translate("The button to increase the quantity")" class="d-flex btn btn-outline-secondary p-2 m-1 border-0 order-last" onclick="this.parentNode.querySelector('[data-qty]').stepUp(); swift.Cart.Update(event);">
+													<svg class="pe-none" focusable="false" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+														<path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" d="M11 12.9961v6h2v-6h6v-2h-6v-6h-2v6H5v2h6z"></path>
+													</svg>
+												</button>
+
+												<span class="position-absolute pe-none" style="border: 1px solid rgba(var(--bs-body-color-rgb),.1); inset: 0;"></span>
+
+											</div>
+											
+										</form>
+									}
+									else {
+										<span class="fs-8 d-block">@Translate("Qty"): @quantity</span>
+									}
 
 								</div>
 							</div>
@@ -211,7 +264,7 @@
 				string showPricesWithVat = Pageview.Area.EcomPricesWithVat.ToLower();
 				bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 
-				<div class="d-flex flex-column mt-auto gap-2 gap-lg-3 position-sticky bottom-0" id="cartSummaryFooter" style="box-shadow: 0 -10px 10px -12px var(--bs-gray-300);">
+				<div class="d-flex flex-column mt-auto gap-2 gap-lg-3 position-sticky bottom-0 bg-body" id="cartSummaryFooter" style="box-shadow: 0 -10px 10px -12px var(--bs-gray-300);">
 
 					<div class="fs-8 border-top pt-2 pt-lg-3">
 						@* Subtotal *@

@@ -234,25 +234,6 @@ const Cart = (function () {
 
       return miniCarts;
     },
-    UpdateCart: async function (e) {
-      const inputElement = e.currentTarget;
-      const enteredValue = parseFloat(inputElement.value);
-      const maxValue = parseFloat(inputElement.max);
-      const minValue = parseFloat(inputElement.min);
-
-      if (maxValue && enteredValue > maxValue) {
-        inputElement.value = maxValue;
-      }
-
-      if (minValue && enteredValue < minValue) {
-        inputElement.value = minValue;
-      }
-
-      let form = e.currentTarget.closest("form");
-      form.action = '?cartcmd=updateorderlines';
-      form.submit();
-    },
-
     ValidateStepQuantity: function (quantityField) {
       let isValid = true;
 
