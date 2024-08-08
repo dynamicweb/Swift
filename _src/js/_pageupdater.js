@@ -252,7 +252,8 @@ const PageUpdater = (function () {
 
               document.getElementsByTagName("head")[0].appendChild(tag);
             } else {
-              eval(script.innerHTML);
+              let eval2 = eval;
+              eval2(script.innerHTML);
             }
           });
         }

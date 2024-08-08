@@ -543,7 +543,8 @@ const LiveProductInfo = (function () {
     ShowConditionalElement: function (containers) {
       const self = this;
       containers.forEach(function (c) {
-        if (eval(c.getAttribute(self.config.showIfAttr))) {
+        let eval2 = eval;
+        if (eval2(c.getAttribute(self.config.showIfAttr))) {
           c.classList.remove("d-none");
         }
       });
