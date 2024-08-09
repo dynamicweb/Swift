@@ -114,19 +114,6 @@ const Cart = (function () {
 
       if (response.ok) {
         Cart.Success(response, clickedButton, formData);
-        
-        let event = new CustomEvent("added.swift.cart", {
-          //Fire the 'added' event
-          cancelable: true,
-          detail: {
-            formData: formData,
-            parentEvent: clickedButton.parentEvent
-          },
-        });
-        
-        document.dispatchEvent(event);
-        clickedButton.dispatchEvent(event);
-
       } else {
         Cart.Error(response, clickedButton);
       }
