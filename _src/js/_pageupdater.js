@@ -252,8 +252,18 @@ const PageUpdater = (function () {
 
               document.getElementsByTagName("head")[0].appendChild(tag);
             } else {
-              let eval2 = eval;
-              eval2(script.innerHTML);
+              const newScript = document.createElement("script");
+              newScript.textContent = script.textContent;
+              
+              if (script.hasAttributes()) {
+                for (const attr of script.attributes) {
+                  newScript.setAttribute(attr.name, attr.value);
+                }
+              }
+              
+              const parent = script.parentNode;
+              parent.insertBefore(newScript, script);
+              script.remove();
             }
           });
         }
