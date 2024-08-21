@@ -64,7 +64,7 @@ const Cart = function () {
 					} else if (!quantityField.value) {
 						Cart.PromptMissingValueWarning(form);
 					} else {
-						Cart.AddToCart(clickedButton, form, formData);
+						Cart.AddToCart(clickedButton, form, formData, e);
 					}
 				}	
 				else 
@@ -73,7 +73,7 @@ const Cart = function () {
 						Cart.PromptPendingQuoteMessage(form);
 					}
 
-					Cart.AddToCart(clickedButton, form, formData);
+					Cart.AddToCart(clickedButton, form, formData, e);
 				}
 			}
 		},
@@ -86,7 +86,7 @@ const Cart = function () {
 			});
 			dynamicModal.show();
 		},
-		AddToCart: async function (clickedButton, form, formData) {
+		AddToCart: async function (clickedButton, form, formData, e) {
 			//UI updates
 			const clickedButtonWidth = clickedButton.offsetWidth + "px";
 
@@ -109,7 +109,7 @@ const Cart = function () {
 			let response = await fetch(form.action, fetchOptions);
 
 			if (response.ok) {
-				Cart.Success(response, clickedButton, formData);
+				Cart.Success(response, clickedButton, formData, e);
 			} else {
 				Cart.Error(response, clickedButton);
 			}
@@ -125,7 +125,7 @@ const Cart = function () {
 			};
 		},
 
-		Success: async function (response, clickedButton, formData) {
+		Success: async function (response, clickedButton, formData, e) {
 			let html = await response.text().then(function (text) {
 				return text;
 			});
@@ -135,7 +135,8 @@ const Cart = function () {
 				cancelable: true,
 				detail: {
 					formData: formData,
-					html: html
+					html: html,
+					parentEvent: e
 				}
 			});
 			let globalDispatcher = document.dispatchEvent(event);
