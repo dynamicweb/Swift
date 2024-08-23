@@ -9,7 +9,7 @@
 	{
 		if (value.HasValue)
 		{
-			return value.Value.ToString(CultureInfo.InvariantCulture);
+			return Math.Round(value.Value, 2).ToString(CultureInfo.InvariantCulture);
 		}
 		return null;
 	}
@@ -17,11 +17,14 @@
 
 @{
     var product = Model;
-    bool quantityNullable = GetViewParameterBoolean("QuantityNullable");
+    var orderId = Dynamicweb.Context.Current?.Request.QueryString.Get("OrderID") ?? null;
+	var order = Dynamicweb.Ecommerce.Services.Orders?.GetById(orderId) ?? null;
+    bool isSearch = !string.IsNullOrEmpty(Dynamicweb.Context.Current?.Request.Params.Get("q")) ? true : false;
     int? loopCounter  = GetViewParameterInt32("LoopCounter") > 0 ? GetViewParameterInt32("LoopCounter") : null;
+    double? quantity = GetViewParameterDouble("Quantity") > 0 ? GetViewParameterDouble("Quantity") : null;
     double? stepQty = product.PurchaseQuantityStep > 0 ? product.PurchaseQuantityStep : 1;
     double? minQty = product.PurchaseMinimumQuantity > 0 ? product.PurchaseMinimumQuantity : 1;
-    double? valueQty = quantityNullable ? null : minQty > stepQty ? minQty : stepQty;
+    double? valueQty = order is not null ? quantity : isSearch ? null : minQty > stepQty ? minQty : stepQty;
     string? disableAddToCart = null;
     double? maxQty = null;
     bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current?.Items["IsLazyLoadingForProductInfoEnabled"]);
@@ -34,6 +37,7 @@
 }
 
 <div class="d-flex align-items-center justify-content-between position-relative" style="width:fit-content;">
+
     <input id="Quantity_@(product.Id)_@product.VariantId.Replace(".", "_")" name="Quantity@(loopCounter)" value="@DoubleToString(valueQty)" step="@DoubleToString(stepQty)" min="@DoubleToString(minQty)" max="@DoubleToString(maxQty)" class="form-control border-0 rounded-0 px-1 flex-grow-0 text-center" type="number" inputmode="numeric" data-qty @disableAddToCart placeholder="0" tabindex="0">
     <span class="visually-hidden">@Translate("Type a number, or use the decrease or increase button to change the quantity")</span>
 
