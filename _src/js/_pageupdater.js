@@ -126,7 +126,7 @@ const PageUpdater = (function () {
       }
     },
 
-    UpdateFromUrlInline: async function (e, url, layout, target) {
+    UpdateFromUrlInline: async function (e, url, layout, target, preloader = 'inline') {
       var layoutTemplate =
         layout != undefined ? layout : "Swift-v2_PageClean.cshtml";
       url += "&LayoutTemplate=" + layoutTemplate;
@@ -145,7 +145,7 @@ const PageUpdater = (function () {
       if (globalDispatcher != false && localDispatcher != false) {
         //UI updates
         const addPreloaderTimer = setTimeout(function () {
-          PageUpdater.AddPreloaders("inline", responseTargetElement);
+          PageUpdater.AddPreloaders(preloader, responseTargetElement);
         }, 200); //Small delay to secure that the preloader is not loaded all the time
 
         //Fetch
@@ -227,7 +227,7 @@ const PageUpdater = (function () {
       });
       var globalDispatcher = document.dispatchEvent(event);
       var localDispatcher = clickedButton.dispatchEvent(event);
-
+      
       if (globalDispatcher != false && localDispatcher != false) {
         //Remove preloader
         if (document.querySelector("#overlay")) {
@@ -264,8 +264,19 @@ const PageUpdater = (function () {
               const parent = script.parentNode;
               parent.insertBefore(newScript, script);
               script.remove();
+
             }
           });
+
+          let event = new CustomEvent("swapped.swift.pageupdater", {
+            cancelable: true,
+            detail: {
+              formData: formData,
+              html: html,
+            },
+          });
+          document.dispatchEvent(event);
+          clickedButton.dispatchEvent(event);
         }
       }
     },
