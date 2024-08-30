@@ -1,0 +1,90 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	ProductViewModel product = null;
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Page.Item["DummyProduct"] != null && Pageview.IsVisualEditorMode)
+	{
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+
+		if (productList?.Products is object)
+		{
+			product = productList.Products[0];
+		}
+	}
+}
+
+@if (product is object)
+{
+	int itemSourcePageId = Convert.ToInt32(Model.Item.GetRawValueString("ListComponentSource", "0"));
+
+	string gridColumnSize = Model.Item.GetRawValueString("GridLayoutDesktop", "3-columns");
+	gridColumnSize = gridColumnSize == "2-columns" ? "g-col-lg-6" : gridColumnSize;
+	gridColumnSize = gridColumnSize == "3-columns" ? "g-col-lg-4" : gridColumnSize;
+	gridColumnSize = gridColumnSize == "4-columns" ? "g-col-lg-3" : gridColumnSize;
+	gridColumnSize = gridColumnSize == "6-columns" ? "g-col-lg-2" : gridColumnSize;
+	gridColumnSize = gridColumnSize == "list" ? "" : gridColumnSize;
+
+	string gridColumnMobileSize = Model.Item.GetRawValueString("GridLayoutMobile", "2-columns");
+	gridColumnMobileSize = gridColumnMobileSize == "list" ? "g-col-12" : gridColumnMobileSize;
+	gridColumnMobileSize = gridColumnMobileSize == "2-columns" ? "g-col-6" : gridColumnMobileSize;
+
+	var products = product.GetBomConfiguration().Items;
+	int productsCount = products.Count();
+	string productsCountLabel = productsCount == 1 ? "product" : "products";
+
+	if (productsCount > 0) {
+		<div data-dw-colorscheme="@Model.ColorScheme?.Id">
+			<p>
+				@Translate("The product package consists of:") @productsCount @productsCountLabel
+			</p>
+
+			<div class="grid pb-3">
+				@foreach (var prod in products)
+				{
+					var bomProduct = prod.Product.GetProduct();
+
+					string link = product.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
+
+					if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+					{
+						Dynamicweb.Context.Current.Items["ProductDetails"] = bomProduct;
+					}
+					else
+					{
+						Dynamicweb.Context.Current.Items.Add("ProductDetails", bomProduct);
+					}
+
+					if (Dynamicweb.Context.Current.Items.Contains("ProductQuantity"))
+					{
+						Dynamicweb.Context.Current.Items["ProductQuantity"] = prod.Quantity;
+					}
+					else
+					{
+						Dynamicweb.Context.Current.Items.Add("ProductQuantity", prod.Quantity);
+					}
+
+					if (Model.Item.GetString("ListComponentSource") != null)
+					{
+						<article class="@gridColumnMobileSize @gridColumnSize d-flex flex-column position-relative product js-product" data-product-id="@product.Id" data-variant-id="@product.VariantId" itemscope itemtype="https://schema.org/Product">
+							@RenderGrid(itemSourcePageId)
+						</article>
+					}
+				}
+			</div>
+		</div>
+	}
+	else if (Pageview.IsVisualEditorMode)
+	{
+		<div class="alert alert-dark m-0">@Translate("No BOM items available")</div>
+	}
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0">@Translate("No products available")</div>
+}
