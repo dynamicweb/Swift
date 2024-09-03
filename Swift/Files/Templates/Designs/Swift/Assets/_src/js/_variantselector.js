@@ -97,6 +97,7 @@ const VariantSelector = function () {
 			var inactiveClicked = isButton ? clickedButton.classList.contains("in-active") : clickedButton.selectedOptions[0].classList.contains("in-active");
 			var isAlreadyActive = isButton ? clickedButton.classList.contains("active") : clickedButton.selectedOptions[0].classList.contains("active");
 			
+
 			//Allow clicking in-active options
 			if (inactiveClicked) {
 				clickedButton.closest(".js-variant-selector").querySelectorAll(".js-variant-option").forEach(function (option) {
@@ -116,6 +117,12 @@ const VariantSelector = function () {
 				}
 				else {
 					clickedButton.selectedOptions[0].classList.add("active");
+				}
+			} else {
+				const selectedOptionName = clickedButton.closest(".js-variant-selector").querySelector(".js-selected-option-name");
+
+				if (selectedOptionName) {
+					selectedOptionName.innerHTML = "";
 				}
 			}
 		},
