@@ -1,5 +1,25 @@
 # Changelog
 
+## [v1.26.5] - 04-09-2024
+
+> [!NOTE]
+> **Requirements**
+> * **Swift v1.26.5 requires DynamicWeb v9.17.10 or newer, requires the Shipmondo.dll version 2.0.0 or newer**
+> * **Swift v1.26.5 can also run on DynamicWeb v10.7.0 or newer, if Shipmondo is used, it requires Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
+
+## Bugfixes
+* Checkout: OrderDeliveryDate, Checkout date range is not respected in calendar. Flatpickr date format respected
+* General: Terms and conditions link in checkout not working when "Do not add base href" is enabled
+* General: Adding .vscode folder to .gitignore
+* General: Dropdown trigger only on click (Mouseover for megamenu)
+* Itemtypes: Favorites, Add variant to favorite list
+* Itemtypes: Emailicons, remove extra slash in path
+* Itemtypes: OffCavasNavigation_DW10, NavItems, Fix the Offcanvas cursor pointer on back arrow
+* Cart: cart.js, The event updated.swift.cart are missing the parentEvent
+* Itemtypes: ProductDetailsGallery, ProductDetailsImage. Media aspect ratio defaults
+* Cutomer center: My orders, AddressDisplayFormatted, fix Order details "Value cannot be null" for regex
+* Itemtypes: ProductDetailsGallery, set correct slide number for mobile view
+
 ## [v1.26.4] - 09-07-2024
 
 > [!NOTE]
