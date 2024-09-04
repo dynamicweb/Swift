@@ -9,7 +9,7 @@
 
 ## Bugfixes
 * Checkout: OrderDeliveryDate, Checkout date range is not respected in calendar. Flatpickr date format respected
-* General: Terms and conditions link in checkout not working when "Do not add bas href" is enabled
+* General: Terms and conditions link in checkout not working when "Do not add base href" is enabled
 * General: Adding .vscode folder to .gitignore
 * General: Dropdown trigger only on click (Mouseover for megamenu)
 * Itemtypes: Favorites, Add variant to favorite list
