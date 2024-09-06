@@ -28,6 +28,17 @@ const Cart = (function () {
       addQuantity = formData.get("Quantity") ? formData.get("Quantity") : 1;
       isPendingQuote = formData.get("PendingQuote") ? formData.get("PendingQuote") : "false";
 
+      //Support for BOM configurator
+      var productBomContainer = document.querySelector(".js-product-bom-configurator");
+      if (productBomContainer) {
+        productBomContainer.querySelectorAll(".js-bom-variant").forEach(function (bomVariant) 
+        {
+          if (bomVariant.checked) {
+            formData.append(bomVariant.name, bomVariant.value);
+          }
+        });
+      }
+
       this.PushDataToGoogleAnalytics();
       let event = new CustomEvent("update.swift.cart", {
         //Fire the 'update' event
