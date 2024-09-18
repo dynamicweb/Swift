@@ -1,3 +1,7 @@
+// Swift Web Components
+import "./components/VideoPlayer";
+
+// Swift modules
 import { Favorites } from "./_favorites";
 import { Cart } from "./_cart";
 import { Scroll } from "./_scroll";
@@ -17,7 +21,7 @@ import { BackInStockNotification } from "./_backInStockNotification";
 import { ExpressBuy } from "./_expressBuy";
 import { Menu } from "./_menu";
 
-//Swift modules
+// Swift modules
 const swift = (function () {
   return {
     Cart: Cart,
@@ -44,7 +48,7 @@ const swift = (function () {
 export { swift };
 window.swift = swift;
 
-//Popstate
+// Popstate
 window.onpopstate = function () {
   swift.Typeahead.navigateToPage(document.location.href);
 };
