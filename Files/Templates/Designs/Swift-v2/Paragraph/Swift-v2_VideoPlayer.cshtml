@@ -1,231 +1,26 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
-@using Dynamicweb.Ecommerce.ProductCatalog
+@using System.IO
+@using Dynamicweb.Frontend
 
-@{
-	string ratioCssClass = Model.Item.GetRawValueString("AspectRatio") != "0" && Model.Item.GetRawValueString("AspectRatio") != "" ? "ratio" : "";
-	string ratioVariable = Model.Item.GetRawValueString("AspectRatio") != "0" && Model.Item.GetRawValueString("AspectRatio") != "" ? "style=\"--bs-aspect-ratio: " + Model.Item.GetRawValueString("AspectRatio") + "\"" : "";
+@if(Model.Item.TryGetVideo("VideoSource", out VideoViewModel video)) {
+		
+	<swift-video-player itemscope itemtype="https://schema.org/VideoObject">
+		<figure class="m-0 ratio ratio-16x9">
+			<span class="visually-hidden" itemprop="name">@video.Name</span>
+			<span class="visually-hidden" itemprop="contentUrl">@video.Path</span>
+			<span class="visually-hidden" itemprop="thumbnailUrl">@video.Thumbnail</span>
 
-	string visual = Model.Item.GetRawValueString("Visual", "inline");
-
-	string provider = Model.Item.GetRawValueString("VideoSourceProvider", "none");
-	string videoId = Model.Item.GetString("VideoSourceID");
-
-	Dynamicweb.Frontend.FileViewModel video = Model.Item.GetFile("VideoPath");
-	string videoPath = video?.Path ?? "";
-
-	string iconPath = "/Files/Templates/Designs/Swift-v2/Assets/icons/play.svg";
-	string alignment = Model.Item.GetRawValueString("Alignment", "align-items-center");
-}
-
-@switch (visual)
-{
-	case "inline":
-		<div class="h-100 position-relative grid grid-1 @(alignment) item_@Model.Item.SystemName.ToLower()">
-			<div id="@Model.ID" class="user-select-none position-absolute top-0" style="scroll-margin-top:var(--header-height,150px)"></div>
-
-			@switch (provider)
+			@if (video.IsExternalLink())
 			{
-				case "youtube":
-				case "vimeo":
-
-					<div id="player_@Pageview.CurrentParagraph.ID"
-						 class="player plyr__video-embed h-100 w-100"
-						 data-plyr-provider="@provider"
-						 data-plyr-embed-id="@videoId"
-						 style="--plyr-color-main: var(--swift-foreground-color); ">
-					</div>
-
-					break;
-
-				case "self-hosted":
-
-					<video id="player_@Pageview.CurrentParagraph.ID"
-						   class="player plyr__video-embed h-100 w-100"
-						   src="@videoPath"
-						   style="--plyr-color-main: var(--swift-foreground-color);"
-						   preload="metadata">
-					</video>
-
-					break;
+				<iframe src="@video.ToEmbedUrl()" title="@video.Name" frameborder="0" allow="fullscreen; picture-in-picture; autoplay; clipboard-write; encrypted-media; web-share"></iframe>
 			}
-			<script type="module" src="/Files/Templates/Designs/Swift-v2/Assets/js/plyr.js"></script>
-			<script type="module">
-
-				const player = new Plyr('#player_@Pageview.CurrentParagraph.ID', {
-					type: 'video',
-					youtube: {
-						noCookie: true,
-						showinfo: 0
-					},
-					fullscreen: {
-						enabled: true,
-						iosNative: true,
-					}
-				});
-			</script>
-
-		</div>
-
-		break;
-
-	case "poster-modal":
-		<div class="h-100 position-relative grid grid-1 @(alignment) item_@Model.Item.SystemName.ToLower()">
-			<div id="@Model.ID" class="user-select-none position-absolute top-0" style="scroll-margin-top:var(--header-height,150px)"></div>
-			<div class="player position-relative" data-player="player_@Pageview.CurrentParagraph.ID">
-
-				@{
-					string ratio = Model.Item.GetRawValueString("AspectRatio", "");
-					ratio = ratio != "0" ? ratio : "";
-					ratioCssClass = ratio != "" && ratio != "fill" ? " ratio" : "";
-					ratioVariable = ratio != "" ? "style=\"--bs-aspect-ratio: " + ratio + "\"" : "";
-					string fillClass = ratio == "fill" ? " h-100" : "";
-
-					var parms = new Dictionary<string, object>();
-					parms.Add("loading", "lazy");
-					if (ratio == "fill")
-					{
-						parms.Add("cssClass", "w-100 h-100");
-					}
-					else
-					{
-						parms.Add("cssClass", "mw-100 mh-100");
-					}
-					parms.Add("style", "");
-					parms.Add("alt", @Model.Item.GetString("ImageAltText"));
-					parms.Add("columns", Model.GridRowColumnCount);
-
-					<figure class="m-0@(ratioCssClass)@(fillClass)" @ratioVariable>
-						@if (string.IsNullOrEmpty(Model.Item.GetString("VideoPoster")))
-						{
-							switch (provider)
-							{
-								case "youtube":
-									<script type="module">
-										function setVideoThumbnail(source) {
-											var figure = document.querySelector("[data-player='player_@Pageview.CurrentParagraph.ID'] figure");
-											var thumbnail = document.createElement("img");
-											thumbnail.style = "object-fit: cover;";
-											thumbnail.classList.add('mw-100','mh-100');
-											thumbnail.src = source;
-											figure.appendChild(thumbnail);
-										};
-										setVideoThumbnail('https://i.ytimg.com/vi/@(videoId)/hqdefault.jpg');
-									</script>
-									break;
-
-								case "vimeo":
-									<script type="module">
-										function setVideoThumbnail(source) {
-											let figure = document.querySelector("[data-player='player_@Pageview.CurrentParagraph.ID'] figure");
-											let thumbnail = document.createElement("img");
-											thumbnail.style = "object-fit: cover;";
-											thumbnail.classList.add('mw-100','mh-100');
-											thumbnail.src = source;
-											figure.appendChild(thumbnail);
-										};
-										function getVimeoThumbnail() {
-											fetch('https://vimeo.com/api/v2/video/@(videoId).json')
-											.then(function(response) {
-												return response.text();
-											})
-											.then(function(data) {
-												let { thumbnail_large } = JSON.parse(data)[0];
-												let thumbnail = `${thumbnail_large}`;
-												thumbnail = thumbnail.replace("_640", "_1920");
-												setVideoThumbnail(thumbnail);
-											})
-											.catch(error => {
-												console.log(error);
-											});
-										}
-
-										getVimeoThumbnail();
-									</script>
-									break;
-							}
-						}
-						else
-						{
-							@RenderPartial("Components/Image.cshtml", Model.Item.GetFile("VideoPoster") ?? new Dynamicweb.Frontend.FileViewModel(), parms)
-						}
-
-					</figure>
-
-				}
-
-				<div class="position-absolute top-0 bottom-0 end-0 start-0 h-100 d-flex align-items-center justify-content-center">
-					<button type="button" class="btn btn-primary rounded-circle lh-1 p-3" data-bs-toggle="modal" data-bs-target="#modal_@Pageview.CurrentParagraph.ID">
-						<span class="icon-3">
-							@ReadFile(iconPath)
-						</span>
-						<span class="visually-hidden">@Translate("Play video")</span>
-					</button>
-				</div>
-			</div>
-		</div>
-
-		<div class="modal fade" id="modal_@Pageview.CurrentParagraph.ID" tabindex="-1" aria-hidden="true">
-			<div class="modal-dialog modal-xl modal-dialog-centered">
-				<div class="modal-content">
-					<div class="modal-body p-0">
-
-						@switch (provider)
-						{
-							case "youtube":
-							case "vimeo":
-
-								<div id="player_@Pageview.CurrentParagraph.ID"
-									 class="player plyr__video-embed h-100 w-100"
-									 data-plyr-provider="@provider"
-									 data-plyr-embed-id="@videoId"
-									 style="--plyr-color-main: var(--swift-foreground-color); ">
-								</div>
-
-								break;
-
-							case "self-hosted":
-
-								<video id="player_@Pageview.CurrentParagraph.ID"
-									   class="player plyr__video-embed h-100 w-100"
-									   src="@videoPath"
-									   style="--plyr-color-main: var(--swift-foreground-color);"
-									   preload="metadata">
-								</video>
-
-								break;
-						}
-						<script type="module" src="/Files/Templates/Designs/Swift-v2/Assets/js/plyr.js"></script>
-						<script type="module">
-
-							var player = new Plyr('#player_@Pageview.CurrentParagraph.ID', {
-								youtube: {
-									noCookie: true,
-									showinfo: 0
-								},
-								fullscreen: {
-									enabled: true,
-									iosNative: true,
-								}
-							});
-
-							document.querySelector('#modal_@Pageview.CurrentParagraph.ID').addEventListener('show.bs.modal', function (event) {
-								player.togglePlay();
-
-								player.on('ready', event => {
-									player.play();
-								});
-							});
-
-							document.querySelector('#modal_@Pageview.CurrentParagraph.ID').addEventListener('hide.bs.modal', function (event) {
-								player.pause();
-							});
-						</script>
-
-					</div>
-				</div>
-			</div>
-		</div>
-
-		break;
+			else
+			{
+				<video preload="auto" swift-video poster="@video.Thumbnail">
+					<source src="@(video.Path)" type="video/@Path.GetExtension(video.Path).ToLower().Replace(".", string.Empty)">
+				</video>
+				<button type="button" swift-video-play-btn></button>
+			}
+		</figure>
+	</swift-video-player>
 }
-
