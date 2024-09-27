@@ -1,5 +1,24 @@
 # Changelog
 
+# v1.26.6
+
+## [v1.26.6] - 27-09-2024
+
+> [!NOTE]
+> **Requirements**
+> * **Swift v1.26.6 requires DynamicWeb v9.17.10 or newer, requires the Shipmondo.dll version 2.0.0 or newer**
+> * **Swift v1.26.6 can also run on DynamicWeb v10.7.0 or newer, if Shipmondo is used, it requires Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
+
+## Bugfixes
+* Customer center: My orders, Order details product name is not rendered
+* General: Make Variant link to go to root. Fix broken url when enabling " Do not add base href to heade "
+* General: Fix gtag product price and discount
+* General: ProductPrice, Format price alternative on the GTM event
+* General: Accessing a product detail page with a productid where the productid does not exist, the swift page template goes into exception. Add null check
+* General: gobalsettings, CommandTimeout in wrong XPath in GlobalSettings
+* Itemtypes: ProductDefaultImag. Add itemprop on product images
+* Itemtypes: Formfield, Query is not correctly interpreted with multiple values. Fix FacetType == " List ", checking
+
 ## [v1.26.5] - 04-09-2024
 
 > [!NOTE]

@@ -37,6 +37,7 @@ This repository contains a `./Files` with design files, images, and other static
 7. Log in and install a license
 
 ## Requirements
+* **Swift v1.26.6** requires **DynamicWeb version 9.17.10** and **Shipmondo dll v2.0.0** or newer, it can also run on **DynamicWeb v10.7.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
 
 * **Swift v1.26.5** requires **DynamicWeb version 9.17.10** and **Shipmondo dll v2.0.0** or newer, it can also run on **DynamicWeb v10.7.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
 
