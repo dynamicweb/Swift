@@ -166,7 +166,10 @@ const Favorites = function () {
 			var productId = clickedButton.getAttribute("data-product-id");
 			var productName = clickedButton.getAttribute("data-product-name");
 			var productPrice = clickedButton.getAttribute("data-product-price");
+			var productDiscount = clickedButton.getAttribute("data-product-discount");
 			var productCurrency = clickedButton.getAttribute("data-product-currency");
+			productPrice = productPrice !== null && productPrice !== "" ? parseFloat(productPrice) : productPrice;
+			productDiscount = productDiscount !== null && productDiscount !== "" ? parseFloat(productDiscount) : productDiscount;
 
 			if (typeof gtag !== "undefined") {
 				gtag("event", "add_to_wishlist", {
@@ -178,6 +181,7 @@ const Favorites = function () {
 							item_name: productName,
 							currency: productCurrency,
 							price: productPrice,
+							discount: productDiscount,
 							quantity: 1
 						}
 					],
