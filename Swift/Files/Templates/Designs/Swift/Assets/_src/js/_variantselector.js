@@ -102,6 +102,11 @@ const VariantSelector = function () {
 				clickedButton.closest(".js-variant-selector").querySelectorAll(".js-variant-option").forEach(function (option) {
 					option.classList.remove("active");
 				});
+
+				//Clear all group names
+				clickedButton.closest(".js-variant-selector").querySelectorAll(".js-selected-option-name").forEach(function (option) {
+					option.innerHTML = "";
+				});
 			}
 			
 			//Remove all active options in the current group
@@ -118,8 +123,9 @@ const VariantSelector = function () {
 					clickedButton.selectedOptions[0].classList.add("active");
 				}
 			} else {
-				const selectedOptionName = clickedButton.closest(".js-variant-selector").querySelector(".js-selected-option-name");
 
+				//Clear the selected option group name
+				const selectedOptionName = clickedButton.closest(".js-variant-selector").querySelector(".js-selected-option-name");
 				if (selectedOptionName) {
 					selectedOptionName.innerHTML = "";
 				}
@@ -138,6 +144,8 @@ const VariantSelector = function () {
 					selectionCount++;
 				}
 			});
+
+			console.log(selections);
 
 			if (selectionCount == totalGroups && updatePage) {
 				//Fire the 'selectioncomplete' event
