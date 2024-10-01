@@ -145,7 +145,6 @@ const VariantSelector = function () {
 				}
 			});
 
-			console.log(selections);
 
 			if (selectionCount == totalGroups && updatePage) {
 				//Fire the 'selectioncomplete' event
