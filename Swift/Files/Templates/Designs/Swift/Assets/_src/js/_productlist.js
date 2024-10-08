@@ -184,16 +184,18 @@ const ProductList = function () {
 					}
 				});
 
-				var isChromeOnIos = false;
-				if ((navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1 && swap != "afterend") ||
+				var isChromeOnIosLandscape = false;
+				if ((navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1 && swap != "afterend") || 
 					navigator.userAgent.indexOf('CriOS') >= 0) {
-					isChromeOnIos = true;
+					if (screen.width > screen.height) { 
+						isChromeOnIosLandscape = true;
+					}
 				}
 
 				//Modal
 				var requestType = formData.get("RequestType");
 
-				if (screen.width < 992 && document.querySelector('#FacetsModal') && requestType != "UpdateList" && !isChromeOnIos) {
+				if (screen.width < 992 && document.querySelector('#FacetsModal') && requestType != "UpdateList" && !isChromeOnIosLandscape) {
 					var facetsModal = new bootstrap.Modal(document.querySelector('#FacetsModal'), { backdrop: false });
 					facetsModal.show();
 
