@@ -16,8 +16,8 @@ const Cart = (function () {
       // ClickedButton is not always the button. Sometimes it is the qty input field if [enter] is pressed
       const clickedButton = e.currentTarget != undefined ? e.currentTarget : e;
       const form = clickedButton.closest("form");
-      const quantityField = form.querySelector('[name="Quantity"]');
-
+      const quantityField = form.querySelector('[name^="Quantity"]');
+      
       //Setup the form data
       let formData = new FormData(form);
       productId = formData.get("ProductId");
@@ -31,6 +31,17 @@ const Cart = (function () {
       isPendingQuote = formData.get("PendingQuote") ? formData.get("PendingQuote") : "false";
       productPrice = productPrice !== null && productPrice !== "" ? parseFloat(productPrice) : productPrice;
       productDiscount = productDiscount !== null && productDiscount !== "" ? parseFloat(productDiscount) : productDiscount;
+
+      //Support for BOM configurator
+      var productBomContainer = document.querySelector(".js-product-bom-configurator");
+      if (productBomContainer) {
+        productBomContainer.querySelectorAll(".js-bom-variant").forEach(function (bomVariant) 
+        {
+          if (bomVariant.checked) {
+            formData.append(bomVariant.name, bomVariant.value);
+          }
+        });
+      }
 
       this.PushDataToGoogleAnalytics();
       let event = new CustomEvent("update.swift.cart", {
@@ -68,6 +79,13 @@ const Cart = (function () {
           } else {
             this.AddToCart(clickedButton, form, formData);
           }
+        }	
+        else 
+        {
+          if (isPendingQuote == "true") {
+            this.PromptPendingQuoteMessage(form);
+          }
+          this.AddToCart(clickedButton, form, formData);
         }
       }
     },
@@ -219,25 +237,6 @@ const Cart = (function () {
 
       return miniCarts;
     },
-    UpdateCart: async function (e) {
-      const inputElement = e.currentTarget;
-      const enteredValue = parseFloat(inputElement.value);
-      const maxValue = parseFloat(inputElement.max);
-      const minValue = parseFloat(inputElement.min);
-
-      if (maxValue && enteredValue > maxValue) {
-        inputElement.value = maxValue;
-      }
-
-      if (minValue && enteredValue < minValue) {
-        inputElement.value = minValue;
-      }
-
-      let form = e.currentTarget.closest("form");
-      form.action = '?cartcmd=updateorderlines';
-      form.submit();
-    },
-
     ValidateStepQuantity: function (quantityField) {
       let isValid = true;
 

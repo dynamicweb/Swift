@@ -1,9 +1,11 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Rendering
 @using System.Globalization
 @using System
 
 @functions{
-	string DoubleToString(double? value)
+	string? DoubleToString(double? value)
 	{
 		if (value.HasValue)
 		{
@@ -22,9 +24,8 @@
 	var orderline = orderlines[i];
 	bool neverOutOfStock = orderline.GetBoolean("Ecom:Product.NeverOutOfStock");
 	string name = orderline.GetString("Ecom:Order:OrderLine.ProductName");
-	string image = orderline.GetString("Ecom:Product.PrimaryImage");
-	image = "/Admin/Public/GetImage.ashx?width=" + 180 + "&height=" + 180 + "&image=" + image + "&format=webp";
-	image = !orderline.GetString("Ecom:Product.PrimaryImage").StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? orderline.GetString("Ecom:Product.PrimaryImage") : image;
+	string primaryImage = orderline.GetString("Ecom:Product.PrimaryImage");
+    string image = $"/Admin/Public/GetImage.ashx?width=180&height=180&image={primaryImage}&format=webp";
 	string removeFromBasketLink = orderline.GetString("Ecom:Order:OrderLine.DeleteLink");
 	string priceTotalWithDiscounts = orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.PriceFormatted");
 	string priceTotalWithDiscountsClean = orderline.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.Price");
@@ -61,6 +62,7 @@
 
 	if (isProduct)
 	{
+		var bomItems = orderline.GetLoop("BOMItems");
 		<article class="grid pt-3" style="row-gap: 0;" data-product-id="@productId" data-variant-id="@variantId" data-unit-id="@unitId" data-orderline-total-price="@priceTotalWithDiscountsClean" data-orderline-unit-price="@unitPriceWithDiscount">
 			<div class="g-col-3 g-col-lg-2">
 				<a href="@link" class="ratio ratio-1x1 d-block" title="@name">
@@ -70,7 +72,7 @@
 
 			<div class="g-col-9 g-col-lg-10">
 
-				<div class="grid" style="row-gap: 0.5rem;">
+				<div class="grid" style="row-gap: 0.5rem;--bs-gap:0;">
 
 					<div class="g-col-12 g-col-md-8 grid grid-7 grid-md-9" style="row-gap: 0.5rem;">
 						<div class="g-col-7 g-col-md-6">
@@ -84,7 +86,6 @@
 							{
 								<p class="mt-2 mb-0 fs-7 fs-md-6">@variantText</p>
 							}
-
 
 							@if (orderline.GetBoolean("Ecom:Order:OrderLine.IsDiscount"))
 							{
@@ -119,12 +120,19 @@
 							{
 								@* Quantity *@
 								<div class="input-group js-input-group">
-									<label for="QuantityOrderLine@(orderlineId)" class="visually-hidden">@Translate("Quantity"):</label>
-									<input type="number" id="QuantityOrderLine@(orderlineId)" step="@DoubleToString(stepQty)" min="@DoubleToString(minQty)" max="@DoubleToString(maxQty)" class="form-control text-center swift_quantity-field" onchange="swift.Cart.UpdateCart(event);" value="@DoubleToString(quantity)" name="QuantityOrderLine@(orderlineId)" style="width: 5.5rem;">
 
-									<div class="invalid-feedback d-none">
-										@Translate("Please select a quantity that is dividable by") @stepQty
-									</div>
+									@{
+										var orderlineViewModel = new Dynamicweb.Ecommerce.Frontend.OrderLineViewModel(){
+											Id = orderlineId.ToString(),
+											ProductId = productId,
+											ProductVariantId = variantId,
+											UnitId = unitId,
+											Quantity = quantity
+										};
+									}
+
+									@RenderPartial("Components/QuantitySelectorOrderline.cshtml", orderlineViewModel)
+
 								</div>
 							}
 							else
@@ -146,6 +154,33 @@
 							</span>
 						}
 					</div>
+
+					@if (bomItems.Count > 0) {
+						<div class="g-col-12">
+							@* BOM items *@
+							@foreach (var bomItem in bomItems) {
+								string bomImage = bomItem.GetString("Ecom:Product.PrimaryImage");
+								bomImage = !bomImage.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? bomImage : $"/Admin/Public/GetImage.ashx?width=60&height=60&image={bomImage}&format=webp";
+
+								<div class="d-flex gap-3">
+									@if (!string.IsNullOrEmpty(bomImage)) {
+										<div style="width: 60px">
+											<div class="ratio ratio-1x1 d-block" title="@name">
+												<img class="cart-item-img" src="@bomImage" style="object-fit: contain;" alt="@name">
+											</div>
+										</div>
+									}
+									<div class="flex-fill">
+										<div class="d-flex justify-content-between">
+											<p class="fs-7 fs-md-6 mb-0 fw-bold">@bomItem.GetString("Ecom:Product.Name")</p>
+											<p class="fs-7 fs-md-6 mb-0">@Translate("Qty"): @bomItem.GetDouble("Ecom:Order:OrderLine.Quantity")</p>
+										</div>
+										<p class="fs-7 fs-md-6 mb-0 opacity-50">@bomItem.GetString("Ecom:Product.Number")</p>
+									</div>
+								</div>
+							}
+						</div>
+					}
 
 					<div class="g-col-12">
 						@if (!orderIsQuote)

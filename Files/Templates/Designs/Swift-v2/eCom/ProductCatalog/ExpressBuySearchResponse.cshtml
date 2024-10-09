@@ -2,36 +2,18 @@
 @using Dynamicweb.Rendering
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Ecommerce.Products
-
 @using System.Globalization
 
-@functions{
-
-	string DoubleToString(double? value)
-	{
-		if (value.HasValue)
-		{
-			return value.Value.ToString(CultureInfo.InvariantCulture);
-		}
-		return null;
-	}
-}
-
 @{
-	string orderId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("OrderID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("OrderID") : "";
+	var orderId = Dynamicweb.Context.Current?.Request.QueryString.Get("OrderID") ?? null;
 	var order = !string.IsNullOrEmpty(orderId) ? Dynamicweb.Ecommerce.Services.Orders.GetById(orderId) : null;
-
 	string iconPath = "/Files/Templates/Designs/Swift-v2/Assets/icons/";
-	bool defaultQuantityAsZero = Convert.ToBoolean(Dynamicweb.Context.Current.Request["defaultQuantityAsZero"]);
-
+	bool defaultQuantityAsZero = Convert.ToBoolean(Dynamicweb.Context.Current?.Request["defaultQuantityAsZero"]);
 	var productCounter = 0;
-
-	bool isErpConnectionDown = !Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsWebServiceConnectionAvailable"]);
+	bool isErpConnectionDown = !Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current?.Items["IsWebServiceConnectionAvailable"]);
 	bool hidePrice = Pageview.AreaSettings.GetBoolean("ErpDownHidePrices") && isErpConnectionDown;
 	bool hideAddToCart = Pageview.AreaSettings.GetBoolean("ErpDownHideAddToCart") && isErpConnectionDown;
-
 	int productsOutOfStock = 0;
-
 	List<ProductViewModel> orderProducts = new List<ProductViewModel>();
 	Dictionary<string, double> productQuantityList = new Dictionary<string, double>();
 
@@ -105,14 +87,10 @@
 							@foreach (var product in products)
 							{
 								productCounter += 1;
-
 								ProductViewModel replacementProduct = product.Discontinued && product.ReplacementProduct != null && !string.IsNullOrEmpty(product.ReplacementProduct.ProductId) ? product.ReplacementProduct.GetProduct() : null;
-
 								bool showReplacementProduct = product.Discontinued && replacementProduct != null && replacementProduct.Active && (replacementProduct.ProductType != ProductType.Stock || replacementProduct.StockLevel > 0 || replacementProduct.NeverOutOfstock);
 								
-								
 								if ((product.StockLevel <= 0 && !product.NeverOutOfstock) || product.Discontinued)
-
 								{
 									<tr>
 										<td class="align-middle">
@@ -217,13 +195,11 @@
 	{
 		if (product != null && product?.PrimaryOrDefaultGroup?.Id != null)
 		{
-
 			double? stepQty = product.PurchaseQuantityStep > 0 ? product.PurchaseQuantityStep : 1;
 			double? minQty = product.PurchaseMinimumQuantity > 0 ? product.PurchaseMinimumQuantity : 1;
-			string disableQuantityField = null;
+			string? disableQuantityField = null;
 			double? maxQty = null;
 			bool isStockType = product.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock;
-
 			if (isStockType && !product.NeverOutOfstock)
 			{
 				disableQuantityField = (product.StockLevel <= 0) || product.Discontinued ? "disabled" : disableQuantityField;
@@ -235,21 +211,17 @@
 			{
 				quantity = value;
 			}
-
 			string disableOrderline = isStockType && ((product.StockLevel < 1 && !product.NeverOutOfstock) || product.Discontinued) ? "pe-none user-select-none opacity-50" : "";
-
 			string link = product.GetProductLink(GetPageIdByNavigationTag("Shop"), false);
-
 			productCounter += 1;
-
 			if ((product.StockLevel < 1) && !product.NeverOutOfstock && quantity > 0)
 			{
 				productsOutOfStock++;
 			}
-
 			ProductViewModel replacementProduct = product.Discontinued && product.ReplacementProduct != null && !string.IsNullOrEmpty(product.ReplacementProduct.ProductId) ? product.ReplacementProduct.GetProduct() : null;
 			bool showReplacementProduct = product.Discontinued && replacementProduct != null && replacementProduct.Active && (replacementProduct.ProductType != ProductType.Stock || (replacementProduct.StockLevel > 0 || replacementProduct.NeverOutOfstock));
 			string replacementProductFeed = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl("Default.aspx?ID=" + GetPageIdByNavigationTag("ReorderReplacement") + "&ProductId=" + product.Id + "&productCounter=" + productCounter + "&quantity=" + quantity + "&getproductinfo=true");
+			
 			<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center product js-replacement-product @disableOrderline" data-product-counter="@productCounter" data-replacement-feed="@replacementProductFeed">
 
 				<div class="d-none d-lg-block g-col-12 border-top"></div>
@@ -273,7 +245,7 @@
 					<div class="g-col-5 g-col-lg-4 order-3 lh-1">
 						<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover js-product-name">@product.Name</a></span>
 						<span class="fs-8 fs-lg-6 fst-italic fw-bold d-block">
-							<a href="@link" class="text-decoration-none text-decoration-underline-hover js-product-replacements-message" data-product-counter="@productCounter" data-replace-refused-message="@Translate("Replacement Refused")"></a>
+							<a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover js-product-replacements-message" data-product-counter="@productCounter" data-replace-refused-message="@Translate("Replacement Refused")"></a>
 						</span>
 					</div>
 
@@ -309,8 +281,12 @@
 				</div>
 
 				<div class="g-col-2 g-col-lg-2">
-					<label for="Quantity" class="visually-hidden">@Translate("Quantity")</label>
-					<input type="number" step="@DoubleToString(stepQty)" min="@DoubleToString(minQty)" max="@DoubleToString(maxQty)" class="form-control text-center ms-auto swift_quantity-field" value="@DoubleToString(quantity)" name="Quantity@(productCounter)" @disableQuantityField style="max-width: 85px;">
+					@{
+						var quantityParams = new Dictionary<string, object>();
+						quantityParams.Add("LoopCounter", productCounter);
+						quantityParams.Add("Quantity", quantity);
+						@RenderPartial("Components/QuantitySelector.cshtml", product, quantityParams)
+					}
 				</div>
 
 			</article>
@@ -320,7 +296,6 @@
 					<a class="btn btn-sm btn-primary" role="button" data-bs-target="#replacementProductsModal" data-bs-toggle="modal" onclick="swift.ExpressBuy.OpenReplacementModal(@productCounter)" alt="@Translate("View replacement product")">@Translate("Replace")</a>
 				</div>
 			}
-
 		}
 		else
 		{
@@ -332,7 +307,7 @@
 		}
 	}
 
-	<div class="d-flex justify-content-between align-items-baseline py-3 g-col-12 position-sticky bottom-0" style="box-shadow: 0 -10px 10px -12px var(--bs-gray-300);">
+	<div class="d-flex justify-content-between align-items-baseline py-3 g-col-12 position-sticky bottom-0 bg-body" style="box-shadow: 0 -10px 10px -12px var(--bs-gray-300);">
 		@Translate("Total results") @products.Count()
 
 		@if (!hideAddToCart)
@@ -363,5 +338,4 @@
 			</button>
 		}
 	</div>
-
 }

@@ -231,7 +231,9 @@ const ProductList = (function () {
             document.getElementsByTagName("head")[0].appendChild(tag);
           } else {
             let eval2 = eval;
-            eval2(script.innerHTML);
+            if(script.type != "module") {
+              eval2(script.innerHTML);
+            }
           }
         });
 

@@ -4,7 +4,7 @@
 @using System.Globalization
 
 @functions {
-	string DoubleToString(double? value)
+	string? DoubleToString(double? value)
 	{
 		if (value.HasValue)
 		{
@@ -20,7 +20,7 @@
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
 	}
-	else if (Pageview.Page.Item["DummyProduct"] != null && Pageview.IsVisualEditorMode)
+	else if (!string.IsNullOrEmpty(Pageview.Page.Item["DummyProduct"]?.ToString()) && Pageview.IsVisualEditorMode)
 	{
 		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
 		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
@@ -29,6 +29,25 @@
 		{
 			product = productList.Products[0];
 		}
+	} else if (Pageview.IsVisualEditorMode) {
+		product = new ProductViewModel();
+		product.Id = "1";
+		product.VariantId = "394041";
+		product.PurchaseMinimumQuantity = 1;
+		product.PurchaseQuantityStep = 1;
+		product.StockLevel = 10;
+		product.DefaultUnitId = "1";
+		product.ProductType = Dynamicweb.Ecommerce.Products.ProductType.Stock;
+		product.NeverOutOfstock = false;
+		product.Discontinued = false;
+		product.Price = new PriceViewModel() {
+			Price = 99,
+			PriceFormatted = "99 " + Pageview.Area.EcomCurrencyId,
+			PriceWithoutVat = 99,
+			PriceWithoutVatFormatted = "99 " + Pageview.Area.EcomCurrencyId,
+			PriceWithVat = 99,
+			PriceWithVatFormatted = "99 " + Pageview.Area.EcomCurrencyId
+		};
 	}
 
 	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
@@ -87,12 +106,12 @@
 
 	bool userHasPendingQuote = Dynamicweb.Ecommerce.Common.Context.Cart != null && Dynamicweb.Ecommerce.Common.Context.Cart.IsQuote;
 
-	if (product.VariantInfo.VariantInfo == null || whenVariantsExist == "disable")
+	if (product.VariantInfo?.VariantInfo == null || whenVariantsExist == "disable")
 	{
 		string unitId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("UnitId")) ? Dynamicweb.Context.Current.Request.Form.Get("UnitId") : product.DefaultUnitId;
 		if (string.IsNullOrEmpty(unitId) && product?.UnitOptions != null)
 		{
-			if (product.UnitOptions.FirstOrDefault<UnitOptionViewModel>() != null)
+			if (product.UnitOptions?.FirstOrDefault<UnitOptionViewModel>() != null)
 			{
 				unitId = product.UnitOptions.FirstOrDefault<UnitOptionViewModel>().Id;
 			}
@@ -101,8 +120,13 @@
 		double? stepQty = product.PurchaseQuantityStep > 0 ? product.PurchaseQuantityStep : 1;
 		double? minQty = product.PurchaseMinimumQuantity > 0 ? product.PurchaseMinimumQuantity : 1;
 		double? valueQty = minQty > stepQty ? minQty : stepQty;
-		string disableAddToCart = null;
+		string? disableAddToCart = null;
 		double? maxQty = null;
+
+		if (Dynamicweb.Context.Current.Items.Contains("ProductQuantity"))
+		{
+			valueQty = Convert.ToDouble(Dynamicweb.Context.Current.Items["ProductQuantity"].ToString());
+		}
 		
 		if (product.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock && !product.NeverOutOfstock)
 		{
@@ -110,11 +134,12 @@
 			maxQty = product.StockLevel;
 		}
 
-		disableAddToCart = whenVariantsExist == "disable" && product.VariantInfo.VariantInfo != null && string.IsNullOrEmpty(product.VariantId) ? "disabled" : disableAddToCart;
+		disableAddToCart = whenVariantsExist == "disable" && product.VariantInfo?.VariantInfo != null && string.IsNullOrEmpty(product.VariantId) ? "disabled" : disableAddToCart;
+		disableAddToCart = product.Discontinued ? "disabled" : disableAddToCart;
 
-		if (unitsSelector && product.UnitOptions.Count > 0)
+		if (unitsSelector && product.UnitOptions?.Count > 0)
 		{
-			<form method="post" action="/Default.aspx?ID=@(Pageview.Page.ID)&ProductId=@product.Id" id="UnitSelectorForm_@(product.Id)_@(product.VariantId.Replace(".", "_"))_@Model.ID">
+			<form method="post" action="/Default.aspx?ID=@(Pageview.Page.ID)&ProductId=@product.Id" id="UnitSelectorForm_@(product.Id)_@(product.VariantId?.Replace(".", "_"))_@Model.ID">
 				<input type="hidden" name="redirect" value="false">
 				<input type="hidden" name="VariantID" value="@product.VariantId">
 				<input type="hidden" name="UnitID" class="js-unit-id" value="@unitId">
@@ -154,7 +179,6 @@
 					</div>
 				</template>
 
-
 				<template class="js-min-quantity-warning">
 					<div class="modal-header">
 						<h1 class="modal-title fs-5">@Translate("The product could not be added to the cart")</h1>
@@ -175,7 +199,6 @@
 					</div>
 				</template>
 
-
 				@if (userHasPendingQuote)
 				{
 					<input type="hidden" name="PendingQuote" value="true">
@@ -191,18 +214,18 @@
 					</template>
 				}
 
-				@if (quantitySelector || (!anonymousUser && product.VariantInfo.VariantInfo != null) || (!anonymousUser && favoritesSelector))
+				@if (quantitySelector || (!anonymousUser && product.VariantInfo?.VariantInfo != null) || (!anonymousUser && favoritesSelector))
 				{
-					<input type="hidden" id="Unit_@(product.Id)_@product.VariantId.Replace(".", "_")" name="UnitID" value="@unitId" />
+					<input type="hidden" id="Unit_@(product.Id)_@product.VariantId?.Replace(".", "_")" name="UnitID" value="@unitId" />
 				}
 
 				<div class="d-flex flex-row w-100">
 					@if (!quantitySelector)
 					{
-						<input id="Quantity_@(product.Id)_@product.VariantId.Replace(".", "_")" class="swift_quantity_field" name="Quantity" value="@valueQty" type="hidden" @disableAddToCart>
+						<input id="Quantity_@(product.Id)_@product.VariantId?.Replace(".", "_")" class="swift_quantity_field" name="Quantity" value="@valueQty" type="hidden" @disableAddToCart>
 					}
 
-					@if (unitsSelector && product.UnitOptions.Count > 0)
+					@if (unitsSelector && product.UnitOptions?.Count > 0)
 					{
 						string selectedUnitName = !string.IsNullOrEmpty(unitId) && product?.UnitOptions != null ? unitId : product.UnitOptions.FirstOrDefault<UnitOptionViewModel>().Name;
 
@@ -219,7 +242,7 @@
 
 								@if (quantitySelector)
 								{
-									<input id="Quantity_@(product.Id)_@product.VariantId.Replace(".", "_")" name="Quantity" value="@DoubleToString(valueQty)" step="@DoubleToString(stepQty)" min="@DoubleToString(minQty)" max="@DoubleToString(maxQty)" class="form-control swift_quantity-field" style="min-width: 60px; max-width: 100px; z-index: 1" type="number" @disableAddToCart>
+									@RenderPartial("Components/QuantitySelector.cshtml", product)
 								}
 
 								<button class="btn btn-secondary @flexFill dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -233,8 +256,8 @@
 
 										<li>
 											<button type="button" class="btn dropdown-item" data-value="@unitOption.Id" onclick="document.querySelector('#UnitSelectorForm_@(product.Id)_@(product.VariantId.Replace(".", "_"))_@Model.ID').querySelector('.js-unit-id').value = this.getAttribute('data-value');
-																										document.querySelector('#Unit_@(product.Id)_@product.VariantId.Replace(".", "_")').value = this.getAttribute('data-value');
-																										swift.PageUpdater.Update(document.querySelector('#UnitSelectorForm_@(product.Id)_@(product.VariantId.Replace(".", "_"))_@Model.ID'))">
+																										document.querySelector('#Unit_@(product.Id)_@product.VariantId?.Replace(".", "_")').value = this.getAttribute('data-value');
+																										swift.PageUpdater.Update(document.querySelector('#UnitSelectorForm_@(product.Id)_@(product.VariantId?.Replace(".", "_"))_@Model.ID'))">
 												<span>@unitOption.Name</span>
 												<span>
 													@if (unitOption.StockLevel > 0 || unitOption.NeverOutOfStock)
@@ -277,7 +300,7 @@
 						<div class="input-group input-primary-button-group flex-nowrap@(inputSize)">
 							@if (quantitySelector)
 							{
-								<input id="Quantity_@(product.Id)_@product.VariantId.Replace(".", "_")" name="Quantity" value="@DoubleToString(valueQty)" step="@DoubleToString(stepQty)" min="@DoubleToString(minQty)" max="@DoubleToString(maxQty)" class="form-control swift_quantity-field" style="min-width: 60px; max-width: 100px; z-index: 1" type="number" @disableAddToCart>
+								@RenderPartial("Components/QuantitySelector.cshtml", product)
 							}
 
 							<button type="button" onclick="swift.Cart.Update(event)" class="btn btn-primary @(buttonSize) @flexFill js-add-to-cart-button" style="white-space: nowrap" @disableAddToCart title="@Translate("Add to cart")" id="AddToCartButton@(product.Id)_@Pageview.CurrentParagraph.ID">
@@ -333,8 +356,4 @@
 			</form>
 		</div>
 	}
-}
-else if (Pageview.IsVisualEditorMode)
-{
-	<div class="alert alert-dark m-0">@Translate("No products available")</div>
 }
