@@ -41,7 +41,6 @@ export default [
           { src: "node_modules/htmx.org/dist/", dest: distPath + "lib/" },
           { src: "node_modules/bootstrap/dist/", dest: distPath + "lib/" },
           { src: "node_modules/aos/dist/", dest: distPath + "lib/" },
-          { src: "node_modules/plyr/dist/", dest: distPath + "lib/" },
           { src: "node_modules/flatpickr/dist/", dest: distPath + "lib/" },
           { src: srcPath + "js/test.js", dest: distPath },
         ],

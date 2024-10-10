@@ -1,20 +1,21 @@
 class VideoPlayer extends HTMLElement {
   internals;
-  
+
   constructor() {
     super();
     this.internals = this.attachInternals();
   }
   
-  connectedCallback() { 
-        
+  connectedCallback() {
+
     const observer = new MutationObserver(() => {
       observer.disconnect();
       this.video = this.querySelector("[swift-video]");
       this.playBtn = this.querySelector("[swift-video-play-btn]");
-  
-      this.video.onloadeddata = () => this.playBtn.style.visibility = "visible";
-      this.playBtn.addEventListener("click", () => this.playing = !this.playing );
+      if (this.playBtn && this.video) {
+        this.video.onloadeddata = () => this.playBtn.style.visibility = "visible";
+        this.playBtn.addEventListener("click", () => this.playing = !this.playing);
+      }
     });
 
     observer.observe(this, { childList: true, subtree: true });
