@@ -7,6 +7,7 @@ const Cart = (function () {
   let productCurrency;
   let productReferer;
   let productPrice;
+  let productDiscount;
   let addQuantity;
   let isPendingQuote = "false";
 
@@ -25,8 +26,11 @@ const Cart = (function () {
       productCurrency = formData.get("ProductCurrency");
       productReferer = formData.get("ProductReferer");
       productPrice = formData.get("ProductPrice");
+      productDiscount = formData.get("ProductDiscount");
       addQuantity = formData.get("Quantity") ? formData.get("Quantity") : 1;
       isPendingQuote = formData.get("PendingQuote") ? formData.get("PendingQuote") : "false";
+      productPrice = productPrice !== null && productPrice !== "" ? parseFloat(productPrice) : productPrice;
+      productDiscount = productDiscount !== null && productDiscount !== "" ? parseFloat(productDiscount) : productDiscount;
 
       //Support for BOM configurator
       var productBomContainer = document.querySelector(".js-product-bom-configurator");
@@ -208,6 +212,7 @@ const Cart = (function () {
               currency: productCurrency,
               item_list_id: productReferer,
               price: productPrice,
+              discount: productDiscount,
               quantity: addQuantity,
             },
           ],
