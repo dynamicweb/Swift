@@ -3,7 +3,7 @@ const Video = (function () {
     init() {
       document
         .querySelectorAll(".js-vimeo-video-thumbnail")
-        .forEach(function (thumbnailElement) {
+        .forEach((thumbnailElement) => {
           const assetValue = thumbnailElement.dataset.assetValue;
           this.setVimeoThumbnail(thumbnailElement, assetValue);
         });
