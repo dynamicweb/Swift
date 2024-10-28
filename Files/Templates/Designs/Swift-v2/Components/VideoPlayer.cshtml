@@ -1,126 +1,24 @@
-@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.FileViewModel>
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.VideoViewModel>
 @using System.IO;
-@using System.Text.RegularExpressions;
+@using Dynamicweb.Frontend
 
-@functions {
-
-	string GetVideoId(string type)
-	{
-		switch (type)
-		{
-			case "youtube":
-				var regex = new Regex(@"(?:youtube\.com\/.*[\?&]v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)(?:\?.*)?");
-				Match match = regex.Match(Model.Path);
-				string videoId = match.Success ? match.Groups[1].Value : string.Empty;
-				return videoId;
-			case "vimeo":
-				string vimeoLink = Model.Path.Substring(Model.Path.LastIndexOf('/') + 1);
-				return vimeoLink;
-			case "selfhosted":
-				string selfHostedPath = Model.Path;
-				return selfHostedPath;
-			case "notsupported":
-			default:
-				return "Video format not supported";
-		}
-	}
-
-	string GetVideoLink(string type, string videoId)
-	{
-		switch (type)
-		{
-			case "youtube":
-				return $"https://www.youtube.com/embed/{videoId}?origin=https://plyr.io&amp;iv_load_policy=3&amp;modestbranding=1&amp;playsinline=1&amp;showinfo=0&amp;rel=0&amp;enablejsapi=1";
-			case "vimeo":
-				return $"https://vimeo.com/{videoId}";
-			case "selfhosted":
-				return videoId;
-			case "notsupported":
-				return "Video format not supported";
-			default:
-				return string.Empty;
-		}
-	}
+@if(!string.IsNullOrEmpty(Model.Path)) {		
+	<swift-video-player itemscope itemtype="https://schema.org/VideoObject">
+		<figure class="m-0 ratio ratio-16x9">
+			<span class="visually-hidden" itemprop="name">@Model.Name</span>
+			<span class="visually-hidden" itemprop="contentUrl">@Model.Path</span>
+			<span class="visually-hidden" itemprop="thumbnailUrl">@Model.Thumbnail</span>
+			@if (Model.IsExternalLink())
+			{
+				<iframe src="@Model.ToEmbedUrl()" title="@Model.Name" frameborder="0" allow="fullscreen; picture-in-picture; autoplay; clipboard-write; encrypted-media; web-share"></iframe>
+			}
+			else
+			{
+				<video preload="auto" swift-video poster="@Model.Thumbnail">
+					<source src="@Model.Path" type="@Model.GetVideoType()">
+				</video>
+				<button type="button" swift-video-play-btn></button>
+			}
+		</figure>
+	</swift-video-player>
 }
-
-@if (!string.IsNullOrEmpty(Model.Path))
-{
-	string assetName = !string.IsNullOrEmpty(GetViewParameterString("AssetDisplayName")) ? GetViewParameterString("AssetDisplayName") : GetViewParameterString("AssetName");
-	string size = GetViewParameterString("Size");
-	bool autoPlay = GetViewParameterBoolean("VideoAutoPlay");
-	bool openInModal = GetViewParameterBoolean("OpenVideoInModal");
-	string id = GetViewParameterString("Id");
-
-	string type = GetViewParameterString("AssetVideoType").ToLower();
-	string videoId = GetVideoId(type);
-	string link = GetVideoLink(type, videoId);
-
-	<div class="h-100" itemscope itemtype="https://schema.org/VideoObject">
-		<span class="visually-hidden" itemprop="name">@assetName</span>
-		<span class="visually-hidden" itemprop="contentUrl">@link</span>
-		<span class="visually-hidden" itemprop="thumbnailUrl">@link</span>
-
-		@if (type != "selfhosted")
-		{
-			<div id="player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size"
-				 class="plyr__video-embed"
-				 data-plyr-provider="@type"
-				 data-plyr-embed-id="@videoId"
-				 style="--plyr-color-main: var(--swift-foreground-color); height: 100%">
-			</div>
-
-			<script type="module" src="/Files/Templates/Designs/Swift-v2/Assets/js/plyr.js"></script>
-
-			<script type="module">
-					var player = new Plyr('#player_@(Pageview.CurrentParagraph.ID)_@(videoId)_@size', {
-						type: 'video',
-						youtube: {
-							noCookie: true,
-							showinfo: 0
-						},
-						fullscreen: {
-							enabled: true,
-							iosNative: true,
-						}
-					});
-
-					@if (autoPlay && !openInModal)
-					{
-						<text>
-						player.config.autoplay = true;
-						player.config.muted = true;
-						player.config.volume = 0;
-						player.media.loop = true;
-
-						player.on('ready', function() {
-							if (player.config.autoplay === true) {
-								player.media.play();
-							}
-						});
-						</text>
-					}
-
-					@if (openInModal)
-					{
-						<text>
-							var productDetailsGalleryModal = document.querySelector('#modal_@id')
-
-							productDetailsGalleryModal.addEventListener('hidden.bs.modal', function (event) {
-							player.media.pause();
-						})
-						</text>
-					}
-			</script>
-		}
-		else
-		{
-			string autoPlayAttributes = (autoPlay && !openInModal) ? "loop autoplay muted playsinline" : "";
-			string videoType = Path.GetExtension(link).ToLower();
-			string videoPathEncoded = System.Uri.EscapeUriString(link);
-			<video preload="auto" @autoPlayAttributes class="h-100 w-100" style="object-fit: cover;" controls>
-				<source src="@(videoPathEncoded)#t=0.001" type="video/@videoType.Replace(".", "")">
-			</video>
-		}
-	</div>
-}
-
