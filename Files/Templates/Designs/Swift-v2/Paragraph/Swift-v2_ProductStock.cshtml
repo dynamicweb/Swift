@@ -24,7 +24,7 @@
 	}
 
 	bool isErpConnectionDown = !Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsWebServiceConnectionAvailable"]);
-	bool hideStock = Model.Item.GetBoolean("HideStockState") || (Pageview.AreaSettings.GetBoolean("ErpDownHideStock") && isErpConnectionDown);
+	bool hideStock = Model.Item.GetBoolean("HideStockState");
 }
 
 @if (product is object && product.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock && !hideStock)
@@ -36,87 +36,43 @@
 	bool hasExpectedDelivery = product.ExpectedDelivery != null && product.ExpectedDelivery > DateTime.Now;
 	string expectedDeliveryDate = product.ExpectedDelivery?.ToShortDateString() ?? "";
 
-	string liveInfoClass = "";
-	string productInfoFeed = "";
-	bool isLazyLoadingForProductInfoEnabled = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current.Items["IsLazyLoadingForProductInfoEnabled"]);
-	if (isLazyLoadingForProductInfoEnabled)
-	{
-		if (Dynamicweb.Context.Current.Items.Contains("ProductInfoFeed"))
-		{
-			productInfoFeed = Dynamicweb.Context.Current.Items["ProductInfoFeed"]?.ToString();
-			if (!string.IsNullOrEmpty(productInfoFeed))
-			{
-				productInfoFeed = $"data-product-info-feed=\"{productInfoFeed}\"";
-			}
-		}
-		liveInfoClass = "js-live-info";
-	}
-
 	if (!product.NeverOutOfstock)
 	{
 		string deliveryLabel = !string.IsNullOrEmpty(product.StockDeliveryText) ? $"{product.StockDeliveryText}" : "";
 		deliveryLabel += !string.IsNullOrEmpty(product.StockDeliveryValue) ? $" {product.StockDeliveryValue}" : "";
 
-		if (isLazyLoadingForProductInfoEnabled)
-		{
-			string inStockStateLabel = !string.IsNullOrEmpty(product.StockStatus) ? product.StockStatus : Translate("In stock");
-			string noStockStateLabel = !string.IsNullOrEmpty(product.StockStatus) ? product.StockStatus : Translate("Out of Stock");
+		string firstUnitId = product?.UnitOptions?.FirstOrDefault() != null ? product.UnitOptions.FirstOrDefault().Id : "";
+		string defaultUnitId = !string.IsNullOrEmpty(product.DefaultUnitId) ? product.DefaultUnitId : firstUnitId;
+		string unitId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("UnitId")) ? Dynamicweb.Context.Current.Request.Form.Get("UnitId") : defaultUnitId;
 
-			<div class="js-stock-state @horizontalAlign item_@Model.Item.SystemName.ToLower() @liveInfoClass" data-product-id="@product.Id" data-variant-id="@product.VariantId" @productInfoFeed>
-				<div class="js-stock-state spinner-border">
-					<div class="small d-none" data-show-if="LiveProductInfo.product.StockLevel > 0">
-						@if (!Model.Item.GetBoolean("HideInventory"))
-						{
-							<span class="text-success js-text-stock"></span>
-						}
-						<span class="text-success">@inStockStateLabel</span>
-						<span class="opacity-75">@deliveryLabel</span>
-					</div>
+		double? currentStockLevel = product.StockLevel;
 
-					<div class="small text-danger d-none" data-show-if="LiveProductInfo.product.StockLevel <= 0">@noStockStateLabel</div>
+		string stockStateLabel = currentStockLevel > 0 ? Translate("In stock") : Translate("Out of stock");
+		stockStateLabel = !string.IsNullOrEmpty(product.StockStatus) ? product.StockStatus : stockStateLabel;
 
-					<div class="d-none" data-show-if="LiveProductInfo.product.ExpectedDelivery != null && new Date(LiveProductInfo.product.ExpectedDelivery) > new Date()">
-						<span>@Translate("Expected back in stock"): </span>
-						<span class="js-text-expected-delivery"></span>
-					</div>
-				</div>
-			</div>
-		}
-		else
-		{
-			string firstUnitId = product?.UnitOptions?.FirstOrDefault() != null ? product.UnitOptions.FirstOrDefault().Id : "";
-			string defaultUnitId = !string.IsNullOrEmpty(product.DefaultUnitId) ? product.DefaultUnitId : firstUnitId;
-			string unitId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.Form.Get("UnitId")) ? Dynamicweb.Context.Current.Request.Form.Get("UnitId") : defaultUnitId;
+		string stockStateCss = currentStockLevel > 0 ? "text-success" : "text-danger";
+		string stockStateIconCss = currentStockLevel > 0 ? "bg-success" : "bg-danger";
 
-			double? currentStockLevel = product.StockLevel;
-
-			string stockStateLabel = currentStockLevel > 0 ? Translate("In stock") : Translate("Out of stock");
-			stockStateLabel = !string.IsNullOrEmpty(product.StockStatus) ? product.StockStatus : stockStateLabel;
-
-			string stockStateCss = currentStockLevel > 0 ? "text-success" : "text-danger";
-			string stockStateIconCss = currentStockLevel > 0 ? "bg-success" : "bg-danger";
-
-			<div class="js-stock-state @horizontalAlign item_@Model.Item.SystemName.ToLower()">
-				<div class="small">
-					@if (!Model.Item.GetBoolean("HideInventory") && currentStockLevel > 0)
-					{
-						<span class="@stockStateCss js-text-stock">@currentStockLevel</span> 
-					}
-					<span class="@stockStateCss">@stockStateLabel</span>
-					@if (!string.IsNullOrEmpty(deliveryLabel))
-					{
-						<span class="opacity-75">@deliveryLabel</span>
-					}
-				</div>
-
-				@if (hasExpectedDelivery)
+		<div class="js-stock-state @horizontalAlign item_@Model.Item.SystemName.ToLower()">
+			<div class="small">
+				@if (!Model.Item.GetBoolean("HideInventory") && currentStockLevel > 0)
 				{
-					<div>
-						<span>@Translate("Expected in stock"): </span>
-						<span>@expectedDeliveryDate</span>
-					</div>
+					<span class="@stockStateCss js-text-stock">@currentStockLevel</span> 
+				}
+				<span class="@stockStateCss">@stockStateLabel</span>
+				@if (!string.IsNullOrEmpty(deliveryLabel))
+				{
+					<span class="opacity-75">@deliveryLabel</span>
 				}
 			</div>
-		}
+
+			@if (hasExpectedDelivery)
+			{
+				<div>
+					<span>@Translate("Expected in stock"): </span>
+					<span>@expectedDeliveryDate</span>
+				</div>
+			}
+		</div>
 	}
 }

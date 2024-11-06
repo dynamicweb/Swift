@@ -16,7 +16,6 @@ import { Video } from "./_video";
 import { Image } from "./_image";
 import { Typeahead } from "./_typeahead";
 import { AssetLoader } from "./_assetLoader";
-import { LiveProductInfo } from "./_live-product-info";
 import { BackInStockNotification } from "./_backInStockNotification";
 import { ExpressBuy } from "./_expressBuy";
 import { Menu } from "./_menu";
@@ -38,7 +37,6 @@ const swift = (function () {
     Video: Video,
     Image: Image,
     AssetLoader: AssetLoader,
-    LiveProductInfo: LiveProductInfo,
     BackInStockNotification: BackInStockNotification,
     ExpressBuy: ExpressBuy,
     Menu: Menu,
