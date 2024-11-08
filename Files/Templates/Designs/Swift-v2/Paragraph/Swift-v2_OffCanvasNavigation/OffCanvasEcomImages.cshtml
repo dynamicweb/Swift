@@ -1,0 +1,120 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Frontend.Navigation
+@using System.IO
+
+@{ 
+	string offcanvasDirection = Model.Item.GetRawValueString("OffCanvasDirection", "start");
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "start");
+	string title = Model.Item.GetString("Title", string.Empty);
+}
+
+<div class="nav-wrapper d-flex justify-content-@(horizontalAlign)">
+
+	<button class="btn lh-1 p-2 text-reset" type="button" data-dw-button data-bs-toggle="offcanvas" data-bs-target="#offcanvas_@Model.ID" aria-controls="offcanvas_@Model.ID" aria-label="@Translate("Navigation open button")">
+		<span class="d-flex gap-2 align-items-center">			
+			@{
+				if (Model.Item.TryGetString("Icon", out string icon))
+				{
+					if (icon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+					{
+						<span class="icon-3 pe-none">
+							@ReadFile(icon)
+						</span>
+					}
+					else
+					{
+						<span class="mx-auto d-block pe-none" width="24" height="24">
+							<img loading="lazy" decoding="async" src="/Admin/Public/GetImage.ashx?width=24&height=24&image=@(icon)&format=webp" alt="@title">
+						</span>
+					}
+				}
+				else
+				{
+					<span class="text-nowrap">@title</span>
+				}
+			}			
+		</span>
+	</button>
+
+	<aside class="offcanvas offcanvas-@offcanvasDirection" tabindex="-1" id="offcanvas_@Model.ID" aria-label="@title" data-dw-colorscheme="@Model.ColorScheme?.Id">
+		
+		<div class="offcanvas-header py-1 px-0 position-relative justify-content-between">
+
+			<button type="button" class="btn lh-1 p-2 text-reset" data-dw-button data-bs-dismiss="offcanvas" aria-label="@Translate("Navigation close button")">
+				<span class="icon-3 pe-none">
+					@ReadFile("/Files/Images/Icons/xmark.svg")
+				</span>
+			</button>
+
+			@* utilityNavigation *@
+			@if (Model.Item.TryGetLink("UtilityNavigationRoot", out var utilityNavigationRoot))
+			{
+				var utilityNavigationSettings = new NavigationSettings();
+				utilityNavigationSettings.StartLevel = 1;
+				utilityNavigationSettings.StopLevel = 10;
+				utilityNavigationSettings.ExpandMode = ExpandMode.All;
+				utilityNavigationSettings.RootPageId = utilityNavigationRoot.PageId;
+				@Navigation.RenderNavigation("Navigation/OffCanvasUtilityNavigation.cshtml", utilityNavigationSettings)
+			}
+		</div>
+
+		<div class="offcanvas-body p-0 position-relative overflow-hidden">
+
+			<div class="offcanvas-navigation text-uppercase h-100 d-none overflow-y-auto overflow-x-hidden" role="navigation">
+				
+				@* mainNavigation *@
+				@{
+					var mainNavigationSettings = new NavigationSettings();
+					if (Model.Item.TryGetLink("MainNavigationRoot", out var mainNavigationRoot))
+					{
+						mainNavigationSettings.RootPageId = mainNavigationRoot.PageId;
+						mainNavigationSettings.StartLevel = 2;
+					}
+					else 
+					{
+						mainNavigationSettings.StartLevel = 1;
+					}
+					mainNavigationSettings.StopLevel = 10;
+					mainNavigationSettings.ExpandMode = ExpandMode.All;
+					mainNavigationSettings.Parameters.Add("NavType", "main-nav");
+					mainNavigationSettings.Parameters.Add("ShowProductGroupImage", true);
+					mainNavigationSettings.Parameters.Add("ShowProductGroupPromotionImage", true);
+					@Navigation.RenderNavigation("Navigation/OffCanvasNavigation.cshtml", mainNavigationSettings)
+				}
+				
+				@* secondaryNavigation *@
+				@if (Model.Item.TryGetLink("SecondaryNavigationRoot", out var secondaryNavigationRoot)) {	
+					var secondaryNavigationSettings = new NavigationSettings();
+					secondaryNavigationSettings.StartLevel = 1;
+					secondaryNavigationSettings.StopLevel = 10;
+					secondaryNavigationSettings.ExpandMode = ExpandMode.All;
+					secondaryNavigationSettings.Parameters.Add("NavType", "secondary-nav");
+					secondaryNavigationSettings.Parameters.Add("ShowProductGroupImage", true);
+					secondaryNavigationSettings.Parameters.Add("ShowProductGroupPromotionImage", true);
+					secondaryNavigationSettings.RootPageId = secondaryNavigationRoot.PageId;
+					@Navigation.RenderNavigation("Navigation/OffCanvasNavigation.cshtml", secondaryNavigationSettings)
+				}
+
+				@if (Pageview.User != null)
+				{
+					<hr class="m-0">
+					
+					if (Dynamicweb.Security.UserManagement.UserContext.Current.ImpersonatingUser != null)
+					{
+						<div class="nav h-auto w-100 left-0 top-0">
+							<div class="nav-item d-flex align-items-center w-100 py-1">
+								<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="nav-link flex-fill position-relative swift_sign-out-as-customer-link">@Translate("Sign out as a customer")</a>
+							</div>
+						</div>
+					}
+					<div class="nav h-auto w-100 left-0 top-0">
+						<div class="nav-item d-flex align-items-center w-100 py-1">
+							<a href="/Admin/Public/ExtranetLogoff.aspx?redirect=no" class="nav-link flex-fill position-relative swift_sign-out-link">@Translate("Sign out")</a>
+						</div>
+					</div>
+				}
+			</div>	
+		</div>
+	</aside>
+</div>
