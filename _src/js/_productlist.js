@@ -1,4 +1,3 @@
-import { Scroll } from "./_scroll.js";
 const bootstrap = window.bootstrap;
 
 const ProductList = (function () {
@@ -217,9 +216,6 @@ const ProductList = (function () {
             script.remove();
           });
         }
-
-        Scroll.hideHeadersOnScroll();
-        Scroll.handleAlternativeTheme();
 
         //Run scripts from the loaded html
         scripts = responseTargetElement.querySelectorAll("script");
