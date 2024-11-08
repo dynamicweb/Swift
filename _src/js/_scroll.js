@@ -1,68 +1,6 @@
 const Scroll = (function () {
-  let observer;
-
+  
   return {
-    handleAlternativeTheme() {
-      var themeChangers = document.querySelectorAll(
-        "header[id] [data-alternative-theme]"
-      );
-
-      if (typeof themeChangers != "undefined" && themeChangers != null) {
-        document.addEventListener(
-          "scroll",
-          function () {
-            themeChangers.forEach(function (element) {
-              var currentTheme = element.getAttribute("class");
-              var mainTheme = element.getAttribute("data-main-theme");
-              var alternativeTheme = element.getAttribute(
-                "data-alternative-theme"
-              );
-
-              var headerElement = element.closest("header");
-              var headerHeight = headerElement ? headerElement.clientHeight : 0;
-
-              let alternativeThemeClasses = alternativeTheme.split(" ");
-
-              if (
-                document.body.scrollTop > headerHeight ||
-                document.documentElement.scrollTop > headerHeight
-              ) {
-                if (currentTheme !== mainTheme) {
-                  for (let i = 0; i < alternativeThemeClasses.length; i++) {
-                    if (alternativeThemeClasses[i] != "") {
-                      element.classList.remove(alternativeThemeClasses[i]);
-                    }
-                  }
-
-                  let mainThemeClasses = mainTheme.split(" ");
-                  for (let i = 0; i < mainThemeClasses.length; i++) {
-                    if (mainThemeClasses[i] != "") {
-                      element.classList.add(mainThemeClasses[i]);
-                    }
-                  }
-                }
-              } else {
-                if (currentTheme !== alternativeTheme) {
-                  let mainThemeClasses = mainTheme.split(" ");
-                  for (let i = 0; i < mainThemeClasses.length; i++) {
-                    if (mainThemeClasses[i] != "") {
-                      element.classList.remove(mainThemeClasses[i]);
-                    }
-                  }
-
-                  for (let i = 0; i < alternativeThemeClasses.length; i++) {
-                    if (alternativeThemeClasses[i] != "") {
-                      element.classList.add(alternativeThemeClasses[i]);
-                    }
-                  }
-                }
-              }
-            });
-          },
-          { passive: true }
-        );
-      }
-    },
 
     setContentPosition() {
       var headerHeight = 100;
@@ -75,33 +13,6 @@ const Scroll = (function () {
         "--header-height",
         headerHeight + "px"
       );
-    },
-
-    hideHeadersOnScroll() {
-      const intersectElement = document.querySelector("[data-intersect]");
-
-      if (typeof intersectElement != "undefined" && intersectElement != null) {
-        const options = {
-          root: null,
-          threshold: 1,
-          rootMargin: "20%",
-        };
-        const callback = (entries) => {
-          if (!entries[0].isIntersecting) {
-            document.body.setAttribute("data-intersected", true);
-          } else {
-            document.body.setAttribute("data-intersected", false);
-          }
-        };
-
-        observer = new IntersectionObserver(callback, options);
-
-        observer.observe(intersectElement);
-      }
-    },
-
-    stopIntersectionObserver() {
-      observer.disconnect();
     },
   };
 })();
