@@ -20,21 +20,18 @@
 
 	string GetGroupFieldValue(string fieldSystemName, NavigationTreeNodeViewModel node)
 	{
-		ProductGroupViewModel productGroup = node.GetProductGroup();
+		var productGroup = node.GetProductGroup();
 		string fieldValue = string.Empty;
-		IList<FieldValueViewModel> groupFields = productGroup.GroupFields != null ? productGroup.GroupFields : null;
-		if (groupFields != null)
+		if (productGroup.GroupFields is not null)
 		{
-			foreach (FieldValueViewModel field in groupFields)
+			foreach (var field in productGroup.GroupFields)
 			{
-
 				if (field.SystemName == fieldSystemName)
 				{
-					fieldValue = field != null ? field.Value.ToString() : string.Empty;
+					fieldValue = field.Value?.ToString() ?? string.Empty;
 				}
 			}
 		}
-
 		return fieldValue;
 	}
 
@@ -55,13 +52,12 @@
 		return !string.IsNullOrEmpty(pageLink) ? Convert.ToInt32(pageLink.Substring(pageLink.LastIndexOf('=') + 1)) : 0;
 
 	}
-
 	string GetSubmenuType(NavigationTreeNodeViewModel rootNode)
 	{
 		string submenuType = string.Empty;
-		var page = Dynamicweb.Content.Services.Pages.GetPage(rootNode.PageId);
-		var pageType = !string.IsNullOrEmpty(page.ItemType) ? page.ItemType : "Swift-v2_Page";
-		if (page.PropertyItem is object && page.PropertyItem.TryGetValue("SubmenuType", out object submenuTypeValue))
+		var nodePage = Dynamicweb.Content.Services.Pages.GetPage(rootNode.PageId);
+		var pageType = !string.IsNullOrEmpty(nodePage.ItemType) ? nodePage.ItemType : "Swift-v2_Page";
+		if (nodePage.PropertyItem is object && nodePage.PropertyItem.TryGetValue("SubmenuType", out object submenuTypeValue))
 		{
 			submenuType = Dynamicweb.Core.Converter.ToString(submenuTypeValue);
 		}
@@ -105,49 +101,36 @@
 
 		return relatedContentIsNested;
 	}
-
 }
 
 @{
 	// Page settings
-	int navigationRootPageId = !string.IsNullOrEmpty(Model.Item.GetString("NavigationRoot")) ? Model.Item.GetLink("NavigationRoot").PageId : 0;
+	int navigationRootPageId = 0;
+	if (Model.Item.TryGetLink("NavigationRoot", out var link))
+	{
+		navigationRootPageId = link.PageId;
+	}
 	var rootNavigation = GetNavigationTreeFromPageId(navigationRootPageId);
-	int maxEndNodes = Model.Item.GetInt32("MaxEndNodes");
+	int maxEndNodes = 100;
+	if (Model.Item.TryGetString("MaxEndNodes", out var maxEndNodesValue))
+	{
+		maxEndNodes = Dynamicweb.Core.Converter.ToInt32(maxEndNodesValue);
+	}
 	string maxEndNodesText = Model.Item.GetString("ShowAllLinkLabel");
-
-	//CSS Settings
-	string spacing = Model.Item.GetRawValueString("Spacing", "compact");
-	string headerSpacing = spacing == "wide" ? "mb-2" : "mb-1";
-	string itemSpacing = spacing == "normal" ? "pb-2" : spacing == "wide" ? "pb-3" : "pb-1";
-
-	string headerAlignment = Model.Item.GetRawValueString("HeaderAlignment", "start");
-	headerAlignment = $"justify-content-{headerAlignment} text-{headerAlignment}";
-
-	string textAlignment = Model.Item.GetRawValueString("TextAlignment", "start");
-	textAlignment = $"text-{textAlignment}";
-
-	string headerLinkAnimation = Model.Item.GetRawValueString("HeaderLinkAnimation", "left");
-	headerLinkAnimation = headerLinkAnimation == "none" ? "text-decoration-underline-hover" : $"hover-underline-animation-{headerLinkAnimation}";
-
-	string menuAlignment = Model.Item.GetRawValueString("MenuAlignment", "start");
-	menuAlignment = $"justify-content-{menuAlignment}";
-
 	string clickable = "text-decoration-underline-hover text-decoration-accent-hover";
-
 }
 
-<div class="nav-wrapper megamenu-wrapper item_@Model.Item.SystemName.ToLower()" id="Menu_@Model.ID">
-	<nav class="d-flex gap-2 @headerAlignment">
+<div class="nav-wrapper megamenu-wrapper" id="Menu_@Model.ID">
+	<nav class="d-flex gap-2">
 		@foreach (var rootNode in rootNavigation.Nodes.Where(node => node.ShowInMenu))
 		{
-			string relatedContentNavigationRoot = GetGroupFieldValue("ProductGroupRelatedContent", rootNode);
+			string? relatedContentNavigationRoot = GetGroupFieldValue("ProductGroupRelatedContent", rootNode);
 			int relatedContentPageId = !string.IsNullOrEmpty(relatedContentNavigationRoot) ? GetPageIdFromLink(relatedContentNavigationRoot) : 0;
 			var relatedContentNodes = GetNavigationTreeFromPageId(relatedContentPageId, true).Nodes;
 			bool hasRelatedContent = relatedContentNodes.Any() && relatedContentPageId != 0;
 			bool relatedContentIsNested = hasRelatedContent ? GetRelatedContentStructure(relatedContentNodes) : false;
 			bool nodesExist = rootNode.Nodes.Any() || hasRelatedContent;
-			string relatedContentGap = spacing == "wide" ? "gap-4" : "gap-3";
-			relatedContentGap = relatedContentIsNested ? relatedContentGap : string.Empty;
+			
 			string submenuType = GetSubmenuType(rootNode);
 			bool isMegaMenu = IsMegaMenu(rootNode, submenuType);
 			string submenuTypeCss = isMegaMenu ? "position-static" : string.Empty;
@@ -157,14 +140,13 @@
 			<div class="nav-item @dropdown @submenuTypeCss">
 				@if (rootNode.IsClickable)
 				{
-
-					<a class="nav-link p-2 fw-bold text-uppercase @headerLinkAnimation" href="@rootNode.Link" @dropdownAttributes @isActive(rootNode)>
+					<a class="nav-link p-2 @clickable" href="@rootNode.Link" @dropdownAttributes @isActive(rootNode)>
 						<span class="text-wrap-nowrap">@rootNode.Name</span>
 					</a>
 				}
 				else
 				{
-					<span class="nav-link p-2 fw-bold text-uppercase @headerLinkAnimation" @dropdownAttributes>
+					<span class="nav-link p-2" role="button" @dropdownAttributes>
 						<span class="text-wrap-nowrap">@rootNode.Name</span>
 					</span>
 				}
@@ -173,25 +155,25 @@
 				{
 					if (isMegaMenu)
 					{
-						<div class="dropdown-menu border-0 megamenu" data-dw-colorscheme="@Model.ColorScheme?.Id">
+						<div class="dropdown-menu border-0 megamenu border-bottom" data-dw-colorscheme="@Model.ColorScheme?.Id">
 							<div swift-container class="overflow-y-auto">
-								<div class="d-flex py-2 gap-3">
+								<div class="d-flex py-4 gap-4">
 
 									@if (hasRelatedContent)
 									{
-										<div class="col-auto megamenu-col d-flex flex-column me-4 pe-4 border-end @relatedContentGap @textAlignment @menuAlignment">
+										<div class="col-auto megamenu-col d-flex flex-column pe-4 border-end gap-3">
 											@foreach (var relatedContentNode in relatedContentNodes.Where(node => node.ShowInMenu))
 											{
-												<div>
+												<nav>
 													@if (relatedContentNode.IsClickable)
 													{
-														<a class="nav-link px-0 lh-1 @itemSpacing @headerSpacing @clickable" href="@relatedContentNode.Link" @isActive(relatedContentNode)>
+														<a class="nav-link px-0 lh-1 pb-1 @clickable" href="@relatedContentNode.Link" @isActive(relatedContentNode)>
 															<strong>@relatedContentNode.Name</strong>
 														</a>
 													}
 													else
 													{
-														<div class="nav-link px-0 lh-1 pe-none @itemSpacing @headerSpacing" href="@relatedContentNode.Link" @isActive(relatedContentNode)>
+														<div class="nav-link px-0 lh-1 pb-1 pe-none" @isActive(relatedContentNode)>
 															<strong>@relatedContentNode.Name</strong>
 														</div>
 													}
@@ -200,37 +182,37 @@
 													{
 														if (relatedContentSubNode.IsClickable)
 														{
-															<a class="nav-link px-0 lh-1 @itemSpacing @clickable" href="@relatedContentSubNode.Link" @isActive(relatedContentSubNode)>
+															<a class="nav-link px-0 lh-1 pb-1 @clickable" href="@relatedContentSubNode.Link" @isActive(relatedContentSubNode)>
 																<span>@relatedContentSubNode.Name</span>
 															</a>
 														}
 														else
 														{
-															<div class="nav-link px-0 lh-1 pe-none @itemSpacing" href="@relatedContentSubNode.Link">
+															<div class="nav-link px-0 lh-1 pb-1 pe-none">
 																<span>@relatedContentSubNode.Name</span>
 															</div>
 														}
 													}
-												</div>
+												</nav>
 											}
 										</div>
 
 									}
 
-									<div class="col d-flex flex-wrap gap-3 @menuAlignment @textAlignment">
+									<div class="col megamenu-grid d-grid gap-3">
 
 										@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
 										{
-											<div class="col-auto megamenu-col @textAlignment">
+											<div class="megamenu-col">
 												@if (subNode.IsClickable)
 												{
-													<a class="nav-link px-0 lh-1 @itemSpacing @headerSpacing @clickable" href="@subNode.Link" @isActive(subNode)>
+													<a class="nav-link px-0 lh-1 pb-1 @clickable" href="@subNode.Link" @isActive(subNode)>
 														<strong>@subNode.Name</strong>
 													</a>
 												}
 												else
 												{
-													<div class="nav-link px-0 lh-1 pe-none @itemSpacing @headerSpacing">
+													<div class="nav-link px-0 lh-1 pb-1 pe-none">
 														<strong>@subNode.Name</strong>
 													</div>
 												}
@@ -241,13 +223,13 @@
 													{
 														if (endNode.IsClickable)
 														{
-															<a class="nav-link px-0 lh-1 @itemSpacing @clickable" href="@endNode.Link" @isActive(endNode)>
+															<a class="nav-link px-0 lh-1 pb-1 @clickable" href="@endNode.Link" @isActive(endNode)>
 																@endNode.Name
 															</a>
 														}
 														else
 														{
-															<div class="nav-link px-0 lh-1 pe-none @itemSpacing">
+															<div class="nav-link px-0 lh-1 pb-1 pe-none">
 																@endNode.Name
 															</div>
 														}
@@ -257,7 +239,7 @@
 
 													if (!string.IsNullOrWhiteSpace(maxEndNodesText))
 													{
-														<a class="nav-link px-0 text-decoration-underline mt-1 lh-1 @itemSpacing" href="@subNode.Link">
+														<a class="nav-link px-0 text-decoration-underline mt-1 lh-1" href="@subNode.Link">
 															@Translate(maxEndNodesText)
 														</a>
 													}
@@ -274,7 +256,7 @@
 					}
 					else
 					{
-						<ul class="dropdown-menu dropdown-menu-shadow @textAlignment" data-dw-colorscheme="@Model.ColorScheme?.Id">
+						<ul class="dropdown-menu dropdown-menu-shadow" data-dw-colorscheme="@Model.ColorScheme?.Id">
 
 							@if (hasRelatedContent)
 							{
