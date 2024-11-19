@@ -1,5 +1,3 @@
-import { Scroll } from "./_scroll.js";
-
 const PageUpdater = (function () {
   var timeout;
   var controller = new AbortController();
@@ -240,9 +238,6 @@ const PageUpdater = (function () {
         if (responseTargetElement != null) {
           responseTargetElement.innerHTML = html;
           var scripts = responseTargetElement.querySelectorAll("script");
-
-          Scroll.hideHeadersOnScroll();
-          Scroll.handleAlternativeTheme();
 
           //Run scripts from the loaded html
           scripts.forEach((script) => {
