@@ -4,7 +4,7 @@ const Scroll = (function () {
 
     setContentPosition() {
       var headerHeight = 100;
-      document.querySelectorAll(".page-header").forEach((header) => {
+      document.querySelectorAll("[data-swift-page-header]").forEach((header) => {
         /*The invisible header is 0*/
         headerHeight += header.offsetHeight;
       });

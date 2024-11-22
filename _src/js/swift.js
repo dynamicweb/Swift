@@ -54,7 +54,7 @@ window.onpopstate = function () {
 // Dropdown
 window.addEventListener("DOMContentLoaded", () => {
   const bootstrap = window.bootstrap || {};
-  const dropdowns = document.querySelectorAll("#page-header-desktop .dropdown");
+  const dropdowns = document.querySelectorAll("[data-swift-page-header] .dropdown");
 
   dropdowns.forEach((dropdown) => {
     const dropdownToggle = dropdown.querySelector(

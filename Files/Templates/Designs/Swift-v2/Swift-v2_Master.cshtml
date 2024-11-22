@@ -38,82 +38,53 @@
 }
 
 @{
-    // Swift version
-    string swiftVersion = ReadFile("/Files/Templates/Designs/Swift-v2/swift_version.txt");
-
-
-    // Offcanvas
-	var cartSummaryPageId = Dynamicweb.Content.Services.Pages.GetPageByNavigationTag(Model.Area.ID, "CartSummary")?.ID;
-	var enableMiniCart = Model.Area.Item?.GetBoolean("EnableOffcanvasMiniCart") ?? false;
-	var offcanvasMiniCartBehaviour = Model.Area.Item?.GetRawValueString("OffcanvasMinicartBehaviour", "3") ?? "3";
-	bool miniCartEnabled = cartSummaryPageId > 0 && enableMiniCart;
-
-
-    // Schema.org details for PDP
-    var isProductDetailsPage = Dynamicweb.Context.Current.Request.QueryString.AllKeys.Contains("ProductID");
-    bool isArticlePage = Model.Item.SystemName == "Swift-v2_Article";
-    string schemaOrgType = string.Empty;
-
-    if (isProductDetailsPage)
+    string favicon = "/Files/Templates/Designs/Swift-v2/Assets/Images/favicon.png";
+    if (Model.Area?.Item?.TryGetImageFile("Favicon", out ImageFileViewModel faviconImage) ?? false)
     {
-        schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Product\"";
+        favicon = faviconImage.Path;
+    }
+    
+    string appleTouchIcon = "/Files/Templates/Designs/Swift-v2/Assets/Images/apple-touch-icon.png";
+    if (Model.Area?.Item?.TryGetImageFile("AppleTouchIcon", out ImageFileViewModel appleTouchIconImage) ?? false)
+    {
+        appleTouchIcon = appleTouchIconImage.Path;
     }
 
-    if (isArticlePage)
+    string googleTagManagerID = string.Empty;
+    if (Model.Area?.Item?.TryGetString("GoogleTagManagerID", out googleTagManagerID) ?? false)
     {
-        schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Article\"";
+        googleTagManagerID = googleTagManagerID.Trim();
     }
 
-    string favicon = Model.Area.Item.GetRawValueString("Favicon", "/Files/Templates/Designs/Swift-v2/Assets/Images/favicon.png");
-    string appleTouchIcon = Model.Area.Item.GetRawValueString("AppleTouchIcon", "/Files/Templates/Designs/Swift-v2/Assets/Images/apple-touch-icon.png");
-
-    string headerCssClass = "sticky-top";
-    bool movePageBehind = false;
-
-    if (Model.PropertyItem != null)
-    {
-        headerCssClass = Model.PropertyItem.GetRawValueString("MoveThisPageBehindTheHeader", "sticky-top");
-        movePageBehind = headerCssClass == "fixed-top" && !Pageview.IsVisualEditorMode ? true : false;
-    }
-
-    headerCssClass = headerCssClass == "" ? "sticky-top" : headerCssClass;
-    headerCssClass = Pageview.IsVisualEditorMode ? "" : headerCssClass;
-
-    string googleTagManagerID = Model.Area.Item.GetString("GoogleTagManagerID").Trim();
-    bool allowTracking = AllowTracking();
-
-    var cssStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/css/swift.css"));
+    var cssFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/css/swift.css"));
     var jsFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/js/swift.js"));
     
-    Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/css/swift.css?{cssStyleFileInfo.LastWriteTime.Ticks}>; rel=preload; as=style;");
-    Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js>; rel=preload; as=script;");
-    Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/lib/htmx.org/dist/htmx.min.js>; rel=preload; as=script;");
-    Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/js/swift.js?{jsFileInfo.LastWriteTime.Ticks}>; rel=preload; as=script;");
-    
-    @* SetMetaTags(); *@
+    Dynamicweb.Context.Current?.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/css/swift.css?{cssFileInfo.LastWriteTime.Ticks}>; rel=preload; as=style;");
+    Dynamicweb.Context.Current?.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js>; rel=preload; as=script;");
+    Dynamicweb.Context.Current?.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/lib/htmx.org/dist/htmx.min.js>; rel=preload; as=script;");
+    Dynamicweb.Context.Current?.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/js/swift.js?{jsFileInfo.LastWriteTime.Ticks}>; rel=preload; as=script;");
 }
 
 <!doctype html>
-<html lang="@Pageview.Area.CultureInfo.TwoLetterISOLanguageName">
+<html lang="@Pageview.Area.CultureInfo.TwoLetterISOLanguageName" data-swift-version="@(ReadFile("/Files/Templates/Designs/Swift-v2/swift_version.txt")?.Trim())">
     <head>
-        <!-- @swiftVersion -->
-        
         @* Required meta tags *@
         <meta charset="utf-8">
         <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0">
         <link rel="shortcut icon" href="@favicon">
         <link rel="apple-touch-icon" href="@appleTouchIcon">
 
+         @* MetaTags *@
         @Model.MetaTags
         
         @* Pageview Meta *@
         <title>@Model.Title</title>
        
         @* Swift stylesheet *@
-        <link href="/Files/Templates/Designs/Swift-v2/Assets/css/swift.css?@cssStyleFileInfo.LastWriteTime.Ticks" rel="stylesheet" media="all" type="text/css">
+        <link href="/Files/Templates/Designs/Swift-v2/Assets/css/swift.css?@cssFileInfo.LastWriteTime.Ticks" rel="stylesheet" media="all" type="text/css">
 
         @* Media Query Limit *@
-        @if(Model.Area.Item.TryGetString("MediaQueryLimit", out string mediaQueryLimit)) {
+        @if(Model.Area?.Item?.TryGetString("MediaQueryLimit", out string mediaQueryLimit) ?? false) {
             <style>
                 @@media screen and (min-width: @(mediaQueryLimit)px) {
                     [swift-container] {
@@ -137,15 +108,15 @@
         }
 
         @* Color schemes stylesheet *@
-        @if (Model.GetColorSchemeStyle() != null) {
+        @if (Model.GetColorSchemeStyle() is not null) {
             <link href="@Model.GetColorSchemeStyle()" rel="stylesheet" media="all" type="text/css">
         }
         @* Button stylesheet *@
-        @if (Model.GetButtonStyle() != null) {
+        @if (Model.GetButtonStyle() is not null) {
             <link href="@Model.GetButtonStyle()" rel="stylesheet" media="all" type="text/css">
         }
         @* Typography stylesheet *@
-        @if (Model.GetTypographyStyle() != null) {
+        @if (Model.GetTypographyStyle() is not null) {
             <link href="@Model.GetTypographyStyle()" rel="stylesheet" media="all" type="text/css">
         }
         
@@ -179,7 +150,7 @@
                             'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
                 })(window, document, 'script', 'dataLayer', '@(googleTagManagerID)');
             </script>
-            if (allowTracking)
+            if (AllowTracking())
             {
                 string adConsent = GetCookieOptInPermission("Marketing");
                 string analyticsConsent = GetCookieOptInPermission("Statistical");
@@ -194,82 +165,50 @@
             }
         }
 
-        @if (Model.Area.Item.TryGetFile("CustomHeaderInclude", out FileViewModel customHeaderInclude))
-        {
-            @RenderPartial($"Components/Custom/{customHeaderInclude.Name}")
-        }
-
-        <!-- Pageview CSS and JS -->
-        @Model.GetCss()
-        @Model.GetJs()
-
     </head>
-    <body id="page@(Model.ID)" data-dw-colorscheme="@Model.Area.ColorScheme?.Id">
+    <body data-dw-page-id="@(Model.ID)" data-dw-colorscheme="@Model.Area?.ColorScheme?.Id">
     
-        @{
-            bool renderAsResponsive = Model.Area.Item.GetString("DeviceRendering", "responsive").Equals("responsive", StringComparison.OrdinalIgnoreCase);
-            bool renderMobile = Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Mobile || Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Tablet;
-            
-            string responsiveClassDesktop = string.Empty;
-            string responsiveClassMobile = string.Empty;
-            
-            if (renderAsResponsive)
-            {
-                responsiveClassDesktop = " d-none d-xl-block";
-                responsiveClassMobile = " d-block d-xl-none";
-            }
-        }
-
-
         @* Google tag manager *@
-        @if (!string.IsNullOrWhiteSpace(googleTagManagerID) && allowTracking)
+        @if (!string.IsNullOrWhiteSpace(googleTagManagerID) && AllowTracking())
         {
             <noscript>
                 <iframe src="https://www.googletagmanager.com/ns.html?id=@(googleTagManagerID)" height="0" width="0" style="display:none;visibility:hidden"></iframe>
             </noscript>
         }
 
-        @if (Model.Area.Item.TryGetLink("HeaderDesktop", out LinkViewModel headerDesktop))
+        @if (Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Desktop)
         {
-            if (renderAsResponsive || !renderMobile)
+            if (Model.Area?.Item?.TryGetLink("HeaderDesktop", out LinkViewModel headerDesktop) ?? false)
             {
-                <header class="page-header @headerCssClass top-0@(responsiveClassDesktop)" id="page-header-desktop">
-                    @RenderGrid(Dynamicweb.Content.Services.Pages.GetPageOrLanguage(headerDesktop.PageId, Model.Area.ID).ID)
-                </header>
+                @RenderPartial("Components/Master/PageHeader.cshtml", headerDesktop)
+            }
+        }
+        
+        @if (Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Mobile || Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Tablet)
+        {
+            if (Model.Area?.Item?.TryGetLink("HeaderMobile", out LinkViewModel headerMobile) ?? false)
+            {
+                @RenderPartial("Components/Master/PageHeader.cshtml", headerMobile)
             }
         }
 
-        @if (Model.Area.Item.TryGetLink("HeaderMobile", out LinkViewModel headerMobile))
-        {
-            if ((renderAsResponsive || renderMobile))
-            {
-                <header class="page-header @headerCssClass top-0@(responsiveClassMobile)" id="page-header-mobile">
-                    @RenderGrid(Dynamicweb.Content.Services.Pages.GetPageOrLanguage(headerMobile.PageId, Model.Area.ID).ID)
-                </header>
-            }
-        }
-
-        <main id="content" @(schemaOrgType)>
+        <main id="content">
             @ContentPlaceholder()
         </main>
 
-        @if (Model.Area.Item.TryGetLink("FooterDesktop", out LinkViewModel footerDesktop))
+        @if (Model.Area?.Item?.TryGetLink("FooterDesktop", out LinkViewModel footerDesktop) ?? false)
         {
-            if (renderAsResponsive || !renderMobile)
+            if (Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Desktop)
             {
-                <footer class="page-footer @(responsiveClassDesktop)" id="page-footer-desktop">
-                    @RenderGrid(footerDesktop.PageId)
-                </footer>
+                @RenderPartial("Components/Master/PageFooter.cshtml", footerDesktop)
             }
         }
 
-        @if (Model.Area.Item.TryGetLink("FooterMobile", out LinkViewModel footerMobile))
+        @if (Model.Area?.Item?.TryGetLink("FooterMobile", out LinkViewModel footerMobile) ?? false)
         {
-            if (renderAsResponsive || renderMobile)
+            if (Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Mobile || Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Tablet)
             {
-                <footer class="page-footer @(responsiveClassMobile)" id="page-footer-mobile">
-                    @RenderGrid(footerMobile.PageId)
-                </footer>
+                @RenderPartial("Components/Master/PageFooter.cshtml", footerMobile)
             }
         }
 
@@ -310,75 +249,74 @@
             @* The content here comes from an external request *@
         </div>
 
-		@if (miniCartEnabled)
-		{
-			@* Open MiniCart when the cart is updated *@
-			<script type="module">
+        @* MiniCart Offcanvas *@
+		@{
+            var cartSummaryPageId = Dynamicweb.Content.Services.Pages.GetPageByNavigationTag(Pageview.AreaID, "CartSummary")?.ID ?? 0;
+            if ((Model.Area?.Item?.TryGetString("OffcanvasMinicartBehaviour", out string offcanvasMiniCartBehaviour) ?? false) && (!offcanvasMiniCartBehaviour.Equals("0")) && (cartSummaryPageId > 0))
+            {
+                @* Open MiniCart when the cart is updated *@
+                <script type="module">
 
-				document.addEventListener('updated.swift.cart', (event) => {
-					let orderContext = event?.detail?.formData?.get("OrderContext");
-					updateCartSummary(orderContext);
+                    document.addEventListener('updated.swift.cart', (event) => {
+                        let orderContext = event?.detail?.formData?.get("OrderContext");
+                        updateCartSummary(orderContext);
 
-					let offcanvasMiniCartBehaviourJs = "@offcanvasMiniCartBehaviour";
-                    
-                    if (event?.detail?.formData?.get("MiniCartBehaviour")) {
-						offcanvasMiniCartBehaviourJs = event?.detail?.formData?.get("MiniCartBehaviour");
-                    }
- 
-					if (offcanvasMiniCartBehaviourJs == "2" || offcanvasMiniCartBehaviourJs == "3") {
-                        openMiniCartOffcanvas();
-                    }
-				});
-			</script>
+                        let offcanvasMiniCartBehaviourJs = "@offcanvasMiniCartBehaviour";
+                        
+                        if (event?.detail?.formData?.get("MiniCartBehaviour")) {
+                            offcanvasMiniCartBehaviourJs = event?.detail?.formData?.get("MiniCartBehaviour");
+                        }
+    
+                        if (offcanvasMiniCartBehaviourJs == "2" || offcanvasMiniCartBehaviourJs == "3") {
+                            openMiniCartOffcanvas();
+                        }
+                    });
+                </script>
 
-			if (offcanvasMiniCartBehaviour == "1" || offcanvasMiniCartBehaviour == "3")
-			{
-				@* Open MiniCart when toggle is clicked *@
-				<script type="module">
-					let miniCartToggles = document.querySelectorAll('.mini-cart-quantity');
-					miniCartToggles?.forEach((toggle) => {
-						toggle.parentElement.addEventListener('click', (event) => {
-							event.preventDefault();
-							let orderContext = toggle.dataset?.orderContext;
-							updateCartSummary(orderContext);
+                if (offcanvasMiniCartBehaviour == "1" || offcanvasMiniCartBehaviour == "3")
+                {
+                    @* Open MiniCart when toggle is clicked *@
+                    <script type="module">
+                        let miniCartToggles = document.querySelectorAll('.mini-cart-quantity');
+                        miniCartToggles?.forEach((toggle) => {
+                            toggle.parentElement.addEventListener('click', (event) => {
+                                event.preventDefault();
+                                let orderContext = toggle.dataset?.orderContext;
+                                updateCartSummary(orderContext);
 
-							openMiniCartOffcanvas();
-						});
-					});
-				</script>
-			}
+                                openMiniCartOffcanvas();
+                            });
+                        });
+                    </script>
+                }
 
-			<script>
+                <script>
+                    const updateCartSummary = (orderContext) => {
+                        const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
+                        swift.PageUpdater.UpdateFromUrlInline(event, '/Default.aspx?ID=@(cartSummaryPageId)&CartType=minicart&RequestPageID=@(Pageview.Page.ID)&OrderContext=' + orderContext +'', 'Swift-v2_CartSummary.cshtml', dynamicOffcanvas);
+                    };
+                    const openMiniCartOffcanvas = () => {
+                        const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
+                        const miniCartOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(dynamicOffcanvas);
+                        dynamicOffcanvas.classList.add('overflow-y-auto');
 
-				const updateCartSummary = (orderContext) => {
-					const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
-					swift.PageUpdater.UpdateFromUrlInline(event, '/Default.aspx?ID=@(cartSummaryPageId)&CartType=minicart&RequestPageID=@(Pageview.Page.ID)&OrderContext=' + orderContext +'', 'Swift-v2_CartSummary.cshtml', dynamicOffcanvas);
-				};
-
-				const openMiniCartOffcanvas = () => {
-					const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
-					const miniCartOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(dynamicOffcanvas);
-					dynamicOffcanvas.classList.add('overflow-y-auto');
-
-					if (!miniCartOffcanvas._isShown) {
-						miniCartOffcanvas.show();
-						hideActiveOffcanvases(miniCartOffcanvas);
-					}
-				};
-
-				const hideActiveOffcanvases = (miniCartOffcanvas) => {
-					let activeOffcanvases = document.querySelectorAll('.offcanvas.show');
-					activeOffcanvases?.forEach((offCanvas) => {
-						offCanvas = bootstrap.Offcanvas.getInstance(offCanvas);
-						if (offCanvas !== miniCartOffcanvas) {
-							offCanvas.hide();
-						}
-					});
-				};
-
-			</script>
+                        if (!miniCartOffcanvas._isShown) {
+                            miniCartOffcanvas.show();
+                            hideActiveOffcanvases(miniCartOffcanvas);
+                        }
+                    };
+                    const hideActiveOffcanvases = (miniCartOffcanvas) => {
+                        let activeOffcanvases = document.querySelectorAll('.offcanvas.show');
+                        activeOffcanvases?.forEach((offCanvas) => {
+                            offCanvas = bootstrap.Offcanvas.getInstance(offCanvas);
+                            if (offCanvas !== miniCartOffcanvas) {
+                                offCanvas.hide();
+                            }
+                        });
+                    };
+                </script>
+            }
 		}
-
 	</body>
 
 </html>
