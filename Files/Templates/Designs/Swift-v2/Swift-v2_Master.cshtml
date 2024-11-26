@@ -3,6 +3,7 @@
 @using Dynamicweb
 @using Dynamicweb.Environment
 @using Dynamicweb.Frontend
+@using Dynamicweb.Frontend.Devices
 
 @functions {
     string GetCookieOptInPermission(string category)
@@ -176,19 +177,22 @@
             </noscript>
         }
 
-        @if (Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Desktop)
-        {
-            if (Model.Area?.Item?.TryGetLink("HeaderDesktop", out LinkViewModel headerDesktop) ?? false)
+        @{
+            LinkViewModel headerLink;
+            
+            if (((Pageview.Device == DeviceType.Desktop && (Model.Area?.Item?.TryGetLink("HeaderDesktop", out headerLink) ?? false)) ||
+            (Pageview.Device == DeviceType.Mobile || Pageview.Device == DeviceType.Tablet) && (Model.Area?.Item?.TryGetLink("HeaderMobile", out headerLink) ?? false)))
             {
-                @RenderPartial("Components/Master/PageHeader.cshtml", headerDesktop)
-            }
-        }
-        
-        @if (Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Mobile || Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Tablet)
-        {
-            if (Model.Area?.Item?.TryGetLink("HeaderMobile", out LinkViewModel headerMobile) ?? false)
-            {
-                @RenderPartial("Components/Master/PageHeader.cshtml", headerMobile)
+                string? headerCss = null;
+                var headerPage = ContentViewModelFactory.CreatePageInfoViewModel(Dynamicweb.Content.Services.Pages.GetPage(headerLink.PageId));
+                if ((headerPage.Item?.TryGetString("HeaderPosition", out string headerPosition) ?? false) && !headerPosition.Equals("static", StringComparison.OrdinalIgnoreCase))
+                {
+                    headerCss = headerPosition;
+                }
+
+                <header data-swift-page-header="@(headerLink.PageId)" class="@headerCss">
+                    @RenderGrid(headerLink.PageId)
+                </header>
             }
         }
 
@@ -196,19 +200,15 @@
             @ContentPlaceholder()
         </main>
 
-        @if (Model.Area?.Item?.TryGetLink("FooterDesktop", out LinkViewModel footerDesktop) ?? false)
-        {
-            if (Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Desktop)
-            {
-                @RenderPartial("Components/Master/PageFooter.cshtml", footerDesktop)
-            }
-        }
+        @{
+            LinkViewModel footerLink;
 
-        @if (Model.Area?.Item?.TryGetLink("FooterMobile", out LinkViewModel footerMobile) ?? false)
-        {
-            if (Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Mobile || Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Tablet)
+            if (((Pageview.Device == DeviceType.Desktop) && (Model.Area?.Item?.TryGetLink("FooterDesktop", out footerLink) ?? false)) ||
+            ((Pageview.Device == DeviceType.Mobile || Pageview.Device == DeviceType.Tablet) && (Model.Area?.Item?.TryGetLink("FooterMobile", out footerLink) ?? false)))
             {
-                @RenderPartial("Components/Master/PageFooter.cshtml", footerMobile)
+                <footer data-swift-page-footer="@(footerLink.PageId)">
+                    @RenderGrid(footerLink.PageId)
+                </footer>
             }
         }
 
