@@ -3,6 +3,7 @@
 @using Dynamicweb
 @using Dynamicweb.Environment
 @using Dynamicweb.Frontend
+@using Dynamicweb.Frontend.Devices
 
 @functions {
     string GetCookieOptInPermission(string category)
@@ -38,156 +39,53 @@
 }
 
 @{
-	var cartSummaryPageId = Dynamicweb.Content.Services.Pages.GetPageByNavigationTag(Model.Area.ID, "CartSummary")?.ID;
-	bool enableMiniCart = Model.Area.Item?.GetBoolean("EnableOffcanvasMiniCart") ?? false;
-	var offcanvasMiniCartBehaviour = Model.Area.Item?.GetRawValueString("OffcanvasMinicartBehaviour", "3") ?? "3";
-	bool miniCartEnabled = cartSummaryPageId != null && enableMiniCart;
-
-    string swiftVersion = ReadFile("/Files/Templates/Designs/Swift-v2/swift_version.txt");
-    bool renderAsResponsive = Model.Area.Item.GetString("DeviceRendering", "responsive").Equals("responsive", StringComparison.OrdinalIgnoreCase);
-    bool renderMobile = Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Mobile || Pageview.Device == Dynamicweb.Frontend.Devices.DeviceType.Tablet;
-    string responsiveClassDesktop = string.Empty;
-    string responsiveClassMobile = string.Empty;
-    if (renderAsResponsive)
+    string favicon = "/Files/Templates/Designs/Swift-v2/Assets/Images/favicon.png";
+    if (Model.Area?.Item?.TryGetImageFile("Favicon", out ImageFileViewModel faviconImage) ?? false)
     {
-        responsiveClassDesktop = " d-none d-xl-block";
-        responsiveClassMobile = " d-block d-xl-none";
+        favicon = faviconImage.Path;
     }
-
-    var headerDesktopLink = Model.Area.Item?.GetLink("HeaderDesktop") ?? null;
-    var headerMobileLink = Model.Area.Item?.GetLink("HeaderMobile") ?? null;
-    var footerDesktopLink = Model.Area.Item?.GetLink("FooterDesktop") ?? null;
-    var footerMobileLink = Model.Area.Item?.GetLink("FooterMobile") ?? null;
-
-    var disableWideBreakpoints = Model.Area?.Item?.GetRawValueString("DisableWideBreakpoints", "default");
-    string customHeaderInclude = !string.IsNullOrEmpty(Model.Area.Item.GetRawValueString("CustomHeaderInclude")) ? Model.Area.Item.GetFile("CustomHeaderInclude").Name : string.Empty;
-
-    // Schema.org details for PDP
-    bool isProductDetailsPage = Dynamicweb.Context.Current.Request.QueryString.AllKeys.Contains("ProductID");
-    bool isArticlePage = Model.ItemType == "Swift-v2_Article";
-    string schemaOrgType = string.Empty;
-
-    if (isProductDetailsPage)
-    {
-        schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Product\"";
-    }
-
-    if (isArticlePage)
-    {
-        schemaOrgType = "itemscope=\"\" itemtype=\"https://schema.org/Article\"";
-    }
-
-    string favicon = Model.Area.Item.GetRawValueString("Favicon", "/Files/Templates/Designs/Swift-v2/Assets/Images/favicon.png");
-    string appleTouchIcon = Model.Area.Item.GetRawValueString("AppleTouchIcon", "/Files/Templates/Designs/Swift-v2/Assets/Images/apple-touch-icon.png");
-
-    string headerCssClass = "sticky-top";
-    bool movePageBehind = false;
-
-    if (Model.PropertyItem != null)
-    {
-        headerCssClass = Model.PropertyItem.GetRawValueString("MoveThisPageBehindTheHeader", "sticky-top");
-        movePageBehind = headerCssClass == "fixed-top" && !Pageview.IsVisualEditorMode ? true : false;
-    }
-
-    headerCssClass = headerCssClass == "" ? "sticky-top" : headerCssClass;
-    headerCssClass = Pageview.IsVisualEditorMode ? "" : headerCssClass;
-
-    string googleTagManagerID = Model.Area.Item.GetString("GoogleTagManagerID").Trim();
-    bool allowTracking = AllowTracking();
-
-    var cssStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/css/swift.css"));
-    var jsFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/js/swift.js"));
-    Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/css/swift.css?{cssStyleFileInfo.LastWriteTime.Ticks}>; rel=preload; as=style;");
-    Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js>; rel=preload; as=script;");
-    Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/lib/htmx.org/dist/htmx.min.js>; rel=preload; as=script;");
-    Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/js/swift.js?{jsFileInfo.LastWriteTime.Ticks}>; rel=preload; as=script;");
     
-    SetMetaTags();
-
-    List<Dynamicweb.Content.Page> languages = new List<Dynamicweb.Content.Page>();
-
-    var masterPage = Pageview.Area.IsMaster ? Pageview.Page : Pageview.Page.MasterPage;
-    languages.Add(masterPage);
-    if (masterPage?.Languages != null)
+    string appleTouchIcon = "/Files/Templates/Designs/Swift-v2/Assets/Images/apple-touch-icon.png";
+    if (Model.Area?.Item?.TryGetImageFile("AppleTouchIcon", out ImageFileViewModel appleTouchIconImage) ?? false)
     {
-        foreach (var language in masterPage.Languages)
-        {
-            languages.Add(language);
-        }
+        appleTouchIcon = appleTouchIconImage.Path;
     }
 
-    Uri url = Dynamicweb.Context.Current.Request.Url;
-    string hostName = url.Host;
+    string googleTagManagerID = string.Empty;
+    if (Model.Area?.Item?.TryGetString("GoogleTagManagerID", out googleTagManagerID) ?? false)
+    {
+        googleTagManagerID = googleTagManagerID.Trim();
+    }
+
+    var cssFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/css/swift.css"));
+    var jsFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/js/swift.js"));
+    
+    Dynamicweb.Context.Current?.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/css/swift.css?{cssFileInfo.LastWriteTime.Ticks}>; rel=preload; as=style;");
+    Dynamicweb.Context.Current?.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js>; rel=preload; as=script;");
+    Dynamicweb.Context.Current?.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/lib/htmx.org/dist/htmx.min.js>; rel=preload; as=script;");
+    Dynamicweb.Context.Current?.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/js/swift.js?{jsFileInfo.LastWriteTime.Ticks}>; rel=preload; as=script;");
 }
 
 <!doctype html>
-<html lang="@Pageview.Area.CultureInfo.TwoLetterISOLanguageName">
+<html lang="@Pageview.Area.CultureInfo.TwoLetterISOLanguageName" data-swift-version="@(ReadFile("/Files/Templates/Designs/Swift-v2/swift_version.txt")?.Trim())">
     <head>
-        <!-- @swiftVersion -->
         @* Required meta tags *@
         <meta charset="utf-8">
         <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0">
         <link rel="shortcut icon" href="@favicon">
         <link rel="apple-touch-icon" href="@appleTouchIcon">
 
+         @* MetaTags *@
         @Model.MetaTags
         
-        @{
-            var alreadyWrittenTwoletterIsos = new List<string>();
-            @* Languages meta data *@
-            foreach (var language in languages)
-            {
-                hostName = url.Host;
-                if (language?.Area != null)
-                {
-                    if (language.Area?.MasterArea != null && !string.IsNullOrEmpty(language.Area.MasterArea.DomainLock))
-                    {
-                        hostName = language.Area.MasterArea.DomainLock; //dk.domain.com or dk-domain.dk
-                    }
-                    if (language != null && language.Area != null && language.Published && language.Area.Active && language.Area.Published)
-                    {
-                        if (!string.IsNullOrEmpty(language.Area.DomainLock))
-                        {
-                            hostName = language.Area.DomainLock; //dk.domain.com or dk-domain.dk
-                        }
-                        string querystring = $"Default.aspx?ID={language.ID}";
-                        if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString["GroupID"]))
-                        {
-                            querystring += $"&GroupID={Dynamicweb.Context.Current.Request.QueryString["GroupID"]}";
-                        }
-                        if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString["ProductID"]))
-                        {
-                            querystring += $"&ProductID={Dynamicweb.Context.Current.Request.QueryString["ProductID"]}";
-                        }
-                        if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString["VariantID"]))
-                        {
-                            querystring += $"&VariantID={Dynamicweb.Context.Current.Request.QueryString["VariantID"]}";
-                        }
-
-                        string friendlyUrl = Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl(querystring);
-                        if (language.Area.RedirectFirstPage && language.ParentPageId == 0 && language.Sort == 1)
-                        {
-                            friendlyUrl = "/";
-                        }
-                        string href = $"{url.Scheme}://{hostName}{friendlyUrl}";
-
-                        <link rel="alternate" hreflang="@language.Area.CultureInfo.Name.ToLower()" href="@href">
-                        if (!alreadyWrittenTwoletterIsos.Contains(language.Area.CultureInfo.TwoLetterISOLanguageName))
-                        {
-                            alreadyWrittenTwoletterIsos.Add(language.Area.CultureInfo.TwoLetterISOLanguageName);
-                            <link rel="alternate" hreflang="@language.Area.CultureInfo.TwoLetterISOLanguageName.ToLower()" href="@href">
-                        }
-                    }
-                }
-            }
-        }
-
+        @* Pageview Meta *@
         <title>@Model.Title</title>
+       
         @* Swift stylesheet *@
-        <link href="/Files/Templates/Designs/Swift-v2/Assets/css/swift.css?@cssStyleFileInfo.LastWriteTime.Ticks" rel="stylesheet" media="all" type="text/css">
+        <link href="/Files/Templates/Designs/Swift-v2/Assets/css/swift.css?@cssFileInfo.LastWriteTime.Ticks" rel="stylesheet" media="all" type="text/css">
 
         @* Media Query Limit *@
-        @if(Model.Area.Item.TryGetString("MediaQueryLimit", out string mediaQueryLimit)) {
+        @if(Model.Area?.Item?.TryGetString("MediaQueryLimit", out string mediaQueryLimit) ?? false) {
             <style>
                 @@media screen and (min-width: @(mediaQueryLimit)px) {
                     [swift-container] {
@@ -211,15 +109,15 @@
         }
 
         @* Color schemes stylesheet *@
-        @if (Model.GetColorSchemeStyle() != null) {
+        @if (Model.GetColorSchemeStyle() is not null) {
             <link href="@Model.GetColorSchemeStyle()" rel="stylesheet" media="all" type="text/css">
         }
         @* Button stylesheet *@
-        @if (Model.GetButtonStyle() != null) {
+        @if (Model.GetButtonStyle() is not null) {
             <link href="@Model.GetButtonStyle()" rel="stylesheet" media="all" type="text/css">
         }
         @* Typography stylesheet *@
-        @if (Model.GetTypographyStyle() != null) {
+        @if (Model.GetTypographyStyle() is not null) {
             <link href="@Model.GetTypographyStyle()" rel="stylesheet" media="all" type="text/css">
         }
         
@@ -253,7 +151,7 @@
                             'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
                 })(window, document, 'script', 'dataLayer', '@(googleTagManagerID)');
             </script>
-            if (allowTracking)
+            if (AllowTracking())
             {
                 string adConsent = GetCookieOptInPermission("Marketing");
                 string analyticsConsent = GetCookieOptInPermission("Statistical");
@@ -268,64 +166,47 @@
             }
         }
 
-        @if (!string.IsNullOrWhiteSpace(customHeaderInclude))
-        {
-            @RenderPartial($"Components/Custom/{customHeaderInclude}")
-        }
     </head>
-    <body id="page@(Model.ID)" data-dw-colorscheme="@Model.Area.ColorScheme?.Id">
-
+    <body data-dw-page-id="@(Model.ID)" data-dw-colorscheme="@Model.Area?.ColorScheme?.Id">
+    
         @* Google tag manager *@
-        @if (!string.IsNullOrWhiteSpace(googleTagManagerID) && allowTracking)
+        @if (!string.IsNullOrWhiteSpace(googleTagManagerID) && AllowTracking())
         {
             <noscript>
-                <iframe src="https://www.googletagmanager.com/ns.html?id=@(googleTagManagerID)"
-                        height="0" width="0" style="display:none;visibility:hidden"></iframe>
+                <iframe src="https://www.googletagmanager.com/ns.html?id=@(googleTagManagerID)" height="0" width="0" style="display:none;visibility:hidden"></iframe>
             </noscript>
         }
 
-        @if (renderAsResponsive || !renderMobile)
-        {
-            <header class="page-header @headerCssClass top-0@(responsiveClassDesktop)" id="page-header-desktop">
-                @if (headerDesktopLink != null)
+        @{ // Page headers
+            LinkViewModel headerLink;
+            if (((Pageview.Device == DeviceType.Desktop && (Model.Area?.Item?.TryGetLink("HeaderDesktop", out headerLink) ?? false)) ||
+            (Pageview.Device == DeviceType.Mobile || Pageview.Device == DeviceType.Tablet) && (Model.Area?.Item?.TryGetLink("HeaderMobile", out headerLink) ?? false)))
+            {
+                string? headerCss = null;
+                var headerPage = ContentViewModelFactory.CreatePageInfoViewModel(Dynamicweb.Content.Services.Pages.GetPage(headerLink.PageId));
+                if ((headerPage.Item?.TryGetString("HeaderPosition", out string headerPosition) ?? false) && !headerPosition.Equals("static", StringComparison.OrdinalIgnoreCase))
                 {
-                    @RenderGrid(headerDesktopLink.PageId)
+                    headerCss = headerPosition;
                 }
-            </header>
+                <header data-swift-page-header="@(headerLink.PageId)" class="@headerCss">
+                    @RenderGrid(headerLink.PageId)
+                </header>
+            }
         }
 
-        @if ((renderAsResponsive || renderMobile))
-        {
-            <header class="page-header @headerCssClass top-0@(responsiveClassMobile)" id="page-header-mobile">
-                @if (headerMobileLink != null)
-                {
-                    @RenderGrid(headerMobileLink.PageId)
-                }
-            </header>
-        }
-
-        <main id="content" @(schemaOrgType)>
+        <main id="content">
             @ContentPlaceholder()
         </main>
 
-        @if (renderAsResponsive || !renderMobile)
-        {
-            <footer class="page-footer@(responsiveClassDesktop)" id="page-footer-desktop">
-                @if (footerDesktopLink != null)
-                {
-                    @RenderGrid(footerDesktopLink.PageId)
-                }
-            </footer>
-        }
-
-        @if (renderAsResponsive || renderMobile)
-        {
-            <footer class="page-footer@(responsiveClassMobile)" id="page-footer-mobile">
-                @if (footerMobileLink != null)
-                {
-                    @RenderGrid(footerMobileLink.PageId)
-                }
-            </footer>
+        @{ // Page footers
+            LinkViewModel footerLink;
+            if (((Pageview.Device == DeviceType.Desktop) && (Model.Area?.Item?.TryGetLink("FooterDesktop", out footerLink) ?? false)) ||
+            ((Pageview.Device == DeviceType.Mobile || Pageview.Device == DeviceType.Tablet) && (Model.Area?.Item?.TryGetLink("FooterMobile", out footerLink) ?? false)))
+            {
+                <footer data-swift-page-footer="@(footerLink.PageId)">
+                    @RenderGrid(footerLink.PageId)
+                </footer>
+            }
         }
 
         @* Language selector modal *@
@@ -365,198 +246,74 @@
             @* The content here comes from an external request *@
         </div>
 
-		@if (miniCartEnabled)
-		{
-			@* Open MiniCart when the cart is updated *@
-			<script type="module">
+        @* MiniCart Offcanvas *@
+		@{
+            var cartSummaryPageId = Dynamicweb.Content.Services.Pages.GetPageByNavigationTag(Pageview.AreaID, "CartSummary")?.ID ?? 0;
+            if ((Model.Area?.Item?.TryGetString("OffcanvasMinicartBehaviour", out string offcanvasMiniCartBehaviour) ?? false) && (!offcanvasMiniCartBehaviour.Equals("0")) && (cartSummaryPageId > 0))
+            {
+                @* Open MiniCart when the cart is updated *@
+                <script type="module">
 
-				document.addEventListener('updated.swift.cart', (event) => {
-					let orderContext = event?.detail?.formData?.get("OrderContext");
-					updateCartSummary(orderContext);
+                    document.addEventListener('updated.swift.cart', (event) => {
+                        let orderContext = event?.detail?.formData?.get("OrderContext");
+                        updateCartSummary(orderContext);
 
-					let offcanvasMiniCartBehaviourJs = "@offcanvasMiniCartBehaviour";
-                    
-                    if (event?.detail?.formData?.get("MiniCartBehaviour")) {
-						offcanvasMiniCartBehaviourJs = event?.detail?.formData?.get("MiniCartBehaviour");
-                    }
- 
-					if (offcanvasMiniCartBehaviourJs == "2" || offcanvasMiniCartBehaviourJs == "3") {
-                        openMiniCartOffcanvas();
-                    }
-				});
-			</script>
+                        let offcanvasMiniCartBehaviourJs = "@offcanvasMiniCartBehaviour";
+                        
+                        if (event?.detail?.formData?.get("MiniCartBehaviour")) {
+                            offcanvasMiniCartBehaviourJs = event?.detail?.formData?.get("MiniCartBehaviour");
+                        }
+    
+                        if (offcanvasMiniCartBehaviourJs == "2" || offcanvasMiniCartBehaviourJs == "3") {
+                            openMiniCartOffcanvas();
+                        }
+                    });
+                </script>
 
-			if (offcanvasMiniCartBehaviour == "1" || offcanvasMiniCartBehaviour == "3")
-			{
-				@* Open MiniCart when toggle is clicked *@
-				<script type="module">
-					let miniCartToggles = document.querySelectorAll('.mini-cart-quantity');
-					miniCartToggles?.forEach((toggle) => {
-						toggle.parentElement.addEventListener('click', (event) => {
-							event.preventDefault();
-							let orderContext = toggle.dataset?.orderContext;
-							updateCartSummary(orderContext);
+                if (offcanvasMiniCartBehaviour == "1" || offcanvasMiniCartBehaviour == "3")
+                {
+                    @* Open MiniCart when toggle is clicked *@
+                    <script type="module">
+                        let miniCartToggles = document.querySelectorAll('.mini-cart-quantity');
+                        miniCartToggles?.forEach((toggle) => {
+                            toggle.parentElement.addEventListener('click', (event) => {
+                                event.preventDefault();
+                                let orderContext = toggle.dataset?.orderContext;
+                                updateCartSummary(orderContext);
 
-							openMiniCartOffcanvas();
-						});
-					});
-				</script>
-			}
+                                openMiniCartOffcanvas();
+                            });
+                        });
+                    </script>
+                }
 
-			<script>
+                <script>
+                    const updateCartSummary = (orderContext) => {
+                        const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
+                        swift.PageUpdater.UpdateFromUrlInline(event, '/Default.aspx?ID=@(cartSummaryPageId)&CartType=minicart&RequestPageID=@(Pageview.Page.ID)&OrderContext=' + orderContext +'', 'Swift-v2_CartSummary.cshtml', dynamicOffcanvas);
+                    };
+                    const openMiniCartOffcanvas = () => {
+                        const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
+                        const miniCartOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(dynamicOffcanvas);
+                        dynamicOffcanvas.classList.add('overflow-y-auto');
 
-				const updateCartSummary = (orderContext) => {
-					const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
-					swift.PageUpdater.UpdateFromUrlInline(event, '/Default.aspx?ID=@(cartSummaryPageId)&CartType=minicart&RequestPageID=@(Pageview.Page.ID)&OrderContext=' + orderContext +'', 'Swift-v2_CartSummary.cshtml', dynamicOffcanvas);
-				};
-
-				const openMiniCartOffcanvas = () => {
-					const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
-					const miniCartOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(dynamicOffcanvas);
-					dynamicOffcanvas.classList.add('overflow-y-auto');
-
-					if (!miniCartOffcanvas._isShown) {
-						miniCartOffcanvas.show();
-						hideActiveOffcanvases(miniCartOffcanvas);
-					}
-				};
-
-				const hideActiveOffcanvases = (miniCartOffcanvas) => {
-					let activeOffcanvases = document.querySelectorAll('.offcanvas.show');
-					activeOffcanvases?.forEach((offCanvas) => {
-						offCanvas = bootstrap.Offcanvas.getInstance(offCanvas);
-						if (offCanvas !== miniCartOffcanvas) {
-							offCanvas.hide();
-						}
-					});
-				};
-
-			</script>
+                        if (!miniCartOffcanvas._isShown) {
+                            miniCartOffcanvas.show();
+                            hideActiveOffcanvases(miniCartOffcanvas);
+                        }
+                    };
+                    const hideActiveOffcanvases = (miniCartOffcanvas) => {
+                        let activeOffcanvases = document.querySelectorAll('.offcanvas.show');
+                        activeOffcanvases?.forEach((offCanvas) => {
+                            offCanvas = bootstrap.Offcanvas.getInstance(offCanvas);
+                            if (offCanvas !== miniCartOffcanvas) {
+                                offCanvas.hide();
+                            }
+                        });
+                    };
+                </script>
+            }
 		}
-
 	</body>
 
 </html>
-
-@functions {
-    void SetMetaTags()
-    {
-        //Verification Tokens
-        string siteVerificationGoogle = Model.Area.Item.GetString("Google_Site_Verification") != null ? Model.Area.Item.GetString("Google_Site_Verification") : "";
-
-        //Generic Site Values
-        string openGraphFacebookAppID = Model.Area.Item.GetString("Fb_app_id") != null ? Model.Area.Item.GetString("Fb_app_id") : "";
-        string openGraphType = Model.Area.Item.GetString("Open_Graph_Type") != null ? Model.Area.Item.GetString("Open_Graph_Type") : "";
-        string openGraphSiteName = Model.Area.Item.GetString("Open_Graph_Site_Name") != null ? Model.Area.Item.GetString("Open_Graph_Site_Name") : "";
-
-        string twitterCardSite = Model.Area.Item.GetString("Twitter_Site") != null ? Model.Area.Item.GetString("Twitter_Site") : "";
-
-        //Page specific values
-        string openGraphSiteTitle = Model.Area.Item.GetString("Open_Graph_Title") != null ? Model.Area.Item.GetString("Open_Graph_Title") : "";
-        FileViewModel openGraphImage = Model.Area.Item.GetFile("Open_Graph_Image");
-        string openGraphImageALT = Model.Area.Item.GetString("Open_Graph_Image_ALT") != null ? Model.Area.Item.GetString("Open_Graph_Image_ALT") : "";
-        string openGraphDescription = Model.Area.Item.GetString("Open_Graph_Description") != null ? Model.Area.Item.GetString("Open_Graph_Description") : "";
-
-        string twitterCardURL = Model.Area.Item.GetString("Twitter_URL") != null ? Model.Area.Item.GetString("Twitter_URL") : "";
-        string twitterCardTitle = Model.Area.Item.GetString("Twitter_Title") != null ? Model.Area.Item.GetString("Twitter_Title") : "";
-        string twitterCardDescription = Model.Area.Item.GetString("Twitter_Description") != null ? Model.Area.Item.GetString("Twitter_Description") : "";
-        FileViewModel twitterCardImage = Model.Area.Item.GetFile("Twitter_Image");
-        string twitterCardImageALT = Model.Area.Item.GetString("Twitter_Image_ALT") != null ? Model.Area.Item.GetString("Twitter_Image_ALT") : "";
-        string topImage = Pageview.Page.TopImage.StartsWith("/Files", StringComparison.OrdinalIgnoreCase) ? Pageview.Page.TopImage : $"/Files{Pageview.Page.TopImage}";
-
-        if (string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString["ProductID"]))
-        {
-            if (!string.IsNullOrEmpty(Model.Description))
-            {
-                Pageview.Meta.AddTag($"<meta property=\"og:description\" content=\"{Model.Description}\">");
-            }
-            else
-            {
-                Pageview.Meta.AddTag($"<meta property=\"og:description\" content=\"{openGraphDescription}\">");
-            }
-
-            if (!string.IsNullOrEmpty(Pageview.Page.TopImage))
-            {
-                Pageview.Meta.AddTag($"<meta property=\"og:image\" content=\"{Dynamicweb.Context.Current.Request.Url.Scheme}://{Dynamicweb.Context.Current.Request.Url.Host}{topImage}\">");
-                Pageview.Meta.AddTag($"<meta property=\"og:image:secure_url\" content=\"{Dynamicweb.Context.Current.Request.Url.Scheme}://{Dynamicweb.Context.Current.Request.Url.Host}{topImage}\">");
-          }
-            else if (openGraphImage != null)
-            {
-                Pageview.Meta.AddTag($"<meta property=\"og:image\" content=\"{Dynamicweb.Context.Current.Request.Url.Scheme}://{Dynamicweb.Context.Current.Request.Url.Host}{openGraphImage.Path}\">");
-                Pageview.Meta.AddTag($"<meta property=\"og:image:secure_url\" content=\"{Dynamicweb.Context.Current.Request.Url.Scheme}://{Dynamicweb.Context.Current.Request.Url.Host}{openGraphImage.Path}\">");
-            }
-
-            if (!string.IsNullOrEmpty(openGraphImageALT))
-            {
-                Pageview.Meta.AddTag($"<meta property=\"og:image:alt\" content=\"{openGraphImageALT}\">");
-            }
-            if (!string.IsNullOrEmpty(twitterCardDescription))
-            {
-                Pageview.Meta.AddTag("twitter:description", twitterCardDescription);
-            }
-
-            if (!string.IsNullOrEmpty(Pageview.Page.TopImage))
-            {
-                Pageview.Meta.AddTag("twitter:image", $"{Dynamicweb.Context.Current.Request.Url.Scheme}://{Dynamicweb.Context.Current.Request.Url.Host}{topImage}");
-            }
-            else if (twitterCardImage != null)
-            {
-                Pageview.Meta.AddTag("twitter:image", $"{Dynamicweb.Context.Current.Request.Url.Scheme}://{Dynamicweb.Context.Current.Request.Url.Host}{openGraphImage.Path}");
-            }
-
-            if (!string.IsNullOrEmpty(twitterCardImageALT))
-            {
-                Pageview.Meta.AddTag("twitter:image:alt", twitterCardImageALT);
-            }
-        }
-
-        if (!string.IsNullOrEmpty(siteVerificationGoogle))
-        {
-            Pageview.Meta.AddTag("google-site-verification", siteVerificationGoogle);
-        }
-
-        if (!string.IsNullOrEmpty(openGraphFacebookAppID))
-        {
-            Pageview.Meta.AddTag($"<meta property=\"fb:app_id\" content=\"{openGraphFacebookAppID}\">");
-        }
-
-        if (!string.IsNullOrEmpty(openGraphType))
-        {
-            Pageview.Meta.AddTag($"<meta property=\"og:type\" content=\"{openGraphType}\">");
-        }
-
-        if (!string.IsNullOrEmpty(openGraphSiteName))
-        {
-            Pageview.Meta.AddTag($"<meta property=\"og:url\" content=\"{Dynamicweb.Context.Current.Request.Url.Scheme}://{Dynamicweb.Context.Current.Request.Url.Host}{Pageview.SearchFriendlyUrl}\">");
-        }
-
-        if (!string.IsNullOrEmpty(openGraphSiteName))
-        {
-            Pageview.Meta.AddTag($"<meta property=\"og:site_name\" content=\"{openGraphSiteName}\">");
-        }
-
-        if (!string.IsNullOrEmpty(Model.Title))
-        {
-            Pageview.Meta.AddTag($"<meta property=\"og:title\" content=\"{Model.Title}\">");
-        }
-        else
-        {
-            Pageview.Meta.AddTag($"<meta property=\"og:title\" content=\"{openGraphSiteTitle}\">");
-        }
-
-        if (!string.IsNullOrEmpty(twitterCardSite))
-        {
-            Pageview.Meta.AddTag("twitter:site", twitterCardSite);
-        }
-
-        if (!string.IsNullOrEmpty(twitterCardURL))
-        {
-            Pageview.Meta.AddTag("twitter:url", twitterCardURL);
-        }
-
-        if (!string.IsNullOrEmpty(twitterCardTitle))
-        {
-            Pageview.Meta.AddTag("twitter:title", twitterCardTitle);
-        }
-    }
-}
