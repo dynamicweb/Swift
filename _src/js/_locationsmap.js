@@ -1,5 +1,4 @@
-// Dependencies: Google Maps API
-const google = window.google;
+
 
 const LocationsMap = (function () {
   var map;
@@ -85,7 +84,7 @@ const LocationsMap = (function () {
       }
 
       // Create the map instance
-      map = new google.maps.Map(mapElement, {
+      map = new window.google.maps.Map(mapElement, {
         center: {
           lat: settings.defaultLat,
           lng: settings.defaultLng,
@@ -94,7 +93,7 @@ const LocationsMap = (function () {
         disableDefaultUI: true,
         zoomControl: true,
         zoomControlOptions: {
-          position: google.maps.ControlPosition.RIGHT_TOP,
+          position: window.google.maps.ControlPosition.RIGHT_TOP,
         },
         styles: settings.mapStyle,
       });
@@ -106,7 +105,7 @@ const LocationsMap = (function () {
       });
 
       // Map is idle
-      google.maps.event.addListener(map, "idle", function () {
+      window.google.maps.event.addListener(map, "idle", function () {
         var locationsListElement = document.querySelector("#LocationsList");
         locationsListElement.innerHTML = "";
 
@@ -114,7 +113,7 @@ const LocationsMap = (function () {
       });
 
       // Info window
-      infoWindow = new google.maps.InfoWindow({
+      infoWindow = new window.google.maps.InfoWindow({
         maxWidth: 300,
         minWidth: 220,
       });
@@ -146,9 +145,9 @@ const LocationsMap = (function () {
       let marker;
 
       if (settings.mapIcon.path || settings.mapIcon.url) {
-        settings.mapIcon.scaledSize = new google.maps.Size(35, 35);
+        settings.mapIcon.scaledSize = new window.google.maps.Size(35, 35);
 
-        marker = new google.maps.Marker({
+        marker = new window.google.maps.Marker({
           icon: settings.mapIcon,
           map: map,
           position: location.location,
@@ -156,7 +155,7 @@ const LocationsMap = (function () {
           id: markersCount,
         });
       } else {
-        marker = new google.maps.Marker({
+        marker = new window.google.maps.Marker({
           map: map,
           position: location.location,
           title: location.name,
@@ -346,9 +345,9 @@ const LocationsMap = (function () {
 
     // Get position from address and move the map to the location
     geocode: function (request) {
-      var geocoder = new google.maps.Geocoder();
+      var geocoder = new window.google.maps.Geocoder();
       geocoder.geocode(request, function (results, status) {
-        if (status == google.maps.GeocoderStatus.OK) {
+        if (status == window.google.maps.GeocoderStatus.OK) {
           // To adjust Zoom Level
           var bound = results[0].geometry.viewport;
           map.fitBounds(bound);
@@ -396,7 +395,7 @@ const LocationsMap = (function () {
 
     // Calculate route
     calcRoute: function (start, end) {
-      var bounds = new google.maps.LatLngBounds();
+      var bounds = new window.google.maps.LatLngBounds();
       bounds.extend(start);
       bounds.extend(end);
       map.fitBounds(bounds);
