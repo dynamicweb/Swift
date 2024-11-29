@@ -10,8 +10,8 @@ class VideoPlayer extends HTMLElement {
 
     const observer = new MutationObserver(() => {
       observer.disconnect();
-      this.video = this.querySelector("[swift-video]");
-      this.playBtn = this.querySelector("[swift-video-play-btn]");
+      this.video = this.querySelector("[data-swift-video]");
+      this.playBtn = this.querySelector("[data-swift-video-play-btn]");
       if (this.playBtn && this.video) {
         this.video.onloadeddata = () => this.playBtn.style.visibility = "visible";
         this.playBtn.addEventListener("click", () => this.playing = !this.playing);
