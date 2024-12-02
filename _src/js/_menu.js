@@ -1,7 +1,7 @@
 const Menu = (function () {
   return {
     getMenuContentOffsetByParentRowPadding: function (menuElement) {
-      const parentGridrow = menuElement.closest("[swift-gridrow]");
+      const parentGridrow = menuElement.closest("[data-swift-gridrow]");
       const style = window.getComputedStyle(parentGridrow);
       return style.paddingBottom;
     },
