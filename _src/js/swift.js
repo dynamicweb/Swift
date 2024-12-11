@@ -4,7 +4,6 @@ import "./components/VideoPlayer";
 // Swift modules
 import { Favorites } from "./_favorites";
 import { Cart } from "./_cart";
-import { Scroll } from "./_scroll";
 import { ProductList } from "./_productlist";
 import { PageUpdater } from "./_pageupdater";
 import { LocationsMap } from "./_locationsmap";
@@ -25,7 +24,6 @@ const swift = (function () {
   return {
     Cart: Cart,
     Favorites: Favorites,
-    Scroll: Scroll,
     ProductList: ProductList,
     PageUpdater: PageUpdater,
     LocationsMap: LocationsMap,
