@@ -6,17 +6,12 @@
 @using Dynamicweb.Ecommerce.Products
 @MasterPageFile("Swift-v2_Master.cshtml")
 
-@functions {
-    bool IsContentOnly()
-    {
-        return Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current?.Request.QueryString.Get("ContentOnly") ?? "false");
-    }
-}
-
-@{ // Page headers
+@{
+    bool isContentOnly = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current?.Request.QueryString.Get("ContentOnly") ?? "false");
+    // Page headers
     LinkViewModel headerLink;
-    if (!IsContentOnly() && ((Pageview.Device == DeviceType.Desktop && (Model.Area?.Item?.TryGetLink("HeaderDesktop", out headerLink) ?? false)) ||
-    !IsContentOnly() && (Pageview.Device == DeviceType.Mobile || Pageview.Device == DeviceType.Tablet) && (Model.Area?.Item?.TryGetLink("HeaderMobile", out headerLink) ?? false)))
+    if (!isContentOnly && ((Pageview.Device == DeviceType.Desktop && (Model.Area?.Item?.TryGetLink("HeaderDesktop", out headerLink) ?? false)) ||
+    !isContentOnly && (Pageview.Device == DeviceType.Mobile || Pageview.Device == DeviceType.Tablet) && (Model.Area?.Item?.TryGetLink("HeaderMobile", out headerLink) ?? false)))
     {
         string? headerCss = null;
         var headerPage = ContentViewModelFactory.CreatePageInfoViewModel(Dynamicweb.Content.Services.Pages.GetPage(headerLink.PageId));
@@ -38,8 +33,8 @@
 
 @{ // Page footers
     LinkViewModel footerLink;
-    if (!IsContentOnly() && ((Pageview.Device == DeviceType.Desktop) && (Model.Area?.Item?.TryGetLink("FooterDesktop", out footerLink) ?? false)) ||
-    !IsContentOnly() && ((Pageview.Device == DeviceType.Mobile || Pageview.Device == DeviceType.Tablet) && (Model.Area?.Item?.TryGetLink("FooterMobile", out footerLink) ?? false)))
+    if (!isContentOnly && ((Pageview.Device == DeviceType.Desktop) && (Model.Area?.Item?.TryGetLink("FooterDesktop", out footerLink) ?? false)) ||
+    !isContentOnly && ((Pageview.Device == DeviceType.Mobile || Pageview.Device == DeviceType.Tablet) && (Model.Area?.Item?.TryGetLink("FooterMobile", out footerLink) ?? false)))
     {
         var footerPage = ContentViewModelFactory.CreatePageInfoViewModel(Dynamicweb.Content.Services.Pages.GetPage(footerLink.PageId));
         <footer data-swift-page-footer="@(footerLink.PageId)" data-dw-colorscheme="@footerPage.ColorScheme?.Id">
@@ -48,109 +43,113 @@
     }
 }
 
-@if (!IsContentOnly())
-{
-    @* Language selector modal *@
-    <div class="modal fade" id="PreferencesModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-sm" id="PreferencesModalContent">
+@if (isContentOnly)
+{    
+    return;
+}
+
+@* Language selector modal *@
+<div class="modal fade" id="PreferencesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm" id="PreferencesModalContent">
+        @* The content here comes from an external request *@
+    </div>
+</div>
+
+@* Favorite toast *@
+<div aria-live="polite" aria-atomic="true">
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="favoriteNotificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto">@Translate("Favorite list updated")</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body d-flex gap-3">
+                <div id="favoriteNotificationToast_Image"></div>
+                <div id="favoriteNotificationToast_Text"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Modal for dynamic content *@
+<div class="modal fade js-product" id="DynamicModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content" id="DynamicModalContent">
             @* The content here comes from an external request *@
         </div>
     </div>
+</div>
 
-    @* Favorite toast *@
-    <div aria-live="polite" aria-atomic="true">
-        <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
-            <div id="favoriteNotificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="toast-header">
-                    <strong class="me-auto">@Translate("Favorite list updated")</strong>
-                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                <div class="toast-body d-flex gap-3">
-                    <div id="favoriteNotificationToast_Image"></div>
-                    <div id="favoriteNotificationToast_Text"></div>
-                </div>
-            </div>
-        </div>
-    </div>
+@* Offcanvas for dynamic content *@
+<div class="offcanvas offcanvas-end" tabindex="-1" id="DynamicOffcanvas">
+    @* The content here comes from an external request *@
+</div>
 
-    @* Modal for dynamic content *@
-    <div class="modal fade js-product" id="DynamicModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-md">
-            <div class="modal-content" id="DynamicModalContent">
-                @* The content here comes from an external request *@
-            </div>
-        </div>
-    </div>
-
-    @* Offcanvas for dynamic content *@
-    <div class="offcanvas offcanvas-end" tabindex="-1" id="DynamicOffcanvas">
-        @* The content here comes from an external request *@
-    </div>
-
-    @* MiniCart Offcanvas *@
+@* MiniCart Offcanvas *@
+@{
     var cartSummaryPageId = Dynamicweb.Content.Services.Pages.GetPageByNavigationTag(Pageview.AreaID, "CartSummary")?.ID ?? 0;
-    if ((Model.Area?.Item?.TryGetString("OffcanvasMinicartBehaviour", out string offcanvasMiniCartBehaviour) ?? false) && (!offcanvasMiniCartBehaviour.Equals("0")) && (cartSummaryPageId > 0))
-    {
-        @* Open MiniCart when the cart is updated *@
-        <script type="module">
+}
+@if ((Model.Area?.Item?.TryGetString("OffcanvasMinicartBehaviour", out string offcanvasMiniCartBehaviour) ?? false) && (!offcanvasMiniCartBehaviour.Equals("0")) && (cartSummaryPageId > 0))
+{
+    @* Open MiniCart when the cart is updated *@
+    <script type="module">
 
-            document.addEventListener('updated.swift.cart', (event) => {
-                let orderContext = event?.detail?.formData?.get("OrderContext");
-                updateCartSummary(orderContext);
+        document.addEventListener('updated.swift.cart', (event) => {
+            let orderContext = event?.detail?.formData?.get("OrderContext");
+            updateCartSummary(orderContext);
 
-                let offcanvasMiniCartBehaviourJs = "@offcanvasMiniCartBehaviour";
+            let offcanvasMiniCartBehaviourJs = "@offcanvasMiniCartBehaviour";
                 
-                if (event?.detail?.formData?.get("MiniCartBehaviour")) {
-                    offcanvasMiniCartBehaviourJs = event?.detail?.formData?.get("MiniCartBehaviour");
-                }
+            if (event?.detail?.formData?.get("MiniCartBehaviour")) {
+                offcanvasMiniCartBehaviourJs = event?.detail?.formData?.get("MiniCartBehaviour");
+            }
 
-                if (offcanvasMiniCartBehaviourJs == "2" || offcanvasMiniCartBehaviourJs == "3") {
+            if (offcanvasMiniCartBehaviourJs == "2" || offcanvasMiniCartBehaviourJs == "3") {
+                openMiniCartOffcanvas();
+            }
+        });
+    </script>
+
+    if (offcanvasMiniCartBehaviour == "1" || offcanvasMiniCartBehaviour == "3")
+    {
+        @* Open MiniCart when toggle is clicked *@
+        <script type="module">
+            let miniCartToggles = document.querySelectorAll('.mini-cart-quantity');
+            miniCartToggles?.forEach((toggle) => {
+                toggle.parentElement.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    let orderContext = toggle.dataset?.orderContext;
+                    updateCartSummary(orderContext);
+
                     openMiniCartOffcanvas();
-                }
+                });
             });
         </script>
+    }
 
-        if (offcanvasMiniCartBehaviour == "1" || offcanvasMiniCartBehaviour == "3")
-        {
-            @* Open MiniCart when toggle is clicked *@
-            <script type="module">
-                let miniCartToggles = document.querySelectorAll('.mini-cart-quantity');
-                miniCartToggles?.forEach((toggle) => {
-                    toggle.parentElement.addEventListener('click', (event) => {
-                        event.preventDefault();
-                        let orderContext = toggle.dataset?.orderContext;
-                        updateCartSummary(orderContext);
+    <script>
+        const updateCartSummary = (orderContext) => {
+            const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
+            swift.PageUpdater.UpdateFromUrlInline(event, '/Default.aspx?ID=@(cartSummaryPageId)&CartType=minicart&RequestPageID=@(Pageview.Page.ID)&OrderContext=' + orderContext +'', 'Swift-v2_CartSummary.cshtml', dynamicOffcanvas);
+        };
+        const openMiniCartOffcanvas = () => {
+            const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
+            const miniCartOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(dynamicOffcanvas);
+            dynamicOffcanvas.classList.add('overflow-y-auto');
 
-                        openMiniCartOffcanvas();
-                    });
-                });
-            </script>
-        }
-
-        <script>
-            const updateCartSummary = (orderContext) => {
-                const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
-                swift.PageUpdater.UpdateFromUrlInline(event, '/Default.aspx?ID=@(cartSummaryPageId)&CartType=minicart&RequestPageID=@(Pageview.Page.ID)&OrderContext=' + orderContext +'', 'Swift-v2_CartSummary.cshtml', dynamicOffcanvas);
-            };
-            const openMiniCartOffcanvas = () => {
-                const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
-                const miniCartOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(dynamicOffcanvas);
-                dynamicOffcanvas.classList.add('overflow-y-auto');
-
-                if (!miniCartOffcanvas._isShown) {
-                    miniCartOffcanvas.show();
-                    hideActiveOffcanvases(miniCartOffcanvas);
+            if (!miniCartOffcanvas._isShown) {
+                miniCartOffcanvas.show();
+                hideActiveOffcanvases(miniCartOffcanvas);
+            }
+        };
+        const hideActiveOffcanvases = (miniCartOffcanvas) => {
+            let activeOffcanvases = document.querySelectorAll('.offcanvas.show');
+            activeOffcanvases?.forEach((offCanvas) => {
+                offCanvas = bootstrap.Offcanvas.getInstance(offCanvas);
+                if (offCanvas !== miniCartOffcanvas) {
+                    offCanvas.hide();
                 }
-            };
-            const hideActiveOffcanvases = (miniCartOffcanvas) => {
-                let activeOffcanvases = document.querySelectorAll('.offcanvas.show');
-                activeOffcanvases?.forEach((offCanvas) => {
-                    offCanvas = bootstrap.Offcanvas.getInstance(offCanvas);
-                    if (offCanvas !== miniCartOffcanvas) {
-                        offCanvas.hide();
-                    }
-                });
-            };
-        </script>
-    }    
+            });
+        };
+    </script>
 }
