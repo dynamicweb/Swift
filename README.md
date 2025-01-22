@@ -37,6 +37,8 @@ This repository contains a `./Files` with design files, images, and other static
 7. Log in and install a license
 
 ## Requirements
+* **Swift v1.26.8** requires **DynamicWeb version 9.18.2** and **Shipmondo dll v2.0.0** or newer, it can also run on **DynamicWeb v10.9.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
+
 * **Swift v1.26.7** requires **DynamicWeb version 9.17.10** and **Shipmondo dll v2.0.0** or newer, it can also run on **DynamicWeb v10.7.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
 
 * **Swift v1.26.6** requires **DynamicWeb version 9.17.10** and **Shipmondo dll v2.0.0** or newer, it can also run on **DynamicWeb v10.7.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
@@ -73,8 +75,8 @@ After following these guides you will have a freshly installed DynamicWeb soluti
 
 | Download |      |
 | ------ | ------ |
-| Database | [Swift Demo database](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-1 "Download Swift database")|
-| Database | [Swift Empty database](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-1 "Download Swift Empty database, with No Ecom data")|
+| Database | [Swift Demo database](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-3 "Download Swift database")|
+| Database | [Swift Empty database](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-4 "Download Swift Empty database, with No Ecom data")|
 | Image folder | [Swift Product Image](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.26.0/Swift_20240305_DemoProductImages.zip "Download Swift Product Image folder") |
 
 
