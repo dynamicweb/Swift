@@ -1,5 +1,25 @@
 # Changelog
 
+# v1.26.8
+
+## [v1.26.8] - 22-01-2025
+
+> [!NOTE]
+> **Requirements**
+> * **Swift v1.26.8 requires DynamicWeb v9.18.2 or newer, requires the Shipmondo.dll version 2.0.0 or newer**
+> * **Swift v1.26.8 can also run on DynamicWeb v10.9.0 or newer, if Shipmondo is used, it requires Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
+
+## Bugfixes
+* Checkout: AddressUser, Set "same as billing address" as default selected delivery address when user has no other addresses
+* Customer center: Order list - Download assets button, Set the Repository and Query for product assets download link
+* General: Digital Assets Portal, Render PDF icon to fix broken thumbnails for PDF files on DynamicWeb10
+* General: Digital Assets Portal, Fix for "Enter" key breaking the layout on Assets search
+* Itemtypes: Media Gallery, Use getimage for image links
+* Itemtypes: Slider, Fix theme inheritance issue
+* Itemtypes: Related product list, Load field display groups after prices to fix fields not showing on initial load using Live integration
+* Itemtypes: Article List, Remove usage of inline js method to fix issue when having multiple Article lists sliders on the same page
+* Itemtypes: Mega menu, Css fallback for megamenu dropdown toggle area
+
 # v1.26.7
 
 ## [v1.26.7] - 20-11-2024
