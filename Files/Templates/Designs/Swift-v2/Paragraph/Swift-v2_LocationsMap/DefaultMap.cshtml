@@ -1,21 +1,23 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 
 @{ 
-	string apiKey = !string.IsNullOrEmpty(Pageview.AreaSettings.GetString("Google_APIKey")) ? Pageview.AreaSettings.GetString("Google_APIKey") : "";
 	var locationList = Model.Item.GetUsers("UserGroup");
 	string iconPath = "/Files/Images/Icons/";
 
 	int initialZoomLevel = !string.IsNullOrEmpty(Model.Item.GetString("InitialZoomLevel")) ? Model.Item.GetInt32("InitialZoomLevel") : 4;
 	initialZoomLevel = initialZoomLevel == 0 ? 4 : initialZoomLevel;
 	string regionCode = !string.IsNullOrEmpty(Model.Item.GetString("RegionCode")) ? Model.Item.GetString("RegionCode") : "DK";
-	bool useDefaultGoogleMapsStyling = !string.IsNullOrEmpty(Model.Item.GetString("UseDefaultGoogleMapsStyling")) ? Model.Item.GetBoolean("UseDefaultGoogleMapsStyling") : false;
 
-	var defaultLat = Model.Item?.GetGeolocation("DefaultMapCenter")?.Latitude != null ? Model.Item.GetGeolocation("DefaultMapCenter").Latitude.ToString().Replace(",", ".") : "0.000000";
-	var defaultLng = Model.Item?.GetGeolocation("DefaultMapCenter")?.Longitude != null ? Model.Item.GetGeolocation("DefaultMapCenter").Longitude.ToString().Replace(",", ".") : "0.000000";
+	var defaultLat = "0.000000";
+	var defaultLng = "0.000000";
+	if (Model.Item.TryGetGeolocation("DefaultMapCenter", out var defaultMapCenter)) {
+		defaultLat = defaultMapCenter.Latitude.ToString().Replace(",", ".");
+		defaultLng = defaultMapCenter.Longitude.ToString().Replace(",", ".");
+	} 
 }
 
 @if (defaultLat != "0.000000" && defaultLng != "0.000000") { 
-	if (apiKey != "") {
+	if (Model.Item.TryGetString("Google_APIKey", out string apiKey)) {
 		<div class="grid position-relative">
 			<div class="g-col-12 g-col-lg-8 order-1" id="MapHeader">
 				@if (Model.Item.TryGetString("Title", out string title))
@@ -45,12 +47,9 @@
 						<ul class="list-group" id="LocationsList"></ul>
 					</div>
 				</div>
-			} else if (!string.IsNullOrEmpty(Model.Item.GetString("Title")) && !Model.Item.GetBoolean("HideTitle")) {
+			} else if (Model.Item.TryGetString("Title", out string title2)) {
 				<div class="g-col-12 order-5 order-lg-3">
-					@if (Model.Item.TryGetString("Title", out string title))
-					{
-						@title
-					}
+					@title2
 				</div>
 			}
 		</div>
@@ -62,7 +61,7 @@
 	}
 
 	<script type="module">
-		@if (!useDefaultGoogleMapsStyling) {
+		@if (!Model.Item.GetBoolean("UseDefaultGoogleMapsStyling")) {
 			<text>
 				var mapIcon = {
 						url: "@(iconPath)marker.svg"
@@ -253,6 +252,6 @@
 	<script async src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)&loading=async&callback=initMap"></script>
 } else {
 	<div class="alert alert-info" role="alert">
-		@Translate("The map is not proberly configured")
+		@Translate("The map is not properly configured")
 	</div>
 }
