@@ -1,0 +1,57 @@
+trigger:
+  - main
+  - milestones/*
+
+pool: "DW10"
+
+steps:
+  - task: NodeTool@0
+    inputs:
+      versionSpec: "20.x"
+      nodejsMirror: true
+      retryCountOnDownloadFails: 3
+    displayName: "Install Node.js"
+
+  - script: |
+      npm install
+
+    displayName: "npm install"
+
+  - script: |
+      npm run build --verbose
+    displayName: "npm run build"
+
+  - task: ArchiveFiles@2
+    inputs:
+      rootFolderOrFile: "$(Build.SourcesDirectory)/Files"
+      includeRootFolder: false
+      archiveType: "zip"
+      archiveFile: "$(Build.ArtifactStagingDirectory)/$(Build.BuildId).zip"
+      replaceExistingArchive: true
+  
+  - task: PowerShell@2
+    name: SwiftVersion
+    inputs:
+      targetType: 'inline'
+      script: |
+        Write-Host '- - - - - - - - - - - - - - - - - - - - - - - - -'
+        Write-Host ' Get swift version from package.json'
+        Write-Host '- - - - - - - - - - - - - - - - - - - - - - - - -'
+        $versionString=$(node -p "require('./package.json').version")
+        Write-Host '- - - - - - - - - - - - - - - - - - - - - - - - -'
+        Write-Host ' Creating new version text file'
+        Write-Host '- - - - - - - - - - - - - - - - - - - - - - - - -'
+        Set-Content $(Build.ArtifactStagingDirectory)\version.txt $versionString
+        Write-Host '- - - - - - - - - - - - - - - - - - - - - - - - -'
+        Write-Host ' Add text to version file' -f Green
+        Write-Host '- - - - - - - - - - - - - - - - - - - - - - - - -'
+
+    env:
+      SwiftVersion: $versionString
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: "$(Build.ArtifactStagingDirectory)"
+      ArtifactName: "swift-v2"
+      publishLocation: "Container"
+    displayName: "Publish artifact"

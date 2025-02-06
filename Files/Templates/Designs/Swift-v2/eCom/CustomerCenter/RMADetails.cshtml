@@ -1,0 +1,448 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using System
+@using Dynamicweb.Ecommerce.Products
+
+@functions
+{
+	public enum RmaDetailView
+	{
+		CreateNewRequest,
+		ViewOpenRequest,
+		ViewClosedRequest
+	}
+
+	public string GetFormText(RmaDetailView viewTemplate)
+	{
+		string paragraphId = GetString("ParagraphID");
+		switch (viewTemplate)
+		{
+			default:
+			case RmaDetailView.CreateNewRequest:
+				return paragraphId + "AddRmaForm";
+			case RmaDetailView.ViewOpenRequest:
+				return paragraphId + "AddRmaCommentForm";
+			case RmaDetailView.ViewClosedRequest:
+				return paragraphId + "CancelRmaForm";
+		}
+	}
+	
+	public string GetFormAction(RmaDetailView viewTemplate)
+	{
+		switch (viewTemplate)
+		{
+			default:
+			case RmaDetailView.CreateNewRequest:
+				return GetString("Ecom:CustomerCenter.RMA.AddURL");
+			case RmaDetailView.ViewOpenRequest:
+				return GetString("Ecom:CustomerCenter.RMA.AddCommentURL");
+			case RmaDetailView.ViewClosedRequest:
+				return GetString("Ecom:RMA.CancelURL");
+		}
+	}
+
+	public RmaDetailView GetDetailTemplateView()
+	{
+		bool hasAddContent = GetBoolean("Ecom:CustomerCenter.RMA.HasAddContent");
+		bool hasCancelContent = GetBoolean("Ecom:CustomerCenter.RMA.HasCancelContent");
+
+		if (hasCancelContent) return RmaDetailView.ViewClosedRequest;
+		if (hasAddContent) return RmaDetailView.CreateNewRequest;
+		
+		return RmaDetailView.ViewOpenRequest;
+	}
+
+	public string GetRelativeTimeDescription(DateTime date)
+	{
+		TimeSpan timeSpan = DateTime.Now.Subtract(date);
+
+		if (timeSpan <= TimeSpan.FromSeconds(60))
+		{
+			return $"{timeSpan.Seconds} {Translate("seconds ago")}";
+		}
+		if (timeSpan <= TimeSpan.FromMinutes(60))
+		{
+			return timeSpan.Minutes > 1 ? $"{timeSpan.Minutes} {Translate("minutes ago")}" : Translate("a minute ago");
+		}
+		if (timeSpan <= TimeSpan.FromHours(24))
+		{
+			return timeSpan.Hours > 1 ? $"{timeSpan.Hours} {Translate("hours ago")}" : Translate("an hour ago");
+		}
+		if (timeSpan <= TimeSpan.FromDays(30))
+		{
+			return timeSpan.Days > 1 ? $"{timeSpan.Days} {Translate("days ago")}" : Translate("yesterday");
+		}
+
+		return date.TimeOfDay.Ticks > 0 ? date.ToString() : date.ToString(Pageview.Area.CultureInfo.DateTimeFormat.ShortDatePattern);
+	}
+}
+
+@{
+	RmaDetailView detailTemplateView = GetDetailTemplateView();
+
+	string rmaIdFieldName = GetString("ParagraphID") + "RMAID";
+	string hasSubmitFieldName = GetString("ParagraphID") + "HasSubmit";
+
+	string title = Translate("Create new request");
+	title = detailTemplateView == RmaDetailView.ViewOpenRequest ? Translate("View request") : title;
+	title = detailTemplateView == RmaDetailView.ViewClosedRequest ? Translate("Cancel request") : title;
+}
+
+<div class="h-100" data-dw-colorscheme="@Pageview.CurrentParagraph?.ColorSchemeId">
+	<form id="RMAForm" name="@GetFormText(detailTemplateView)" action="@GetFormAction(detailTemplateView)" method="post">
+		<input type="hidden" id="@rmaIdFieldName" value="@GetString("Ecom:RMA.ID")" name="@rmaIdFieldName">
+		<input type="hidden" id="@hasSubmitFieldName" value="1" name="@hasSubmitFieldName">
+
+		<header class="p-3 border-bottom">
+			<h1 class="h6 m-0 flex-fill text-muted">@title</h1>
+		</header>
+
+		@if (detailTemplateView != RmaDetailView.CreateNewRequest)
+		{
+			string rmaInfoOrderDate = GetDate("Ecom:RMA.Date").TimeOfDay.Ticks > 0 ? GetDate("Ecom:RMA.Date").ToString() : GetDate("Ecom:RMA.Date").ToString(Pageview.Area.CultureInfo.DateTimeFormat.ShortDatePattern);
+			string rmaInfoStatus = GetString("Ecom:RMA.Status");
+			string rmaInfoBadgeColor = "bg-dark text-white";
+
+			<table class="table d-print-table">
+				<tbody>
+					<tr>
+						<td>@Translate("Placed")</td>
+						<td class="text-end">@rmaInfoOrderDate</td>
+					</tr>
+					<tr>
+						<td>@Translate("Request number")</td>
+						<td class="text-end">@GetString("Ecom:RMA.ID")</td>
+					</tr>
+					<tr>
+						<td>@Translate("Order number")</td>
+						<td class="text-end">@GetString("Ecom:RMA.OrderID")</td>
+					</tr>
+					<tr>
+						<td>@Translate("Type")</td>
+						<td class="text-end">@GetString("Ecom:RMA.Type.Name")</td>
+					</tr>
+					<tr>
+						<td>@Translate("State")</td>
+						<td class="text-end">
+							<div class="badge opacity-75 @rmaInfoBadgeColor">@rmaInfoStatus</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		}
+
+		@if (detailTemplateView == RmaDetailView.CreateNewRequest)
+		{
+			<div class="mt-2 px-3 py-2">
+				<div class="form-floating">
+					<select id="RMATypeID" class="form-select" name="@(GetString("ParagraphID") + "RMATypeID")" onchange="changeRMAParameters()">
+						@foreach (LoopItem type in GetLoop("RMATypes"))
+						{
+							string rmaId = type.GetString("Ecom:RMA.Type.ID");
+							<option selected="@(!string.IsNullOrEmpty(type.GetString("Ecom:RMA.Type.Selected")))" value="@rmaId">@type.GetString("Ecom:RMA.Type.Name")</option>
+						}
+					</select>
+					<label for="RMATypeID" class="form-label">@Translate("Request type")</label>
+				</div>
+			</div>
+
+
+			@if (!GetBoolean("Ecom:RMA.OrderID.IsSetFromRequest"))
+			{
+				<div class="px-3 py-2">
+					<div class="form-floating">
+						<select id="RMAOrderID" class="form-select" name="@(GetString("ParagraphID") + "RMAOrderID")" onchange="changeRMAParameters()">
+							<option selected="true" disabled="true" value="">@Translate("Nothing selected")</option>
+							@foreach (LoopItem order in GetLoop("Orders"))
+							{
+								string orderId = order.GetString("Ecom:Order.ID");
+								string orderDate = order.GetDate("Ecom:Order.Completed").TimeOfDay.Ticks > 0 ? order.GetDate("Ecom:Order.Completed").ToString() : order.GetDate("Ecom:Order.Completed").ToString(Pageview.Area.CultureInfo.DateTimeFormat.ShortDatePattern);
+
+								<option selected="@(!string.IsNullOrEmpty(order.GetString("Ecom:Order.Selected")))" value="@orderId">@(orderDate + ", #" + orderId + ", " + Translate("Price") + ": " + order.GetString("Ecom:Order.OrderLines.Total.Price"))</option>
+							}
+						</select>
+						<label for="RMAOrderID" class="form-label">@Translate("Select order")</label>
+					</div>
+				</div>
+
+				<div class="alert alert-warning d-none" id="orderSelectError">
+					@Translate("The order is not selected")
+				</div>
+			}
+
+				
+			@if (!GetBoolean("Ecom:CustomerCenter.RMA.HasRMAOrderLines") && !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request[GetString("ParagraphID") + "RMAOrderID"]))
+			{
+				<div class="alert alert-warning" id="noAvailableProducts">
+					@Translate("There are no available products in this order")
+				</div>
+			}
+
+			@if (GetBoolean("Ecom:CustomerCenter.RMA.HasRMAOrderLines"))
+			{
+				int count = 0;
+
+				<section class="p-3 mt-3 d-flex flex-column gap-3">
+					@foreach (LoopItem orderline in GetLoop("RMAOrderLines"))
+					{
+						<div class="js-rma-item">
+							@{
+								string productId = !string.IsNullOrEmpty(orderline.GetString("Ecom:RMA:OrderLine.ProductID")) ? orderline.GetString("Ecom:RMA:OrderLine.ProductID") : Guid.NewGuid().ToString("N");
+								string header = Translate("Product No") + ": " + orderline.GetString("Ecom:RMA:OrderLine.ProductNumber");
+								bool hasOrderlineAddComment = !string.IsNullOrWhiteSpace(orderline.GetString("Ecom:CustomerCenter.RMA.HasAddComment"));
+								string detailsPageLink = GetPageIdByNavigationTag("ProductDetailPage").ToString();
+								Product rmaProduct = Dynamicweb.Ecommerce.Services.Products.GetProductById(orderline.GetString("Ecom:RMA:OrderLine.ProductID"), "", Pageview.Area.EcomLanguageId);
+								string defaultGroupId = rmaProduct?.GetDefaultGroupByShopId(Pageview.Area.EcomShopId)?.Id ?? string.Empty;
+								string selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
+								string link = string.IsNullOrEmpty(selectedDetailPage) ? $"/Default.aspx?ID={detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
+								link += "&productid=" + productId;
+								ProductImageService productImageService = new ProductImageService();
+								string productImagePath = rmaProduct != null ? productImageService.GetImagePath(rmaProduct) : "/Files/Images/nopic.png";
+								string productImage = "/Admin/Public/GetImage.ashx?image=" + productImagePath + "&width=315&height=315&format=webp";
+								productImage = !productImagePath.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? productImagePath : productImage;
+								string orderlineId = GetString("ParagraphID") + "OrderLineID" + orderline.GetString("Ecom:RMA:OrderLine.ID");
+
+								<div class="mb-3">
+									<input id="@(productId + "_" + count)" onchange="selectRMAProduct(this)" name="@orderlineId" type="checkbox" class="form-check-input js-rma-item-checkbox">
+									<label for="@(productId + "_" + count)" class="dw-mod">@header</label>
+								</div>
+
+								<article class="grid">
+									<div class="g-col-3">
+										<a href="@link" class="ratio ratio-1x1 d-block bg-light">
+											<img src="@productImage" style="object-fit: contain;" alt="@orderline.GetString("Ecom:RMA:OrderLine.ProductName")" height="315" width="315">
+										</a>
+									</div>
+									<div class="g-col-9">
+										<div class="grid grid-9 h-100">
+
+											<div class="g-col-9 g-col-md-5">
+												<h2 class="h6 mb-3 fw-bold">
+													<a href="@link" class="text-dark text-decoration-none">@orderline.GetString("Ecom:RMA:OrderLine.ProductName")</a>
+												</h2>
+											</div>
+
+											<div class="g-col-9 g-col-md-4 text-end">
+												<h6 class="h6 fw-bold m-0">
+													<span class="text-price">@orderline.GetString("Ecom:RMA:OrderLine.Price")</span>
+												</h6>
+											</div>
+										</div>
+									</div>
+								</article>
+
+								if (hasOrderlineAddComment)
+								{
+									string orderlineCommentId = !string.IsNullOrEmpty(orderline.GetString("Ecom:RMA:OrderLine.ID")) ? orderline.GetString("Ecom:RMA:OrderLine.ID") : Guid.NewGuid().ToString("N");
+									string commentId = orderline.GetString("ParagraphID") + "ProductComment" + orderline.GetString("Ecom:RMA:OrderLine.ID");
+
+									<div class="mb-3 mt-3 js-comment d-none">
+										<div class="form-floating">
+											<textarea class="form-control" id="@orderlineCommentId" rows="3" name="@commentId" required disabled=""></textarea>
+											<label class="u-pull--left">@($"{Translate("Add comment")} ({Translate("required")})")</label>
+										</div>
+									</div>
+								}
+							}
+						</div>
+						count++;
+					}
+				</section>
+			}
+			
+			@if (GetBoolean("Ecom:CustomerCenter.RMA.HasRMAOrderLines") && GetBoolean("Ecom:CustomerCenter.RMA.HasAddComment"))
+			{
+				<div class="p-3 js-comment">
+					<div class="form-floating">
+						<textarea class="form-control" id="RMAComment" rows="3" name="@(GetString("ParagraphID") + "RMAComment")" required></textarea>
+						<label for="RMAComment" class="u-pull--left">@($"{Translate("Additional Info")} ({Translate("required")})")</label>
+					</div>
+				</div>
+			}
+
+			@if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request[GetString("ParagraphID") + "RMAOrderID"]))
+			{
+				<button class="btn btn-primary m-3" data-dw-button="primary" onclick="createRMARequest()" type="button">@Translate("Create request")</button>
+
+				<div class="alert alert-warning d-none" id="SelectRmaProducts">
+					@Translate("Please select products for the Request")
+				</div>
+			}
+		}
+
+		@if (detailTemplateView == RmaDetailView.ViewOpenRequest || detailTemplateView == RmaDetailView.ViewClosedRequest)
+		{
+			@if (GetBoolean("Ecom:CustomerCenter.RMA.HasRMAOrderLines"))
+			{
+				<section class="p-3 mt-3 d-flex flex-column gap-3">
+					@foreach (LoopItem orderline in GetLoop("RMAOrderLines"))
+					{
+						string productId = !string.IsNullOrEmpty(orderline.GetString("Ecom:RMA:OrderLine.ProductID")) ? orderline.GetString("Ecom:RMA:OrderLine.ProductID") : Guid.NewGuid().ToString("N");
+						string detailsPageLink = GetPageIdByNavigationTag("ProductDetailPage").ToString();
+						Product rmaProduct = Dynamicweb.Ecommerce.Services.Products.GetProductById(orderline.GetString("Ecom:RMA:OrderLine.ProductID"), string.Empty, Pageview.Area.EcomLanguageId);
+						string defaultGroupId = rmaProduct?.GetDefaultGroupByShopId(Pageview.Area.EcomShopId)?.Id ?? string.Empty;
+						string selectedDetailPage = Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(defaultGroupId)?.Meta.PrimaryPage ?? string.Empty;
+						string link = string.IsNullOrEmpty(selectedDetailPage) ? $"/Default.aspx?ID={detailsPageLink}&groupid={defaultGroupId}" : selectedDetailPage;
+						link += "&productid=" + productId;
+						ProductImageService productImageService = new ProductImageService();
+						string productImagePath = rmaProduct != null ? productImageService.GetImagePath(rmaProduct) : "/Files/Images/nopic.png";
+						string productImage = "/Admin/Public/GetImage.ashx?image=" + productImagePath + "&width=315&height=315&format=webp";
+						productImage = !productImagePath.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? productImagePath : productImage;
+
+						<article class="grid">
+							<div class="g-col-3">
+								<a href="@link" class="ratio ratio-1x1 d-block bg-light">
+									<img src="@productImage" style="object-fit: contain;" alt="@orderline.GetString("Ecom:RMA:OrderLine.ProductName")" height="315" width="315">
+								</a>
+							</div>
+							<div class="g-col-9">
+								<div class="grid grid-9 h-100">
+
+									<div class="g-col-9 g-col-md-5">
+										<h2 class="h6 mb-3 fw-bold">
+											<a href="@link" class="text-dark text-decoration-none">@orderline.GetString("Ecom:RMA:OrderLine.ProductName")</a>
+										</h2>
+									</div>
+
+									<div class="g-col-9 g-col-md-4 text-end">
+										<h6 class="h6 fw-bold m-0">
+											<span class="text-price">@orderline.GetString("Ecom:RMA:OrderLine.Price")</span>
+										</h6>
+									</div>
+								</div>
+							</div>
+						</article>
+					}
+				</section>
+			}
+		}
+
+		@if (detailTemplateView == RmaDetailView.ViewOpenRequest)
+		{
+			if (GetBoolean("Ecom:CustomerCenter.RMA.HasRMAOrderLines") && GetBoolean("Ecom:CustomerCenter.RMA.HasAddComment"))
+			{
+				<div class="p-3 js-comment">
+					<div class="form-floating">
+						<textarea class="form-control" id="RMAComment" rows="3" name="@(GetString("ParagraphID") + "RMAComment")" required></textarea>
+						<label for="RMAComment" class="u-pull--left">@($"{Translate("Customer comment")} ({Translate("required")})")</label>
+					</div>
+				</div>
+
+				<button class="btn btn-primary m-3" data-dw-button="primary" type="submit">@Translate("Add comment")</button>
+			}
+		}
+
+		@if (detailTemplateView != RmaDetailView.CreateNewRequest)
+		{
+			if (string.IsNullOrWhiteSpace(GetString("Ecom:CustomerCenter.RMA.HasAddContent")))
+			{
+				// The RMA has an issue where the oldest comment if not the last of the loop, so we have to purposely loop for the first comment.
+				List<LoopItem> allComments = GetLoop("RMAComments");
+				List<LoopItem> allCommentsExceptFirst = allComments.Where(comment => comment.GetString("Ecom:RMA:Comment.Event.Description") != "RMA Created.").ToList();
+				LoopItem firstComment = allComments.FirstOrDefault(comment => comment.GetString("Ecom:RMA:Comment.Event.Description") == "RMA Created.");
+
+				<h2 class="pb-0 p-3">@Translate("History")</h2>
+
+				foreach (LoopItem comment in allCommentsExceptFirst)
+				{
+					DateTime date = comment.GetDate("Ecom:RMA:Comment.Date");
+					string description = comment.GetString("Ecom:RMA:Comment.Event.Description");
+					string name = comment.GetString("Ecom:RMA:Comment.State.Name");
+					string text = comment.GetString("Ecom:RMA:Comment.Text");
+
+					<div class="col-md-12 border-bottom px-3 py-1">
+						<small class="text-muted">
+							@if (!string.IsNullOrWhiteSpace(description))
+							{
+								@description
+							}
+							<span class="px-1 small">@GetRelativeTimeDescription(date)</span>
+						</small>
+
+						@if (!string.IsNullOrWhiteSpace(name))
+						{
+							<div>@name</div>
+						}
+
+						@if (!string.IsNullOrEmpty(text))
+						{
+							<div>@text</div>
+						}
+					</div>
+				}
+
+				// First comment
+				DateTime firstCommentDate = firstComment.GetDate("Ecom:RMA:Comment.Date");
+				string firstCommentDescription = firstComment.GetString("Ecom:RMA:Comment.Event.Description");
+				string firstCommentName = firstComment.GetString("Ecom:RMA:Comment.State.Name");
+				string firstCommentText = firstComment.GetString("Ecom:RMA:Comment.Text");
+
+				<div class="col-md-12 border-bottom px-3 py-1">
+					<small class="text-muted">
+						@if (!string.IsNullOrWhiteSpace(firstCommentDescription))
+						{
+							@firstCommentDescription
+						}
+						<span class="px-1 small">@GetRelativeTimeDescription(firstCommentDate)</span>
+					</small>
+
+					@if (!string.IsNullOrWhiteSpace(firstCommentName))
+					{
+						<div>@firstCommentName</div>
+					}
+
+					@if (!string.IsNullOrEmpty(firstCommentText))
+					{
+						<div>@firstCommentText</div>
+					}
+				</div>
+			}
+		}
+	</form>
+</div>
+
+<script>
+	function changeRMAParameters() {
+		let orderEl = document.getElementById("RMAOrderID");
+		let orderSelectError = document.getElementById("orderSelectError");
+		let form = document.getElementById("RMAForm");
+		let checkedProducts = document.querySelectorAll(".js-rma-item-checkbox");
+
+		if (orderEl.value === "") {
+			orderSelectError.classList.remove("d-none");
+		}
+		else {
+			orderSelectError.classList.add("d-none");
+			for (let i = 0; i < checkedProducts.length; i++) {
+				checkedProducts[i].checked = false;
+			}
+			form.submit();
+		}
+	}
+
+	function selectRMAProduct(el) {
+		let comment = el.closest(".js-rma-item").querySelector(".js-comment");
+		if (comment) {
+			comment.classList.toggle("d-none", !el.checked);
+			comment.querySelector("textarea").disabled = comment.classList.contains("d-none");
+		}
+	}
+
+	function createRMARequest() {
+		let selectProductWarning = document.getElementById("SelectRmaProducts");
+		let checkedProducts = document.querySelectorAll(".js-rma-item-checkbox:checked");
+		let form = document.getElementById("RMAForm");
+
+		if (checkedProducts.length === 0) {
+			selectProductWarning.classList.remove("d-none");
+			return;
+		}
+
+		selectProductWarning.classList.add("d-none");
+
+		if (!form.reportValidity()) {
+			return;
+		}
+
+		form.submit();
+	}
+</script>

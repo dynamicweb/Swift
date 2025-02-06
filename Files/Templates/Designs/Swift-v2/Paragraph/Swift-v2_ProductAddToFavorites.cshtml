@@ -1,0 +1,92 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+
+@{
+	ProductViewModel product = null;
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (!string.IsNullOrEmpty(Pageview.Page.Item["DummyProduct"]?.ToString()) && Pageview.IsVisualEditorMode)
+	{
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+
+		if (productList?.Products is object)
+		{
+			product = productList.Products[0];
+		}
+	} else if (Pageview.IsVisualEditorMode) {
+		product = new ProductViewModel();
+		product.Id = "1";
+		product.VariantId = "394041";
+		product.PurchaseMinimumQuantity = 1;
+		product.PurchaseQuantityStep = 1;
+		product.StockLevel = 10;
+		product.DefaultUnitId = "1";
+		product.ProductType = Dynamicweb.Ecommerce.Products.ProductType.Stock;
+		product.NeverOutOfstock = false;
+		product.Discontinued = false;
+		product.Price = new PriceViewModel() {
+			Price = 99,
+			PriceFormatted = "99 " + Pageview.Area.EcomCurrencyId,
+			PriceWithoutVat = 99,
+			PriceWithoutVatFormatted = "99 " + Pageview.Area.EcomCurrencyId,
+			PriceWithVat = 99,
+			PriceWithVatFormatted = "99 " + Pageview.Area.EcomCurrencyId
+		};
+	}
+
+	bool anonymousUser = Pageview.User == null;
+
+	bool productIsDiscontinued = product is object && product.Discontinued;
+	bool disableAddToCartIfProductIsDiscontinued = Model.Item.GetBoolean("DoNotShowFavoriteButtonIfProductIsDiscontinued");
+	bool isDiscontinued = productIsDiscontinued && disableAddToCartIfProductIsDiscontinued;
+
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", string.Empty);
+	horizontalAlign = horizontalAlign == "center" ? "justify-content-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "end" ? "justify-content-end" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "full" ? string.Empty : horizontalAlign;
+
+	string buttonStyle = Model.Item.GetRawValueString("ButtonStyle", "secondary");
+
+	string url = "/Default.aspx?ID=" + (GetPageIdByNavigationTag("CartService"));
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=Swift-v2_MiniCart.cshtml" : "?LayoutTemplate=Swift-v2_MiniCart.cshtml";
+	}
+
+	string fullWidth = Model.Item.GetRawValueString("HorizontalAlignment", "") == "full" ? "w-100" : "";
+
+	var favoriteParameters = new Dictionary<string, object>();
+	int defaultFavoriteListId = 0;
+
+	if (Pageview?.User?.ID != null)
+	{
+		IEnumerable<FavoriteList> favoreiteLists = Pageview.User.GetFavoriteLists();
+		if (favoreiteLists.Count() == 1)
+		{
+			foreach (FavoriteList list in favoreiteLists)
+			{
+				defaultFavoriteListId = list.ListId;
+			}
+		}
+	}
+
+	favoriteParameters.Add("ListId", defaultFavoriteListId);
+	favoriteParameters.Add("ButtonStyle", buttonStyle);
+	favoriteParameters.Add("ButtonWidth", fullWidth);
+
+	if (!Model.Item.GetBoolean("HideButtonText"))
+	{
+		favoriteParameters.Add("ShowButtonText", true);
+	}
+}
+
+@if ((product is object && !anonymousUser && !isDiscontinued) || (product is object && Pageview.IsVisualEditorMode))
+{
+	<div class="d-flex @horizontalAlign @fullWidth item_@Model.Item.SystemName.ToLower()">
+		@RenderPartial("Components/ToggleFavorite.cshtml", product, favoriteParameters)
+	</div>
+}

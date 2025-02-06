@@ -1,0 +1,170 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
+@using System
+@using Dynamicweb
+@using Dynamicweb.Environment
+@using Dynamicweb.Frontend
+@using Dynamicweb.Frontend.Devices
+@using Dynamicweb.Rendering
+
+@{
+    string favicon = "/Files/Templates/Designs/Swift-v2/Assets/Images/favicon.png";
+    if (Model.Area?.Item?.TryGetImageFile("Favicon", out ImageFileViewModel faviconImage) ?? false)
+    {
+        favicon = faviconImage.Path;
+    }
+
+    string appleTouchIcon = "/Files/Templates/Designs/Swift-v2/Assets/Images/apple-touch-icon.png";
+    if (Model.Area?.Item?.TryGetImageFile("AppleTouchIcon", out ImageFileViewModel appleTouchIconImage) ?? false)
+    {
+        appleTouchIcon = appleTouchIconImage.Path;
+    }
+
+    string googleTagManagerID = string.Empty;
+    if (Model.Area?.Item?.TryGetString("GoogleTagManagerID", out googleTagManagerID) ?? false)
+    {
+        googleTagManagerID = googleTagManagerID.Trim();
+    }
+
+    var cssFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/css/swift.css"));
+    var jsFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/js/swift.js"));
+
+    @* Stylesheets *@
+    AddStylesheet($"/Files/Templates/Designs/Swift-v2/Assets/css/swift.css?{cssFileInfo.LastWriteTime.Ticks}");
+    
+    @* Color schemes stylesheet *@
+    @if (Model.TryGetColorSchemeStyle(out string? colorSchemeStyle))
+    {
+        AddStylesheet(colorSchemeStyle);
+    }
+    @* Button stylesheet *@
+    @if (Model.TryGetButtonStyle(out string? buttonStyle)) {
+        AddStylesheet(buttonStyle);
+    }
+    @* Typography stylesheet *@
+    @if (Model.TryGetTypographyStyle(out string? typographyStyle)) {
+        AddStylesheet(typographyStyle);
+    }
+
+    @* Scripts *@
+    AddScript("/Files/Templates/Designs/Swift-v2/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js");
+    AddScript("/Files/Templates/Designs/Swift-v2/Assets/lib/htmx.org/dist/htmx.min.js");
+    AddScript($"/Files/Templates/Designs/Swift-v2/Assets/js/swift.js?{jsFileInfo.LastWriteTime.Ticks}");
+}
+
+<!doctype html>
+<html lang="@Pageview.Area.CultureInfo.TwoLetterISOLanguageName" data-swift-version="@(ReadFile("/Files/Templates/Designs/Swift-v2/swift_version.txt")?.Trim())">
+    <head>
+        @* Required meta tags *@
+        <meta charset="utf-8">
+        <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0">
+        <link rel="shortcut icon" href="@favicon">
+        <link rel="apple-touch-icon" href="@appleTouchIcon">
+
+        @* MetaTags *@
+        @Model.MetaTags
+        
+        @* Pageview Meta *@
+        <title>@Model.Title</title>
+       
+        @* Get stylesheets *@
+        @Model.GetStylesheetsMarkup()
+        
+        @* Media Query Limit *@
+        @if(Model.Area?.Item?.TryGetString("MediaQueryLimit", out string mediaQueryLimit) ?? false) {
+            <style>
+                @@media screen and (min-width: @(mediaQueryLimit)px) {
+                    [data-swift-container] {
+                        --dw-container-limit: @(mediaQueryLimit)px;
+                    }
+
+                    [data-swift-container],
+                    [data-dw-container-width="3"] {
+                        --dw-container-width: calc(var(--dw-container-limit) * .8);
+                    }
+
+                    [data-dw-container-width="1"] {
+                        --dw-container-width: var(--swift-text-width);
+                    }
+                    
+                    [data-dw-container-width="2"] {
+                        --dw-container-width: calc(var(--dw-container-limit) * .65);
+                    }
+                }
+            </style>
+        }
+        
+        @* Get scripts *@
+        @Model.GetScriptsMarkup()
+        
+        @* Google gtag method - always include even if it is not used for anything *@
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag() { dataLayer.push(arguments); }
+        </script>
+        @* Google tag manager *@
+        @if (!string.IsNullOrWhiteSpace(googleTagManagerID))
+        {
+            <script>
+                gtag('consent', 'default', {
+                    'ad_storage': 'denied',
+                    'ad_user_data': 'denied',
+                    'ad_personalization': 'denied',
+                    'analytics_storage': 'denied'
+                });
+            </script>
+            <script>
+                (function (w, d, s, l, i) {
+                    w[l] = w[l] || []; w[l].push({
+                        'gtm.start':
+                            new Date().getTime(), event: 'gtm.js'
+                    }); var f = d.getElementsByTagName(s)[0],
+                        j = d.createElement(s), dl = l != 'dataLayer' ? '&l=' + l : ''; j.async = true; j.src =
+                            'https://www.googletagmanager.com/gtm.js?id=' + i + dl; f.parentNode.insertBefore(j, f);
+                })(window, document, 'script', 'dataLayer', '@(googleTagManagerID)');
+            </script>
+            if (AllowTracking())
+            {
+                <script>
+                    gtag('consent', 'update', {
+                        'ad_storage': '@CookieManager.IsCookieOptInGranted("Marketing")',
+                        'ad_user_data': '@CookieManager.IsCookieOptInGranted("Marketing")',
+                        'ad_personalization': '@CookieManager.IsCookieOptInGranted("Marketing")',
+                        'analytics_storage': '@CookieManager.IsCookieOptInGranted("Statistical")'
+                    });
+                </script>
+            }
+        }
+
+    </head>
+    <body data-dw-page-id="@(Model.ID)" data-dw-itemtype="@Model.Item?.SystemName.ToLower()" data-dw-colorscheme="@(Model.ColorScheme?.Id ?? Model.Area?.ColorScheme?.Id)">
+    
+        @* Google tag manager *@
+        @if (!string.IsNullOrWhiteSpace(googleTagManagerID) && AllowTracking())
+        {
+            <noscript>
+                <iframe src="https://www.googletagmanager.com/ns.html?id=@(googleTagManagerID)" height="0" width="0" style="display:none;visibility:hidden"></iframe>
+            </noscript>
+        }
+
+        @ContentPlaceholder()
+       
+	</body>
+
+</html>
+
+@functions {
+    bool AllowTracking()
+    {
+        bool allowTracking = true;
+        if (CookieManager.IsCookieManagementActive)
+        {
+            var cookieOptInLevel = CookieManager.GetCookieOptInLevel();
+            var cookieOptInCategories = CookieManager.GetCookieOptInCategories();
+            bool consentEither = (cookieOptInCategories.Contains("Statistical") || cookieOptInCategories.Contains("Marketing"));
+            bool consentFunctional = cookieOptInLevel == CookieOptInLevel.Functional;
+            bool consentAtLeastOne = cookieOptInLevel == CookieOptInLevel.All || (consentFunctional && consentEither);
+            allowTracking = consentAtLeastOne;
+        }
+        return allowTracking;
+    }
+}

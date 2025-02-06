@@ -1,0 +1,226 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend.Navigation
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Frontend
+
+@functions {
+
+	NavigationTreeViewModel GetNavigationTreeFromPageId(int pageId = 0, int startLevel = 1, int stopLevel = 9)
+	{
+		var navigationSettings = new NavigationSettings()
+		{
+			StartLevel = startLevel,
+			StopLevel = stopLevel,
+			RootPageId = pageId,
+			ExpandMode = ExpandMode.All,
+		};
+		return Navigation.GetNavigationViewModel(navigationSettings);
+	}
+
+	string GetSubmenuType(NavigationTreeNodeViewModel rootNode)
+	{
+		string submenuType = string.Empty;
+		var nodePage = Dynamicweb.Content.Services.Pages.GetPage(rootNode.PageId);
+		if (nodePage.PropertyItem is object && nodePage.PropertyItem.TryGetValue("SubmenuType", out object submenuTypeValue))
+		{
+			submenuType = Dynamicweb.Core.Converter.ToString(submenuTypeValue);
+		}
+		return submenuType;
+	}
+
+	bool IsMegaMenu(NavigationTreeNodeViewModel rootNode, string submenuType)
+	{
+		switch (submenuType)
+		{
+			case "dropdown":
+				return false;
+			case "auto":
+				return NavigationTreeHasChildren(rootNode);
+			default:
+				return true;
+		}
+	}
+
+	bool NavigationTreeHasChildren(NavigationTreeNodeViewModel rootNode)
+	{
+		foreach (var subNode in rootNode.Nodes)
+		{
+			if (subNode.Nodes.Any())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public string GetGroupFieldValue(string systemName, IList<FieldValueViewModel> groupFields)
+	{
+		if (groupFields is null)
+		{
+			return string.Empty;
+		}
+		return groupFields.FirstOrDefault(field => field.SystemName == systemName)?.Value.ToString() ?? string.Empty;
+		
+	}
+
+	string isActive(NavigationTreeNodeViewModel node)
+	{
+		return node.IsActive ? "aria-current='page'" : string.Empty;
+	}
+
+	string isActiveDropdown(NavigationTreeNodeViewModel node)
+	{
+		return node.IsActive ? "class=\"active\"" : string.Empty;
+	}
+
+	public string GetImagePathSanitized(string imagePath)
+	{
+		if (!imagePath.StartsWith("/Files", StringComparison.OrdinalIgnoreCase))
+		{
+			if (!imagePath.StartsWith("Files/", StringComparison.OrdinalIgnoreCase))
+			{
+				imagePath = $"/Files/Images/{imagePath}";
+			}
+		}
+		return imagePath;
+	}
+}
+
+@{
+	var navigationRoot = GetNavigationTreeFromPageId();
+	if (Model.Item.TryGetLink("NavigationRoot", out var navigationRootLink))
+	{
+		navigationRoot = GetNavigationTreeFromPageId(navigationRootLink.PageId);
+	}
+	string clickable = "text-decoration-underline-hover text-decoration-accent-hover";
+}
+
+<div class="nav-wrapper megamenu-wrapper" id="Menu_@Model.ID">
+	<nav class="d-flex gap-2">
+		@foreach (var rootNode in navigationRoot.Nodes.Where(node => node.ShowInMenu))
+		{
+			var rootNodeProductGroup = rootNode.GetProductGroup();
+			var rootNodeGroupFields = rootNodeProductGroup.GroupFields;
+			string? promotionImage = GetGroupFieldValue("ProductGroupPromotionImage", rootNodeGroupFields);
+			bool promotionImageExists = !string.IsNullOrEmpty(promotionImage);
+			var nodesExist = rootNode.Nodes.Any();
+			string submenuType = GetSubmenuType(rootNode);
+			bool isMegaMenu = IsMegaMenu(rootNode, submenuType);
+			string submenuTypeCss = isMegaMenu ? "position-static" : string.Empty;
+			string dropdown = nodesExist ? "dropdown" : string.Empty;
+			string dropdownAttributes = nodesExist ? "role=\"button\" data-bs-toggle=\"dropdown\" data-bs-offset=\"0,0\" aria-expanded=\"false\"" : string.Empty;
+
+			<div class="nav-item @dropdown @submenuTypeCss">
+				@if (rootNode.IsClickable)
+				{
+					<a class="nav-link p-2 @clickable" href="@rootNode.Link" @dropdownAttributes @isActive(rootNode)>
+						<span class="text-wrap-nowrap">@rootNode.Name</span>
+					</a>
+				}
+				else
+				{
+					<span class="nav-link p-2 pe-none" @dropdownAttributes>
+						<span class="text-wrap-nowrap">@rootNode.Name</span>
+					</span>
+				}
+				@if (nodesExist)
+				{
+					if (isMegaMenu)
+					{
+						<div class="dropdown-menu megamenu border-bottom py-4" data-dw-colorscheme="@Model.ColorScheme?.Id">
+							<div data-swift-container class="overflow-y-auto">
+								<div class="grid">
+									<div class="g-col-@(promotionImageExists ? "8" : "12")">
+										<div class="megamenu-grid d-grid gap-3">
+											@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
+											{
+												var groupFields = subNode.GetProductGroup().GroupFields;
+												string groupImage = GetGroupFieldValue("ProductGroupNavigationImage", groupFields);
+												bool groupImageExists = !string.IsNullOrEmpty(groupImage);
+												var imagePath = GetImagePathSanitized(groupImage);
+												var imageSrc = imagePath.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) ? imagePath : $"/Admin/Public/GetImage.ashx?Image={imagePath}&Width=320&Ratio=4/3&Format=webp";
+												
+												<div class="megamenu-col position-relative">
+													@if (groupImageExists)
+													{
+														<figure class="m-0">
+															<img loading="lazy" class="img-fluid" alt="@subNode.Name" src="@imageSrc" style="aspect-ratio: 4/3;">
+														</figure>
+													}
+													@if (subNode.IsClickable)
+													{
+														<a href="@subNode.Link" class="nav-link stretched-link px-0 @clickable" @isActive(subNode)>
+															@(subNode.Name)
+														</a>
+													}
+													else
+													{
+														<div class="nav-link px-0 pe-none">
+															@(subNode.Name)
+														</div>
+													}
+												</div>
+											}
+										</div>
+									</div>
+
+									@if (promotionImageExists)
+									{
+										var promotionImagePath = GetImagePathSanitized(promotionImage);
+										var promotionImageSrc = promotionImagePath.EndsWith(".svg", StringComparison.OrdinalIgnoreCase) ? promotionImagePath : $"/Admin/Public/GetImage.ashx?Image={promotionImagePath}&Width=320&Ratio=4/3&Format=webp";											
+										string promotionDescription = GetGroupFieldValue("ProductGroupPromotionDescription", rootNodeGroupFields);
+										string promotionLinkLabel = GetGroupFieldValue("ProductGroupPromotionLinkLabel", rootNodeGroupFields);
+										string promotionLink = GetGroupFieldValue("ProductGroupPromotionLink", rootNodeGroupFields);
+										promotionLink = !string.IsNullOrEmpty(promotionLink) ? promotionLink : rootNode.Link;
+										var groupName = rootNodeProductGroup.Name;
+										
+										<div class="g-col-4 grid grid-3 align-items-start">
+											<div class="g-col-2 g-start-2 m-0">
+												<div class="card" title="@groupName">
+													<figure class="m-0">
+														<img loading="lazy" class="card-img-top" alt="@groupName" src="@promotionImageSrc" style="aspect-ratio: 4/3;">
+													</figure>												
+													<div class="card-body p-3">
+														<p class="dw-h5 lh-1">@(promotionDescription)</p>
+														<a href="@promotionLink" title="@groupName" id="NavGroupPromoFigureLink_@(rootNodeProductGroup.Id)" class="btn btn-primary stretched-link" data-dw-button="primary">@promotionLinkLabel</a>
+													</div>
+												</div>
+											</div>
+										</div>
+									}
+								</div>
+							</div>
+						</div>
+					}
+					else
+					{
+						<ul class="dropdown-menu dropdown-menu-shadow" data-dw-colorscheme="@Model.ColorScheme?.Id">
+
+							@foreach (var subNode in rootNode.Nodes.Where(node => node.ShowInMenu))
+							{
+								<li @isActiveDropdown(subNode)>
+									@if (subNode.IsClickable)
+									{
+										<a class="dropdown-item py-2 lh-1 @clickable" href="@subNode.Link" @isActive(subNode)>
+											<strong>@subNode.Name</strong>
+										</a>
+									}
+									else
+									{
+										<span class="dropdown-item py-2 lh-1 pe-none">
+											<strong>@subNode.Name</strong>
+										</span>
+									}
+								</li>
+							}
+						</ul>
+					}
+				}
+			</div>
+		}
+	</nav>
+</div>
+
+<script type="module">
+	swift.Menu.setMenuContentOffset('Menu_@Model.ID');
+</script>

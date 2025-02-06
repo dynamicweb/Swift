@@ -1,0 +1,358 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb
+
+@{
+	bool hidePublicationForm = Pageview.CurrentParagraph.Item["HidePublicationForm"] != null ? Convert.ToBoolean(Pageview.CurrentParagraph.Item["HidePublicationForm"].ToString()) : false;
+	bool hideProductInformationForm = Pageview.CurrentParagraph.Item["HideProductInformationForm"] != null ? Convert.ToBoolean(Pageview.CurrentParagraph.Item["HideProductInformationForm"].ToString()) : false;
+
+	string shopPageId = Pageview.CurrentParagraph.Item["ShopPageLink"] != null ? Pageview.CurrentParagraph.Item["ShopPageLink"].ToString() : "";
+	string uniqueId = $"{Pageview.CurrentParagraph.ID}";
+
+	var ecomLanguages = Dynamicweb.Ecommerce.Services.Languages.GetLanguages();
+	var currencies = Dynamicweb.Ecommerce.Services.Currencies.GetAllCurrencies();
+	var languageId = Dynamicweb.Ecommerce.Common.Context.LanguageID;
+	var assetGroups = Dynamicweb.Ecommerce.Services.DetailsGroups.GetGroups();
+	var areaEcomLanguageId = Pageview.Area.EcomLanguageId;
+	var areaEcomCurrencyId = Pageview.Area.EcomCurrencyId;
+
+	List<string> productVariantIds = new List<string>();
+
+	string confirmationPage = Pageview.CurrentParagraph.Item["ConfirmationPageLink"] != null ? Pageview.CurrentParagraph.Item["ConfirmationPageLink"].ToString() : "";
+
+	int languageCount = 0;
+
+	var paragraphViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreateParagraphInfoViewModel(Pageview.CurrentParagraph);
+	var selectedCatalogs = paragraphViewModel.Item.GetList("SelectedCatalogs")?.GetRawValue()?.OfType<string>();
+	int selectedCatalogsCount = selectedCatalogs != null ? selectedCatalogs.Count() : 0;
+	int catalogCount = 0;
+	int totalOrderlines = 0;
+
+	var feeds = Dynamicweb.Ecommerce.Services.Feeds.GetFeeds();
+
+	foreach (LoopItem orderline in GetLoop("OrderLines"))
+	{
+		if (orderline.GetBoolean("Ecom:Order:OrderLine.IsProduct")) {
+			totalOrderlines++;
+		}
+	}
+}
+
+@if (GetLoop("OrderLines").Count > 0) { 
+	<div class="grid gap-0">
+		<header class="g-col-12 mb-4">
+			<div class="pb-3 pb-lg-0 pt-3 pt-lg-5">
+				<h1 class="h3 mb-2">@Translate("Downloads")</h1>
+				<p>@Translate("You can get relevant product data and assets such as product images and documents")</p>
+				<p class="mb-0"><span>@Translate("Products ready to download"):</span> <span>@totalOrderlines</span></p>
+			</div>
+		</header>
+
+		<section class="g-col-12 g-col-lg-8 pe-lg-5 pb-md-5">
+			<header class="g-col-12 py-2 d-none d-lg-block">
+				<div class="grid gap-2 lh-1">
+					<div class="g-col-1"></div>
+					<div class="g-col-3">@Translate("Number")</div>
+					<div class="g-col-6">@Translate("Product")</div>
+					<div class="g-col-2 text-end">
+						<a href="@GetString("Ecom:Cart.EmptyCartLink")" title="@Translate("Remove all")">@Translate("Remove all")</a>
+					</div>
+				</div>
+			</header>
+
+			<header class="py-2 border-bottom d-block d-lg-none">
+				<a href="@GetString("Ecom:Cart.EmptyCartLink")" title="@Translate("Remove all")">@Translate("Remove all")</a>
+			</header>
+
+			@foreach (LoopItem orderline in GetLoop("OrderLines"))
+			{
+				string name = orderline.GetString("Ecom:Order:OrderLine.ProductName");
+				string number = orderline.GetString("Ecom:Order:OrderLine.ProductNumber");
+				string image = "/Admin/Public/GetImage.ashx?width=" + 180 + "&height=" + 180 + "&image=" + orderline.GetString("Ecom:Product.PrimaryImage") + "&FillCanvas=true&&format=webp";
+
+				string removeFromBasketLink = orderline.GetString("Ecom:Order:OrderLine.DeleteLink");
+
+				string primaryGroupId = orderline.GetString("Ecom:Order:OrderLine.PrimaryOrDefaultGroupId");
+				string productId = orderline.GetString("Ecom:Order:OrderLine.ProductID");
+				string variantId = orderline.GetString("Ecom:Order:OrderLine.ProductVariantID");
+
+				string link = "Default.aspx?ID=" + GetPageIdByNavigationTag("Shop");
+				link += $"&GroupID={primaryGroupId}";
+				link += $"&ProductID={productId}";
+				link += !string.IsNullOrEmpty(variantId) ? $"&VariantID={variantId}" : "";
+
+				if (orderline.GetBoolean("Ecom:Order:OrderLine.IsProduct"))
+				{
+					<article class="grid grid-10 grid-lg-12 gap-2 g-col-12 align-items-center align-items-lg-center mb-1">
+						<div class="g-col-12 border-top"></div>
+
+						<div class="g-col-1">
+							<a href="@link" tabindex="-1">
+								<img class="img-fluid" src="@image" height="60" width="60" alt="@name">
+							</a>
+						</div>
+
+						<div class="g-col-7 g-col-lg-9 grid grid-9 gap-0 gap-lg-3 lh-1">
+							<div class="g-col-4 g-col-lg-3 order-1">
+								<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@number</a></span>
+							</div>
+
+							<div class="g-col-5 g-col-lg-6 order-2 lh-1">
+								<span class="fs-8 fs-lg-6"><a href="@link" tabindex="-1" class="text-decoration-none text-decoration-underline-hover">@name</a></span>
+							</div>
+						</div>
+
+						<div class="g-col-2 g-col-lg-2 text-end">
+							<a href="@removeFromBasketLink" alt="@Translate("Remove")">@Translate("Remove")</a>
+						</div>
+					</article>
+
+					productVariantIds.Add(orderline.GetString("Ecom:Order:OrderLine.ProductID") + orderline.GetString("Ecom:Order:OrderLine.ProductVariantID"));
+				}
+			}
+		</section>
+
+		<aside class="g-col-12 g-col-lg-4 position-relative">
+
+			@if (!hidePublicationForm)
+			{
+				<div data-dw-colorscheme="@Pageview.CurrentParagraph?.ColorSchemeId">
+					<form target="_blank" action="/Default.aspx?ID=@selectedCatalogs.FirstOrDefault()" method="post" class="sticky-receipt" id="DownloadPublicationModalForm@(uniqueId)">
+						<input type="hidden" name="ShopId" value="@Pageview.Area.EcomShopId">
+						<input type="hidden" name="MainProductID" value="@string.Join(",", productVariantIds.ToArray())">
+						<input type="hidden" name="print" value="true">
+
+						<div class="mb-3">
+							<h3 class="h5">@Translate("Publication")</h3>
+							<div>@Translate("Configure your publication setup")</div>
+						</div>
+
+						@if (Convert.ToBoolean(Pageview.CurrentParagraph.Item["ShowLanguageSelector"]) && ecomLanguages.Count() > 1) 
+						{ 
+							<div class="mb-4">
+								<label class="form-label">@Translate("Language")</label>
+								<select name="RequestLanguageID" class="form-select" aria-label="@Translate("Language")">
+									@foreach (var language in ecomLanguages)
+									{
+										var selected = string.Empty;
+										if (language.LanguageId.Equals(areaEcomLanguageId, StringComparison.OrdinalIgnoreCase))
+										{
+											selected = "selected";
+										}
+										<option @selected value="@language.LanguageId">@language.GetDisplayName()</option>
+									}
+								</select>
+							</div>
+						}
+
+
+						@if (Convert.ToBoolean(Pageview.CurrentParagraph.Item["ShowCurrencySelector"]))
+						{
+							<div class="mb-4" id="CurrencySelector@(uniqueId)">
+								<label class="form-label">@Translate("Currency")</label>
+								<select name="RequestCurrencyCode" class="form-select" aria-label="@Translate("Currency")">
+									@foreach (var currency in currencies)
+									{
+										var selected = string.Empty;
+										if (currency.Code.Equals(areaEcomCurrencyId, StringComparison.OrdinalIgnoreCase))
+										{
+											selected = "selected";
+										}
+										<option @selected value="@currency.Code">@currency.GetName(languageId)</option>
+									}
+								</select>
+							</div>
+						}
+
+						@if (Convert.ToBoolean(Pageview.CurrentParagraph.Item["ShowPriceSelector"]))
+						{
+							<div class="mb-4">
+								<label class="form-label">@Translate("Show price")</label>
+								<div class="form-check">
+									<input class="form-check-input" type="radio" name="hideprice" value="false" id="HidePriceFalse_@Pageview.CurrentParagraph.ID" checked>
+									<label class="form-check-label" for="HidePriceFalse_@Pageview.CurrentParagraph.ID">
+										@Translate("Yes")
+									</label>
+								</div>
+								<div class="form-check">
+									<input class="form-check-input" type="radio" name="hideprice" value="true" id="HidePriceTrue_@Pageview.CurrentParagraph.ID">
+									<label class="form-check-label" for="HidePriceTrue_@Pageview.CurrentParagraph.ID">
+										@Translate("No")
+									</label>
+								</div>
+							</div>
+						}
+
+					<div class="grid grid-1 grid-lg-2 gap-lg-3 mb-4">
+						@foreach (var catalog in selectedCatalogs)
+						{
+							var selected = catalogCount == 0 ? "checked" : string.Empty;
+							var radioId = $"CatalogCheck_{catalog}";
+							var catalogPage = Dynamicweb.Content.Services.Pages.GetPage(Convert.ToInt32(catalog));
+							string imagePath = catalogPage.Item["Thumbnail"] != null ? $"/Admin/Public/GetImage.ashx?image={catalogPage.Item["Thumbnail"].ToString()}&width=200&format=webp" : $"https://placehold.co/235x300?text={@Translate(catalogPage.GetDisplayName())}";
+
+							<div class="form-thumb">
+								<input class="form-thumb-input visually-hidden" type="radio" name="ID" value="@catalog" id="@radioId" onclick="document.querySelector('#DownloadPublicationModalForm@(uniqueId)').action='/Default.aspx?ID=@(catalog)'" @selected>
+								<label class="form-thumb-label d-flex flex-column" for="@radioId" role="button">
+									<span class="d-block p-1">
+										<img class="rounded-2 w-100" style="object-fit:cover" src="@imagePath" />
+									</span>
+									<span class="d-grid p-3">
+										<span class="d-block fw-bold">@catalogPage.GetDisplayName()</span>
+										@*<span class="d-block opacity-75 fs-7 lh-sm">@catalog.Name</span> // Descriptive text goes here //*@
+									</span>
+								</label>
+							</div>
+
+							catalogCount++;
+						}
+					</div>
+
+						<button type="submit" class="btn btn-primary w-100" data-dw-button="primary" title="@Translate("Print")">@Translate("Print")</button>
+
+						@if (!string.IsNullOrEmpty(shopPageId))
+						{
+							<a href="/Default.aspx?ID=@shopPageId" class="btn btn-secondary w-100 mt-3" data-dw-button="secondary" title="@Translate("Add more products")">@Translate("Add more products")</a>
+						}
+					</form>
+				</div>
+			}
+
+			@if (!string.IsNullOrEmpty(confirmationPage) && !hideProductInformationForm)
+			{
+				<div data-dw-colorscheme="@Pageview.CurrentParagraph?.ColorSchemeId">
+					<form action="/dwapi/ecommerce/products/export" class="sticky-receipt js-product-export-form">
+						<input type="hidden" name="ShopId" value="@Pageview.Area.EcomShopId">
+						<input type="hidden" name="Template" value="/Files/Templates/Designs/Swift-v2/eCom/ProductCatalog/ExportProductsMail.cshtml">
+						<input type="hidden" name="PageSize" value="100">
+						<input type="hidden" name="RepositoryName" value="ProductsFrontend">
+						<input type="hidden" name="QueryName" value="products">
+
+						<div class="mb-3">
+							<h3 class="h5">@Translate("Product information")</h3>
+							<div>@Translate("Select a language and format for your product file")</div>
+						</div>
+
+						<div class="mb-3">
+							<div class="mb-1">@Translate("Language")</div>
+							<select name="LanguageId" id="LanguageId" class="form-select" aria-label="@Translate("Language")">
+								@foreach (var language in ecomLanguages)
+								{
+									string selected = languageCount == 0 ? "selected" : "";
+
+									<option @selected>
+										@language.GetDisplayName() (@language.CountryCode)
+									</option>
+
+									languageCount++;
+								}
+							</select>
+						</div>
+
+						<div class="form-floating mb-4">
+							<select class="form-select" id="DownloadCartFormatSelector" name="ExportFormat" aria-label="@Translate("Export format")">
+								<option value="">@Translate("None")</option>
+								<option value="json" selected>JSON</option>
+								<option value="csv">CSV</option>
+								<option value="xml">XML</option>
+							</select>
+							<label for="DownloadCartFormatSelector">@Translate("Export format")</label>
+						</div>
+						
+						@if (feeds.Count() > 0)
+						{
+							<div class="form-floating mb-4">
+								<select class="form-select" id="DownloadCartFeedSelector" name="FeedId" aria-label="@Translate("Export Feed")">
+									<option value="" selected>@Translate("None")</option>
+									@foreach(var feed in feeds)
+									{
+										<option value="@feed.Id">@feed.Name</option>
+									}
+								</select>
+								<label for="DownloadCartFormatSelector">@Translate("Export feed")</label>
+							</div>
+						}
+
+						<div class="mb-2">
+							<h3 class="h5">@Translate("Image settings")</h3>
+							<div>@Translate("Select a resolution for your images")</div>
+						</div>
+
+						<div class="form-floating mb-4">
+							<input type="hidden" name="Dpi" id="DownloadCartDpi" value="72">
+							<input type="hidden" name="ImageFormat" id="DownloadCartImageFormat" value="webp">
+
+							<select class="form-select" id="DownloadCartImageImageSettingsSelector" aria-label="@Translate("Resolution")"
+									onchange="document.querySelector('#DownloadCartDpi').value = this.options[this.selectedIndex].getAttribute('data-dpi'); document.querySelector('#DownloadCartImageFormat').value = this.options[this.selectedIndex].getAttribute('data-image-format');">
+								<option data-dpi="72" data-image-format="webp" selected>@Translate("Web images") (webp, dpi: 72)</option>
+								<option data-dpi="144" data-image-format="jpg">@Translate("Print images") (jpg, dpi: 144)</option>
+								<option data-dpi="300" data-image-format="jpg">@Translate("Press images") (jpg, dpi: 300)</option>
+								<option data-dpi="600">@Translate("Origin images")</option>
+							</select>
+							<label for="DownloadCartImageFormatSelector">@Translate("Resolution")</label>
+						</div>
+
+						<div class="mb-2">
+							<h3 class="h5">@Translate("Product assets")</h3>
+							<div>@Translate("Optionally select additional product assets to download")</div>
+						</div>
+
+						<div class="mb-3">
+							<div class="mb-1">@Translate("Image assets")</div>
+							<div class="dropdown js-dropdown">
+								<button class="form-select text-start w-100 js-dropdown-btn" type="button" id="DownloadCartImageAssetsSelector" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+									@Translate("None")
+								</button>
+								<div class="dropdown-menu w-100 p-3">
+									<div class="form-check" onclick="swift.ProductExport.SelectAllOptions(this);">
+										<input class="form-check-input" type="checkbox" name="AssetCategories" data-short-name="@Translate("All")" value="" id="AssetsCheckAll">
+										<label class="form-check-label" for="AssetsCheckAll">
+											@Translate("All")
+										</label>
+									</div>
+
+									@foreach (var group in assetGroups)
+									{
+										<div class="form-check" onclick="swift.ProductExport.UpdateSelector(this)">
+											<input class="form-check-input" type="checkbox" name="AssetCategories" data-short-name="@group.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID)" value="@group.SystemName" id="Check_@group.SystemName">
+											<label class="form-check-label" for="Check_@group.SystemName">
+												@group.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID)
+											</label>
+										</div>
+									}
+								</div>
+							</div>
+						</div>
+
+						<div class="js-recipients">
+							<div class="mb-3 w-100 js-recipient-field">
+								<label for="DownloadCartRecipientEmail">@Translate("Send download link to")</label>
+								<div class="input-group input-secondary-button-group">
+									<input type="email" class="form-control js-recipient-email" id="DownloadCartRecipientEmail" placeholder="@Translate("Send download link to")" required>
+									<button type="button" class="btn btn-primary js-recipient-add-btn" data-dw-button="primary" onclick="swift.ProductExport.AddRecipent(this)">@Translate("Add")</button>
+								</div>
+								<div class="invalid-feedback">
+									@Translate("Please enter an email address")
+								</div>
+							</div>
+						</div>
+
+						<div class="js-recipient-tokens"></div>
+
+						<input type="hidden" name="MainProductID" value="@string.Join(",", productVariantIds.ToArray())">
+
+						<div class="alert alert-warning mb-2 d-none js-download-images-warning">@Translate("The solution does not have license to download")</div>
+
+						<button type="button" onclick="swift.ProductExport.SetEmailAddresses(this)" class="btn btn-primary w-100" data-dw-button="primary" title="@Translate("Send download link")">@Translate("Send download link")</button>
+
+						<div class="alert alert-success mt-3 d-none js-download-success">@Translate("A download link is sent to the recipients")</div>
+
+						@if (!string.IsNullOrEmpty(shopPageId))
+						{
+							<a href="/Default.aspx?ID=@shopPageId" class="btn btn-secondary w-100 mt-3" data-dw-button="secondary" title="@Translate("Add more products")">@Translate("Add more products")</a>
+						}
+					</form>
+				</div>
+			}
+		</aside>
+	</div>
+} 

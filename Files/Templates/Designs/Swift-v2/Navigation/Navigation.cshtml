@@ -1,0 +1,338 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using System.IO
+@using System.Text.RegularExpressions
+@using Dynamicweb
+@using Dynamicweb.Ecommerce.Orders
+
+@{
+	string colorScheme = Pageview.CurrentParagraph.ColorSchemeId;
+	int currentParagraphId = Pageview.CurrentParagraph.ID;
+	bool showOnlyFirstNavLevel = Model.Parameters.Keys.Contains("ShowOnlyFirstNavLevel") ? Convert.ToBoolean(Model.Parameters["ShowOnlyFirstNavLevel"]) : false;
+	string navItemVisuallyHidden = string.Empty;
+}
+
+@foreach (var node in Model.Nodes)
+{
+	var nodePage = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
+	var pageType = nodePage.Item?.SystemName ?? "Swift-v2_Page";
+	var pageIcon = string.Empty;
+	if (nodePage.PropertyItem is object)
+	{
+		if(nodePage.PropertyItem.TryGetValue("Icon", out object pageIconValue))
+		{
+			pageIcon = Dynamicweb.Core.Converter.ToString(pageIconValue);
+		}
+	}
+	var iconPath = pageIcon;
+	var hasChildren = node.Nodes.Count() > 0 || pageType == "Swift-v2_SignIn";
+	string nodeId = !string.IsNullOrEmpty(node.GroupId) ? $"Navigation_{node.GroupId}_{currentParagraphId}" : $"Navigation_Page_Desktop_{node.PageId.ToString()}_{currentParagraphId}";
+	string dropdownAttributes = hasChildren && !showOnlyFirstNavLevel ? " role=\"button\" aria-haspopup=\"true\" aria-expanded=\"false\" data-bs-toggle=\"dropdown\" data-bs-offset=\"0,0\"" : string.Empty;
+	string dropdownClasses = string.Empty;
+	string ariaCurrent = node.IsActive ? "aria-current='page'" : string.Empty;
+
+	if (pageType != "Swift-v2_Preferences")
+	{
+		<li class="nav-item@(hasChildren ? " dropdown" : string.Empty)">
+			@if (node.IsClickable)
+			{
+				@:<a href="@node.Link" class="p-2 nav-link d-inline-flex align-items-center gap-2 text-nowrap text-decoration-underline-hover @(node.IsActive ? "active" : string.Empty) @(hasChildren ? "dropdown-toggle" : string.Empty)" @(dropdownAttributes) @(ariaCurrent) id="@nodeId">
+			}
+			else
+			{
+				@:<span class="p-2 nav-link d-inline-flex align-items-center gap-2 text-nowrap @(hasChildren ? " dropdown-toggle " : string.Empty)" @dropdownAttributes id="@nodeId">
+			}
+
+			@if (pageType == "Swift-v2_Cart") // Mini cart
+			{
+				var cartContext = nodePage.Item["ContextCart"]?.ToString();
+				string cartId = !string.IsNullOrEmpty(cartContext) ? $"ID=\"Cart_{cartContext}\"" : string.Empty;
+				string jsCartClass = string.IsNullOrEmpty(cartContext) ? "js-cart-qty" : string.Empty;
+				double totalProducts = 0;
+
+				Dynamicweb.Ecommerce.Common.Context.CartContext = null;
+				if (!string.IsNullOrEmpty(cartContext))
+				{
+					var orderContext = Dynamicweb.Ecommerce.Services.OrderContexts.GetOrderContextById(cartContext);
+					Dynamicweb.Ecommerce.Common.Context.CartContext = orderContext;
+				}
+
+				if (Dynamicweb.Ecommerce.Common.Context.Cart != null)
+				{
+					totalProducts = Dynamicweb.Ecommerce.Common.Context.Cart.GetParentProductLineQuantityCount(Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines);
+				}
+
+				if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+				{
+					<span class="icon-3 pe-none">@ReadFile(iconPath)</span>
+				}
+				<span class="@(navItemVisuallyHidden)">@node.Name</span>
+				<span class="@jsCartClass mini-cart-quantity pe-none" @cartId data-order-context="@nodePage.Item["ContextCart"]">@totalProducts</span>
+			}
+			else
+			{
+				if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+				{
+					<span class="icon-3 pe-none">@ReadFile(iconPath)</span>
+				}
+				<span class="@(navItemVisuallyHidden)">@node.Name</span>
+			}
+
+			@if (node.IsClickable)
+			{
+				@:</a>
+			}
+			else
+			{
+				@:</span>
+			}
+
+			@if (hasChildren && !showOnlyFirstNavLevel)
+			{
+				<ul class="dropdown-menu" aria-labelledby="@nodeId" data-dw-colorscheme="@colorScheme">
+					@foreach (var subnode in node.Nodes) // Standard pages
+					{
+						nodeId = !string.IsNullOrEmpty(subnode.GroupId) ? "Navigation_" + subnode.GroupId + "_" + currentParagraphId : "Navigation_Page_" + subnode.PageId.ToString() + "_" + currentParagraphId;
+
+						<li>
+							@if (subnode.IsClickable)
+							{
+								<a href="@subnode.Link" class="dropdown-item py-2 text-decoration-underline-hover" @(subnode.IsActive ? " aria-current='page'" : string.Empty) id="@nodeId">@subnode.Name</a>
+							}
+							else
+							{
+								<span class="dropdown-item py-2" @(subnode.IsActive ? " aria-current='page'" : string.Empty) id="@nodeId">@subnode.Name</span>
+							}
+						</li>
+					}
+					@if (pageType == "Swift-v2_SignIn") // Sign out link
+					{
+						if (Pageview.User != null)
+						{
+							<li><hr class="dropdown-divider"></li>
+							if (Dynamicweb.Security.UserManagement.UserContext.Current.ImpersonatingUser != null)
+							{
+								<li>
+									<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item py-2 text-decoration-underline-hover swift_sign-out-as-customer-link" id="SignInButton_@currentParagraphId">@Translate("Sign out as a customer")</a>
+								</li>
+							}
+							<li>
+								<a href="/Admin/Public/ExtranetLogoff.aspx?redirect=no" class="dropdown-item py-2 text-decoration-underline-hover swift_sign-out-link">@Translate("Sign out")</a>
+							</li>
+						}
+					}
+				</ul>
+			}
+		</li>
+	}
+	else
+	{
+		string preferencesType = "language";
+		string? preferencesLayout = nodePage.Item["PreferencesLayout"]?.ToString();
+		bool countrySelector = Convert.ToBoolean(nodePage.Item["CountrySelector"]);
+		bool languageSelector = Convert.ToBoolean(nodePage.Item["LanguageSelector"]);
+		bool currencySelector = Convert.ToBoolean(nodePage.Item["CurrencySelector"]);
+		string groupId = Dynamicweb.Context.Current?.Request["GroupID"]?.ToString() ?? string.Empty;
+		string productId = Dynamicweb.Context.Current?.Request["ProductID"]?.ToString() ?? string.Empty;
+		string variantId = Dynamicweb.Context.Current?.Request["VariantID"]?.ToString() ?? string.Empty;
+		var name = node.Name;
+
+		if (preferencesLayout == "modal")
+		{
+			if (languageSelector) {
+				string iconFolder = "/Files/Images/Icons/Flags/";
+				var region = new System.Globalization.RegionInfo(Pageview.Area.CultureInfo.LCID);
+
+				iconPath = $"{iconFolder}{region.Name}.svg";
+				name = region.DisplayName;
+			}
+
+			<li class="nav-item@(hasChildren ? " dropdown" : string.Empty)">
+				<form action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift-v2_Preferences.cshtml" data-preloader="inline">
+					<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+					<input type="hidden" name="GroupID" value="@groupId">
+					<input type="hidden" name="ProductID" value="@productId">
+					<input type="hidden" name="VariantID" value="@variantId">
+					<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn border-0 nav-link d-inline-flex align-items-center gap-2 p-2 text-nowrap swift_open-preferences-modal" data-bs-toggle="modal" data-bs-target="#PreferencesModal" id="OpenPreferences_@currentParagraphId">
+						@if (iconPath.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+						{
+							<span class="icon-3">@ReadFile(iconPath)</span>
+						}
+						<span class="@(navItemVisuallyHidden)">@name</span>
+					</button>
+				</form>
+			</li>
+		}
+		else
+		{
+			var ecomCountries = Dynamicweb.Ecommerce.Services.Countries.GetCountries();
+			var currencies = Dynamicweb.Ecommerce.Services.Currencies.GetAllCurrencies();
+			var languages = new List<Dynamicweb.Content.Page>();
+
+			if (languageSelector)
+			{
+				if (Pageview.Page.Area.IsMaster)
+				{
+					languages.Add(Pageview.Page);
+					if (Pageview.Page.Languages != null)
+					{
+						foreach (var language in Pageview.Page.Languages)
+						{
+							if (language.Area.Active == true)
+							{
+								languages.Add(language);
+							}
+						}
+					}
+				}
+				else
+				{
+					if (Pageview.Page.MasterPage != null)
+					{
+						languages.Add(Pageview.Page.MasterPage);
+						if (Pageview.Page.MasterPage.Languages != null)
+						{
+							foreach (var language in Pageview.Page.MasterPage.Languages)
+							{
+								if (language.Area.Active == true)
+								{
+									languages.Add(language);
+								}
+							}
+						}
+					}
+				}
+			}
+
+			if (languageSelector && languages.Count > 1)
+			{
+				string iconFolder = "/Files/FlagIcons/";
+				pageIcon = iconFolder + Pageview.Area.CultureInfo.Name.ToLower() + ".svg";
+				Regex reg = new Regex(@"\(([^\)]+)\)");
+				name = reg.Replace(Pageview.Area.CultureInfo.DisplayName, "");
+
+				string linkElementId = $"{preferencesType}Selector_{Pageview.CurrentParagraph.ID}_{node.PageId}";
+
+				<li class="nav-item dropdown">
+					<form class="d-none d-lg-block" action="/Default.aspx?ID=@node.PageId" data-response-target-element="@(preferencesType)Dropdown_@currentParagraphId" data-layout-template="Swift-v2_Preferences.cshtml" data-preloader="inline">
+						<input type="hidden" name="Type" value="@preferencesType">
+						<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+						<input type="hidden" name="GroupID" value="@groupId">
+						<input type="hidden" name="ProductID" value="@productId">
+						<input type="hidden" name="VariantID" value="@variantId">
+
+						<a id="@linkElementId" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="nav-link d-inline-flex align-items-center gap-2 p-2 text-nowrap text-decoration-underline-hover@(node.IsActive ? " active" : string.Empty) dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(node.IsActive ? " aria-current='page'" : string.Empty)>
+							@if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+							{
+								<span class="icon-3">@ReadFile(pageIcon)</span>
+							}
+							<span class="@(navItemVisuallyHidden)">@name</span>
+						</a>
+
+						<ul class="dropdown-menu" id="@(preferencesType)Dropdown_@currentParagraphId" data-dw-colorscheme="@colorScheme"></ul>
+					</form>
+
+					<form class="d-block d-lg-none" action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift-v2_Preferences.cshtml" data-preloader="inline">
+						<input type="hidden" name="Layout" value="modal">
+						<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+						<input type="hidden" name="GroupID" value="@groupId">
+						<input type="hidden" name="ProductID" value="@productId">
+						<input type="hidden" name="VariantID" value="@variantId">
+						<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link d-inline-flex align-items-center gap-2 p-2 text-nowrap border-0 swift_open-preferences-modal" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+							@if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+							{
+								<span class="icon-3">@ReadFile(iconPath)</span>
+							}
+							<span class="@(navItemVisuallyHidden)">@name</span>
+						</button>
+					</form>
+				</li>
+			}
+
+			if (countrySelector && ecomCountries.Count > 1)
+			{
+				name = Translate("Deliver to") + ": " + Dynamicweb.Ecommerce.Common.Context.Country?.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID);
+				preferencesType = "country";
+
+				string linkElementId = $"{preferencesType}Selector_{Pageview.CurrentParagraph.ID}_{node.PageId}";
+
+				<li class="nav-item dropdown">
+					<form class="d-none d-lg-block" action="/Default.aspx?ID=@node.PageId" data-response-target-element="@(preferencesType)Dropdown_@currentParagraphId" data-layout-template="Swift-v2_Preferences.cshtml" data-preloader="inline">
+						<input type="hidden" name="Type" value="@preferencesType">
+						<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+						<input type="hidden" name="GroupID" value="@groupId">
+						<input type="hidden" name="ProductID" value="@productId">
+						<input type="hidden" name="VariantID" value="@variantId">
+
+						<a id="@linkElementId" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="nav-link d-inline-flex align-items-center gap-2 p-2 text-nowrap text-decoration-underline-hover@(node.IsActive ? " active" : string.Empty) dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(node.IsActive ? " aria-current='page'" : string.Empty)>
+							@if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+							{
+								<span class="icon-3">@ReadFile(iconPath)</span>
+							}
+							<span class="@(navItemVisuallyHidden)">@name</span>
+						</a>
+
+						<ul class="dropdown-menu" id="@(preferencesType)Dropdown_@currentParagraphId" data-dw-colorscheme="@colorScheme"></ul>
+					</form>
+
+					<form class="d-block d-lg-none" action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift-v2_Preferences.cshtml" data-preloader="inline">
+						<input type="hidden" name="Layout" value="modal">
+						<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+						<input type="hidden" name="GroupID" value="@groupId">
+						<input type="hidden" name="ProductID" value="@productId">
+						<input type="hidden" name="VariantID" value="@variantId">
+						<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link d-inline-flex align-items-center gap-2 p-2 text-nowrap border-0 swift_open-preferences-modal" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+							@if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+							{
+								<span class="icon-3">@ReadFile(iconPath)</span>
+							}
+							<span>@name</span>
+						</button>
+					</form>
+				</li>
+			}
+
+			if (currencySelector && currencies.Count() > 1)
+			{
+				name = Dynamicweb.Ecommerce.Common.Context.Currency?.Code;
+				preferencesType = "currency";
+
+				string linkElementId = $"{preferencesType}Selector_{Pageview.CurrentParagraph.ID}_{node.PageId}";
+
+				<li class="nav-item dropdown">
+					<form class="d-none d-lg-block" action="/Default.aspx?ID=@node.PageId" data-response-target-element="@(preferencesType)Dropdown_@currentParagraphId" data-layout-template="Swift-v2_Preferences.cshtml" data-preloader="inline">
+						<input type="hidden" name="Type" value="@preferencesType">
+						<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+						<input type="hidden" name="GroupID" value="@groupId">
+						<input type="hidden" name="ProductID" value="@productId">
+						<input type="hidden" name="VariantID" value="@variantId">
+
+						<a id="@linkElementId" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="nav-link d-inline-flex align-items-center gap-2 p-2 text-nowrap text-decoration-underline-hover@(node.IsActive ? " active" : string.Empty) dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" @(node.IsActive ? " aria-current='page'" : string.Empty)>
+							@if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+							{
+								<span class="icon-3">@ReadFile(iconPath)</span>
+							}
+							<span class="@(navItemVisuallyHidden)">@name</span>
+						</a>
+
+						<ul class="dropdown-menu" id="@(preferencesType)Dropdown_@currentParagraphId" data-dw-colorscheme="@colorScheme"></ul>
+					</form>
+
+					<form class="d-block d-lg-none" action="/Default.aspx?ID=@node.PageId" data-response-target-element="PreferencesModalContent" data-layout-template="Swift-v2_Preferences.cshtml" data-preloader="inline">
+						<input type="hidden" name="Layout" value="modal">
+						<input type="hidden" name="CurrentPageID" value="@Pageview.ID">
+						<input type="hidden" name="GroupID" value="@groupId">
+						<input type="hidden" name="ProductID" value="@productId">
+						<input type="hidden" name="VariantID" value="@variantId">
+						<button type="button" onmouseover="swift.PageUpdater.Update(event)" onclick="swift.PageUpdater.Update(event)" class="btn nav-link d-inline-flex align-items-center gap-2 p-2 text-nowrap border-0 swift_open-preferences-modal" data-bs-toggle="modal" data-bs-target="#PreferencesModal">
+							@if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+							{
+								<span class="icon-3">@ReadFile(iconPath)</span>
+							}
+							<span>@name</span>
+						</button>
+					</form>
+				</li>
+			}
+		}
+	}
+}

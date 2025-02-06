@@ -1,0 +1,83 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+
+@functions {
+	private string GetFontStack()
+	{
+		return "font-family:initial,Arial,Helvetica Neue,Helvetica,sans-serif;";
+	}
+
+	private string GetTableReset()
+	{
+		return "border:0;margin:0;outline:0;padding:0;";
+	}
+}
+
+@{
+	string backgroundColor = $"background-color:{Model.ColorScheme?.BackgroundColor?.Hex ?? string.Empty};";
+	string foregroundColor = $"color:{Model.ColorScheme?.ForegroundColor?.Hex ?? string.Empty};";
+	string borders = Model.Item.GetRawValueString("Borders", "none");
+	string borderThicknes = Model.Item.GetRawValueString("BorderThicknes", "0") + "px";
+	string borderClass = string.Empty;
+
+	switch (borders)
+	{
+		case "top":
+			borderClass = $"border-top:{borderThicknes} solid;";
+			break;
+		case "bottom":
+			borderClass = $"border-bottom:{borderThicknes} solid;";
+			break;
+		case "top-bottom":
+			borderClass = $"border-top:{borderThicknes} solid;border-bottom:{borderThicknes} solid;border-left:0;border-right:0;";
+			break;
+		case "all":
+			borderClass = $"border:{borderThicknes} solid;";
+			break;
+	}
+
+	string padding = Model.Item.GetRawValueString("Padding", "0");
+	string align = Model.Item.GetRawValueString("Align", "center");
+	string layout = Model.Item.GetRawValueString("Layout", "horizontal");
+	string fontSize = Model.Item.GetRawValueString("FontSize", "16");
+	string urlPrefix = $"{Dynamicweb.Context.Current?.Request?.Url?.Scheme}://{Dynamicweb.Context.Current?.Request?.Url?.Host}{(Dynamicweb.Context.Current?.Request?.Url?.Port > 0 ? ":" + Dynamicweb.Context.Current.Request.Url.Port : null)}";
+}
+
+<table align="@align" border="0" cellpadding="0" cellspacing="0" role="presentation" style="mso-table-lspace:0pt;mso-table-rspace:0pt;mso-line-height-rule:exactly;@GetTableReset()color:inherit;width:100%;@(backgroundColor)">
+	<tbody>
+		<tr style="@GetTableReset()">
+			<td style="mso-table-lspace:0pt;mso-table-rspace:0pt;font-weight:400;text-align:@align;vertical-align:top;@(backgroundColor)@(foregroundColor)@GetTableReset()padding:@(padding)px;@(borderClass)font-size:@(fontSize)px;" width="100%">
+				@if (Model.Item.TryGetItems("MenuItems", out var menuItems))
+				{
+					var last = menuItems.Last();
+					foreach (var item in menuItems)
+					{
+						var itemSpacing = Model.Item.GetRawValueString("ItemSpacing", "16");
+						var spacing = !item.Equals(last) ? itemSpacing : "0";
+
+						if (item.TryGetLink("Link", out var linkItem))
+						{
+							string link = string.Empty;
+							string linkName = string.Empty;
+							
+							if (linkItem.IsExternal) { 
+								link = linkItem.Url;
+								linkName = linkItem.Url;
+							}
+							else {
+								link = $"{urlPrefix}{linkItem.Url}";
+								linkName = Dynamicweb.Content.Services.Pages.GetPage(linkItem.PageId).GetDisplayName();
+							}
+							
+							<a href="@link" style="text-align:@(align);@(layout == "vertical" ? $"display:block !important;width:100%;padding-bottom:{spacing}px;" : $"display:inline-block !important;margin-right:{spacing}px;")@(foregroundColor)text-decoration:none;@GetFontStack()" target="_blank">
+								<strong style="@(foregroundColor)text-decoration:underline;font-weight:normal;@GetFontStack()">
+									@linkName
+								</strong>
+							</a>
+						}
+					}
+				}
+				<!--[if mso]><br/><![endif]-->
+			</td>
+		</tr>
+	</tbody>
+</table>

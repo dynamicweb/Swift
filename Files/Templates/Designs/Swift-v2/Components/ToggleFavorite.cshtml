@@ -1,0 +1,60 @@
+@inherits ViewModelTemplate<ProductViewModel>
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Favorites
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	string iconPath = "/Files/Images/Icons/";
+	string productId = Model.Id;
+	string variantId = Model.VariantId;
+	string productName = Model.Name;
+	string productPrice = Model.Price.ToStringInvariant();
+	string productDiscount = Model.Discount.ToStringInvariant();
+	string productPriceCurrency = Model.Price.CurrencyCode;
+
+	IEnumerable<FavoriteList> favoreiteLists = Pageview?.User?.ID != null ? Pageview.User.GetFavoriteLists() : new FavoriteList[] { };
+	int favoriteListId = GetViewParameter("ListId") != null ? GetViewParameterInt32("ListId") : 0;
+	favoriteListId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? Convert.ToInt32(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) : favoriteListId;
+	string favoriteToggleType = favoriteListId == 0 && favoreiteLists.Count() > 1 ? "multiple-lists" : "single-list";
+	favoriteToggleType = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? "remove-from-list" : favoriteToggleType;
+
+	bool isInFavoriteList = Pageview?.User?.ID != null ? Pageview.User.IsProductInAnyFavoriteList(productId, variantId) : false;
+	string pageId = GetPageIdByNavigationTag("FavoriteServicePage") != 0 ? GetPageIdByNavigationTag("FavoriteServicePage").ToString() : "";
+	pageId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("FavoriteListId")) ? Pageview.Page.ID.ToString() : pageId;
+
+	bool showButtonText = !string.IsNullOrEmpty(GetViewParameterString("ShowButtonText")) ? GetViewParameterBoolean("ShowButtonText") : false;
+
+	string url = "/Default.aspx?ID=" + pageId + "&ProductID=" + productId + "&VariantId=" + variantId + "&ProductVariantId=" + variantId + "&ShowButtonText=" + showButtonText;
+	url += favoriteToggleType == "single-list" || favoriteToggleType == "remove-from-list" ? "&FavoriteListId=" + favoriteListId : "";
+	url += favoriteToggleType == "remove-from-list" ? "&FavoriteCmd=removeproductfromfavoritelist" : "";
+
+	string buttonStyle = !string.IsNullOrEmpty(GetViewParameterString("ButtonStyle")) ? GetViewParameterString("ButtonStyle") : string.Empty;
+	string buttonWidth = !string.IsNullOrEmpty(GetViewParameterString("ButtonWidth")) ? GetViewParameterString("ButtonWidth") : string.Empty;
+
+	string filledFavoriteIcon = isInFavoriteList ? "" : "d-none";
+	string outlineFavoriteIcon = isInFavoriteList ? "d-none" : "";
+
+	string favoriteButtonId = $"FavoriteBtn_{productId}{variantId.Replace(".", "")}";
+}
+
+<button type="button" class="btn btn-@buttonStyle @buttonWidth swift_favorites-button" data-dw-button="@buttonStyle" id="@favoriteButtonId" onclick="swift.Favorites.Toggle(event, '@url', '@favoriteToggleType')" style="z-index: 1" data-product-id="@productId" data-variant-id="@variantId" data-product-name="@productName" data-product-price="@productPrice" data-product-discount="@productDiscount" data-product-currency="@productPriceCurrency">
+	<span class="favorite-icon">
+		<span class="text-nowrap in-list @filledFavoriteIcon" title="In list">
+			<span class="icon-2" aria-hidden="true">@ReadFile(iconPath + "heart-filled.svg")</span>
+			@if (showButtonText) { 
+				<span class="ms-2">@Translate("Remove from favorites")</span>
+			} else { 
+				<span class="visually-hidden">@Translate("Remove from favorites")</span>
+			}
+		</span>
+		<span class="text-nowrap not-in-list @outlineFavoriteIcon" title="Not in list">
+			<span class="icon-2" aria-hidden="true">@ReadFile(iconPath + "heart.svg")</span>
+			@if (showButtonText)
+			{
+				<span class="ms-2">@Translate("Add to favorites")</span>
+			} else { 
+				<span class="visually-hidden">@Translate("Add to favorites")</span>
+			}
+		</span>
+	</span>
+</button>

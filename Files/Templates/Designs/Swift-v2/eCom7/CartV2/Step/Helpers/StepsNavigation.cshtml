@@ -1,0 +1,112 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+
+@{
+	string stepsIconPath = "/Files/Images/Icons/";
+	int currentStep = 1;
+	string nextButtonName = Translate("Next");
+	string previousButtonName = Translate("Back");
+
+	var buttonId = GetLoop("StepButtons").Count == 0 ? "PayButton" : GetString("CartV2.NextStepButtonName");
+
+	foreach (LoopItem step in GetLoop("StepButtons"))
+	{
+		if (step.GetBoolean("Step.Current"))
+		{
+			currentStep = step.GetInteger("Step.Number");
+		}
+
+		if (step.GetInteger("Step.Number") == currentStep + 1)
+		{
+			nextButtonName = Translate(step.GetString("Step.Name"));
+		}
+
+		if (step.GetInteger("Step.Number") == currentStep + step.GetInteger("Step.Index"))
+		{
+			previousButtonName = Translate("Back to") + " " + Translate(step.GetString("Step.Name"));
+		}
+	}
+
+	if (currentStep == GetLoop("StepButtons").Count - 1 && Pageview.CurrentParagraph.Item.SystemName != "Swift-v2_QuoteCheckoutApp")
+	{
+		<text>
+		@Include("../Helpers/TermsAndConditions.cshtml")
+		</text>
+
+		nextButtonName = Translate("Place Order");
+	}
+	else if (GetLoop("StepButtons").Count == 0)
+	{
+		nextButtonName = Translate("Pay");
+	}
+}
+
+<div class="mt-4 d-flex flex-column flex-md-row justify-content-end gap-3 mt-lg-4" id="StepsNavigation">
+	@if (currentStep == 1)
+	{
+		var cartLink = $"Default.aspx?id={Pageview.CurrentParagraph.Page.Parent.ID}";
+
+		<a href="@cartLink" class="btn btn-link text-decoration-none order-last order-md-first" data-dw-button="link" id="BackToCartButton">
+			<div class="d-flex align-items-center justify-content-center position-relative">
+				<span class="icon-2 me-1 position-absolute position-md-static start-0">
+					@ReadFile(stepsIconPath + "chevron-left.svg")
+				</span>
+				<span>@Translate("Back to cart")</span>
+			</div>
+		</a>
+	}
+	else
+	{
+		<button name="@GetString("CartV2.PreviousStepButtonName")" id="@GetString("CartV2.PreviousStepButtonName")" class="btn btn-link text-decoration-none" data-dw-button="link">
+			<div class="d-flex align-items-center justify-content-center position-relative">
+				<span class="icon-2 me-1 position-absolute position-md-static start-0">
+					@ReadFile(stepsIconPath + "chevron-left.svg")	
+				</span>
+				<span>@previousButtonName</span>
+			</div>
+		</button>
+	}
+
+	<button type="submit" name="@GetString("CartV2.NextStepButtonName")" id="@buttonId" class="btn btn-primary order-first order-md-last" data-dw-button="primary" >
+		<div class="d-flex align-items-center justify-content-center position-relative pe-none">
+			<span>@nextButtonName</span>
+			<span class="icon-2 ms-1 position-absolute position-md-static end-0">
+				@ReadFile(stepsIconPath + "chevron-right.svg")
+			</span>
+		</div>
+	</button>
+
+	@* // SHIPMONDO
+		Following script prevents writing pickup point address to order.delivery
+		before finalizing the order.
+	*@
+	@if (currentStep == GetLoop("StepButtons").Count - 1)
+	{
+		if (GetBoolean("Ecom:Order.Delivery.isPickupPoint"))
+		{
+			<input type="hidden" name="@GetString("CartV2.NextStepButtonName")" />
+			<script>
+				document.getElementById("@GetString("CartV2.NextStepButtonName")").addEventListener("click", function (e) {
+					const form = e.target.closest("form"),
+					hiddenParcelShopFields = form.querySelector("#hiddenParcelshopFields"),
+					hiddenParcelShopFieldsDisabled = hiddenParcelShopFields.querySelectorAll("input");
+
+					e.preventDefault();
+
+					if (hiddenParcelShopFieldsDisabled.length > 0) {
+						hiddenParcelShopFieldsDisabled.forEach( (input) => {
+							input.disabled = false;
+						});
+					}
+
+					form.submit()
+				});
+			</script>
+		}
+	}
+
+	<script>
+		if (window.history.replaceState) {
+			window.history.replaceState(null, null, window.location.href);
+		}
+	</script>
+</div>

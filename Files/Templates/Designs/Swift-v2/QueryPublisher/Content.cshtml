@@ -1,0 +1,71 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb
+@using Dynamicweb.Core.Encoders
+
+@{
+	var resultsList = GetLoop("QueryResultItem");
+
+	string url = Dynamicweb.Context.Current.Request.RawUrl;
+
+	string layout = Dynamicweb.Context.Current.Request["SearchLayout"] != null ? Dynamicweb.Context.Current.Request["SearchLayout"].ToString() : "field";
+	string itemPadding = layout == "icon" ? "px-1" : "px-1";
+
+	string searchTerm = string.Empty;
+	if (!string.IsNullOrEmpty(Dynamicweb.Context.Current.Request["q"]))
+	{
+		searchTerm = Dynamicweb.Context.Current.Request["q"].Trim();
+	}
+
+	int pageSizeSetting = 12;
+	int pageSize = GetInteger("DwPaging.PageSize");
+
+	int totalResults = GetInteger("DwPaging.TotalItems");
+	int loadedResults = pageSize > totalResults ? totalResults : pageSize;
+}
+<div class="grid">
+	<h1 class="g-col-12 h6 mb-0">
+		@Translate("We have found") @totalResults @Translate("results for"): <span class="fw-bold">@searchTerm</span>
+	</h1>
+	<hr class="g-col-12 my-0">
+
+	@foreach (var result in resultsList)
+		{
+		var resultProperties = result.GetLoop("Properties").ToDictionary(x => x.GetString("Name"), y => y.GetString("Value"));
+
+		var pageId = resultProperties.ContainsKey("PageId") ? resultProperties["PageId"] : "";
+		var title = resultProperties.ContainsKey("PageMenuText") ? resultProperties["PageMenuText"] : "";
+		title = !string.IsNullOrEmpty(result.GetString("PageMetaTitle")) ? result.GetString("PageMetaTitle") : title;
+
+		string niceUrl = !string.IsNullOrEmpty(Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl("Default.aspx?ID=" + pageId)) ? Dynamicweb.Frontend.SearchEngineFriendlyURLs.GetFriendlyUrl("Default.aspx?ID=" + pageId) : Translate("Read more");
+
+		<div class="g-col-12 grid grid-1 gap-2">
+			<a class="fs-7 opacity-85" href="/Default.aspx?ID=@pageId" alt="@title">@niceUrl</a>
+			<a class="text-decoration-none text-decoration-underline-hover" href="/Default.aspx?ID=@pageId">
+				<h3 class="h6 mb-0">@title</h3>
+			</a>
+			@if (!string.IsNullOrEmpty(result.GetString("PageDescription")))
+			{
+				<span class="fs-7 opacity-85">@result.GetString("PageDescription")</span>
+			}
+			<hr class="opacity-25 mb-0 mt-2">
+		</div>
+		}
+</div>
+
+<form method="post" action="@url" data-response-target-element="content" class="w-100">
+	<input type="hidden" name="PageSize" value="12" id="PageSize">
+	<input type="hidden" name="RequestType" value="UpdateList">
+	<input type="hidden" name="q" value="@searchTerm">
+
+	<div class="mt-5" id="LoadMoreButton">
+		<div class="text-center d-flex flex-column align-items-center gap-3">
+			<div class="opacity-85">@loadedResults @Translate("out of") @totalResults @Translate("results")</div>
+			@if (GetInteger("DwPaging.PageCount") != 1)
+			{
+				int nextPageSize = pageSize += pageSizeSetting;
+				<button class="btn btn-primary" data-dw-button="primary" type="button" onclick="document.querySelector('#PageSize').value = '@nextPageSize'; swift.ProductList.Update(event)">@Translate("Load more results")</button>
+				<button class="btn" type="button" onclick="document.body.scrollTop = 0; document.documentElement.scrollTop = 0;">@Translate("Back to top")</button>
+			}
+		</div>
+	</div>
+</form>

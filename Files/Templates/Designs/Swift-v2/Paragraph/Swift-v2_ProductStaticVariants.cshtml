@@ -1,0 +1,205 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.Variants
+@using Dynamicweb.Frontend
+@using System.IO
+
+@{
+	ProductViewModel product = null;
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Page.Item["DummyProduct"] != null && Pageview.IsVisualEditorMode)
+	{
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+
+		if (productList?.Products is object)
+		{
+			product = productList.Products[0];
+		}
+	}
+}
+
+@if (product is object)
+{
+	string horizontalAlign = Model.Item.GetRawValueString("HorizontalAlignment", "");
+	horizontalAlign = horizontalAlign == "center" ? "align-items-center text-center" : horizontalAlign;
+	horizontalAlign = horizontalAlign == "end" ? "align-items-end text-end" : horizontalAlign;
+
+	bool hideGroupHeaders = Model.Item.GetBoolean("HideGroupHeaders");
+	string variantsLayout = Model.Item.GetRawValueString("Layout", "images");
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+
+	var selectedGroups = Model.Item.GetList("Groups")?.GetRawValue().OfType<string>();
+	int showMaxVariants = Model.Item.GetInt32("MaxVariantsToRender") != 0 ? Model.Item.GetInt32("MaxVariantsToRender") : 1;
+
+	if (product.VariantGroups().Count != 0)
+	{
+		<div class="d-flex flex-column @horizontalAlign item_@Model.Item.SystemName.ToLower()">
+			@foreach (var variantGroup in product.VariantGroups())
+			{
+				int variantsCount = 0;
+				string groupId = variantGroup.Id;
+				var displayType = variantGroup.DisplayType;
+
+				<div>
+					@foreach (var selectedGroupId in selectedGroups)
+					{
+						if (!hideGroupHeaders && groupId == selectedGroupId)
+						{
+							<h3 class="h6 m-0">@variantGroup.Name</h3>
+						}
+					}
+					<div class="d-flex gap-2 mb-2">
+						@foreach (var variant in variantGroup.Options)
+						{
+							foreach (var selectedGroupId in selectedGroups)
+							{
+								if (groupId == selectedGroupId)
+								{
+									var optionsCount = variantGroup.Options.Count();
+
+									if (variantsCount < showMaxVariants)
+									{
+										<article title="@product.Name @variant.Name @variant.Id" class="d-flex" style="z-index: 1">
+											@{
+												string defaultProductImage = Dynamicweb.Context.Current.Server.UrlEncode(product.DefaultImage.Value);
+												string variantImage = Dynamicweb.Context.Current.Server.UrlEncode(variant.Image.Value);
+												string defaultPrice = !hidePrice ? product.Price.PriceFormatted : "0";
+												string variantPrice = !hidePrice ? product.Price.PriceFormatted : "0";
+												displayType = displayType == VariantGroupDisplayType.NothingSelected && !string.IsNullOrEmpty(variant.Color) ? VariantGroupDisplayType.VariantColor : displayType;
+												displayType = displayType == VariantGroupDisplayType.NothingSelected && string.IsNullOrEmpty(variant.OptionImage.Value) && string.IsNullOrEmpty(variant.Color) ? VariantGroupDisplayType.VariantName : displayType;
+												displayType = displayType == VariantGroupDisplayType.NothingSelected && !string.IsNullOrEmpty(variant.OptionImage.Value) ? VariantGroupDisplayType.VariantOptionImage : displayType;
+
+
+												if (variantsLayout == "images")
+												{
+													switch (displayType)
+													{
+														case VariantGroupDisplayType.VariantImage:
+															<figure class="w-100 d-block m-0" 
+																	onmouseover="swift.StaticVariants.SwitchProduct(event, '@product.Id', '@defaultPrice', '@variantImage')" 
+																	onmouseout="swift.StaticVariants.SwitchProduct(event, '@product.Id', '@variantPrice', '@defaultProductImage')" 
+																	style="z-index: 1">
+																<div class="d-flex align-items-center justify-content-center">
+																	<img src="/admin/public/GetImage.ashx?image=@variantImage&width=75&height=75&crop=5&FillCanvas=true&format=webp" height="75" width="75" class="p-1 text-small w-100 h-100" loading="lazy" decoding="async" alt="@product.Name, @variant.Name">
+																</div>
+															</figure>
+															break;
+														case VariantGroupDisplayType.VariantColor:
+															if (!string.IsNullOrEmpty(variant.Color))
+															{
+																<span class="colorbox border" style="background-color: @variant.Color"></span>
+															}
+															else if (!string.IsNullOrEmpty(variant.OptionImage.Value) && string.IsNullOrEmpty(variant.Color))
+															{
+																<img src="/Admin/Public/GetImage.ashx?image=@(variant.OptionImage.Value)&width=40&format=webp" class="border" style="width: 42px; height: 42px;">
+															}
+															else
+															{
+																<div class="d-flex align-items-center justify-content-center">
+																	@variant.Name
+																</div>
+															}
+															break;
+														case VariantGroupDisplayType.VariantName:
+															<div class="d-flex align-items-center justify-content-center">
+																@variant.Name
+															</div>
+															break;
+														case VariantGroupDisplayType.VariantOptionImage:
+															if (!string.IsNullOrEmpty(variant.OptionImage.Value))
+															{
+																<img src="/Admin/Public/GetImage.ashx?image=@(variant.OptionImage.Value)&width=42&format=webp" style="width: 42px; height: 42px;">
+															}
+															else
+															{
+																<span class="colorbox border" style="background-color:@variant.Color;"></span>
+															}
+															break;
+														case VariantGroupDisplayType.NothingSelected:
+															<span class="colorbox border" style="background-color: @variant.Color"></span>
+															break;
+														default:
+															<div class="d-flex align-items-center justify-content-center">
+																@variant.Name
+															</div>
+															break;
+													}
+
+												}
+												else if (variantsLayout == "swatches")
+												{
+													if (!string.IsNullOrEmpty(variant.Color))
+													{
+														<span class="colorbox colorbox-sm rounded-circle border me-1" style="background-color: @variant.Color" 
+															onmouseover="swift.StaticVariants.SwitchProduct(event, '@product.Id', '@defaultPrice', '@variantImage')" 
+															onmouseout="swift.StaticVariants.SwitchProduct(event, '@product.Id', '@variantPrice', '@defaultProductImage')">
+														</span>
+													}
+													else if (!string.IsNullOrEmpty(variant.OptionImage.Value) && string.IsNullOrEmpty(variant.Color))
+													{
+														<span class="ratio ratio-1x1 colorbox-sm rounded-circle border me-1 overflow-hidden"
+															onmouseover="swift.StaticVariants.SwitchProduct(event, '@product.Id', '@defaultPrice', '@variantImage')" 
+															onmouseout="swift.StaticVariants.SwitchProduct(event, '@product.Id', '@variantPrice', '@defaultProductImage')">
+															<img src="/Admin/Public/GetImage.ashx?image=@(variant.OptionImage.Value)&width=42&format=webp">
+														</span>
+													}
+													else
+													{
+														<div class="d-flex align-items-center justify-content-center">
+															@variant.Name
+														</div>
+													}
+												}
+
+												<div class="visually-hidden">
+													<h4>@Translate("Variant Name")</h4>
+													<p>@product.Name, @variant.Name</p>
+													@if (!hidePrice)
+													{
+														<h4>@Translate("Variant Price")</h4>
+														<p><span class="text-price">@product.Price.PriceFormatted</span></p>
+													}
+												</div>
+											}
+										</article>
+
+										variantsCount++;
+
+										if (variantsCount == showMaxVariants && optionsCount != showMaxVariants)
+										{
+											int left = optionsCount - showMaxVariants;
+											<div class="variant-option ms-1 d-flex justify-content-center align-items-center">
+												<span>+@left</span>
+											</div>
+										}
+									}
+
+								}
+							}
+						}
+
+						@if (variantsCount == 0 && Pageview.IsVisualEditorMode)
+						{
+							<div class="alert alert-dark m-0">@Translate("No variants available")</div>
+						}
+					</div>
+				</div>
+			}
+		</div>
+	} 
+	else if (Pageview.IsVisualEditorMode)
+	{
+		<div class="alert alert-dark m-0">@Translate("The static variants will be shown here, if available")</div>
+	}
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0">@Translate("The static variants will be shown here, if available")</div>
+}

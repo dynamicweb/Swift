@@ -1,0 +1,86 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	ProductViewModel product = null;
+	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+	{
+		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+	}
+	else if (Pageview.Page.Item["DummyProduct"] != null && Pageview.IsVisualEditorMode)
+	{
+		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
+		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
+
+		if (productList?.Products is object)
+		{
+			product = productList.Products[0];
+		}
+	}
+
+	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
+	bool anonymousUser = Pageview.User == null;
+	bool hidePrice = anonymousUsersLimitations.Contains("price") && anonymousUser;
+	hidePrice = Pageview.IsVisualEditorMode ? false : hidePrice;
+}
+
+@if (product is object && !hidePrice)
+{
+	if (Pageview.IsVisualEditorMode && product.Prices.Count == 0)
+	{
+		product.Prices.Add(new PriceListViewModel { Price = new PriceViewModel { Price = 95, PriceFormatted = "€95" }, Quantity = 1 });
+		product.Prices.Add(new PriceListViewModel { Price = new PriceViewModel { Price = 85, PriceFormatted = "€85" }, Quantity = 2 });
+	}
+
+	string layout = Model.Item.GetRawValueString("Layout", "list");
+
+	if (product.Prices.Count > 0)
+	{
+		if (layout == "list")
+		{
+			<div class="item_@Model.Item.SystemName.ToLower() list">
+				@foreach (PriceListViewModel quantityPrice in product.Prices)
+				{
+					string quantityLabel = Translate("PCS");
+					string quantityPriceSuffix = quantityPrice.Quantity > 1 ? Translate("pr. PCS") : "";
+
+					<small class="d-block opacity-75"><span>@quantityPrice.Quantity @quantityLabel</span> - <span class="fw-bold">@quantityPrice.Price.PriceFormatted @quantityPriceSuffix</span></small>
+				}
+			</div>
+		}
+		else if (layout == "table")
+		{
+			<div class="item_@Model.Item.SystemName.ToLower() grid">
+				<table class="table table-sm mt-3 g-col-12 g-col-lg-6">
+					<thead>
+						<tr>
+							<td>@Translate("QTY")</td>
+							<td>@Translate("pr. PCS")</td>
+						</tr>
+					</thead>
+					<tbody>
+						@foreach (PriceListViewModel quantityPrice in product.Prices)
+						{
+							<tr>
+								<td>@quantityPrice.Quantity</td>
+								<td>@quantityPrice.Price.PriceFormatted</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
+		}
+	}
+	else if (Pageview.IsVisualEditorMode)
+	{
+		<div class="alert alert-dark m-0" role="alert">
+			<span>@Translate("The price table will be shown here, if available")</span>
+		</div>
+	}
+}
+else if (Pageview.IsVisualEditorMode)
+{
+	<div class="alert alert-dark m-0" role="alert">
+		<span>@Translate("The price table will be shown here, if available")</span>
+	</div>
+}

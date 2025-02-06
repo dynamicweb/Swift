@@ -1,0 +1,101 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using Dynamicweb
+@using System.IO
+
+@{
+	bool isRoot = Model.Nodes.Any(n => n.IsActive);
+	string iconPath = "/Files/Images/Icons/";
+
+	var breadCrumbNavigationTree = new Stack<Dynamicweb.Frontend.Navigation.NavigationTreeNodeViewModel>(Model.Nodes);
+
+	var nodesParms = new Dictionary<string, object>();
+	nodesParms.Add("ParentIsActive", false);
+}
+
+<div>
+	@if (!isRoot)
+	{
+		<div class="navbar ms-n2 mb-2 p-0 d-none d-lg-block">
+			<ul class="navbar-nav">
+				@while (breadCrumbNavigationTree.Count > 0)
+				{
+					var currentNode = breadCrumbNavigationTree.Pop();
+					var hasChildren = currentNode.Nodes.Count() > 0;
+
+					if (currentNode.InPath && !currentNode.IsActive)
+					{
+						<li class="nav-item">
+							<a class="nav-link text-reset text-uppercase d-flex align-items-center py-1" href="@currentNode.Link">
+								<span class="icon-3">@ReadFile(iconPath + "chevron-left.svg")</span><span class="fw-bold">@currentNode.Name</span>
+							</a>
+						</li>
+					}
+
+					foreach (var nextNode in currentNode.Nodes)
+					{
+						breadCrumbNavigationTree.Push(nextNode);
+					}
+				}
+			</ul>
+		</div>
+	}
+
+	<div class="ms-n3 mb-2 p-0 d-block d-lg-none position-relative">
+		@if (!isRoot) {
+			while (breadCrumbNavigationTree.Count > 0)
+			{
+				var currentNode = breadCrumbNavigationTree.Pop();
+				var hasChildren = currentNode.Nodes.Count() > 0;
+				var isLinkNode = currentNode.Nodes.Any(n => n.IsActive);
+
+				if (isLinkNode)
+				{
+					<a class="text-reset position-absolute top-0 left-0 ps-2" href="@currentNode.Link">
+						<span class="icon-3">@ReadFile(iconPath + "chevron-left.svg")</span>
+					</a>
+				}
+
+				if (currentNode.IsActive)
+				{
+					<h1 class="h3 w-100 text-center">
+						@currentNode.Name
+					</h1>
+				}
+
+				foreach (var nextNode in currentNode.Nodes)
+				{
+					breadCrumbNavigationTree.Push(nextNode);
+				}
+			}
+		} else {
+			<h2 class="h3 text-center w-100">@Translate("Categories")</h2>
+		}
+	</div>
+
+	<nav class="navbar d-none d-lg-block">
+		<ul class="navbar-nav">
+			@foreach (var node in Model.Nodes)
+			{
+				if (isRoot && node.IsActive)
+				{
+					<li class="nav-item">
+						<h2 class="h6 mb-3 py-1">@Translate("Categories")</h2>
+					</li>
+				}
+
+				nodesParms["ParentIsActive"] = node.IsActive;
+				@RenderPartial("Navigation/VerticalAndBreadcrumb/DesktopNodes.cshtml", node, nodesParms)
+			}
+		</ul>
+	</nav>
+
+	<nav class="navbar d-block d-lg-none" style="width: calc(100vw - 2rem)">
+		<ul class="nav nav-pills gap-2 overflow-auto flex-nowrap py-3 ms-n3 pe-3 ps-3 vw-100">
+			@foreach (var node in Model.Nodes)
+			{
+				nodesParms["ParentIsActive"] = node.IsActive;
+				@RenderPartial("Navigation/VerticalAndBreadcrumb/MobileNodes.cshtml", node, nodesParms)
+			}
+		</ul>
+	</nav>
+</div>

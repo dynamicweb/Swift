@@ -1,0 +1,67 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@functions {
+
+	ProductViewModel GetProduct()
+	{
+		ProductViewModel product = null;
+
+		if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
+		{
+			product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
+		}
+
+		return product;
+	}
+
+	List<FieldGroupViewModel> GetDisplayGroups(ProductViewModel product)
+	{
+
+		bool hideFieldsWithZeroValue = Model.Item.GetBoolean("HideFieldsWithZeroValue");
+		var selectedDisplayGroupSystemName = Model.Item.GetList("DisplayGroups")?.GetRawValue().OfType<string>();
+		var displayGroups = product.GetProductDisplayGroupFieldsByGroupSystemNames(selectedDisplayGroupSystemName, hideFieldsWithZeroValue);
+
+		return displayGroups.ToList();
+	}
+
+	public static string FirstCharToUpper(string input)
+	{
+		return input[0].ToString().ToUpper() + input.Substring(1);
+	}
+}
+
+@{
+	ProductViewModel product = GetProduct();
+
+	if (product is object)
+	{
+		string size = "compact";
+
+		var displayGroups = GetDisplayGroups(product);
+
+		var templateParams = new Dictionary<string, object>
+	{
+				{ "Groups", displayGroups },
+				{ "Size", size },
+				{ "HideGroupHeaders", Model.Item.GetBoolean("HideGroupHeaders") },
+				{ "HideTitle", Model.Item.GetBoolean("HideTitle") }
+			};
+
+		string templateLayout = Model.Item.GetRawValueString("Layout", "list");
+		string templateLayoutPath = $"Components/Specifications/{FirstCharToUpper(templateLayout)}.cshtml";
+
+		<div class="h-100 item_@Model.Item.SystemName.ToLower()" data-dw-colorscheme="@Model.ColorScheme?.Id">
+			<div class="grid gap-2">
+				@RenderPartial(templateLayoutPath, Model, templateParams)
+			</div>
+		</div>
+
+	}
+	else if (Pageview.IsVisualEditorMode)
+	{
+		<div class="alert alert-dark m-0" role="alert">
+			<span>@Translate("Field display groups will be shown, if available")</span>
+		</div>
+	}
+}

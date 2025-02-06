@@ -1,0 +1,145 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Frontend.Navigation
+@using Dynamicweb.Environment
+@using Dynamicweb.Core.Encoders
+@using System.Text.RegularExpressions
+
+@{
+	ProductListViewModel productList = new ProductListViewModel();
+	if (Dynamicweb.Context.Current.Items.Contains("ProductList"))
+	{
+		productList = (ProductListViewModel)Dynamicweb.Context.Current.Items["ProductList"];
+	}
+
+	string url = Pageview.SearchFriendlyUrl;
+	url = url.LastIndexOf("?") != -1 ? url.Substring(0, url.LastIndexOf("?")) : url;
+
+	//Fix for non-friendly urls
+	if (Dynamicweb.Context.Current.Request.QueryString.Get("GroupID") != null)
+	{
+		string groupId = Dynamicweb.Context.Current.Request.QueryString.Get("GroupID");
+		url += "?GroupID=" + groupId;
+	}
+
+	if (!url.Contains("LayoutTemplate"))
+	{
+		url += url.Contains("?") ? "&LayoutTemplate=Designs/Swift-v2/Swift-v2_PageClean.cshtml" : "?LayoutTemplate=Designs/Swift-v2/Swift-v2_PageClean.cshtml";
+	}
+
+	bool facetsFound = false;
+	int selectedFacetsCount = 0;
+
+	if (productList.FacetGroups != null)
+	{
+		foreach (FacetGroupViewModel facetGroup in productList.FacetGroups)
+		{
+			foreach (FacetViewModel facet in facetGroup.Facets)
+			{
+				if (facet.Options.Count() > 0)
+				{
+					facetsFound = true;
+
+					foreach (FacetOptionViewModel option in facet.Options)
+					{
+						if (option.Selected)
+						{
+							selectedFacetsCount++;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	bool enableSorting = Model.Item.GetBoolean("SortByNameAZ");
+	enableSorting = Model.Item.GetBoolean("SortByNameZA") || enableSorting == true ? true : false;
+	enableSorting = Model.Item.GetBoolean("SortByNewest") || enableSorting == true ? true : false;
+	enableSorting = Model.Item.GetBoolean("SortByLowestPrice") || enableSorting == true ? true : false;
+	enableSorting = Model.Item.GetBoolean("SortByHighestPrice") || enableSorting == true ? true : false;
+
+	string layout = Model.Item.GetRawValueString("Layout", "vertical");
+
+	var formFieldsParms = new Dictionary<string, object>();
+	formFieldsParms.Add("DeviceType", "desktop");
+}
+
+@if (productList.TotalProductsCount > 0 && (facetsFound || Model.Item.GetBoolean("EnableGroupNavigation") || enableSorting))
+{
+	string iconPath = "/Files/Images/Icons/";
+	string selectedFacetsLabel = selectedFacetsCount > 0 ? "(" + selectedFacetsCount + ")" : string.Empty;
+	string formContainerCss = layout == "horizontal" ? $"d-lg-flex gap-3 flex-row flex-wrap" : $"d-lg-block h-100";
+
+	//Desktop
+	if (layout == "horizontal")
+	{
+		@:<div class="h-100" data-dw-colorscheme="@Model.ColorScheme?.Id">
+	}
+
+	<form method="post" action="@url" data-response-target-element="content" id="FacetsForm_Desktop_@Model.ID" class="d-none @formContainerCss item_@Model.Item.SystemName.ToLower()" data-dw-colorscheme="@Model.ColorScheme?.Id">
+		@RenderPartial("Paragraph/ProductListFacets/FormFields.cshtml", Model, formFieldsParms)
+
+		@if (layout == "horizontal" && selectedFacetsCount > 0)
+		{
+			<button type="button" class="btn btn-sm me-sm-1 me-lg-2" onclick="swift.ProductList.ResetFacets(event)"><span class="icon-2">@ReadFile(iconPath + "rotate-ccw.svg")</span> @Translate("Clear filters")</button>
+		}
+	</form>
+
+	if (layout == "horizontal")
+	{
+		@:</div>
+	}
+
+	//Mobile
+	<div class="d-block d-lg-none mt-lg-0 FacetsForm_Mobile_@Model.Item.SystemName.ToLower()_@Model.ID" data-dw-colorscheme="@Model.ColorScheme?.Id">
+		<button type="button" class="btn btn-primary w-100" data-dw-button="primary" data-bs-toggle="modal" data-bs-target="#FacetsModal">
+			<span class="d-flex align-items-center">
+				<span class="flex-grow-1 text-start">
+					@Translate("Filter") @selectedFacetsLabel
+				</span>
+				<span class="icon-2">
+					@ReadFile(iconPath + "sliders.svg")
+				</span>
+			</span>
+		</button>
+
+		<form method="post" action="@url" data-response-target-element="content" class="modal" id="FacetsModal" tabindex="-1" aria-hidden="false">
+			<div class="modal-dialog modal-fullscreen">
+				<div class="modal-content">
+					<div class="modal-header">
+						<h5 class="modal-title">@Translate("Filters and sorting")</h5>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="document.querySelector('body').style = ''"></button>
+					</div>
+					<div class="modal-body">
+						@{
+							formFieldsParms["DeviceType"] = "mobile";
+						}
+						@RenderPartial("Paragraph/ProductListFacets/FormFields.cshtml", Model, formFieldsParms)
+					</div>
+					<div class="modal-footer d-flex">
+						@if (selectedFacetsCount != 0)
+						{
+							<button type="button" class="btn btn-secondary flex-fill" data-dw-button="secondary" onclick="swift.ProductList.ResetFacets(event)">@Translate("Clear") (@selectedFacetsCount)</button>
+						}
+						<button type="button" class="btn btn-primary flex-fill" data-dw-button="primary" onclick="location.reload();">@Translate("Update")</button>
+					</div>
+				</div>
+			</div>
+		</form>
+	</div>
+}
+else
+{
+	if (Pageview.IsVisualEditorMode)
+	{
+		<div class="alert alert-dark m-0" role="alert">
+			<span>@Translate("Facets: The facets selectors will be shown here, if any")</span>
+		</div>
+	}
+	else if (productList.TotalProductsCount > 0)
+	{
+		<div class="alert alert-dark m-0" id="NoFiltersAlert_@Model.ID">
+			@Translate("No filters are available")
+		</div>
+	}
+}
