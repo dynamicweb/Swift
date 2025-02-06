@@ -13,6 +13,46 @@
 		}
 		return null;
 	}
+
+	List<string> GetFieldsHeaders(IList<ProductViewModel> productList, List<string> selectedDisplayGroupsList)
+	{
+		//Collect the titles for all available fields
+		List<string> fieldsHeaders = new List<string>();
+		foreach (var product in productList)
+		{
+			foreach (var selection in selectedDisplayGroupsList)
+			{
+				foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
+				{
+					if (selection.ToString() == group.Id)
+					{
+						foreach (var field in group.Fields)
+						{
+							if (!fieldsHeaders.Contains(field.Value.Name))
+							{
+								bool noValues = false;
+								if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>))
+								{
+									System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
+									noValues = values.Count > 0 ? false : true;
+								}
+								else if (string.IsNullOrEmpty(field.Value.Value.ToString()))
+								{
+									noValues = true;
+								}
+
+								if (!noValues)
+								{
+									fieldsHeaders.Add(field.Value.Name);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return fieldsHeaders;
+	}
 }
 
 @{
@@ -39,42 +79,6 @@
 	List<string> selectedDisplayGroupsList = selectedDisplayGroups != null ? selectedDisplayGroups.Split(',').ToList() : new List<string>();
 
 	bool userHasPendingQuote = Dynamicweb.Ecommerce.Common.Context.Cart != null && Dynamicweb.Ecommerce.Common.Context.Cart.IsQuote;
-
-	//Collect the titles for all available fields
-	List<string> fieldsHeaders = new List<string>();
-	foreach (var product in productList)
-	{
-		foreach (var selection in selectedDisplayGroupsList)
-		{
-			foreach (CategoryFieldViewModel group in product.FieldDisplayGroups.Values)
-			{
-				if (selection.ToString() == group.Id)
-				{
-					foreach (var field in group.Fields)
-					{
-						if (!fieldsHeaders.Contains(field.Value.Name))
-						{
-							bool noValues = false;
-							if (field.Value.Value.GetType() == typeof(System.Collections.Generic.List<FieldOptionValueViewModel>))
-							{
-								System.Collections.Generic.List<FieldOptionValueViewModel> values = field.Value.Value as System.Collections.Generic.List<FieldOptionValueViewModel>;
-								noValues = values.Count > 0 ? false : true;
-							}
-							else if (string.IsNullOrEmpty(field.Value.Value.ToString()))
-							{
-								noValues = true;
-							}
-
-							if (!noValues)
-							{
-								fieldsHeaders.Add(field.Value.Name);
-							}
-						}
-					}
-				}
-			}
-		}
-	}
 
 	//Check if there are any facet and count the amount of selected facets
 	bool facetsFound = false;
@@ -378,13 +382,17 @@
 								@itemVariant
 								currency: '@product.Price.CurrencyCode',
 								price: @product.Price.ToStringInvariant(),
-								discount: @product.Discount.ToStringInvariant();
+								discount: @product.Discount.ToStringInvariant()
 							},</text>
 						}
 					]
 				});
 			</script>
 
+			@{
+				//Collect the titles for all available fields
+				List<string> fieldsHeaders = GetFieldsHeaders(productList, selectedDisplayGroupsList);
+			}
 			<table class="table table-sm table-striped align-middle text-nowrap">
 				<thead>
 					<tr>
@@ -655,7 +663,7 @@
 							{
 
 								bool isStockType = product.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock;
-							
+
 								double? stepQty = product.PurchaseQuantityStep > 0 ? product.PurchaseQuantityStep : 1;
 								double? minQty = product.PurchaseMinimumQuantity > 0 ? product.PurchaseMinimumQuantity : 1;
 								double? valueQty = minQty > stepQty ? minQty : stepQty;
