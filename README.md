@@ -3,11 +3,9 @@
 
 Swift allows you to create beautiful mobile-friendly websites. Swift gives  It is **fast and easy to build ecommerce sites** on Dynamicweb for both **B2C** and **B2B**. Using configuration and almost no coding. 
 
-![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=orange&label=Swift%20Release) [![GitHub DW](https://img.shields.io/badge/DynamicWeb9%20Release-v9.17.10-blue)](https://doc.dynamicweb.com/downloads/releases) [![GitHub DW10](https://img.shields.io/badge/DynamicWeb10%20Release-v10.7.0-darkblue)](https://doc.dynamicweb.dev/) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.1.3-green)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-purple)](https://doc.dynamicweb.com/swift/setup-project) 
+![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=black&label=Swift%20Release) [![GitHub DW10](https://img.shields.io/badge/DynamicWeb10%20Release-v10.9.0-blue)](https://doc.dynamicweb.dev/) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.3.3-purple)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-darkblue)](https://doc.dynamicweb.dev/swift/getting-started/index.html) 
 
 [Key features](#key-features) • [Installation](#installation) • [Requirements](#requirements) • [Hosting & Install DW](#hosting-environment-and-dynamicweb-install) • [Database](#swift-database-and-product-images) • [License](#log-in-and-install-a-license)
-
-![alt text](https://doc.dynamicweb.com/Files/Images/Swift/swift-multidevices.png)
 
 ## Key features 
 
@@ -18,8 +16,6 @@ Swift allows you to create beautiful mobile-friendly websites. Swift gives  It i
 * **Web Accessibility Guidelines (WCAG)** :trophy: Level AA compliance, make web content more accessible
 * **World Wide Web (W3C)** :globe_with_meridians: validated following website formatting standards
 * **Visual editor** :rainbow: building content pages, product list and product detail pages in a visual manner and with components 
-
-![alt text](http://doc.dynamicweb.com//Files/Images/Swift/VE-clothes.gif)
 
 # Installation
 
@@ -39,19 +35,6 @@ This repository contains a `./Files` with design files, images, and other static
 ## Requirements
 * **Swift v1.26.8** requires **DynamicWeb version 9.18.2** and **Shipmondo dll v2.0.0** or newer, it can also run on **DynamicWeb v10.9.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
 
-* **Swift v1.26.7** requires **DynamicWeb version 9.17.10** and **Shipmondo dll v2.0.0** or newer, it can also run on **DynamicWeb v10.7.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
-
-* **Swift v1.26.6** requires **DynamicWeb version 9.17.10** and **Shipmondo dll v2.0.0** or newer, it can also run on **DynamicWeb v10.7.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
-
-* **Swift v1.26.5** requires **DynamicWeb version 9.17.10** and **Shipmondo dll v2.0.0** or newer, it can also run on **DynamicWeb v10.7.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
-
-* **Swift v1.26.4** requires **DynamicWeb version 9.17.4** and **Shipmondo dll v2.0.0** or newer, it can also run on **DynamicWeb v10.4.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
-
-* **Swift 1.26.3** requires **DynamicWeb version 9.17.4** and **Shipmondo dll v2.0.0** or newer, it can also run on **DynamicWeb version 10.4.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
-
-* **Swift 1.26.2** requires **DynamicWeb version 9.17.1** and **Shipmondo dll v2.0.0** or newer, it can also run on **DynamicWeb version 10.1.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
-
-
 See requirements for older Swift versions [here](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-1)
 
 * The baseline database is a bacpac file created using the Microsoft SQL Server 2016 standard (version SQL server 15.0.2080.9) using SQL Server Management Studio 2019 version 15.018040.0.
@@ -64,7 +47,6 @@ Swift must be installed on a server or local machine running Windows and a recen
 
 | Links |      |
 | ------ | ------ |
-| DW9 | [Software/Hardware requirements ](https://doc.dynamicweb.com/get-started/introduction/requirements/requirements-dw9#2171) |
 | Hosting | [Preparing the hosting environment](https://doc.dynamicweb.com/get-started/introduction/installation/hosting-environment "Preparing the hosting environment")|
 | Install | [Dynamicweb](https://doc.dynamicweb.com/get-started/introduction/installation/installing-dynamicweb "Install Dynamicweb") |
 
@@ -99,8 +81,7 @@ Swift uses webpack to calculate dependencies and bundle scripts, images and othe
 1. Download and install [Node.js](https://nodejs.org/en/)
 2. Open a command prompt and navigate to folder Swift is cloned to
 3. Run `npm install`
-4. Run `npm run build:webpack`
-5. Run `npm run start`
+4. Run `npm run build`
 
 ## Restore database and connect with solution
 
