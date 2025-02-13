@@ -1,0 +1,73 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend.Navigation
+@using Dynamicweb.Content
+
+@{
+	int rootPageId = GetPageIdByNavigationTag("SignInPage");
+	if (Model.Item.TryGetLink("SignInPage", out var signInPage))
+	{
+		rootPageId = signInPage.PageId;
+	}
+
+	if (Pageview.User != null)
+	{
+		rootPageId = GetPageIdByNavigationTag("MyAccountPage");
+		if (Model.Item.TryGetLink("MyAccountPage", out var myAccountPage))
+		{
+			rootPageId = myAccountPage.PageId;
+		}
+	}
+
+	NavigationTreeViewModel navigationModel = Navigation.GetNavigationViewModel(new NavigationSettings()
+	{
+		RootPageId = rootPageId,
+		ExpandMode = ExpandMode.All
+	});
+
+	Page rootPage = Dynamicweb.Content.Services.Pages?.GetPage(rootPageId);
+	string rootPageName = rootPage?.GetDisplayName() ?? Translate("Sign in");
+	
+	string pageIcon = string.Empty;
+	if (rootPage?.PropertyItem is object)
+	{
+		if (rootPage.PropertyItem.TryGetValue("Icon", out object pageIconValue))
+		{
+			pageIcon = Dynamicweb.Core.Converter.ToString(pageIconValue);
+		}
+	}
+}
+
+<div class="nav-item dropdown">
+	<span class="p-2 nav-link d-inline-flex align-items-center gap-2 text-nowrap" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="SignInDropdown_@Model.ID">
+		@if (!string.IsNullOrEmpty(pageIcon) && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+		{
+			<span class="icon-3 pe-none">@ReadFile(pageIcon)</span>
+		}
+		@if (!Model.Item.GetBoolean("HideTitle"))
+		{
+			<span>@rootPageName</span>
+		}
+	</span>
+	<ul class="dropdown-menu" aria-labelledby="SignInDropdown_@Model.ID" data-dw-colorscheme="@Model.ColorScheme?.Id">
+		@foreach (var node in navigationModel.Nodes)
+		{
+			<li>
+				<a class="dropdown-item py-2 text-decoration-underline-hover" href="@node.Link">@node.Name</a>
+			</li>
+
+		}
+		@if (Pageview.User != null)
+		{
+			<li><hr class="dropdown-divider"></li>
+			if (Dynamicweb.Security.UserManagement.UserContext.Current.ImpersonatingUser != null)
+			{
+				<li>
+					<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item py-2 text-decoration-underline-hover swift_sign-out-as-customer-link" id="SignInButton_@Model.ID">@Translate("Sign out as a customer")</a>
+				</li>
+			}
+			<li>
+				<a href="/Admin/Public/ExtranetLogoff.aspx?redirect=no" class="dropdown-item py-2 text-decoration-underline-hover swift_sign-out-link">@Translate("Sign out")</a>
+			</li>
+		}
+	</ul>
+</div>
