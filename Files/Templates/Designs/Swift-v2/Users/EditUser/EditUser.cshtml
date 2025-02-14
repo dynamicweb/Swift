@@ -1,0 +1,152 @@
+@inherits ViewModelTemplate<UserViewModel>
+@using Dynamicweb.Rendering
+@using Dynamicweb.Users.Frontend
+@using Dynamicweb.Frontend
+
+@{
+    string apiKey = !string.IsNullOrEmpty(Pageview.AreaSettings.GetString("Google_APIKey")) ? Pageview.AreaSettings.GetString("Google_APIKey") : "";
+    
+    string goBackToPage = Dynamicweb.Context.Current.Request.QueryString.Get("GoBackToPage");
+
+    string changePasswordLink = $"/Default.aspx?ID={Pageview.Page.ID}&amp;UserCmd=changepassword";
+    string updateUserLink = $"/Default.aspx?ID={Pageview.Page.ID}&amp;UserCmd=updateuser";
+    string deleteUserLink = $"/Default.aspx?ID={Pageview.Page.ID}&amp;UserCmd=deleteuser";
+
+    string currentCountry = !string.IsNullOrEmpty(Model.CountryCode) ? Model.CountryCode : (Pageview.Area.EcomCountryCode ?? string.Empty);
+    var regions = Dynamicweb.Ecommerce.Services.Countries.GetRegions(currentCountry);
+    var countries = Dynamicweb.Ecommerce.Services.Countries.GetCountries();
+    string regionLabel = "State";
+
+    string countrySelectorColumnSize = regions.Count > 1 ? "g-col-12 g-col-lg-3" : "g-col-12 g-col-lg-6";
+
+    bool isImpersonating = Dynamicweb.Security.UserManagement.User.GetCurrentSecondaryUser() != null;
+	bool isExternalAuthentication = !string.IsNullOrEmpty(Dynamicweb.Core.Converter.ToString(Dynamicweb.Context.Current.Session["DW_extranet_ExternalLoginProviderID"]));
+}
+
+<header class="d-flex flex-row align-items-center gap-3 p-3 border-bottom">
+    <h1 class="h6 m-0 flex-fill">@Translate("Edit profile")</h1>
+    @if (!isImpersonating && !isExternalAuthentication)
+    {
+        <a href="@changePasswordLink" class="btn btn-link p-0">@Translate("Change password")</a>
+    }
+</header>
+
+<form action="@updateUserLink" method="post" id="UserManagementEditForm">
+    <div class="grid p-3">
+        <input type="hidden" name="ID" value="@Pageview.ID">
+
+        <div class="g-col-12">
+            <div class="form-floating">
+                <input type="text" class="form-control" placeholder="@Translate("Name")" name="UserManagement_Form_Name" id="UserManagement_Form_Name" value="@Model.Name">
+                <label for="Name" class="form-label">@Translate("Name")</label>
+            </div>
+        </div>
+        <div class="g-col-12">
+            <div class="form-floating">
+                <input type="text" class="form-control" placeholder="@Translate("Company") (@Translate("optional"))" name="UserManagement_Form_Company" id="UserManagement_Form_Company" value="@Model.Company">
+                <label for="Company" class="form-label">@Translate("Company") (@Translate("optional"))</label>
+            </div>
+        </div>
+        <div class="g-col-12">
+            <div class="form-floating">
+                <input type="text" class="form-control" placeholder="@Translate("Street & number")" name="UserManagement_Form_Address" id="UserManagement_Form_Address" value="@Model.Address" />
+                <label for="Address" class="form-label">@Translate("Street & number")</label>
+            </div>
+        </div>
+        <div class="g-col-12">
+            <div class="form-floating">
+                <input type="text" class="form-control" placeholder="@Translate("Additional address")" name="UserManagement_Form_Address2" id="UserManagement_Form_Address2" value="@Model.Address2" />
+                <label for="Address2" class="form-label">@Translate("Additional address")</label>
+            </div>
+        </div>
+        <div class="g-col-12 g-col-lg-3">
+            <div class="form-floating">
+                <input type="text" class="form-control" placeholder="@Translate("Zip")" name="UserManagement_Form_Zip" id="UserManagement_Form_Zip" value="@Model.Zip" />
+                <label for="Zip" class="form-label">@Translate("Zip")</label>
+            </div>
+        </div>
+
+        <div class="@countrySelectorColumnSize">
+            <div class="form-floating">
+                <input type="text" class="form-control" placeholder="@Translate("Town / City")" name="UserManagement_Form_City" id="UserManagement_Form_City" value="@Model.City" />
+                <label for="City" class="form-label">@Translate("Town / City")</label>
+            </div>
+        </div>
+
+        @if (regions.Count > 1)
+        {
+            if (currentCountry == "CA")
+            {
+                regionLabel = Translate("Province");
+            }
+            else if (currentCountry == "GB")
+            {
+                regionLabel = Translate("Region");
+            }
+            else if (currentCountry == "US")
+            {
+                regionLabel = Translate("State");
+            }
+
+            <div class="g-col-3">
+                <div class="form-floating">
+                    <select class="form-select" name="UserManagement_Form_State" id="UserManagement_Form_State">
+                        @foreach (var region in regions)
+                        {
+                            string selected = region.RegionCode == Model.State ? "selected" : "";
+                            <option value="@region.RegionCode" @selected>@region.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID)</option>
+                        }
+                    </select>
+                    <label for="UserManagement_Form_State">@regionLabel</label>
+                </div>
+            </div>
+        } else { 
+            <input type="hidden" name="UserManagement_Form_State" id="UserManagement_Form_State" value=""></input>
+        }
+
+        <div class="g-col-12 g-col-lg-3">
+            <div class="form-floating">
+                <select class="form-select" id="UserManagement_Form_CountryCode" name="UserManagement_Form_CountryCode" onchange="this.closest('form').requestSubmit();">
+                    @foreach (var country in countries)
+                    {
+                        string selected = country.Code2 == currentCountry ? "selected" : "";
+                        <option value="@country.Code2" @selected>@country.GetName(Pageview.Area.EcomLanguageId)</option>
+                    }
+                </select>
+                <label for="UserManagement_Form_CountryCode" class="form-label">@Translate("Country")</label>
+            </div>
+        </div>
+
+        <div class="g-col-12 g-col-lg-6">
+            <div class="form-floating">
+                <input type="email" class="form-control" placeholder="@Translate("Email")" name="UserManagement_Form_Email" id="UserManagement_Form_Email" value="@Model.Email" required />
+                <label for="Email" class="form-label">@Translate("Email")</label>
+            </div>
+        </div>
+        <div class="g-col-12 g-col-lg-6">
+            <div class="form-floating">
+                <input type="text" class="form-control" placeholder="@Translate("Phone")" name="UserManagement_Form_Phone" id="UserManagement_Form_Phone" value="@Model.Phone">
+                <label for="Phone" class="form-label">@Translate("Phone")</label>
+            </div>
+        </div>
+
+        <div class="g-col-12">
+            <button type="submit" class="btn btn-primary me-2" id="SaveUserButton">@Translate("Save")</button>
+            @if (!string.IsNullOrEmpty(goBackToPage))
+			{
+				<a href="/Default.aspx?ID=@goBackToPage" class="btn btn-secondary" data-dw-button="secondary" id="BackToCheckoutButtonButton">@Translate("Go back to checkout")</a>
+			}
+        </div>
+    </div>
+</form>
+
+
+@if (!string.IsNullOrEmpty(apiKey))
+{
+	<script defer src="https://maps.googleapis.com/maps/api/js?key=@(apiKey)&libraries=places"></script>
+
+	<script type="module">
+		var mapSettings = { currentCountry: "@currentCountry" };
+		swift.Places.init(mapSettings);
+	</script>
+}
