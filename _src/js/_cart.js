@@ -37,8 +37,7 @@ const Cart = (function () {
       if (productBomContainer) {
         productBomContainer.querySelectorAll(".js-bom-variant").forEach(function (bomVariant) 
         {
-          if (bomVariant.checked || bomVariant.tagName == "SELECT") {
-            console.log(bomVariant.name);
+          if (bomVariant.checked) {
             formData.append(bomVariant.name, bomVariant.value);
           }
         });
