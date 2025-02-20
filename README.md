@@ -1,11 +1,11 @@
-# Swift 2.0.0-beta by DynamicWeb
+# DynamicWeb Swift
 
 Swift is a **customizable storefront** which provides a solid foundation for building tailored ecommerce websites with uniqe designs.
 Built upon the DynamicWeb 10 platform, Swift offers a robust foundation for businesses aiming to establish a strong and visually appealing online presence and allows you to get started quickly through simple configuration. For more complex requirements, where coding is necessary, Swift makes the process seamless, enabling you to bring your vision to life with ease.
 
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=black&label=Swift%20Release) [![GitHub DW10](https://img.shields.io/badge/DynamicWeb10%20Release-v10.12.0-blue)](https://doc.dynamicweb.dev/) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.3.3-purple)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-darkblue)](https://doc.dynamicweb.dev/swift/getting-started/index.html) 
 
-[Key features](#key-features) • [Installation](#installation) • [Requirements](#requirements) • [Hosting & Install DW](#hosting-environment-and-dynamicweb-install) • [Database](#swift-database-and-product-images) • [License](#log-in-and-install-a-license)
+[Key features](#key-features) • [Build styles and scripts](#build-styles-and-scripts-npm) • [Requirements, Hosting environment and install](#requirements-hosting-environment-and-install) • [Database and demo data](#database-and-demo-data)
 
 ## Key features
 
@@ -17,23 +17,6 @@ Built upon the DynamicWeb 10 platform, Swift offers a robust foundation for busi
 * **Web Accessibility Guidelines (WCAG)** :trophy: Level AA compliance, make web content more accessible
 * **World Wide Web (W3C)** :globe_with_meridians: validated following website formatting standards
 * **Visual editor** :rainbow: building content pages, product list and product detail pages in a visual manner
-
-# Installation
-
-Swift 2.0 is installed on top of a [Dynamicweb 10](https://doc.dynamicweb.dev/documentation/fundamentals/).
-This repository contains a `./Files` with design files.
-
-**The basic install procedure is:**
-
-1. Prepare the hosting environment
-2. Install the DynamicWeb application
-3. Set up a website in IIS Manager and add the Swift-folder as a virtual directory
-4. Download the [Swift Product Image folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v2.0.0-beta/Swift_DemoProductImages.zip "Download Swift Product Image folder") and insert the `./Poducts` folder here `Files/Images`
-5. Download the [Swift Content Image folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v2.0.0-beta/Swift_DemoContentImages.zip "Download Swift Content Image folder") and insert the folders here `Files/Images`
-6. Download the [Swift Styles folder](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v2.0.0-beta/Swift_DemoStyles.zip "Download Swift Styles folder") and insert the `./Styles` folder here `Files/System`
-7. Build the Swift design
-8. Install the Swift database & connect solution to it
-9. Log in and install a license
 
 ## Build styles and scripts (npm)
 
@@ -50,7 +33,6 @@ Swift uses npm to handle and compile styles and bundle scripts, assets and libra
 
 * The baseline database is a bacpac file created using the Microsoft SQL Server 2016 standard (version SQL server 15.0.2080.9) using SQL Server Management Studio 2019 version 15.018040.0.
 
-
 DynamicWeb 10 is a very flexible application when it comes to hosting - you can choose between: [DynamicWeb Cloud](https://doc.dynamicweb.dev/documentation/fundamentals/setup/hosting/dynamicweb-cloud.html), [ISS](https://doc.dynamicweb.dev/documentation/fundamentals/setup/hosting/running-in-IIS.html), [Azure](https://doc.dynamicweb.dev/documentation/fundamentals/setup/hosting/running-in-azure.html) or [Docker](https://doc.dynamicweb.dev/documentation/fundamentals/setup/hosting/running-in-docker.html)
 
 | Links |      |
@@ -62,18 +44,11 @@ DynamicWeb 10 is a very flexible application when it comes to hosting - you can 
 
 After following these guides you will have a freshly installed DynamicWeb solution - ready to run Swift.
 
-## Swift database and product images
+## Database and demo data
 
 | Download |      |
 | ------ | ------ |
-| Database | [Swift Demo database](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-3 "Download Swift database")|
-| Database | [Swift Empty database](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-4 "Download Swift Empty database, with No Ecom data")|
-| Image folder | [Swift Product Image](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v1.26.0/Swift_20240305_DemoProductImages.zip "Download Swift Product Image folder") |
-
-## Log in and install a license
-
-* After successfully connecting the database and solution you can go to ***yoururl.com/admin*** and log in with the administrator username and password.
-
-* After logging in you will be asked to [Install a license](https://doc.dynamicweb.com/get-started/introduction/installation/installing-a-license "Install a license").  
-
-* If you instead see the DynamicWeb Installer the database and solution are not correctly linked. Try recycling the application pool and trying again.
+| Database | [Download Demo database](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-2 "Download Database")|
+| Demo Product Images | [Download Demo Product Images](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v2.0.0-beta/Swift_DemoProductImages.zip "Download Demo Product Images") |
+| Demo Content Images | [Download Demo Content Images](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v2.0.0-beta/Swift_DemoContentImages.zip "Download Demo Content Images") |
+| Styles | [Download Styles](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v2.0.0-beta/Swift_DemoStyles.zip  "Download Styles") |
