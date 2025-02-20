@@ -49,6 +49,6 @@ After following these guides you will have a freshly installed DynamicWeb soluti
 | Download |      |
 | ------ | ------ |
 | Database | [Download Demo database](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-2 "Download Database")|
-| Demo Product Images | [Download Demo Product Images](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v2.0.0-beta/Swift_DemoProductImages.zip "Download Demo Product Images") |
-| Demo Content Images | [Download Demo Content Images](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v2.0.0-beta/Swift_DemoContentImages.zip "Download Demo Content Images") |
-| Styles | [Download Styles](https://doc.dynamicweb.com/Files/Files/Releases/Swift/Swift-v2.0.0-beta/Swift_DemoStyles.zip  "Download Styles") |
+| Demo Product Images | [Download Demo Product Images](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-2 "Download Demo Product Images") |
+| Demo Content Images | [Download Demo Content Images](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-2 "Download Demo Content Images") |
+| Styles | [Download Styles](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-2  "Download Styles") |
