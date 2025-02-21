@@ -1,8 +1,11 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend
 @using Dynamicweb.Frontend.Navigation
 @using System.Text.RegularExpressions
+@using Microsoft.AspNetCore.WebUtilities
 
 @{
+    int updatePageId = Pageview.Page.ID;
     string loadContent = Dynamicweb.Context.Current?.Request["LoadContent"]?.ToString() ?? string.Empty;
     var region = new System.Globalization.RegionInfo(Pageview.Area.CultureInfo.LCID);
 
@@ -109,12 +112,13 @@ else
                     aria-label="@Translate("Select language")" 
                     hx-trigger="change" 
                     hx-target="#DynamicOffcanvas" 
-                    hx-post="/Default.aspx?ParagraphID=@Model.ID&LayoutTemplate=Swift-v2_PageClean.cshtml&LoadContent=true">
+                    hx-get="/Default.aspx?ParagraphID=@Model.ID&LayoutTemplate=Swift-v2_PageClean.cshtml&LoadContent=true">
                     @foreach (var language in languages)
                     {
                         if (language != null && language.Published && language.Area.Active && language.Area.Published)
                         {
                             string selectedLanguage = language.Area.ID == Pageview.Area.ID ? "selected" : "";
+                            updatePageId = selectedLanguage != "" ? language.ID : updatePageId;
 
                             var masterPageId = Pageview.Page?.MasterPageId != null && Pageview.Page.MasterPageId != 0 ?
                             Pageview.Page.MasterPageId : Pageview.ID;
@@ -178,7 +182,22 @@ else
             </div>
         }
     </div>
+
+    @{
+        var uri = Dynamicweb.Context.Current?.Request?.Url;
+        var queryParams = QueryHelpers.ParseQuery(uri?.Query);
+
+        queryParams.Remove("LoadContent");
+        queryParams.Remove("ParagraphId");
+        queryParams.Remove("LayoutTemplate");
+
+        var newQuery = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+        var updateUrl = $"{uri?.Scheme}://{uri?.Host}{uri?.AbsolutePath}?{newQuery}";
+    }
+
+
     <div class="offcanvas-footer p-3">
-        <a onclick="location.reload()" hx-boost class="btn btn-primary w-100" data-dw-button="primary">@Translate("Update preferences")</a>
+        <a href="@updateUrl" hx-boost class="btn btn-primary w-100" data-dw-button="primary">@Translate("Update preferences")</a>
     </div>
 }
+
