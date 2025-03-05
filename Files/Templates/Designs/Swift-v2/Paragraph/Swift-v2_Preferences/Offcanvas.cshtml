@@ -1,0 +1,203 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Frontend.Navigation
+@using System.Text.RegularExpressions
+@using Microsoft.AspNetCore.WebUtilities
+
+@{
+    int updatePageId = Pageview.Page.ID;
+    string loadContent = Dynamicweb.Context.Current?.Request.QueryString.Get("LoadContent") ?? string.Empty;
+    var region = new System.Globalization.RegionInfo(Pageview.Area.CultureInfo.LCID);
+
+    string? title = null;
+    if (Model.Item.TryGetString("Title", out string customTitle))
+    {
+        title = customTitle;
+    }
+    if (Model.Item.GetBoolean("UseLanguageName")) 
+    {
+        title = region.DisplayName;
+    }
+
+    string pageIcon = string.Empty;
+    if (Model.Item.TryGetString("Icon", out var icon))
+    {
+        pageIcon = icon;
+    }
+    string flagIconFolder = "/Files/Images/Icons/Flags/";
+    if (Model.Item.GetBoolean("UseLanguageIcon")) 
+    {
+        pageIcon = $"{flagIconFolder}{region.Name}.svg";
+    }
+    
+}
+
+@if(loadContent != "true")
+{
+    <div class="nav-wrapper">
+        <span class="p-2 nav-link d-inline-flex align-items-center gap-2 text-nowrap" 
+        role="button" 
+        data-bs-toggle="offcanvas" 
+        data-bs-target="#DynamicOffcanvas"
+        id="PreferencesDropdown_@Model.ID"
+        hx-get
+        hx-vals='{"ParagraphId": "@Model.ID", "LayoutTemplate": "Swift-v2_PageClean.cshtml", "LoadContent": "true"}'
+        hx-trigger="click"
+        hx-swap="innerHTML"
+        hx-target="#DynamicOffcanvas">
+            @if (!string.IsNullOrEmpty(pageIcon) && pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+            {
+                <span class="icon-3 pe-none">@ReadFile(pageIcon)</span>
+            }
+            @if (!string.IsNullOrEmpty(title))
+            {
+                <span>@title</span>
+            }
+        </span>
+    </div>
+}
+else
+{
+    var languages = new List<Dynamicweb.Content.Page>();
+    var ecomCountries = Dynamicweb.Ecommerce.Services.Countries.GetCountries()?.OrderBy(country => country.GetName(Pageview.Area.EcomLanguageId)) ?? null;
+
+    var currencies = Dynamicweb.Ecommerce.Services.Currencies.GetAllCurrencies();
+
+    if (Model.Item.GetBoolean("LanguageSelector") == true)
+    {
+        if (Pageview.Page.Area.IsMaster)
+        {
+            languages.Add(Pageview.Page);
+            if (Pageview.Page.Languages != null)
+            {
+                foreach (var language in Pageview.Page.Languages)
+                {
+                    if (language.Area.Active == true)
+                    {
+                        languages.Add(language);
+                    }
+                }
+            }
+        }
+        else
+        {
+            if (Pageview.Page.MasterPage != null)
+            {
+                languages.Add(Pageview.Page.MasterPage);
+                if (Pageview.Page.MasterPage.Languages != null)
+                {
+                    foreach (var language in Pageview.Page.MasterPage.Languages)
+                    {
+                        if (language.Area.Active == true)
+                        {
+                            languages.Add(language);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title m-0" id="PreferencesLabel">@Translate("Preferences")</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body">
+        @if (Model.Item.GetBoolean("LanguageSelector") == true && languages.Count > 1)
+        {
+            <div class="form-floating mb-3">
+                <select id="LanguageSelect" name="ID" class="form-select d-col-12"
+                    aria-label="@Translate("Select language")" 
+                    hx-trigger="change" 
+                    hx-target="#DynamicOffcanvas" 
+                    hx-get="/"
+                    hx-vals='{"ParagraphId": "@Model.ID", "LayoutTemplate": "Swift-v2_PageClean.cshtml", "LoadContent": "true"}'>
+                    @foreach (var language in languages)
+                    {
+                        if (language != null && language.Published && language.Area.Active && language.Area.Published)
+                        {
+                            string selectedLanguage = language.Area.ID == Pageview.Area.ID ? "selected" : "";
+                            updatePageId = selectedLanguage != "" ? language.ID : updatePageId;
+
+                            var masterPageId = Pageview.Page?.MasterPageId != null && Pageview.Page.MasterPageId != 0 ?
+                            Pageview.Page.MasterPageId : Pageview.ID;
+                            var preferencePageId = Dynamicweb.Content.Services.Pages.GetPageIDByMasterID(masterPageId,
+                            language.AreaId);
+                            preferencePageId = preferencePageId == 0 ? Pageview.Page.MasterPageId : preferencePageId;
+                            preferencePageId = preferencePageId == 0 ? Pageview.Page.ID : preferencePageId;
+
+                            <option hreflang="@language.Area.CultureInfo.TwoLetterISOLanguageName" value="@preferencePageId"
+                            @selectedLanguage>@language.Area.DisplayName</option>
+                        }
+                    }
+                </select>
+                <label for="LanguageSelect">@Translate("Language")</label>
+            </div>
+        }
+
+        @if (Model.Item.GetBoolean("CountrySelector") == true && ecomCountries?.Count<Dynamicweb.Ecommerce.International.Country>() > 1)
+        {
+            <div class="form-floating mb-3">
+                <select name="CountryCode" id="CountryCodeSelect" class="form-select d-col-12"
+                    aria-label="@Translate("Select country")" 
+                    hx-trigger="change" 
+                    hx-target="#DynamicOffcanvas" 
+                    hx-get="/"
+                    hx-vals='{"ID": "@updatePageId", "ParagraphId": "@Model.ID", "LayoutTemplate": "Swift-v2_PageClean.cshtml", "LoadContent": "true"}'>
+                    @foreach (var country in ecomCountries)
+                    {
+                        var selectedCountry = country.Code2 == Dynamicweb.Ecommerce.Common.Context.Country.Code2 ? "selected" : "";
+
+                        if (!string.IsNullOrEmpty(country.GetName(Pageview.Area.EcomLanguageId)))
+                        {
+                            <option value="@country.Code2" @selectedCountry>@country.GetName(Pageview.Area.EcomLanguageId)</option>
+                        }
+                    }
+                </select>
+                <label for="CountryCodeSelect">@Translate("Delivery country")</label>
+            </div>
+        }
+
+        @if (Model.Item.GetBoolean("CurrencySelector") == true && currencies.Count() > 1)
+        {
+            <div class="form-floating mb-3">
+                <select name="CurrencyCode" id="CurrencySelect" class="form-select d-col-12"
+                    aria-label="@Translate("Select currency")"
+                    hx-trigger="change" 
+                    hx-target="#DynamicOffcanvas" 
+                    hx-get="/"
+                    hx-vals='{"ID": "@updatePageId", "ParagraphId": "@Model.ID", "LayoutTemplate": "Swift-v2_PageClean.cshtml", "LoadContent": "true"}'>
+                    @foreach (var currency in currencies)
+                    {
+                        string selectedCurrency = currency.Code == Dynamicweb.Ecommerce.Common.Context.Currency.Code ?
+                        "selected" : "";
+
+                        if (!string.IsNullOrEmpty(currency.Code))
+                        {
+                            <option value="@currency.Code" @selectedCurrency>@currency.Code</option>
+                        }
+                    }
+                </select>
+                <label for="CurrencySelect">@Translate("Currency")</label>
+            </div>
+        }
+    </div>
+
+    @{
+        var uri = Dynamicweb.Context.Current?.Request?.Url;
+        var queryParams = QueryHelpers.ParseQuery(uri?.Query);
+
+        queryParams.Remove("LoadContent");
+        queryParams.Remove("ParagraphId");
+        queryParams.Remove("LayoutTemplate");
+
+        var newQuery = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+        var updateUrl = $"{uri?.Scheme}://{uri?.Host}{uri?.AbsolutePath}?{newQuery}";
+    }
+
+
+    <div class="offcanvas-footer p-3">
+        <a href="@updateUrl" hx-boost class="btn btn-primary w-100" data-dw-button="primary">@Translate("Update preferences")</a>
+    </div>
+}
+
