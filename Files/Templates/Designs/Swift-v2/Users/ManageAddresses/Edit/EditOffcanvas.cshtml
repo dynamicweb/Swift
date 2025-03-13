@@ -4,6 +4,16 @@
 
 @{
     string title = Model.Id == 0 ? "New address" : "Edit address";
+
+    string currentCountry = !string.IsNullOrEmpty(Pageview.User.CountryCode) ? Pageview.User.CountryCode : (Pageview.Area.EcomCountryCode ?? string.Empty);
+    var regions = Dynamicweb.Ecommerce.Services.Countries.GetRegions(currentCountry);
+
+    var regionLabel = currentCountry switch
+    {
+        "US" or "IN" or "AU" or "BR" or "DE" => Translate("State"),
+        "CA" or "CN" or "PH" or "ZA" => Translate("Province"),
+        _ => Translate("Region") // Default case
+    };
 }
 
 <div class="offcanvas-header">
@@ -51,12 +61,19 @@
         <label for="City" class="form-label">@Translate("City")</label>
     </div>
 
-    @* Implement regions correctly *@
-
-    <div class="form-floating">
-        <input type="text" class="form-control" placeholder="@Translate("State or region")" name="State" id="State" value="@Model.State" />
-        <label for="State" class="form-label">@Translate("State or region")</label>
-    </div>
+    @if (regions.Count > 1)
+    {
+        <div class="form-floating">
+            <select class="form-select" name="State" id="State">
+                @foreach (var region in regions)
+                {
+                    string selected = region.RegionCode == Pageview.User.State ? "selected" : String.Empty;
+                    <option value="@region.RegionCode" @selected>@region.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID)</option>
+                }
+            </select>
+            <label for="State">@regionLabel</label>
+        </div>
+    }
 
     <div class="form-floating">
         <select class="form-select" id="CountryCode" name="CountryCode" onchange="submitForm()">
@@ -75,7 +92,7 @@
     </div>
 
     <div class="d-flex gap-2 justify-content-end">
-        <button type="submit" name="AddressCmd" value="SaveAddress" data-bs-dismiss="offcanvas" class="btn btn-primary" id="SaveAddressButton">
+        <button type="submit" name="AddressCmd" value="SaveAddress" data-bs-dismiss="offcanvas" class="btn btn-primary" data-dw-button="primary" id="SaveAddressButton">
             @Translate("Save")
         </button>
     </div>
