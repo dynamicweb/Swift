@@ -1,5 +1,15 @@
 # Changelog
 
+# v2.0.0-beta
+
+## [v2.0.0-beta] - 20-02-2025
+
+### We're excited to introduce Swift 2.0.0 [Beta] 🎉
+
+This release brings a range of improvements, new features, and a more streamlined editing and developer experience. 🚀
+
+Check it out and provide us with your feedback, ideas and any issues you run into!
+
 # v1.26.8
 
 ## [v1.26.8] - 22-01-2025
