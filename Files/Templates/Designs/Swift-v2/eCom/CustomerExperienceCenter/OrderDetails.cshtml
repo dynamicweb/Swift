@@ -294,9 +294,6 @@
 			if (orderlineType == OrderLineType.Product || orderlineType == OrderLineType.GiftCard || orderlineType == OrderLineType.Fixed || isFreeProduct)
 			{
 				var product = orderline?.GetProduct();
-				var bomProducts = product?.GetBomConfiguration()?.Items;
-				int bomProductsCount = bomProducts != null ? bomProducts.Count() : 0;
-
 				string link = product?.GetProductLink(GetPageIdByNavigationTag("Shop"), false) ?? string.Empty;
 
 				<article class="grid">
@@ -317,7 +314,6 @@
 
 					<div class="g-col-9">
 						<div class="grid grid-9 h-100">
-
 							<div class="g-col-9 g-col-md-5">
 								<h2 class="h6 mb-3 fw-bold">
 									@if (string.IsNullOrEmpty(link))
@@ -380,55 +376,67 @@
 								}
 							</div>
 						</div>
+					</div>
 
-						@if (bomProductsCount > 0) {
-							<div class="g-col-12">
-								@* BOM items *@
-								@foreach (BomItemViewModel bomItem in bomProducts) {
-									var bomProduct = bomItem.Product.GetProduct();
+					@if (orderline?.BomOrderLines.Count() > 0) {
+						@* BOM items *@
+						foreach (OrderLineViewModel bomOrderline in orderline?.BomOrderLines) {
+							var bomProduct = bomOrderline?.GetProduct();
+							string bomImage = bomOrderline.ProductImage;
+							bomImage = "/Admin/Public/GetImage.ashx?width=" + 300 + "&height=" + 300 + "&image=" + bomImage + "&format=webp";
+							bomImage = !bomOrderline.ProductImage.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? bomOrderline.ProductImage : bomImage;
 
-									if (bomProduct != null) {
-										string bomImage = bomProduct.DefaultImage.Value;
-										bomImage = "/Admin/Public/GetImage.ashx?width=" + 60 + "&height=" + 60 + "&image=" + bomImage + "&format=webp";
-										bomImage = !bomProduct.DefaultImage.Value.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? bomProduct.DefaultImage.Value : bomImage;
-
-										<div class="d-flex gap-3">
-											@if (!string.IsNullOrEmpty(bomImage)) {
-												<div style="width: 60px">
-													<div class="ratio ratio-1x1 d-block" title="@bomProduct.Name">
-														<img class="cart-item-img" src="@bomImage" style="object-fit: contain;" alt="@bomProduct.Name">
-													</div>
-												</div>
-											}
-											<div class="flex-fill">
-												<div class="d-flex justify-content-between">
-													<p class="fs-7 fs-md-6 mb-0 fw-bold">@bomProduct.Name</p>
-													<p class="fs-7 fs-md-6 mb-0">@Translate("Qty"): @bomItem.Quantity</p>
-												</div>
-											</div>
-										</div>
-									}
+							<div class="g-col-3 d-flex gap-2">
+								<div class="icon-2 p-0 p-lg-3 opacity-25">
+									@ReadFile("/Files/Images/Icons/arrow-turn-down-right.svg")
+								</div>
+								@if (!string.IsNullOrEmpty(bomImage))
+								{
+									<span class="ratio ratio-1x1 d-block bg-light">
+										<img src="@bomImage" style="object-fit: contain;" alt="@bomOrderline.ProductName" height="300" width="300">
+									</span>
 								}
 							</div>
+
+							<div class="g-col-9">
+								<div class="grid grid-9 h-100">
+									<div class="g-col-9 g-col-md-5">
+										<h2 class="h6 mb-3 fw-bold"><span class="text-dark">@bomOrderline.ProductName</span></h2>
+
+										<ul class="list-unstyled text-muted mb-0">
+											<li>
+												<span>@Translate("Quantity"):</span>
+												<span>@bomOrderline.Quantity</span>
+											</li>
+										</ul>
+									</div>
+
+									<div class="g-col-9 g-col-md-4 text-end">
+										@if (product.PriceType.ToString().ToLower() != "fixedprice") { 
+											<h6 class="h6 fw-bold m-0">
+												<span class="text-price">@bomOrderline.Price.PriceFormatted</span>
+											</h6>
+										}
+									</div>
+								</div>
+							</div>
 						}
-					</div>
+					}
 				</article>
 			}
 		}
 
-		@{
-			<div class="cart-total grid mt-3">
-				<div class="g-col-12">
-					<dl class="m-0">
-
-						<div class="d-flex my-1 pt-4 border-dark border-top">
+		<div class="cart-total grid mt-3">
+			<div class="g-col-12">
+				<dl class="m-0">
+					<div class="d-flex my-1 pt-4 border-dark border-top">
 						<dt class="flex-fill fw-bold">@Translate("Subtotal")</dt>
 						<dd class="flex-fill mb-0 text-end">
 							@if (Model.TotalPriceWithoutDiscountsFeesAndTaxes.Price != Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.Price)
 							{
 								<span class="text-price text-decoration-line-through">@(Model.TotalPriceWithoutDiscountsFeesAndTaxes.PriceFormatted)</span>
 							}
-                            <span class="textPrice">@(Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.PriceFormatted)</span>
+							<span class="textPrice">@(Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.PriceFormatted)</span>
 							@if (!neverShowVat && showPricesWithVat == "false")
 							{
 								<span class="fs-7 fw-normal d-block">@Translate("Excl. VAT")</span>
@@ -438,113 +446,112 @@
 								<span class="fs-7 fw-normal d-block">@Translate("Incl. VAT")</span>
 							}
 						</dd>
-				</div>
+					</div>
 
-				@* Discounts (only order discounts) *@
-				@foreach (OrderLineViewModel orderline in Model.OrderLines)
-				{
-					bool isProductIdOrNumber = !string.IsNullOrEmpty(orderline.ProductId) || !string.IsNullOrEmpty(orderline.ProductNumber);  //Live Cart orderlines may not return ProductId. Manually entered products may not have ProductNumber
-					bool isOrderAmountDiscount = orderline.OrderLineType == OrderLineType.Discount && !isProductIdOrNumber;
-					
-					if (isOrderAmountDiscount)
+					@* Discounts (only order discounts) *@
+					@foreach (OrderLineViewModel orderline in Model.OrderLines)
+					{
+						bool isProductIdOrNumber = !string.IsNullOrEmpty(orderline.ProductId) || !string.IsNullOrEmpty(orderline.ProductNumber);  //Live Cart orderlines may not return ProductId. Manually entered products may not have ProductNumber
+						bool isOrderAmountDiscount = orderline.OrderLineType == OrderLineType.Discount && !isProductIdOrNumber;
+						
+						if (isOrderAmountDiscount)
+						{
+							<div class="d-flex my-1">
+								<dt class="flex-fill fw-normal">@orderline.ProductName</dt>
+								<dd class="flex-fill mb-0 text-end">
+									@orderline.Price.PriceFormatted
+								</dd>
+							</div>
+						}
+					}
+
+					@* Delivery *@
+					@if (Model.ShippingFee.Price != 0.0) 
 					{
 						<div class="d-flex my-1">
-							<dt class="flex-fill fw-normal">@orderline.ProductName</dt>
+							<dt class="flex-fill fw-normal">@Translate("Delivery")</dt>
 							<dd class="flex-fill mb-0 text-end">
-								@orderline.Price.PriceFormatted
+								<span>@Model.ShippingFee.PriceFormatted</span>
 							</dd>
 						</div>
 					}
-				}
 
-				@* Delivery *@
-				@if (Model.ShippingFee.Price != 0.0) 
-				{
-					<div class="d-flex my-1">
-						<dt class="flex-fill fw-normal">@Translate("Delivery")</dt>
+					@* Payment *@
+					@if (Model.PaymentFee.Price != 0.0)
+					{
+						<div class="d-flex my-1">
+							<dt class="flex-fill fw-normal">@Translate("Payment")</dt>
+							<dd class="flex-fill mb-0 text-end">
+								<span>@Model.PaymentFee.PriceFormatted</span>
+							</dd>
+						</div>
+					}
+					
+					@* Taxes *@
+					@if (Model.TotalTaxes.Price != 0.0)
+					{
+						<div class="d-flex my-1">
+							<dt class="flex-fill fw-normal">@Translate("Sales tax")</dt>
+							<dd class="flex-fill mb-0 text-end">
+								<span>@Model.TotalTaxes.PriceFormatted</span>
+							</dd>
+						</div>
+					}
+
+					<div class="my-4 border-dark border-top"></div>
+
+					<div class="d-flex my-1 h5 fw-bold">
+						<dt class="flex-fill">@Translate("Total")</dt>
 						<dd class="flex-fill mb-0 text-end">
-							<span>@Model.ShippingFee.PriceFormatted</span>
-						</dd>
-					</div>
-				}
-
-				@* Payment *@
-				@if (Model.PaymentFee.Price != 0.0)
-				{
-					<div class="d-flex my-1">
-						<dt class="flex-fill fw-normal">@Translate("Payment")</dt>
-						<dd class="flex-fill mb-0 text-end">
-							<span>@Model.PaymentFee.PriceFormatted</span>
-						</dd>
-					</div>
-				}
-				
-				@* Taxes *@
-				@if (Model.TotalTaxes.Price != 0.0)
-                {
-                    <div class="d-flex my-1">
-                        <dt class="flex-fill fw-normal">@Translate("Sales tax")</dt>
-                        <dd class="flex-fill mb-0 text-end">
-                            <span>@Model.TotalTaxes.PriceFormatted</span>
-                        </dd>
-                    </div>
-                }
-
-				<div class="my-4 border-dark border-top"></div>
-
-				<div class="d-flex my-1 h5 fw-bold">
-					<dt class="flex-fill">@Translate("Total")</dt>
-					<dd class="flex-fill mb-0 text-end">
-						<span>@Model.Price.PriceFormatted</span>
-						@if (!neverShowVat && showPricesWithVat == "false")
-						{
-							<span class="fs-7 fw-normal d-block">@Translate("Excl. VAT")</span>
-						}
-						@if (!neverShowVat && showPricesWithVat == "true")
-						{
-							<span class="fs-7 fw-normal d-block">@Translate("Incl. VAT")</span>
-						}
-					</dd>
-				</div>
-
-				@if (!neverShowVat && Model.Price.Vat != 0.0)
-				{
-					<div class="d-flex my-1">
-						<dt class="flex-fill fw-normal">@Translate("VAT")</dt>
-						<dd class="flex-fill mb-0 text-end">
-							@if (!string.IsNullOrEmpty(Model.Price.VatFormatted))
+							<span>@Model.Price.PriceFormatted</span>
+							@if (!neverShowVat && showPricesWithVat == "false")
 							{
-								<span>@Model.Price.VatFormatted</span>
+								<span class="fs-7 fw-normal d-block">@Translate("Excl. VAT")</span>
+							}
+							@if (!neverShowVat && showPricesWithVat == "true")
+							{
+								<span class="fs-7 fw-normal d-block">@Translate("Incl. VAT")</span>
 							}
 						</dd>
 					</div>
 
-					if (showPricesWithVat == "false")
+					@if (!neverShowVat && Model.Price.Vat != 0.0)
 					{
 						<div class="d-flex my-1">
-							<dt class="flex-fill fw-normal">@Translate("Total incl. VAT")</dt>
+							<dt class="flex-fill fw-normal">@Translate("VAT")</dt>
 							<dd class="flex-fill mb-0 text-end">
-								@if (!string.IsNullOrEmpty(Model.Price.PriceWithVatFormatted))
+								@if (!string.IsNullOrEmpty(Model.Price.VatFormatted))
 								{
-									<span>@Model.Price.PriceWithVatFormatted</span>
+									<span>@Model.Price.VatFormatted</span>
 								}
 							</dd>
 						</div>
-					}
-				}
 
-				@if (Model.TotalDiscount.Price != 0.0)
-				{
-					<div class="d-flex my-1">
-						<dt class="flex-fill fw-normal">@Translate("Discount")</dt>
-						<dd class="flex-fill mb-0 text-end">
-							<span>@Model.TotalDiscount.PriceFormatted</span>
-						</dd>
-					</div>
-				}
+						if (showPricesWithVat == "false")
+						{
+							<div class="d-flex my-1">
+								<dt class="flex-fill fw-normal">@Translate("Total incl. VAT")</dt>
+								<dd class="flex-fill mb-0 text-end">
+									@if (!string.IsNullOrEmpty(Model.Price.PriceWithVatFormatted))
+									{
+										<span>@Model.Price.PriceWithVatFormatted</span>
+									}
+								</dd>
+							</div>
+						}
+					}
+
+					@if (Model.TotalDiscount.Price != 0.0)
+					{
+						<div class="d-flex my-1">
+							<dt class="flex-fill fw-normal">@Translate("Discount")</dt>
+							<dd class="flex-fill mb-0 text-end">
+								<span>@Model.TotalDiscount.PriceFormatted</span>
+							</dd>
+						</div>
+					}
 				</dl>
 			</div>
 		</div>
-	}
 	</section>
 </div>
