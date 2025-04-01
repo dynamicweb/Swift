@@ -7,19 +7,34 @@
 @using Dynamicweb.Rendering
 
 @{
-    string favicon = "/Files/Templates/Designs/Swift-v2/Assets/Images/favicon.png";
-    if (Model.Area?.Item?.TryGetImageFile("Favicon", out ImageFileViewModel faviconImage) ?? false)
+    Pageview.Meta.AddTag("fb:app_id", Model.Area?.Item?.GetString("FacebookAppId"));
+    Pageview.Meta.AddTag("google-site-verification", Model.Area?.Item?.GetString("GoogleSiteVerification"));
+    Pageview.Meta.AddTag("site_name", Model.Area?.Item?.TryGetString("MetaSiteName", out string siteName) is true ? siteName : Model.Area?.Name);
+    Pageview.Meta.AddTag("url", Pageview.Meta.Canonical?.ToString());
+    Pageview.Meta.AddTag("twitter:site", Model.Area?.Item?.GetString("TwitterSite"));
+    Pageview.Meta.AddOpenGraphTag("type", "website");
+    Pageview.Meta.AddOpenGraphTag("url", Pageview.Meta.Canonical?.ToString()); 
+    Pageview.Meta.AddOpenGraphTag("title", Model.Title);
+    Pageview.Meta.AddOpenGraphTag("description", Model.Description);
+
+    if (Model.Area?.Item?.TryGetImageFile("MetaImage", out ImageFileViewModel image) ?? false) {
+        Pageview.Meta.AddOpenGraphTag("image", image.Path);
+        Pageview.Meta.AddOpenGraphTag("image:alt", Model.Area?.Item?.GetString("MetaImageALT"));
+    }
+
+    string? favicon = "/Files/Templates/Designs/Swift-v2/Assets/Images/favicon.png";
+    if (Model.Area?.Item?.TryGetImageFile("Favicon", out ImageFileViewModel? faviconImage) ?? false)
     {
         favicon = faviconImage.Path;
     }
 
-    string appleTouchIcon = "/Files/Templates/Designs/Swift-v2/Assets/Images/apple-touch-icon.png";
-    if (Model.Area?.Item?.TryGetImageFile("AppleTouchIcon", out ImageFileViewModel appleTouchIconImage) ?? false)
+    string? appleTouchIcon = "/Files/Templates/Designs/Swift-v2/Assets/Images/apple-touch-icon.png";
+    if (Model.Area?.Item?.TryGetImageFile("AppleTouchIcon", out ImageFileViewModel? appleTouchIconImage) ?? false)
     {
         appleTouchIcon = appleTouchIconImage.Path;
     }
 
-    string googleTagManagerID = string.Empty;
+    string? googleTagManagerID = string.Empty;
     if (Model.Area?.Item?.TryGetString("GoogleTagManagerID", out googleTagManagerID) ?? false)
     {
         googleTagManagerID = googleTagManagerID.Trim();
@@ -49,6 +64,12 @@
     AddScript("/Files/Templates/Designs/Swift-v2/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js");
     AddScript("/Files/Templates/Designs/Swift-v2/Assets/lib/htmx.org/dist/htmx.min.js");
     AddScript($"/Files/Templates/Designs/Swift-v2/Assets/js/swift.js?{jsFileInfo.LastWriteTime.Ticks}");
+
+    @* Custom <head> include *@
+    if (Model.Area?.Item?.TryGetFile("CustomHeadInclude", out FileViewModel? customHeadInclude) ?? false)
+    {
+        @RenderPartial($"Designs/Swift-v2/Custom/{customHeadInclude?.Name}")
+    }
 }
 
 <!doctype html>
@@ -60,11 +81,11 @@
         <link rel="shortcut icon" href="@favicon">
         <link rel="apple-touch-icon" href="@appleTouchIcon">
 
-        @* MetaTags *@
-        @Model.MetaTags
-        
         @* Pageview Meta *@
         <title>@Model.Title</title>
+        
+        @* MetaTags *@
+        @Model.MetaTags
        
         @* Get stylesheets *@
         @Model.GetStylesheetsMarkup()
