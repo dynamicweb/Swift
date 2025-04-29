@@ -56,11 +56,9 @@ window.addEventListener("DOMContentLoaded", () => {
   Menu.setMenuContentOffset();
 
   dropdowns.forEach((dropdown) => {
-    const dropdownToggle = dropdown.querySelector(
-      '[data-bs-toggle="dropdown"]'
-    );
+    const dropdownToggle = dropdown.querySelector('[data-bs-toggle="dropdown"]');
     const dropdownMenu = dropdown.querySelector(".dropdown-menu");
-        
+    
     if (dropdownToggle) {
       const bsMenu = new bootstrap.Dropdown(dropdownToggle);
 

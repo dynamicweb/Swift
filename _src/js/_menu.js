@@ -14,8 +14,7 @@ const Menu = (function () {
         try {
           const paddingBottom = offset.match(/\d+/)[0];
           offset = parseInt(paddingBottom);
-          const dropdownToggles =
-                        menuElement.querySelectorAll("[data-bs-toggle]");
+          const dropdownToggles = menuElement.querySelectorAll("[data-bs-toggle]");
           dropdownToggles.forEach((dropdownToggle) => {
             const offsetAttribute = `0, ${offset}`;
             dropdownToggle.dataset.bsOffset = offsetAttribute;
