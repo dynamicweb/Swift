@@ -53,13 +53,12 @@ window.onpopstate = function () {
 window.addEventListener("DOMContentLoaded", () => {
   const bootstrap = window.bootstrap || {};
   const dropdowns = document.querySelectorAll("[data-swift-page-header] .dropdown");
+  Menu.setMenuContentOffset();
 
   dropdowns.forEach((dropdown) => {
-    const dropdownToggle = dropdown.querySelector(
-      '[data-bs-toggle="dropdown"]'
-    );
+    const dropdownToggle = dropdown.querySelector('[data-bs-toggle="dropdown"]');
     const dropdownMenu = dropdown.querySelector(".dropdown-menu");
-
+    
     if (dropdownToggle) {
       const bsMenu = new bootstrap.Dropdown(dropdownToggle);
 
