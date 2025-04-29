@@ -157,6 +157,7 @@ const Places = (function () {
           if (
             countrycode != "US" &&
             countrycode != "GB" &&
+            countrycode != "AU" &&
             countrycode != "CA"
           ) {
             addressField.value = address + " " + streetnumber;
