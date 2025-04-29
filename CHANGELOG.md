@@ -4,16 +4,16 @@
 
 ## [v2.0.0] - 29-04-2025
 
-### **Swift 2.0 is here — bringing new features, improvements, and refinements following the 2.0-beta.** 🎉
+### **Swift 2.0.0 is here — bringing new features, improvements, and refinements following the 2.0.0-beta** 🎉
 
 Alongside the features introduced during the beta, this release adds support for new user management modules, separation of header navigation items, a simpler email concept, and general refinements to improve flexibility and consistency across Swift.
 > [!NOTE]
 > **Requirements**
 >
-> * **Swift v2.0.0-beta requires DynamicWeb v10.15 `*` or newer, if Shipmondo is used, it requires Shipmondo.dll version 10.0.5 (installed) or newer**
+> * **Swift v2.0.0 requires DynamicWeb v10.15 `*` or newer, if Shipmondo is used, it requires Shipmondo.dll version 10.0.5 (installed) or newer**
 >
 
-`* Swift v2.0 does not run on DynamicWeb 9`
+`* Swift v2.x does not run on DynamicWeb 9`
 
 ## New Users modules
 
@@ -30,7 +30,7 @@ The modules and new templates offer flexible handling with separate apps for log
 
 > [!IMPORTANT]
 >
-> * The **Customer Center page** and the **Customer Center app** are no longer part of Swift 2.0. Instead, **regular Page** and the **App item type** are now used.
+> * The **Customer Center page** and the **Customer Center app** are no longer part of Swift 2.0.0. Instead, **regular Page** and the **App item type** are now used.
 > * If you're not using the updated Swift database, you must **enable the new Users modules** from the Settings area:  **Administration > Feature Management > Enable new extranet apps** to be able to use and set this up.
 >
 > **Further improvements planned:**
@@ -43,7 +43,7 @@ The modules and new templates offer flexible handling with separate apps for log
 
 ## Improved Header Elements for Utility Navigation
 
-Mini Cart, Sign In My Account, Preferences and Favorites have been separated into **individual paragraphs**, instead of being part of the Navigation paragraph. This change makes layout and styling **simpler and more flexible**.
+Mini Cart, Sign In, My Account, Preferences and Favorites have been separated into **individual paragraphs**, instead of being part of the Navigation paragraph. This change makes layout and styling **simpler and more flexible**.
 
 Benefits:
 
