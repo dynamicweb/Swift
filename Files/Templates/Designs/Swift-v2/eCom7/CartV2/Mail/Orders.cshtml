@@ -4,7 +4,7 @@
 @{
 	string lang = Pageview.Area.CultureInfo.TwoLetterISOLanguageName;
 
-	string showPricesWithVat = Pageview?.Area?.EcomPricesWithVat != null ? Pageview.Area.EcomPricesWithVat.ToLower() : "false";
+	string showPricesWithVat = Pageview?.Area?.EcomPricesWithVat != null ? Dynamicweb.Ecommerce.Common.Context.DisplayPricesWithVat.ToString() : "false";
 	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
 
 	string paddingTop = "padding-top: 8px;";
@@ -321,7 +321,7 @@
 
 			bool isProductIdOrNumber = !string.IsNullOrEmpty(orderline.GetString("Ecom:Order:OrderLine.ProductID")) || !string.IsNullOrEmpty(orderline.GetString("Ecom:Order:OrderLine.ProductNumber"));  //Live Cart orderlines may not return ProductId. Manually entered products may not have ProductNumber
 			bool isProduct = orderline.GetBoolean("Ecom:Order:OrderLine.IsProduct") || (orderline.GetBoolean("Ecom:Order:OrderLine.IsDiscount") && isProductIdOrNumber);
-
+			
 			if (isProduct)
 			{
 				<tr>
@@ -365,6 +365,41 @@
 							<span style="@(textPrice)">@discountTotal</span>}
 					</td>
 				</tr>
+
+				foreach (var bomItem in orderline.GetLoop("BOMItems")) {
+					string bomImage = bomItem.GetString("Ecom:Product.PrimaryImage");
+					bomImage = !bomImage.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? bomImage : $"/Admin/Public/GetImage.ashx?width=45&height=45&image={bomImage}&format=webp";
+
+					string bomName = bomItem.GetString("Ecom:Order:OrderLine.ProductName");
+					string bomPriceTotalWithDiscounts = bomItem.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.PriceFormatted");
+					string bomDiscountTotal = bomItem.GetString("Ecom:Order:OrderLine.TotalDiscount.PriceFormatted");
+
+					<tr>
+						<td style="@(tableCellStyle3)@(textLeft)" width="45">
+							@* Image *@
+							<img src="@bomImage" alt="@bomName">
+						</td>
+						<td style="@(tableCellStyle3)@(textLeft)">
+							@* Title *@
+							<h3 style="@(fontNormal)">
+								@bomName
+							</h3>
+						
+							@* Quantity *@
+							<p>@Translate("Quantity"): @bomItem.GetDouble("Ecom:Order:OrderLine.Quantity")</p>
+						</td>
+						<td style="@(tableCellStyle3)@(textRight)">
+							@* Total - Hide when PriceType = Fixed *@
+							@if (orderline.GetInteger("Ecom:Product.PriceType") != 1) { 
+								<span style="@(textPrice)">@bomPriceTotalWithDiscounts</span>
+								if (bomItem.GetDouble("Ecom:Order:OrderLine.TotalDiscount.Price.Value") != 0)
+								{
+									<span style="@(textPrice)">@bomDiscountTotal</span>
+								}
+							}
+						</td>
+					</tr>
+				}
 			}
 		}
 	</table>
