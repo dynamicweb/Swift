@@ -9,7 +9,7 @@
 @{
     Pageview.Meta.AddTag("fb:app_id", Model.Area?.Item?.GetString("FacebookAppId"));
     Pageview.Meta.AddTag("google-site-verification", Model.Area?.Item?.GetString("GoogleSiteVerification"));
-    Pageview.Meta.AddTag("site_name", Model.Area?.Item?.TryGetString("MetaSiteName", out string siteName) is true ? siteName : Model.Area?.Name);
+    Pageview.Meta.AddTag("site_name", Model.Area?.Item?.TryGetString("MetaSiteName", out string? siteName) is true ? siteName : Model.Area?.Name);
     Pageview.Meta.AddTag("url", Pageview.Meta.Canonical?.ToString());
     Pageview.Meta.AddTag("twitter:site", Model.Area?.Item?.GetString("TwitterSite"));
     Pageview.Meta.AddOpenGraphTag("type", "website");
@@ -17,21 +17,9 @@
     Pageview.Meta.AddOpenGraphTag("title", Model.Title);
     Pageview.Meta.AddOpenGraphTag("description", Model.Description);
 
-    if (Model.Area?.Item?.TryGetImageFile("MetaImage", out ImageFileViewModel image) ?? false) {
+    if (Model.Area?.Item?.TryGetImageFile("MetaImage", out ImageFileViewModel? image) ?? false) {
         Pageview.Meta.AddOpenGraphTag("image", image.Path);
         Pageview.Meta.AddOpenGraphTag("image:alt", Model.Area?.Item?.GetString("MetaImageALT"));
-    }
-
-    string? favicon = "/Files/Templates/Designs/Swift-v2/Assets/Images/favicon.png";
-    if (Model.Area?.Item?.TryGetImageFile("Favicon", out ImageFileViewModel? faviconImage) ?? false)
-    {
-        favicon = faviconImage.Path;
-    }
-
-    string? appleTouchIcon = "/Files/Templates/Designs/Swift-v2/Assets/Images/apple-touch-icon.png";
-    if (Model.Area?.Item?.TryGetImageFile("AppleTouchIcon", out ImageFileViewModel? appleTouchIconImage) ?? false)
-    {
-        appleTouchIcon = appleTouchIconImage.Path;
     }
 
     string? googleTagManagerID = string.Empty;
@@ -40,30 +28,27 @@
         googleTagManagerID = googleTagManagerID.Trim();
     }
 
-    var cssFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/css/swift.css"));
-    var jsFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/js/swift.js"));
-
     @* Stylesheets *@
-    AddStylesheet($"/Files/Templates/Designs/Swift-v2/Assets/css/swift.css?{cssFileInfo.LastWriteTime.Ticks}");
+    AddStylesheet("/Files/Templates/Designs/Swift-v2/Assets/css/swift.css");
     
     @* Color schemes stylesheet *@
-    if (Model.TryGetColorSchemeStyle(out string? colorSchemeStyle))
+    @if (Model.TryGetColorSchemeStyle(out string? colorSchemeStyle))
     {
         AddStylesheet(colorSchemeStyle);
     }
     @* Button stylesheet *@
-    if (Model.TryGetButtonStyle(out string? buttonStyle)) {
+    @if (Model.TryGetButtonStyle(out string? buttonStyle)) {
         AddStylesheet(buttonStyle);
     }
     @* Typography stylesheet *@
-    if (Model.TryGetTypographyStyle(out string? typographyStyle)) {
+    @if (Model.TryGetTypographyStyle(out string? typographyStyle)) {
         AddStylesheet(typographyStyle);
     }
 
     @* Scripts *@
     AddScript("/Files/Templates/Designs/Swift-v2/Assets/lib/bootstrap/dist/js/bootstrap.bundle.min.js");
     AddScript("/Files/Templates/Designs/Swift-v2/Assets/lib/htmx.org/dist/htmx.min.js");
-    AddScript($"/Files/Templates/Designs/Swift-v2/Assets/js/swift.js?{jsFileInfo.LastWriteTime.Ticks}");
+    AddScript("/Files/Templates/Designs/Swift-v2/Assets/js/swift.js");
 
     @* Custom <head> include *@
     if (Model.Area?.Item?.TryGetFile("CustomHeadInclude", out FileViewModel? customHeadInclude) ?? false)
@@ -78,8 +63,15 @@
         @* Required meta tags *@
         <meta charset="utf-8">
         <meta name="viewport" content="height=device-height, width=device-width, initial-scale=1.0">
-        <link rel="shortcut icon" href="@favicon">
-        <link rel="apple-touch-icon" href="@appleTouchIcon">
+
+        @if (Model.Area?.Item?.TryGetImageFile("Favicon", out ImageFileViewModel? faviconImage) ?? false)
+        {
+            <link rel="shortcut icon" href="@faviconImage?.Path">
+        }
+        @if (Model.Area?.Item?.TryGetImageFile("AppleTouchIcon", out ImageFileViewModel? appleTouchIconImage) ?? false)
+        {
+            <link rel="apple-touch-icon" href="@appleTouchIconImage?.Path">
+        }
 
         @* Pageview Meta *@
         <title>@Model.Title</title>
@@ -91,7 +83,7 @@
         @Model.GetStylesheetsMarkup()
         
         @* Media Query Limit *@
-        @if(Model.Area?.Item?.TryGetString("MediaQueryLimit", out string mediaQueryLimit) ?? false) {
+        @if(Model.Area?.Item?.TryGetString("MediaQueryLimit", out string? mediaQueryLimit) ?? false) {
             <style>
                 @@media screen and (min-width: @(mediaQueryLimit)px) {
                     [data-swift-container] {
@@ -155,9 +147,8 @@
                 </script>
             }
         }
-
     </head>
-    <body data-dw-page-id="@(Model.ID)" data-dw-itemtype="@Model.Item?.SystemName.ToLower()" data-dw-colorscheme="@(Model.ColorScheme?.Id ?? Model.Area?.ColorScheme?.Id)">
+    <body data-dw-page-id="@(Model.ID)" data-dw-itemtype="@Model.Item?.SystemName?.ToLower()">
     
         @* Google tag manager *@
         @if (!string.IsNullOrWhiteSpace(googleTagManagerID) && AllowTracking())
