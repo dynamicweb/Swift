@@ -5,6 +5,7 @@
 	string voucherCode = GetString("Ecom:Order.Customer.VoucherCode");
 	string voucherCodeError = GetString("Ecom:Cart.ValidationError.EcomOrderVoucherCode.ErrorMessage");
 	string validState = string.Empty;
+	bool vouchersAppliedAsDiscounts = false;
 
 	IEnumerable<string> voucherCodes = new List<string>();
 	Order order = new OrderService().GetById(GetString("Ecom:Order.ID"));
@@ -14,6 +15,7 @@
 		if (order.VoucherUseType.HasFlag(VoucherUseCategoryType.Discount))
 		{
 			voucherCodes = voucherCode.Split(new string[] { ",", ";", " " }, StringSplitOptions.RemoveEmptyEntries);
+			vouchersAppliedAsDiscounts = true;
 		}
 		else
 		{
@@ -22,20 +24,23 @@
     }
 		
 	var voucherErrors = new List<string>();
-	foreach (string code in voucherCodes)
-	{
-		Dynamicweb.Ecommerce.Orders.Vouchers.Voucher vouch = Dynamicweb.Ecommerce.Services.Vouchers.GetVoucherByCode(code);
-		if (vouch == null)
+	if(!vouchersAppliedAsDiscounts)
+    {
+		foreach (string code in voucherCodes)
 		{
-			validState = "is-invalid";
-			voucherErrors.Add(Translate("Voucher") + " <span class='fw-bold'>" + code + "</span> " + Translate("not found"));
-			continue;
-		}
-		if (vouch.DateUsed.HasValue)
-		{
-			validState = "is-invalid";
-			voucherErrors.Add(Translate("Voucher") + " <span class='fw-bold'>" + code + "</span> " + Translate("already used"));
-			continue;
+			Dynamicweb.Ecommerce.Orders.Vouchers.Voucher vouch = Dynamicweb.Ecommerce.Services.Vouchers.GetVoucherByCode(code);
+			if (vouch == null)
+			{
+				validState = "is-invalid";
+				voucherErrors.Add(Translate("Voucher") + " <span class='fw-bold'>" + code + "</span> " + Translate("not found"));
+				continue;
+			}
+			if (vouch.DateUsed.HasValue)
+			{
+				validState = "is-invalid";
+				voucherErrors.Add(Translate("Voucher") + " <span class='fw-bold'>" + code + "</span> " + Translate("already used"));
+				continue;
+			}
 		}
 	}
 
@@ -65,21 +70,12 @@
 				{
 				<form method="post">
 					<input type="hidden" name="EcomOrderVoucherCode" value="@voucherCode.Replace(code+",", "").Replace(","+code, "").Replace(code, "")">
-					<span class="badge fw-normal d-inline-flex align-items-center justify-content-center opacity-50 opacity-100-hover" style="background-color:var(--swift-foreground-color);color:var(--swift-background-color);">
-						<span class="icon-2">
-							@ReadFile("/Files/Templates/Designs/Swift-v2/Assets/icons/tag.svg")
-						</span>
-						<span class="mx-2">@code</span>
+					<span class="badge fw-normal d-inline-flex align-items-center justify-content-center opacity-50 opacity-100-hover" style="background-color:var(--dw-color-foreground);color:var(--dw-color-background);">
 						<button type="submit" class="text-reset bg-transparent border-0 p-0" aria-label="@Translate("Remove voucher")" id="RemoveVoucherButton">
 							<span class="icon-2">
-								@ReadFile("/Files/Templates/Designs/Swift-v2/Assets/icons/x.svg")
+								@ReadFile("/Files/Images/Icons/xmark.svg")
 							</span>
 							<span class="mx-2">@code</span>
-							<button type="submit" class="text-reset bg-transparent border-0 p-0" aria-label="@Translate("Remove voucher")" id="RemoveVoucherButton">
-								<span class="icon-2">
-									@ReadFile("/Files/Templates/Designs/Swift/Assets/icons/x.svg")
-								</span>
-							</button>
 						</span>
 					</form>
 				}
