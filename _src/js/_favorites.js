@@ -30,14 +30,8 @@ const Favorites = (function () {
 		},
 
 		Update: async function (e) {
-			var clickedButton =
-				e.currentTarget != undefined
-					? e.currentTarget
-					: document.querySelector("#" + e);
-			var form =
-				e.currentTarget != undefined
-					? clickedButton.closest("form")
-					: document.querySelector("#" + e);
+			var clickedButton = e.currentTarget != undefined ? e.currentTarget : document.querySelector("#" + e);
+			var form = e.currentTarget != undefined ? clickedButton.closest("form") : document.querySelector("#" + e);
 
 			var productId = form.getAttribute("data-product-id");
 			var variantId = form.getAttribute("data-variant-id");
