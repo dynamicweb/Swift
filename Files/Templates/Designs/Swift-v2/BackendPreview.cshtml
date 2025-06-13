@@ -1,4 +1,4 @@
-@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
+@inherits ViewModelTemplate<PageViewModel>
 @using Dynamicweb
 @using Dynamicweb.Environment
 @using Dynamicweb.Frontend
@@ -6,87 +6,108 @@
 @using Dynamicweb.Content
 
 @{
-	var cssStyleFileInfo = new System.IO.FileInfo(Dynamicweb.Core.SystemInformation.MapPath("/Files/Templates/Designs/Swift-v2/Assets/css/styles.css"));
-	Dynamicweb.Context.Current.Response.AddHeader("link", $"</Files/Templates/Designs/Swift-v2/Assets/css/swift.css?{cssStyleFileInfo.LastWriteTime.Ticks}>; rel=preload; as=style;");
-
-	string pageId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ID") : string.Empty;
-	string paragraphId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("ParagraphID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("ParagraphID") : string.Empty;
-	string rowId = !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("RowID")) ? Dynamicweb.Context.Current.Request.QueryString.Get("RowID") : string.Empty;
-	string cacheId = Dynamicweb.Context.Current.Request.QueryString.Get("cacheId");
-
+	string? pageId = Dynamicweb.Context.Current?.Request.QueryString.Get("ID");
+	string? paragraphId = Dynamicweb.Context.Current?.Request.QueryString.Get("ParagraphID");
+	string? rowId = Dynamicweb.Context.Current?.Request.QueryString.Get("RowID");
+	string? cacheId = Dynamicweb.Context.Current?.Request.QueryString.Get("cacheId");
+	
 	var gridContent = Model.Grid("Grid", "Grid", "default:true;sort:1", "Page");
-
+	
+	@* Swift stylesheet *@
+	AddStylesheet("/Files/Templates/Designs/Swift-v2/Assets/css/swift.css");
+	
+	@* Color schemes stylesheet *@
+	if (Model.TryGetColorSchemeStyle(out string? colorSchemeStyle))
+	{
+		AddStylesheet(colorSchemeStyle);
+	}
+	@* Button stylesheet *@
+	if (Model.TryGetButtonStyle(out string? buttonStyle)) {
+		AddStylesheet(buttonStyle);
+	}
+	@* Typography stylesheet *@
+	if (Model.TryGetTypographyStyle(out string? typographyStyle)) {
+		AddStylesheet(typographyStyle);
+	}
+	
 	@* Get stylesheets *@
 	@Model.GetStylesheetsMarkup()
 }
 
-@* Swift stylesheet *@
-<link href="/Files/Templates/Designs/Swift-v2/Assets/css/swift.css?@cssStyleFileInfo.LastWriteTime.Ticks" rel="stylesheet" media="all" type="text/css">
-
-@* Color schemes stylesheet *@
-@if (Model.GetColorSchemeStyle() != null) {
-	<link href="@Model.GetColorSchemeStyle()" rel="stylesheet" media="all" type="text/css">
-}
-@* Button stylesheet *@
-@if (Model.GetButtonStyle() != null) {
-	<link href="@Model.GetButtonStyle()" rel="stylesheet" media="all" type="text/css">
-}
-@* Typography stylesheet *@
-@if (Model.GetTypographyStyle() != null) {
-	<link href="@Model.GetTypographyStyle()" rel="stylesheet" media="all" type="text/css" data-typography>
-}
-
 <style>
 	.preview { 
-		--swift-content-padding: 2rem;
-		--swift-poster-padding: clamp(2rem, 5%, max(4rem,5%));
-		--dw-type-scale: 1.3;
-		--dw-type-scale: 1.3;
 		background-color: white; 
-	}
+		--dw-type-scale: 1.2;
 
-	.preview [data-swift-poster] {
-		--swift-poster-height: 30rem;
-	}	
+		&:has(.card) {
+			width: fit-content;
+			margin: auto;	
+		}
 
-	@@media (min-width: 1200px) {
-    	[data-swift-container] {
-			--dw-container-width: 95%;
+		&:has(.card):has(img) .card {
+			--dw-type-scale: 1.4;
+			max-inline-size: none !important;
+		}
+
+		&:not(:has([data-swift-gridrow])) [data-swift-poster] {
+			--swift-poster-height: 40rem !important;
+			--swift-text-width: 100%;
+			aspect-ratio: 16/9;
+			max-width: 100%;
+		}
+
+		h1, .h1, .dw-h1, h2, .h2, .dw-h2, h3, .h3, .dw-h3, h4, .h4, .dw-h4, h5, .h5, .dw-h5, h6, .h6, .dw-h6 {
+			margin-block-end: 1rem;
+		}
+
+		p, .dw-paragraph {
+			line-height: 1.2;
+			font-size: calc(var(--dw-font-size) * var(--dw-type-scale));
+		}
+
+		.swiffy-slider .card {
+			min-height: unset;
+			max-height: 40rem;
+
+			img {
+				position: relative !important;
+			}
+		}
+		[data-swift-container] {
+			--dw-container-width: 100% !important;
+			--dw-container-gutter: 0 !important;
 		}
 	}
 </style>
 
-<div class="body preview" data-dw-colorscheme="@Model.Area.ColorScheme?.Id">
-	<div data-dw-colorscheme="@Model.ColorScheme?.Id">
-		@{
-			if (!string.IsNullOrEmpty(paragraphId))
-			{ 
-				Paragraph paragraph = Dynamicweb.Content.Services.Paragraphs.GetParagraph(Convert.ToInt32(paragraphId));
+<div class="body preview" data-dw-colorscheme="@(Model.ColorScheme?.Id ?? Model.Area?.ColorScheme?.Id)">
+	@if (paragraphId is not null)
+	{ 
+		Paragraph? paragraph = Dynamicweb.Content.Services.Paragraphs.GetParagraph(Convert.ToInt32(paragraphId));
 
-				<div data-swift-gridcolumn class="p-3" data-dw-itemtype="@paragraph.Item.SystemName.ToLower()" id="@paragraph.ID" data-dw-colorscheme="@paragraph.ColorSchemeId">
-					@RenderParagraphContent(Convert.ToInt32(paragraphId))
-				</div>
-			}
-			else if (!string.IsNullOrEmpty(rowId)) 
-			{
-				@RenderGridRow(Convert.ToInt32(rowId))
-			}
-			else if (!string.IsNullOrEmpty(cacheId))
-			{ 	
-				string itemTemplate = Dynamicweb.Context.Current.Request.QueryString.Get("ItemTemplate");	
-				
-				if (Dynamicweb.Caching.Cache.Current.Get(cacheId) is ParagraphViewModel paragraphViewModel && !string.IsNullOrEmpty(paragraphViewModel.ItemType)){	
-					<div data-dw-colorscheme="@paragraphViewModel.ColorScheme?.Id">				
-						@RenderPartial($"/Paragraph/{paragraphViewModel.ItemType}/{itemTemplate}", paragraphViewModel)
-					</div>
-				}
-			}
-			else 
-			{
-				@gridContent
-			}
+		<div data-swift-gridcolumn data-dw-itemtype="@paragraph?.Item?.SystemName.ToLower()" id="@paragraph?.ID" data-dw-colorscheme="@paragraph?.ColorSchemeId">
+			@RenderParagraphContent(Convert.ToInt32(paragraphId))
+		</div>
+	}
+	else if (rowId is not null) 
+	{
+		@RenderGridRow(Convert.ToInt32(rowId))
+	}
+	else if (!string.IsNullOrEmpty(cacheId))
+	{ 	
+		string? itemTemplate = Dynamicweb.Context.Current?.Request.QueryString.Get("ItemTemplate");
+		
+		if (Dynamicweb.Caching.Cache.Current.Get(cacheId) is ParagraphViewModel paragraphViewModel && !string.IsNullOrEmpty(paragraphViewModel.ItemType)){
+			
+			<div data-swift-gridcolumn data-dw-colorscheme="@paragraphViewModel.ColorScheme?.Id">				
+				@RenderPartial($"/Paragraph/{paragraphViewModel.ItemType}/{itemTemplate}", paragraphViewModel)
+			</div>
 		}
-	</div>
+	}
+	else 
+	{
+		@gridContent
+	}
 </div>
 
 

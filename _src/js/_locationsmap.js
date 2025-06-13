@@ -13,6 +13,7 @@ const LocationsMap = (function () {
     defaultLng: 0.0,
     initialZoomLevel: 4,
     regionCode: "DK",
+    listItemLabel: "View location",
     directionsLabel: "Directions",
     noLocationsFoundLabel: "No options available in the selected area",
     mapElement: null,
@@ -230,61 +231,52 @@ const LocationsMap = (function () {
       const addressLineThree = addressLineThreeArr.join(", ");
 
       // List element
-      const listÌtemElement = document.createElement("div");
-      listÌtemElement.style.cursor = "pointer";
-      listÌtemElement.className = "list-group-item";
-
-      const containerElement = document.createElement("div");
-      containerElement.className = "d-flex";
-      listÌtemElement.appendChild(containerElement);
-
-      // Left column
-      const columnOneElement = document.createElement("div");
-      columnOneElement.className = "flex-fill";
+      const listItemElement = document.createElement("button");
+      listItemElement.type = "button";
+      listItemElement.title = settings.listItemLabel;
+      listItemElement.ariaLabel = settings.listItemLabel;
+      listItemElement.style.cursor = "pointer";
+      listItemElement.className = "list-group-item list-group-item-action text-break";
 
       const headerElement = document.createElement("h6");
-      headerElement.className = "h6";
+      headerElement.className = "h6 w-75";
       headerElement.innerHTML = name;
-      columnOneElement.appendChild(headerElement);
+      listItemElement.appendChild(headerElement);
 
       if (addressLineOne != "") {
         const addressLineElement = document.createElement("div");
         addressLineElement.innerHTML = addressLineOne;
-        columnOneElement.appendChild(addressLineElement);
+        listItemElement.appendChild(addressLineElement);
       }
 
       if (addressLineTwo != "") {
         const addressLineElement = document.createElement("div");
         addressLineElement.innerHTML = addressLineTwo;
-        columnOneElement.appendChild(addressLineElement);
+        listItemElement.appendChild(addressLineElement);
       }
 
       if (addressLineThree != "") {
         const addressLineElement = document.createElement("div");
         addressLineElement.innerHTML = addressLineThree;
-        columnOneElement.appendChild(addressLineElement);
+        listItemElement.appendChild(addressLineElement);
       }
-
-      containerElement.appendChild(columnOneElement);
 
       // Directions - In list
       if (type == "AddToList" && addressLineTwo != "") {
-        const columnTwoElement = document.createElement("div");
-
-        const directionsElement = document.createElement("a");
-        directionsElement.className = "btn icon-2 pe-0 pt-0";
+        const directionsElement = document.createElement("button");
+        directionsElement.type = "button";
+        directionsElement.className = "btn btn-link icon-2 p-3 end-0 position-absolute top-0";
         directionsElement.innerHTML =
           '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-corner-up-right"><polyline points="15 14 20 9 15 4"></polyline><path d="M4 20v-7a4 4 0 0 1 4-4h12"></path></svg>';
         directionsElement.title = settings.directionsLabel;
+        directionsElement.setAttribute("aria-label", settings.directionsLabel);
         directionsElement.href =
           "https://www.google.dk/maps/dir//" +
           location.address +
           "+" +
           addressLineTwoArr.join("+");
         directionsElement.target = "_blank";
-        columnTwoElement.appendChild(directionsElement);
-
-        containerElement.appendChild(columnTwoElement);
+        listItemElement.appendChild(directionsElement);
       }
 
       // Directions in info
@@ -299,15 +291,15 @@ const LocationsMap = (function () {
           "+" +
           addressLineTwoArr.join("+");
         directionsElement.target = "_blank";
-        listÌtemElement.appendChild(directionsElement);
+        listItemElement.appendChild(directionsElement);
       }
 
       if (type == "AddToList") {
-        listÌtemElement.setAttribute("data-location-number", id);
-        listÌtemElement.addEventListener("click", LocationsMap.focusOnMarker);
-        target.appendChild(listÌtemElement);
+        listItemElement.setAttribute("data-location-number", id);
+        listItemElement.addEventListener("click", LocationsMap.focusOnMarker);
+        target.appendChild(listItemElement);
       } else if (type == "UpdateInfo") {
-        var contentString = listÌtemElement.innerHTML;
+        var contentString = listItemElement.innerHTML;
         infoWindow.setContent(contentString);
       }
     },
