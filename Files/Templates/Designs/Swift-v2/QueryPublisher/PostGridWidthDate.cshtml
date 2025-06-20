@@ -1,0 +1,80 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.QueryPublisher.QueryResultViewModel>
+@using Dynamicweb.Core.Encoders
+@using Dynamicweb
+@using Dynamicweb.Frontend
+
+@{
+	string searchTerm = Dynamicweb.Context.Current.Request.QueryString.Get("postq") ?? string.Empty;
+	string uniqueId = Pageview?.CurrentParagraph?.ID != null ? Pageview.CurrentParagraph.ID.ToString() :
+	Guid.NewGuid().ToString("N");
+}
+
+<div class="grid type-ahead-dropdown mb-3">
+	<div class="g-col-12 g-col-lg-4">
+		<form method="get" class="suggest-form position-relative">
+			<div class="hstack mb-3" data-dw-colorscheme="light">
+				<label for="postSearch_@uniqueId" class="visually-hidden">@Translate("Search")</label>
+				<span class="position-absolute icon-2 reset-search px-3">
+					@ReadFile("/Files/Images/Icons/magnifying-glass.svg")
+				</span>
+				<input id="postSearch_@uniqueId"
+						type="search"
+						class="form-control form-control-sm rounded-pill type-ahead-field bg-white py-2 ps-5 pe-5"
+						placeholder="@Translate("Search")"
+						aria-label="@Translate("Search")"
+						aria-describedby="postSearch_@uniqueId"
+						name="postq"
+						value="@searchTerm">
+
+				<button type="button"
+						onclick="var f = document.getElementById('postSearch_@uniqueId'); f.value = ''; f.focus(); f.closest('form').submit();"
+						class="btn position-absolute end-0 icon-2 reset-search"
+						aria-label="@Translate("Clear search field")"
+						style="opacity: 0; visibility: hidden;">
+					@ReadFile("/Files/Images/Icons/xmark.svg")
+				</button>
+			</div>
+		</form>
+	</div>
+</div>
+
+
+@if (Model.Results.Count() > 0)
+{
+	<div class="d-grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))">
+		@foreach (var post in Model.Results)
+		{
+			if (post.TryGetValue("PageId", out object? pageId) && pageId is int)
+			{
+				var pageInfo =
+				Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Dynamicweb.Content.Services.Pages?.GetPage((int)pageId));
+
+				if (pageInfo != null)
+				{
+					<a href="/Default.aspx?ID=@pageInfo.ID" class="card text-decoration-none">
+						@if (pageInfo.TryGetImageFile(out ImageFileViewModel imageFile))
+						{
+							<img src="@imageFile.ToGetImage(new GetImageSettings { Ratio = "16/9" })" class="card-img-top"
+								alt="@pageInfo.Name">
+						}
+						<div class="card-body">
+							<h5 class="card-title">
+								@pageInfo.Name
+							</h5>
+							<div class="opacity-75 fs-7 mb-3">@pageInfo.CreatedDate.ToShortDateString()</div>
+							<p class="card-text">
+								@pageInfo.Description
+							</p>
+						</div>
+					</a>
+				}
+			}
+		}
+	</div>
+}
+else
+{
+	<div class="alert alert-dark w-100 text-center" role="alert">
+		@Translate("No results found")
+	</div>
+}
