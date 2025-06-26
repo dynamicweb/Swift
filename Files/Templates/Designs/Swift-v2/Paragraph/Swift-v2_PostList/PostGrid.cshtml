@@ -12,16 +12,33 @@
     queryPath += !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("postq")) ?
     $"&postq={Dynamicweb.Context.Current.Server.UrlEncode(Dynamicweb.Context.Current.Request.QueryString.Get("postq"))}" :
     string.Empty;
-
-    AddScript("/Files/Templates/Designs/Swift-v2/Assets/lib/htmx.org/dist/ext/response-targets.js");
 }
 
+<script>
+    document.body.addEventListener('htmx:beforeSwap', function(evt) {
+        if (evt.detail.xhr.status === 500) {
+            evt.preventDefault(); // Stop default behavior
+
+            const target = evt.detail.target;
+            const triggeringElement = evt.detail.requestConfig.elt;
+
+            const fallbackSelector = triggeringElement.getAttribute('hx-no-response');
+            if (fallbackSelector) {
+                const fallbackElement = document.querySelector(fallbackSelector);
+                if (fallbackElement) {
+                    const fallbackContent = fallbackElement.innerHTML;
+                    htmx.swap(target, fallbackContent, 'innerHTML'); // or 'outerHTML' if needed
+                }
+            }
+        }
+    });
+</script>
 
 <div>
     <div hx-get="@queryPath" 
         hx-trigger="intersect once" 
         hx-headers='{"x-dw-template": "/Designs/Swift-v2/QueryPublisher/@(layout).cshtml", "accept": "text/html"}'
-        hx-target-500="#no-results-@(Model.ID)">
+        hx-no-response="#no-response-@(Model.ID)">
         <div class="d-grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr))">
             @for (var i = 0; i < 4; i++)
             {
@@ -34,7 +51,9 @@
             }
         </div>
     </div>
-    <div id="no-results-@(Model.ID)" class="d-none">
-        <div class="alert alert-light">@Translate("No posts found")</div>
-    </div>
+    <template id="no-response-@(Model.ID)">
+        <div class="alert alert-dark w-100 text-center" role="alert">
+            @Translate("No results found")
+        </div>
+    </template>
 </div>
