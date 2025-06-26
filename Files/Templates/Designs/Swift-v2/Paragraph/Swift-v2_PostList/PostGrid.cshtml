@@ -15,20 +15,14 @@
 }
 
 <script>
-    document.body.addEventListener('htmx:beforeSwap', function(evt) {
-        if (evt.detail.xhr.status === 500) {
-            evt.preventDefault(); // Stop default behavior
+    document.body.addEventListener('htmx:beforeSwap', function(e) {
+        const triggeringElement = e.detail.requestConfig.elt;
+        const fallbackSelector = triggeringElement.getAttribute('hx-response-error');
 
-            const target = evt.detail.target;
-            const triggeringElement = evt.detail.requestConfig.elt;
-
-            const fallbackSelector = triggeringElement.getAttribute('hx-no-response');
-            if (fallbackSelector) {
-                const fallbackElement = document.querySelector(fallbackSelector);
-                if (fallbackElement) {
-                    const fallbackContent = fallbackElement.innerHTML;
-                    htmx.swap(target, fallbackContent, 'innerHTML'); // or 'outerHTML' if needed
-                }
+        if (fallbackSelector && (e.detail.xhr.status === 500 || e.detail.xhr.status === 404)) {
+            const fallbackElement = document.querySelector(fallbackSelector);
+            if (fallbackElement) {
+                htmx.swap(e.detail.target, fallbackElement.innerHTML, 'innerHTML');
             }
         }
     });
@@ -38,7 +32,7 @@
     <div hx-get="@queryPath" 
         hx-trigger="intersect once" 
         hx-headers='{"x-dw-template": "/Designs/Swift-v2/QueryPublisher/@(layout).cshtml", "accept": "text/html"}'
-        hx-no-response="#no-response-@(Model.ID)">
+        hx-response-error="#response-error-@(Model.ID)">
         <div class="d-grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr))">
             @for (var i = 0; i < 4; i++)
             {
@@ -51,7 +45,7 @@
             }
         </div>
     </div>
-    <template id="no-response-@(Model.ID)">
+    <template id="response-error-@(Model.ID)">
         <div class="alert alert-dark w-100 text-center" role="alert">
             @Translate("No results found")
         </div>
