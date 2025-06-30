@@ -3,41 +3,14 @@
 @using Dynamicweb
 @using Dynamicweb.Frontend
 
-@{
-	string searchTerm = Dynamicweb.Context.Current.Request.QueryString.Get("postq") ?? string.Empty;
-	string uniqueId = Pageview?.CurrentParagraph?.ID != null ? Pageview.CurrentParagraph.ID.ToString() :
-	Guid.NewGuid().ToString("N");
-}
-
-<div class="grid type-ahead-dropdown mb-3">
-	<div class="g-col-12 g-col-lg-4">
-		<form method="get" class="suggest-form position-relative">
-			<div class="hstack mb-3" data-dw-colorscheme="light">
-				<label for="postSearch_@uniqueId" class="visually-hidden">@Translate("Search")</label>
-				<span class="position-absolute icon-2 reset-search px-3">
-					@ReadFile("/Files/Images/Icons/magnifying-glass.svg")
-				</span>
-				<input id="postSearch_@uniqueId"
-						type="search"
-						class="form-control form-control-sm rounded-pill type-ahead-field bg-white py-2 ps-5 pe-5"
-						placeholder="@Translate("Search")"
-						aria-label="@Translate("Search")"
-						aria-describedby="postSearch_@uniqueId"
-						name="postq"
-						value="@searchTerm">
-
-				<button type="button"
-						onclick="var f = document.getElementById('postSearch_@uniqueId'); f.value = ''; f.focus(); f.closest('form').submit();"
-						class="btn position-absolute end-0 icon-2 reset-search"
-						aria-label="@Translate("Clear search field")"
-						style="opacity: 0; visibility: hidden;">
-					@ReadFile("/Files/Images/Icons/xmark.svg")
-				</button>
-			</div>
-		</form>
+<form method="get" class="d-flex gap-3 mb-4 flex-wrap">
+	<div class="flex-fill" style="max-width: 26rem">
+		@RenderPartial("Designs/Swift-v2/QueryPublisher/Post/PostSearch.cshtml")
 	</div>
-</div>
-
+	<div class="overflow-y-auto">
+		@RenderPartial("Designs/Swift-v2/QueryPublisher/Post/PostHorizontalFacets.cshtml")
+	</div>
+</form>
 
 @if (Model.Results.Count() > 0)
 {
@@ -46,16 +19,21 @@
 		{
 			if (post.TryGetValue("PageId", out object? pageId) && pageId is int)
 			{
-				var pageInfo =
-				Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Dynamicweb.Content.Services.Pages?.GetPage((int)pageId));
+				var pageObject = Dynamicweb.Content.Services.Pages?.GetPage((int)pageId);
+				var pageInfo = pageObject != null ? Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(pageObject) : null;
+				string? parentCategory = pageObject?.Parent != null && pageObject.Parent.Level != 1 ? pageObject.Parent.GetDisplayName() : null;
 
 				if (pageInfo != null)
 				{
 					<a href="/Default.aspx?ID=@pageInfo.ID" class="card text-decoration-none">
 						@if (pageInfo.TryGetImageFile(out ImageFileViewModel imageFile))
 						{
-							<img src="@imageFile.ToGetImage(new GetImageSettings { Ratio = "16/9" })" class="card-img-top"
-								alt="@pageInfo.Name">
+							<div class="position-relative">
+								<img src="@imageFile.ToGetImage(new GetImageSettings { Ratio = "16/9" })" class="card-img-top" alt="@pageInfo.Name">
+								@if (parentCategory != null) {
+									<div class="badge text-bg-secondary position-absolute top-0 end-0 m-2">@parentCategory</div>
+								}
+							</div>
 						}
 						<div class="card-body">
 							<h5 class="card-title">
