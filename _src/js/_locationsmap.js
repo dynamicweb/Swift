@@ -1,23 +1,23 @@
+/* global google */
 
 class LocationsMap extends HTMLElement {
+  // one shared loader per page to avoid duplicate script tags
+  static _loaderPromise = null;
+
   constructor() {
     super();
-
-    /** @type {google.maps.Map|null} */
     this.map = null;
-
-    /** @type {google.maps.InfoWindow|null} */
     this.infoWindow = null;
-
-    this.AdvancedMarkerElement = null;
     this.markers = [];
+    this._initialized = false;
 
+    // defaults (preserving your original behavior)
     this.defaults = {
       locations: [],
       mapStyle: [],
       defaultLat: 0,
       defaultLng: 0,
-      initialZoomLevel: 4,
+      initialZoomLevel: 6,
       regionCode: "DK",
       listItemLabel: "View location",
       directionsLabel: "Directions",
@@ -25,460 +25,401 @@ class LocationsMap extends HTMLElement {
       mapElement: "#Map",
       locationsListElement: "#LocationsList",
       searchbarElement: "#MapSearch",
-      mapIcon: {}, // { url, width, height }
-      mapId: null,
-      geolocationEnabled: true,
+      mapIconUrl: null,
       focusZoomLevel: 7,
       directionsBaseUrl: "https://www.google.com/maps/dir/?api=1&destination=",
     };
 
     this.settings = { ...this.defaults };
-    this._initialized = false;
-
-    this._idleListener = null;
   }
-
-  static get observedAttributes() {
-    return [
-      "api-key",
-      "map-element",
-      "locations-list-element",
-      "searchbar-element",
-      "map-style",
-      "locations",
-      "default-lat",
-      "default-lng",
-      "initial-zoom-level",
-      "map-id",
-      "map-icon",
-      "geolocation-enabled",
-      "focus-zoom-level",
-      "directions-base-url",
-    ];
-  }
-
-  attributeChangedCallback(name, oldValue, newValue) {
-    if (newValue === null) return;
-
-    switch (name) {
-    case "api-key":
-      this._apiKey = newValue;
-      break;
-    case "geolocation-enabled":
-      this.settings.geolocationEnabled = newValue !== "false";
-      break;
-    case "focus-zoom-level":
-      this.settings.focusZoomLevel = parseInt(newValue, 10) || this.defaults.focusZoomLevel;
-      break;
-    case "directions-base-url":
-      this.settings.directionsBaseUrl = newValue || this.defaults.directionsBaseUrl;
-      break;
-    case "locations":
-      try {
-        this.settings.locations = JSON.parse(newValue);
-      } catch {
-        this.settings.locations = [];
-      }
-      if (this._initialized) {
-        // Normalize and refresh markers
-        this.settings.locations = this.normalizeLocations(this.settings.locations);
-        this._addMarkers();
-        this._buildLocationList();
-      }
-      break;
-    default:
-      this.setAttribute(name, newValue);
-    }
-  }
-
 
   connectedCallback() {
     if (this._initialized) return;
 
+    // Read attributes -> settings
     this._readAttributesToSettings();
 
-    let mapEl = document.querySelector(this.settings.mapElement);
-    if (!mapEl) {
-      const fallbackId = `swift-map-${Math.random().toString(36).slice(2, 9)}`;
-      const div = document.createElement("div");
-      div.id = fallbackId;
-      div.style.width = "100%";
-      div.style.height = "400px";
-      this.appendChild(div);
-      this.settings.mapElement = `#${fallbackId}`;
-      mapEl = div;
+    // Ensure the map div exists (do NOT change its size)
+    const mapDiv = document.querySelector(this.settings.mapElement);
+    if (!mapDiv) {
+      console.error("Map element not found:", this.settings.mapElement);
+      return;
     }
 
-    const needLoad = this._apiKey && !(window.google && window.google.maps);
-    const loadPromise = needLoad ? this._loadGoogleMaps(this._apiKey) : Promise.resolve();
+    // Load Google Maps JS if needed, then init
+    const apiKey = this.getAttribute("api-key");
+    if (!apiKey) {
+      console.error("api-key attribute is required on <swift-locations-map>.");
+      return;
+    }
 
-    loadPromise
+    this._loadGoogleMaps(apiKey)
       .then(() => this._initMap())
       .catch((err) => console.error("Failed to load Google Maps API:", err));
 
     this._initialized = true;
   }
 
-  disconnectedCallback() {
-    // Remove map event listeners on disconnect
-    if (this._idleListener && this.map) {
-      window.google.maps.event.removeListener(this._idleListener);
-      this._idleListener = null;
-    }
-
-    // Remove any event listeners on buttons in the location list (optional cleanup)
-    const listEl = document.querySelector(this.settings.locationsListElement);
-    if (listEl) {
-      listEl.querySelectorAll("[data-location-number]").forEach((btn) => {
-        btn.replaceWith(btn.cloneNode(true)); // simple way to remove all listeners
-      });
-    }
-  }
+  // --------- Attribute parsing ---------
 
   _readAttributesToSettings() {
-    this.settings = { ...this.defaults };
-
-    const parseJSONAttr = (attrName) => {
-      const raw = this.getAttribute(attrName);
-      if (!raw) return undefined;
+    const parseJSON = (attr, fallback) => {
+      const raw = this.getAttribute(attr);
+      if (!raw) return fallback;
       try {
         return JSON.parse(raw);
       } catch {
-        return raw;
+        return fallback;
       }
     };
 
-    const mapAttr = (attrName, settingKey, parser) => {
-      const raw = this.getAttribute(attrName);
-      if (raw == null) return;
-      try {
-        this.settings[settingKey] = parser ? parser(raw) : raw;
-      } catch {
-        this.settings[settingKey] = raw;
-      }
-    };
+    this.settings = { ...this.defaults };
 
-    mapAttr("map-element", "mapElement");
-    mapAttr("locations-list-element", "locationsListElement");
-    mapAttr("searchbar-element", "searchbarElement");
-    mapAttr("map-id", "mapId");
-    mapAttr("default-lat", "defaultLat", (v) => parseFloat(v));
-    mapAttr("default-lng", "defaultLng", (v) => parseFloat(v));
-    mapAttr("initial-zoom-level", "initialZoomLevel", (v) => parseInt(v, 10));
-    mapAttr("focus-zoom-level", "focusZoomLevel", (v) => parseInt(v, 10));
-    mapAttr("geolocation-enabled", "geolocationEnabled", (v) => v !== "false");
-    mapAttr("directions-base-url", "directionsBaseUrl");
+    this.settings.locations = parseJSON("locations", []);
+    this.settings.mapStyle = parseJSON("map-style", []);
 
-    const styleVal = parseJSONAttr("map-style");
-    if (styleVal) this.settings.mapStyle = styleVal;
+    this.settings.defaultLat = parseFloat(this.getAttribute("default-lat")) || this.defaults.defaultLat;
+    this.settings.defaultLng = parseFloat(this.getAttribute("default-lng")) || this.defaults.defaultLng;
+    this.settings.initialZoomLevel = parseInt(this.getAttribute("initial-zoom-level"), 10) || this.defaults.initialZoomLevel;
 
-    const locs = parseJSONAttr("locations");
-    if (locs) this.settings.locations = locs;
+    this.settings.mapElement = this.getAttribute("map-element") || this.defaults.mapElement;
+    this.settings.locationsListElement = this.getAttribute("locations-list-element") || this.defaults.locationsListElement;
+    this.settings.searchbarElement = this.getAttribute("searchbar-element") || this.defaults.searchbarElement;
 
-    const iconVal = parseJSONAttr("map-icon");
-    if (iconVal) this.settings.mapIcon = iconVal;
+    this.settings.regionCode = this.getAttribute("region-code") || this.defaults.regionCode;
+    this.settings.listItemLabel = this.getAttribute("list-item-label") || this.defaults.listItemLabel;
+    this.settings.directionsLabel = this.getAttribute("directions-label") || this.defaults.directionsLabel;
+    this.settings.noLocationsFoundLabel = this.getAttribute("no-locations-found-label") || this.defaults.noLocationsFoundLabel;
 
-    const key = this.getAttribute("api-key");
-    if (key) this._apiKey = key;
+    this.settings.mapIconUrl = this.getAttribute("map-icon-url") || this.defaults.mapIconUrl;
+
+    // normalize locations lat/lng
+    this.settings.locations = this._normalizeLocations(this.settings.locations);
   }
 
-  _loadGoogleMaps(apiKey, libraries = ["places", "marker"]) {
-    return new Promise((resolve, reject) => {
-      if (window.google && window.google.maps) {
-        resolve();
-        return;
-      }
-      const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(
-        apiKey
-      )}&libraries=${encodeURIComponent(libraries.join(","))}`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => resolve();
-      script.onerror = (e) => reject(e);
-      document.head.appendChild(script);
-    });
-  }
-
-  normalizeLocations(arr) {
+  _normalizeLocations(arr) {
     return (arr || []).map((loc) => {
-      const out = { ...loc };
       const lat =
         (loc.Location && loc.Location.Lat) ??
         (loc.location && loc.location.lat) ??
         loc.lat;
+
       const lng =
         (loc.Location && loc.Location.Lng) ??
         (loc.location && loc.location.lng) ??
         loc.lng;
-      if (typeof lat === "number" && typeof lng === "number") {
-        out.location = { lat, lng };
-      } else {
-        out.location = null;
-      }
-      return out;
+
+      return {
+        ...loc,
+        location:
+          typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null,
+      };
     });
   }
 
-  getMarkerPosition(marker) {
-    if (!marker) return null;
-    if (typeof marker.getPosition === "function") return marker.getPosition();
-    const p = marker.position;
-    if (!p) return null;
-    if (typeof p.lat === "function") return p;
-    if (typeof p.lat === "number" && typeof p.lng === "number")
-      return new window.google.maps.LatLng(p.lat, p.lng);
-    return null;
-  }
+  // --------- Google loader (prevents build-time "google is not defined") ---------
 
-  getDeepValue(obj, key) {
-    if (!obj || !key) return undefined;
-    if (!key.includes(".")) return obj[key];
-    return key.split(".").reduce((o, k) => (o && k in o ? o[k] : undefined), obj);
-  }
+  _loadGoogleMaps(apiKey) {
+    if (window.google && window.google.maps) return Promise.resolve();
+    if (LocationsMap._loaderPromise) return LocationsMap._loaderPromise;
 
-  bindDataFromAttributes(fragment, attrName, location) {
-    const reservedKeys = ["button"];
-
-    const computed = {
-      AddressFull: (() => {
-        const parts = [];
-        if (location?.Address) parts.push(location.Address);
-        if (location?.Zip) parts.push(location.Zip);
-        if (location?.City) parts.push(location.City);
-        if (location?.State) parts.push(location.State);
-        if (location?.Country) parts.push(location.Country);
-        return parts.join(", ");
-      })(),
-      Contact: [location?.Email, location?.Phone].filter(Boolean).join(" • "),
-      DirectionsUrl:
-        location?.DirectionsUrl ||
-        `${this.settings.directionsBaseUrl}${encodeURIComponent(
-          [location?.Address, location?.Zip, location?.City].filter(Boolean).join(" ")
-        )}`,
-    };
-
-    const nodes = fragment.querySelectorAll(`[${attrName}]`);
-    nodes.forEach((el) => {
-      const key = el.getAttribute(attrName);
-      if (!key) return;
-      if (reservedKeys.includes(key)) return;
-
-      let value = Object.prototype.hasOwnProperty.call(computed, key)
-        ? computed[key]
-        : this.getDeepValue(location, key);
-
-      if (el.tagName && el.tagName.toLowerCase() === "a") {
-        if (value === undefined || value === null || value === "") {
-          el.removeAttribute("href");
-        } else {
-          el.href = String(value);
+    LocationsMap._loaderPromise = new Promise((resolve, reject) => {
+      // unique callback so multiple components won’t collide
+      const cbName = "__swift_gmaps_init__" + Math.random().toString(36).slice(2);
+      window[cbName] = () => {
+        try { delete window[cbName]; } catch (err) {
+          console.error("Failed to delete Google Maps callback:", err);
         }
-      } else {
-        el.textContent = value !== undefined && value !== null ? String(value) : "";
-      }
-    });
-  }
+        resolve();
+      };
 
-  createAdvancedMarker(location) {
-    const wrap = document.createElement("div");
-    wrap.style.position = "absolute";
-    wrap.style.left = "50%";
-    wrap.style.top = "50%";
-    wrap.style.transform = "translate(-50%, -100%)";
-
-    if (this.settings.mapIcon && this.settings.mapIcon.url) {
-      const img = document.createElement("img");
-      img.src = this.settings.mapIcon.url;
-      img.alt = location?.Name || location?.name || "";
-      img.draggable = false;
-      img.style.display = "block";
-      img.style.pointerEvents = "none";
-      img.style.width = (this.settings.mapIcon.width || 32) + "px";
-      img.style.height = (this.settings.mapIcon.height || 32) + "px";
-      wrap.appendChild(img);
-    } else {
-      const pin = new window.google.maps.marker.PinElement();
-      wrap.appendChild(pin.element);
-    }
-
-    const marker = new this.AdvancedMarkerElement({
-      position: location.location,
-      map: this.map,
-      title: location?.Name || location?.name || "",
-      content: wrap,
+      const s = document.createElement("script");
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${cbName}`;
+      s.async = true;
+      s.defer = true;
+      s.onerror = (e) => reject(e);
+      document.head.appendChild(s);
     });
 
-    marker.id = this.markers.length;
-    marker.addListener("gmp-click", () => this.openInfo(marker));
-    this.markers.push(marker);
-    return marker;
+    return LocationsMap._loaderPromise;
   }
 
-  createClassicMarker(location) {
-    const w = this.settings.mapIcon.width || 32;
-    const h = this.settings.mapIcon.height || 32;
-    const iconOptions =
-      this.settings.mapIcon && this.settings.mapIcon.url
-        ? {
-          url: this.settings.mapIcon.url,
-          scaledSize: new window.google.maps.Size(w, h),
-          anchor: new window.google.maps.Point(Math.round(w / 2), Math.round(h)),
-        }
-        : null;
-
-    const marker = new window.google.maps.Marker({
-      position: location.location,
-      map: this.map,
-      title: location?.Name || location?.name || "",
-      icon: iconOptions,
-    });
-
-    marker.id = this.markers.length;
-    marker.addListener("click", () => this.openInfo(marker));
-    this.markers.push(marker);
-    return marker;
-  }
+  // --------- Map & UI ---------
 
   _initMap() {
-    if (!window.google || !window.google.maps) {
-      console.error("Google Maps API is not loaded.");
+    const mapDiv = document.querySelector(this.settings.mapElement);
+    if (!mapDiv) {
+      console.error("Map element not found:", this.settings.mapElement);
       return;
     }
 
-    if (this.settings.mapId) {
-      this.settings.mapStyle = null;
-    }
-
-    this.map = new window.google.maps.Map(document.querySelector(this.settings.mapElement), {
-      center: {
-        lat: this.settings.defaultLat || 0,
-        lng: this.settings.defaultLng || 0,
-      },
+    this.map = new google.maps.Map(mapDiv, {
+      center: { lat: this.settings.defaultLat, lng: this.settings.defaultLng },
       zoom: this.settings.initialZoomLevel,
-      mapId: this.settings.mapId || undefined,
-      styles: this.settings.mapStyle,
+      styles: Array.isArray(this.settings.mapStyle) ? this.settings.mapStyle : undefined,
+      fullscreenControl: false,
+      mapTypeControl: false,
       streetViewControl: false,
     });
 
-    this.infoWindow = new window.google.maps.InfoWindow();
+    this.infoWindow = new google.maps.InfoWindow({ maxWidth: 300, minWidth: 220 });
 
+    // Classic markers only (with corrected bottom-center anchor)
     this.markers = [];
-    this.settings.locations = this.normalizeLocations(this.settings.locations);
-
-    // Try to import AdvancedMarkerElement if possible
-    window.google.maps.importLibrary("marker")
-      .then(({ AdvancedMarkerElement }) => {
-        this.AdvancedMarkerElement = AdvancedMarkerElement;
-        this._addMarkers();
-      })
-      .catch(() => {
-        this.AdvancedMarkerElement = null;
-        this._addMarkers();
-      });
-
-    // Center on geolocation if enabled and available
-    if (this.settings.geolocationEnabled && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords;
-          this.map.setCenter({ lat: latitude, lng: longitude });
-          this.map.setZoom(this.settings.initialZoomLevel);
-        },
-        () => {},
-        { timeout: 2000 }
-      );
-    }
-
-    // Add debounced idle listener to rebuild location list after map moves
-    let idleTimeout = null;
-    this._idleListener = this.map.addListener("idle", () => {
-      if (idleTimeout) clearTimeout(idleTimeout);
-      idleTimeout = setTimeout(() => this._buildLocationList(), 200);
+    this.settings.locations.forEach((loc, i) => {
+      if (!loc.location) return;
+      this._createClassicMarker(loc, i);
     });
 
+    // Build list initially and on idle (visible in viewport)
     this._buildLocationList();
+    this.map.addListener("idle", () => this._buildLocationList());
+
+    // Searchbar form (geocode)
+    const form = document.querySelector(this.settings.searchbarElement);
+    if (form) {
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const input = form.querySelector("input[type='text'], input");
+        const value = input ? input.value.trim() : "";
+        if (!value) return;
+
+        const geocoder = new google.maps.Geocoder();
+        geocoder.geocode({ address: value, region: this.settings.regionCode }, (results, status) => {
+          if (status === google.maps.GeocoderStatus.OK && results[0]) {
+            this.map.fitBounds(results[0].geometry.viewport);
+          } else {
+            console.log("Geocode failed:", status);
+          }
+        });
+      });
+    }
   }
 
-  _addMarkers() {
-    this.markers.forEach((marker) => marker.setMap(null));
-    this.markers = [];
+  _createClassicMarker(location, index) {
+    const icon = this.settings.mapIconUrl
+      ? {
+        url: this.settings.mapIconUrl,
+        scaledSize: new google.maps.Size(32, 32),
+        anchor: new google.maps.Point(16, 32), // bottom-center (corrected)
+      }
+      : null;
 
-    this.settings.locations.forEach((location) => {
-      if (!location.location) return;
+    const marker = new google.maps.Marker({
+      position: location.location,
+      map: this.map,
+      title: location?.Name || location?.name || "",
+      icon,
+    });
 
-      if (this.AdvancedMarkerElement) {
-        this.createAdvancedMarker(location);
+    marker.id = index;
+    marker.addListener("click", () => this._openInfo(marker));
+    this.markers.push(marker);
+  }
+
+  // ---------- Template helpers (ADDED) ----------
+
+  _computeCommon(loc) {
+    const addressParts = [
+      loc?.Address ?? loc?.address,
+      loc?.Zip ?? loc?.zip,
+      loc?.City ?? loc?.city,
+      loc?.State ?? loc?.state,
+      loc?.Country ?? loc?.country,
+    ].filter(Boolean);
+
+    return {
+      Name: loc?.Name ?? loc?.name ?? "",
+      Address: loc?.Address ?? loc?.address ?? "",
+      Zip: loc?.Zip ?? loc?.zip ?? "",
+      City: loc?.City ?? loc?.city ?? "",
+      Country: loc?.Country ?? loc?.country ?? "",
+      Phone: loc?.Phone ?? loc?.phone ?? "",
+      Email: loc?.Email ?? loc?.email ?? "",
+      AddressFull: addressParts.join(", "),
+      DirectionsUrl: this._buildDirectionsUrl(loc),
+    };
+  }
+
+  _bindByAttr(fragment, attrName, loc) {
+    const vals = this._computeCommon(loc);
+
+    fragment.querySelectorAll(`[${attrName}]`).forEach((el) => {
+      const key = el.getAttribute(attrName);
+      if (!key) return;
+
+      // Important: don't overwrite the 'button' placeholder's inner HTML (it contains the directions icon)
+      if (key === "button") {
+        // leave the button content intact; event wiring happens in _buildLocationList
+        return;
+      }
+
+      const v = (key in vals) ? vals[key] : (loc?.[key] ?? "");
+      if (el.tagName && el.tagName.toLowerCase() === "a") {
+        if (v) el.setAttribute("href", String(v));
+        else el.removeAttribute("href");
       } else {
-        this.createClassicMarker(location);
+        el.textContent = v ? String(v) : "";
       }
     });
   }
 
-  openInfo(marker) {
+  // ---------- InfoWindow now uses #info-window-template if present (ADDED) ----------
+
+  _openInfo(marker) {
     const location = this.settings.locations[marker.id];
     if (!location) return;
 
-    if (this.infoWindow) {
-      this.infoWindow.close();
+    const tpl = document.getElementById("info-window-template");
+    if (tpl && tpl.content) {
+      const frag = tpl.content.cloneNode(true);
+      // Fill placeholders in the template
+      this._bindByAttr(frag, "data-swift-info", location);
+
+      // Set header (if supported)
+      const titleText = location?.Name || location?.name || "";
+      if (typeof this.infoWindow.setHeaderContent === "function") {
+        try { this.infoWindow.setHeaderContent(titleText); } catch (err) {
+          console.error("Failed to set infoWindow header content:", err);
+        }
+      } else {
+        // Fallback: prepend a header node
+        const wrap = document.createElement("div");
+        const h = document.createElement("h3");
+        h.textContent = titleText;
+        wrap.appendChild(h);
+        wrap.appendChild(frag);
+        this.infoWindow.setContent(wrap);
+        this.infoWindow.open(this.map, marker);
+        this.map.panTo(marker.getPosition());
+        return;
+      }
+
+      // If header is set, use the fragment as the body
+      const container = document.createElement("div");
+      container.appendChild(frag);
+      this.infoWindow.setContent(container);
+      this.infoWindow.open(this.map, marker);
+      this.map.panTo(marker.getPosition());
+      return;
     }
 
-    const infoEl = document.createElement("div");
-    infoEl.innerHTML = `
-      <h3>${location.Name || location.name || ""}</h3>
-      <p>${location.Address || ""}</p>
-      <a href="${location.DirectionsUrl || this.settings.directionsBaseUrl}" target="_blank" rel="noopener">${this.settings.directionsLabel}</a>
+    // Fallback to previous hardcoded body if template is missing
+    const address = [
+      location?.Address ?? location?.address,
+      location?.Zip ?? location?.zip,
+      location?.City ?? location?.city,
+      location?.State ?? location?.state,
+      location?.Country ?? location?.country,
+    ].filter(Boolean).join(", ");
+
+    const content = document.createElement("div");
+    content.innerHTML = `
+      <div>
+        ${address ? `<p>${address}</p>` : ""}
+        <div class="mt-2">
+          <a
+            href="${this._buildDirectionsUrl(location)}"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="${this.settings.directionsLabel}"
+            title="${this.settings.directionsLabel}"
+            style="display:inline-flex;align-items:center;gap:.25rem;text-decoration:none"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="feather feather-corner-up-right"><polyline points="15 14 20 9 15 4"></polyline><path d="M4 20v-7a4 4 0 0 1 4-4h12"></path></svg>
+            <span>${this.settings.directionsLabel}</span>
+          </a>
+        </div>
+      </div>
     `;
 
-    this.infoWindow.setContent(infoEl);
-    const pos = this.getMarkerPosition(marker);
-    if (pos) {
-      this.infoWindow.open(this.map, marker);
+    const titleFallback = location?.Name || location?.name || "";
+    if (typeof this.infoWindow.setHeaderContent === "function") {
+      try { this.infoWindow.setHeaderContent(titleFallback); } catch (err) {
+        console.error("Failed to set infoWindow header content fallback:", err);
+      }
+    } else {
+      const h = document.createElement("h3");
+      h.textContent = titleFallback;
+      content.prepend(h);
     }
+
+    this.infoWindow.setContent(content);
+    this.infoWindow.open(this.map, marker);
+    this.map.panTo(marker.getPosition());
+  }
+
+  _buildDirectionsUrl(location) {
+    if (location?.DirectionsUrl && String(location.DirectionsUrl).trim() !== "") {
+      return location.DirectionsUrl;
+    }
+    const q = [location?.Address ?? location?.address, location?.Zip ?? location?.zip, location?.City ?? location?.city]
+      .filter(Boolean)
+      .join(" ");
+    return `${this.defaults.directionsBaseUrl}${encodeURIComponent(q)}`;
   }
 
   _buildLocationList() {
     const listEl = document.querySelector(this.settings.locationsListElement);
     if (!listEl) return;
 
-    const fragment = document.createDocumentFragment();
     listEl.innerHTML = "";
+    const bounds = this.map.getBounds();
 
-    const filteredLocations = this.settings.locations.filter((loc) => {
-      if (!loc.location) return false;
-      return this.map.getBounds()?.contains(loc.location);
-    });
+    const inView = this.settings.locations
+      .map((loc, i) => ({ loc, i })) // keep original index for marker lookup
+      .filter(({ loc }) => loc.location && (!bounds || bounds.contains(new google.maps.LatLng(loc.location))));
 
-    if (filteredLocations.length === 0) {
+    if (inView.length === 0) {
       const noEl = document.createElement("div");
       noEl.textContent = this.settings.noLocationsFoundLabel;
-      noEl.style.padding = "1em";
-      fragment.appendChild(noEl);
-    } else {
-      filteredLocations.forEach((loc, idx) => {
-        const li = document.createElement("li");
-        li.textContent = loc.Name || loc.name || "Unknown location";
-        li.style.cursor = "pointer";
-        li.setAttribute("data-location-number", idx);
-
-        li.addEventListener("click", () => {
-          const marker = this.markers[idx];
-          if (marker) {
-            this.map.panTo(loc.location);
-            this.map.setZoom(this.settings.focusZoomLevel);
-            this.openInfo(marker);
-          }
-        });
-
-        fragment.appendChild(li);
-      });
+      noEl.style.padding = "1rem";
+      listEl.appendChild(noEl);
+      return;
     }
 
-    listEl.appendChild(fragment);
+    const tpl = document.querySelector("#location-item-template");
+    inView.forEach(({ loc, i }) => {
+      if (tpl?.content) {
+        const clone = document.importNode(tpl.content, true);
+
+        // Fill placeholders in the list item template
+        this._bindByAttr(clone, "data-swift-loc", loc);
+
+        // Click target
+        const clickable =
+          clone.querySelector("[data-swift-loc='button']") ||
+          clone.querySelector("button") ||
+          clone.firstElementChild;
+
+        if (clickable) {
+          clickable.setAttribute("data-location-number", i);
+          clickable.addEventListener("click", () => this._focusMarker(i));
+        }
+
+        listEl.appendChild(clone);
+      } else {
+        // Simple fallback if template missing
+        const li = document.createElement("li");
+        li.textContent = loc?.Name || loc?.name || this.settings.listItemLabel;
+        li.style.cursor = "pointer";
+        li.addEventListener("click", () => this._focusMarker(i));
+        listEl.appendChild(li);
+      }
+    });
+  }
+
+  _focusMarker(index) {
+    const marker = this.markers[index];
+    if (!marker) return;
+    const pos = marker.getPosition();
+    if (pos) {
+      this.map.setZoom(this.defaults.focusZoomLevel);
+      this.map.panTo(pos);
+    }
+    this._openInfo(marker);
   }
 }
 
 customElements.define("swift-locations-map", LocationsMap);
-
-// Export so older import sites expecting LocationsMap still work
 export { LocationsMap };
