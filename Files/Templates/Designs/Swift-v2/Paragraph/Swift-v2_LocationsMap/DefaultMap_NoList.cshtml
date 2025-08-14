@@ -1,0 +1,100 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+
+@if (Model.Item.TryGetGeolocation("DefaultMapCenter", out var defaultMapCenter)) {
+	if (Pageview.AreaSettings.TryGetString("Google_APIKey", out string apiKey)) {
+		var locationList = Model.Item.GetUsers("UserGroup");
+		string jsonLocationList = System.Net.WebUtility.HtmlEncode(
+			System.Text.Json.JsonSerializer.Serialize(locationList)
+		);
+
+		string regionCode = "DK";
+		if (Model.Item.TryGetString("RegionCode", out string region))
+		{
+			regionCode = region;
+		}
+
+		<div class="grid position-relative">
+			@if (Model.Item.TryGetString("Title", out string title))
+			{
+				<div class="g-col-12 g-col-lg-8 h-100" id="MapHeader">
+					@title
+				</div>
+			}
+
+			<div class="g-col-12 g-col-lg-4 position-relative js-map-search-column">
+				<form class="d-flex align-items-center w-100" id="MapSearch">
+					<span class="position-absolute top-0 icon-2 px-3 d-flex align-items-center h-100 search-icon">
+						@ReadFile("/Files/Images/Icons/magnifying-glass.svg")
+					</span>
+					<input type="text" class="form-control rounded-pill py-2 ps-5 pe-3" placeholder="@Translate("Enter city, state or zip")" aria-label="@Translate("Enter city, state or zip")">
+					<button type="submit" class="d-none" id="MapSearchButton">@Translate("Search")</button>
+				</form>
+			</div>
+
+			<div class="g-col-12 js-map-column">
+				<div class="map" id="Map"></div>
+				<swift-locations-map
+					api-key="@apiKey"
+					locations="@jsonLocationList"
+					default-lat="@defaultMapCenter.Latitude"
+					default-lng="@defaultMapCenter.Longitude"
+					initial-zoom-level="@Model.Item.GetInt32("InitialZoomLevel")"
+					region-code="@regionCode"
+					map-element="#Map"
+					searchbar-element="#MapSearch"
+					no-locations-found-label="@Translate("No options available in the selected area")"
+					map-style='@ReadFile("Files/Templates/Designs/Swift-v2/Paragraph/Swift-v2_LocationsMap/MapStyle.json")'
+					map-icon-url="/Files/Images/Icons/location-pin-solid-full.svg">
+				</swift-locations-map>
+			</div>
+
+			@if (locationList.Count() > 1) {
+				<div class="g-col-12 g-col-lg-4 order-2 order-lg-3 js-locations-list-column">
+					<div class="locations-list">
+						<div class="list-group" id="LocationsList" aria-labelledby="MapHeader"></div>
+					</div>
+				</div>
+			} 
+		</div>
+
+		<template id="info-window-template">
+			<div id="content">
+				<div id="bodyContent">
+					<h6 class="mb-0">@Translate("Address")</h6>
+					<div class="fs-7" data-swift-info="Address"></div>
+					<div class="fs-7">
+						<span data-swift-info="Zip"></span>
+						<span data-swift-info="City"></span>
+					</div>
+					<h6 class="mb-0 mt-2">@Translate("Contact")</h6>
+					<div>
+						<span class="icon-1 me-1">@ReadFile("/Files/Images/Icons/phone.svg")</span>
+						<span>@Translate("Phone"): </span>
+						<span data-swift-info="Phone"></span>
+					</div>
+					<div>
+						<span class="icon-1 me-1">@ReadFile("/Files/Images/Icons/envelope.svg")</span>
+						<span>@Translate("Email"): </span>
+						<span data-swift-info="Email"></span>
+					</div>
+					<div class="mt-3">
+						<a href="#" class="hstack gap-2" target="_blank" rel="noopener noreferrer" data-swift-info="DirectionsUrl" title="@Translate("Get directions")" aria-label="@Translate("Get directions")">
+							<span class="icon-1">@ReadFile("/Files/Images/Icons/arrow-turn-right.svg")</span>
+							<span>@Translate("Directions")</span>
+						</a>
+					</div>
+				</div>
+			</div>
+		</template>
+	} 
+	else 
+	{
+		<div class="alert alert-info" role="alert">
+			@Translate("Google maps API key is missing")
+		</div>
+	}
+} else {
+	<div class="alert alert-info" role="alert">
+		@Translate("The map is not properly configured")
+	</div>
+}
