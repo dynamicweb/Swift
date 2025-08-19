@@ -41,6 +41,7 @@ export default [
           { src: "node_modules/htmx.org/dist/", dest: distPath + "lib/" },
           { src: "node_modules/bootstrap/dist/", dest: distPath + "lib/" },
           { src: "node_modules/flatpickr/dist/", dest: distPath + "lib/" },
+          { src: "node_modules/alpinejs/dist/", dest: distPath + "lib/" },
         ],
         copyOnce: true,
         flatten: false,
