@@ -60,12 +60,18 @@ window.addEventListener("DOMContentLoaded", () => {
     const dropdownMenu = dropdown.querySelector(".dropdown-menu");
     
     if (dropdownToggle) {
-      const bsMenu = new bootstrap.Dropdown(dropdownToggle);
-
+      let bsMenu = bootstrap.Dropdown.getOrCreateInstance(dropdownToggle);
+      let preventFocus = dropdownToggle.focus = () => {
+        /*do nothing*/
+      };
+      
       dropdown.addEventListener("mouseenter", () => {
         dropdownMenu.classList.toggle("mouseover");
-        bsMenu.show();
-        dropdownToggle.style.outline = "none";
+        try {
+          bsMenu.show();
+        } finally {
+          dropdownToggle.focus = preventFocus;
+        }
       });
 
       dropdown.addEventListener("mouseleave", () => {
