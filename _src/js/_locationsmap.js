@@ -204,7 +204,7 @@ class LocationsMap extends HTMLElement {
     const location = this.settings.locations[marker.id];
     if (!location) return;
 
-    const tpl = document.getElementById("info-window-template");
+    const tpl = document.querySelector('[data-template="info-window"]');
 
     // Set header (if supported)
     const titleText = location?.Name || location?.name || "";
@@ -252,7 +252,8 @@ class LocationsMap extends HTMLElement {
       return;
     }
 
-    const tpl = document.querySelector("#location-item-template");
+    const tpl = document.querySelector('[data-template="location-item"]');
+    console.log(tpl);
     inView.forEach(({ loc, i }) => {
       if (!tpl?.content) return;
       const clone = document.importNode(tpl.content, true);
