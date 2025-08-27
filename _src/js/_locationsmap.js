@@ -1,110 +1,127 @@
 /* global google */
-
 class LocationsMap extends HTMLElement {
-  static _loaderPromise = null;
+  static loaderPromise = null;
 
   constructor() {
     super();
     this.map = null;
     this.infoWindow = null;
     this.markers = [];
-    this._initialized = false;
+    this.initialized = false;
+    this.mapElement = null;
+    this.locationsListElement = null;
+    this.searchbarElement = null;
     this.settings = {};
   }
 
   connectedCallback() {
-    if (this._initialized) return;
+    if (this.initialized) return;
 
-    this._readAttributesToSettings();
+    const bootstrap = () => {
+      this.mapElement = this.querySelector('[data-swift-locations-map]');
+      this.locationsListElement = this.querySelector('[data-swift-locations-list]');
+      this.searchbarElement = this.querySelector('[data-swift-searchbar]');
 
-    const mapDiv = document.querySelector(this.settings.mapElement);
-    if (!mapDiv) {
-      console.error("Map element not found:", this.settings.mapElement);
-      return;
+      if (!this.mapElement) {
+        console.error("Map element not found inside <swift-locations-map> (expected [data-swift-locations-map]).");
+        return;
+      }
+
+      this.readAttributesToSettings();
+
+      const apiKey = this.getAttribute("api-key");
+      if (!apiKey) {
+        console.error("api-key attribute is required on <swift-locations-map>.");
+        return;
+      }
+
+      this.loadGoogleMaps(apiKey)
+        .then(() => this.initMap())
+        .catch((error) => console.error("Failed to load Google Maps API:", error));
+
+      this.initialized = true;
+    };
+
+    if (document.readyState === "loading") {
+      const onReady = () => {
+        document.removeEventListener("DOMContentLoaded", onReady);
+        requestAnimationFrame(bootstrap);
+      };
+      document.addEventListener("DOMContentLoaded", onReady);
+    } else {
+      requestAnimationFrame(bootstrap);
     }
-
-    const apiKey = this.getAttribute("api-key");
-    if (!apiKey) {
-      console.error("api-key attribute is required on <swift-locations-map>.");
-      return;
-    }
-
-    this._loadGoogleMaps(apiKey)
-      .then(() => this._initMap())
-      .catch((err) => console.error("Failed to load Google Maps API:", err));
-
-    this._initialized = true;
   }
 
-  _readAttributesToSettings() {
-    const parseJSON = (attr) => {
-      const raw = this.getAttribute(attr);
+  readAttributesToSettings() {
+    const parseJSON = (attributeName) => {
+      const raw = this.getAttribute(attributeName);
       if (!raw) return undefined;
       try { return JSON.parse(raw); } catch { return undefined; }
     };
 
-    this.settings.locations = parseJSON("locations");
+    const parseFloatAttr = (attributeName) => {
+      const value = parseFloat(this.getAttribute(attributeName));
+      return isNaN(value) ? undefined : value;
+    };
+
+    const parseIntAttr = (attributeName) => {
+      const value = parseInt(this.getAttribute(attributeName), 10);
+      return isNaN(value) ? undefined : value;
+    };
+
+    this.settings.locations = this.normalizeLocations(parseJSON("locations"));
     this.settings.mapStyle = parseJSON("map-style");
-
-    const parseFloatAttr = (attr) => {
-      const val = parseFloat(this.getAttribute(attr));
-      return isNaN(val) ? undefined : val;
-    };
-
-    const parseIntAttr = (attr) => {
-      const val = parseInt(this.getAttribute(attr), 10);
-      return isNaN(val) ? undefined : val;
-    };
-
     this.settings.defaultLat = parseFloatAttr("default-lat");
     this.settings.defaultLng = parseFloatAttr("default-lng");
     this.settings.initialZoomLevel = parseIntAttr("initial-zoom-level");
-
-    this.settings.mapElement = this.getAttribute("map-element");
-    this.settings.locationsListElement = this.getAttribute("locations-list-element");
-    this.settings.searchbarElement = this.getAttribute("searchbar-element");
-
-    this.settings.regionCode = this.getAttribute("region-code");
-    this.settings.listItemLabel = this.getAttribute("list-item-label");
-    this.settings.noLocationsFoundLabel = this.getAttribute("no-locations-found-label");
-
-    this.settings.mapIconUrl = this.getAttribute("map-icon-url");
-
-    this.settings.locations = this._normalizeLocations(this.settings.locations);
+    this.settings.regionCode = this.getAttribute("region-code") || undefined;
+    this.settings.noLocationsFoundLabel = this.getAttribute("no-locations-found-label") || "No options available";
+    this.settings.mapIconUrl = this.getAttribute("map-icon-url") || undefined;
   }
 
-  _normalizeLocations(arr) {
-    return (arr || []).map((loc) => {
-      const lat = (loc.Location && loc.Location.Lat) ?? (loc.location && loc.location.lat) ?? loc.lat;
-      const lng = (loc.Location && loc.Location.Lng) ?? (loc.location && loc.location.lng) ?? loc.lng;
-      return { ...loc, location: typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null };
+  normalizeLocations(array) {
+    return (array || []).map((location) => {
+      const lat =
+        (location.Location && location.Location.Lat) ??
+        (location.location && location.location.lat) ??
+        location.lat;
+
+      const lng =
+        (location.Location && location.Location.Lng) ??
+        (location.location && location.location.lng) ??
+        location.lng;
+
+      return {
+        ...location,
+        location: typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null
+      };
     });
   }
 
-  _loadGoogleMaps(apiKey) {
+  loadGoogleMaps(apiKey) {
     if (window.google && window.google.maps) return Promise.resolve();
-    if (LocationsMap._loaderPromise) return LocationsMap._loaderPromise;
+    if (LocationsMap.loaderPromise) return LocationsMap.loaderPromise;
 
-    LocationsMap._loaderPromise = new Promise((resolve, reject) => {
-      const cbName = "__swift_gmaps_init__" + Math.random().toString(36).slice(2);
-      window[cbName] = () => { try { delete window[cbName]; } catch {
-        console.error("Maps not loaded");
-      } resolve(); };
-      const s = document.createElement("script");
-      s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${cbName}`;
-      s.async = true; s.defer = true;
-      s.onerror = (e) => reject(e);
-      document.head.appendChild(s);
+    LocationsMap.loaderPromise = new Promise((resolve, reject) => {
+      const callbackName = "__swift_gmaps_init__" + Math.random().toString(36).slice(2);
+      window[callbackName] = () => {
+        try { delete window[callbackName]; } catch { console.error("Maps not loaded"); }
+        resolve();
+      };
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${callbackName}`;
+      script.async = true;
+      script.defer = true;
+      script.onerror = (e) => reject(e);
+      document.head.appendChild(script);
     });
 
-    return LocationsMap._loaderPromise;
+    return LocationsMap.loaderPromise;
   }
 
-  _initMap() {
-    const mapDiv = document.querySelector(this.settings.mapElement);
-    if (!mapDiv) { console.error("Map element not found:", this.settings.mapElement); return; }
-
-    this.map = new google.maps.Map(mapDiv, {
+  initMap() {
+    this.map = new google.maps.Map(this.mapElement, {
       center: { lat: this.settings.defaultLat, lng: this.settings.defaultLng },
       zoom: this.settings.initialZoomLevel,
       styles: Array.isArray(this.settings.mapStyle) ? this.settings.mapStyle : undefined,
@@ -116,16 +133,17 @@ class LocationsMap extends HTMLElement {
     this.infoWindow = new google.maps.InfoWindow({ maxWidth: 300, minWidth: 220 });
 
     this.markers = [];
-    this.settings.locations?.forEach((loc, i) => { if (loc.location) this._createClassicMarker(loc, i); });
+    this.settings.locations?.forEach((location, index) => {
+      if (location.location) this.createClassicMarker(location, index);
+    });
 
-    this._buildLocationList();
-    this.map.addListener("idle", () => this._buildLocationList());
+    this.buildLocationList();
+    this.map.addListener("idle", () => this.buildLocationList());
 
-    const form = document.querySelector(this.settings.searchbarElement);
-    if (form) {
-      form.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const input = form.querySelector("input[type='text'], input");
+    if (this.searchbarElement) {
+      this.searchbarElement.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const input = this.searchbarElement.querySelector("input[type='text'], input");
         const value = input ? input.value.trim() : "";
         if (!value) return;
 
@@ -133,13 +151,15 @@ class LocationsMap extends HTMLElement {
         geocoder.geocode({ address: value, region: this.settings.regionCode }, (results, status) => {
           if (status === google.maps.GeocoderStatus.OK && results[0]) {
             this.map.fitBounds(results[0].geometry.viewport);
-          } else { console.log("Geocode failed:", status); }
+          } else {
+            console.error("Geocode failed:", status);
+          }
         });
       });
     }
   }
 
-  _createClassicMarker(location, index) {
+  createClassicMarker(location, index) {
     const icon = this.settings.mapIconUrl
       ? { url: this.settings.mapIconUrl, scaledSize: new google.maps.Size(32, 32), anchor: new google.maps.Point(16, 32) }
       : null;
@@ -152,127 +172,160 @@ class LocationsMap extends HTMLElement {
     });
 
     marker.id = index;
-    marker.addListener("click", () => this._openInfo(marker));
+    marker.addListener("click", () => this.openInfo(marker));
     this.markers.push(marker);
   }
 
-  _computeCommon(loc) {
+  computeCommon(location) {
     const addressParts = [
-      loc?.Address ?? loc?.address,
-      loc?.Zip ?? loc?.zip,
-      loc?.City ?? loc?.city,
-      loc?.State ?? loc?.state,
-      loc?.Country ?? loc?.country
+      location?.Address ?? location?.address,
+      location?.Zip ?? location?.zip,
+      location?.City ?? location?.city,
+      location?.State ?? location?.state,
+      location?.Country ?? location?.country
     ].filter(Boolean);
 
-    // Standard fields
     const base = {
-      Name: loc?.Name ?? loc?.name ?? "",
-      Address: loc?.Address ?? loc?.address ?? "",
-      Zip: loc?.Zip ?? loc?.zip ?? "",
-      City: loc?.City ?? loc?.city ?? "",
-      Country: loc?.Country ?? loc?.country ?? "",
-      Phone: loc?.Phone ?? loc?.phone ?? "",
-      Email: loc?.Email ?? loc?.email ?? "",
+      Name: location?.Name ?? location?.name ?? "",
+      Address: location?.Address ?? location?.address ?? "",
+      Zip: location?.Zip ?? location?.zip ?? "",
+      City: location?.City ?? location?.city ?? "",
+      Country: location?.Country ?? location?.country ?? "",
+      Phone: location?.Phone ?? location?.phone ?? "",
+      Email: location?.Email ?? location?.email ?? "",
       AddressFull: addressParts.join(", "),
-      DirectionsUrl: this._buildDirectionsUrl(loc),
+      DirectionsUrl: this.buildDirectionsUrl(location),
     };
 
-    // Merge all other fields dynamically
-    Object.keys(loc).forEach((key) => {
-      if (!(key in base)) {
-        base[key] = loc[key];
-      }
+    Object.keys(location).forEach((key) => {
+      if (!(key in base)) base[key] = location[key];
     });
 
     return base;
   }
 
-  _bindByAttr(fragment, attrName, loc) {
-    const vals = this._computeCommon(loc);
-    fragment.querySelectorAll(`[${attrName}]`).forEach((el) => {
-      const key = el.getAttribute(attrName);
-      if (!key) return;
-      if (key === "button") return;
-      const v = (key in vals) ? vals[key] : (loc?.[key] ?? "");
-      if (el.tagName?.toLowerCase() === "a") v ? el.setAttribute("href", String(v)) : el.removeAttribute("href");
-      else el.textContent = v ? String(v) : "";
+  bindByAttr(fragment, attributeName, location) {
+    const values = this.computeCommon(location);
+    fragment.querySelectorAll(`[${attributeName}]`).forEach((element) => {
+      const key = element.getAttribute(attributeName);
+      if (!key || key === "button") return;
+      const value = (key in values) ? values[key] : (location?.[key] ?? "");
+      if (element.tagName?.toLowerCase() === "a") {
+        value ? element.setAttribute("href", String(value)) : element.removeAttribute("href");
+      } else {
+        element.textContent = value ? String(value) : "";
+      }
     });
   }
 
-  _openInfo(marker) {
+  openInfo(marker) {
     const location = this.settings.locations[marker.id];
     if (!location) return;
 
-    const tpl = document.querySelector('[data-template="info-window"]');
+    const template =
+      this.querySelector('[data-swift-template="info-window"]') ||
+      document.querySelector('[data-swift-template="info-window"]');
 
-    // Set header (if supported)
     const titleText = location?.Name || location?.name || "";
     if (typeof this.infoWindow.setHeaderContent === "function") {
-      try { this.infoWindow.setHeaderContent(titleText); } catch (err) {
-        console.error("Failed to set infoWindow header content:", err);
+      try { this.infoWindow.setHeaderContent(titleText); } catch (error) {
+        console.error("Failed to set infoWindow header content:", error);
       }
-    } 
+    }
 
-    if (tpl?.content) {
-      const frag = tpl.content.cloneNode(true);
-      this._bindByAttr(frag, "data-swift-info", location);
+    if (template?.content) {
+      const fragment = template.content.cloneNode(true);
+      this.bindByAttr(fragment, "data-swift", location);
       const container = document.createElement("div");
-      container.appendChild(frag);
+      container.appendChild(fragment);
       this.infoWindow.setContent(container);
-      this.infoWindow.open(this.map, marker);
-      this.map.panTo(marker.getPosition());
-      return;
+    } else {
+      const container = document.createElement("div");
+      const nameElement = document.createElement("div");
+      nameElement.textContent = titleText;
+      nameElement.style.fontWeight = "600";
+      const addressElement = document.createElement("div");
+      addressElement.textContent = this.computeCommon(location).AddressFull;
+      container.appendChild(nameElement);
+      container.appendChild(addressElement);
+      this.infoWindow.setContent(container);
     }
 
     this.infoWindow.open(this.map, marker);
     this.map.panTo(marker.getPosition());
   }
 
-  _buildDirectionsUrl(location) {
+  buildDirectionsUrl(location) {
     if (location?.DirectionsUrl?.trim()) return location.DirectionsUrl;
-    const q = [location?.Address ?? location?.address, location?.Zip ?? location?.zip, location?.City ?? location?.city].filter(Boolean).join(" ");
-    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}`;
+    const destinationQuery = [
+      location?.Address ?? location?.address,
+      location?.Zip ?? location?.zip,
+      location?.City ?? location?.city
+    ].filter(Boolean).join(" ");
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destinationQuery)}`;
   }
 
-  _buildLocationList() {
-    const listEl = document.querySelector(this.settings.locationsListElement);
-    if (!listEl) return;
+  buildLocationList() {
+    if (!this.locationsListElement) return;
 
-    listEl.innerHTML = "";
+    this.locationsListElement.innerHTML = "";
     const bounds = this.map.getBounds();
 
-    const inView = this.settings.locations?.map((loc, i) => ({ loc, i })).filter(({ loc }) => loc.location && (!bounds || bounds.contains(new google.maps.LatLng(loc.location)))) ?? [];
+    const inView =
+      this.settings.locations
+        ?.map((location, index) => ({ location, index }))
+        .filter(({ location }) =>
+          location.location &&
+          (!bounds || bounds.contains(new google.maps.LatLng(location.location)))
+        ) ?? [];
 
     if (!inView.length) {
-      const noEl = document.createElement("div");
-      noEl.textContent = this.settings.noLocationsFoundLabel || "No options available";
-      noEl.style.padding = "1rem";
-      listEl.appendChild(noEl);
+      const noLocationsElement = document.createElement("div");
+      noLocationsElement.textContent = this.settings.noLocationsFoundLabel || "No options available";
+      noLocationsElement.style.padding = "1rem";
+      this.locationsListElement.appendChild(noLocationsElement);
       return;
     }
 
-    const tpl = document.querySelector('[data-template="location-item"]');
-    console.log(tpl);
-    inView.forEach(({ loc, i }) => {
-      if (!tpl?.content) return;
-      const clone = document.importNode(tpl.content, true);
-      this._bindByAttr(clone, "data-swift-loc", loc);
-      const clickable = clone.querySelector("[data-swift-loc='button']") || clone.querySelector("button") || clone.firstElementChild;
-      if (clickable) {
-        clickable.setAttribute("data-location-number", i);
-        clickable.addEventListener("click", () => this._focusMarker(i));
-      }
-      listEl.appendChild(clone);
+    const template =
+      this.querySelector('[data-swift-template="location-item"]') ||
+      document.querySelector('[data-swift-template="location-item"]');
+
+    if (template?.content) {
+      inView.forEach(({ location, index }) => {
+        const clone = document.importNode(template.content, true);
+        this.bindByAttr(clone, "data-swift", location);
+        const clickable =
+          clone.querySelector("[data-swift='button']") ||
+          clone.querySelector("button") ||
+          clone.firstElementChild;
+        if (clickable) {
+          clickable.setAttribute("data-location-number", index);
+          clickable.addEventListener("click", () => this.focusMarker(index));
+        }
+        this.locationsListElement.appendChild(clone);
+      });
+      return;
+    }
+
+    inView.forEach(({ location, index }) => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.className = "list-group-item list-group-item-action";
+      const name = location?.Name || location?.name || `Location ${index + 1}`;
+      const address = this.computeCommon(location).AddressFull;
+      item.textContent = address ? `${name} — ${address}` : name;
+      item.addEventListener("click", () => this.focusMarker(index));
+      this.locationsListElement.appendChild(item);
     });
   }
 
-  _focusMarker(index) {
+  focusMarker(index) {
     const marker = this.markers[index];
     if (!marker) return;
-    const pos = marker.getPosition();
-    if (pos) this.map.panTo(pos);
-    this._openInfo(marker);
+    const position = marker.getPosition();
+    if (position) this.map.panTo(position);
+    this.openInfo(marker);
   }
 }
 
