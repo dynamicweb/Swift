@@ -49,9 +49,14 @@ window.onpopstate = function () {
   swift.Typeahead.navigateToPage(document.location.href);
 };
 
-// Dropdown
 window.addEventListener("DOMContentLoaded", () => {
   const bootstrap = window.bootstrap || {};
+  
+  // Tooltip
+  const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+  [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+  
+  // Dropdown
   const dropdowns = document.querySelectorAll("[data-swift-page-header] .dropdown");
   Menu.setMenuContentOffset();
 
