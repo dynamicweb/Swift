@@ -52,28 +52,37 @@
                 <tr>
                     <th>@Translate("User")</th>
                     <th>@Translate("Email")</th>
-                    <th>@Translate("Status")</th>
                     <th>@Translate("Last active")</th>
-                    <th></th>
+                    <th>@Translate("Actions")</th>
                 </tr>
             </thead>
 
             <tbody class="border-top-0">
-                @foreach (var user in Model.Users)
+                @foreach (var user in Model.Users) // .Where(x => x.GetStatus() == UserStatusType.Active)
                 {
                     <tr class="position-relative">
                         <td>
                             <div class="hstack gap-2">
-                                <div class="btn btn-@(Pageview.User?.ID == user.ID ? "outline-primary" : "primary") rounded-circle hstack justify-content-center p-0 me-2" style="height:2rem; aspect-ratio:1;@(Pageview.User?.ID == user.ID ? "border-style:dashed;" : null)" data-dw-button>
-                                    <div class="d-flex fw-bold fs-7 lh-1 m-0">
+
+                            @if(user.TryGetImageFile(out ImageFileViewModel? image))
+                            {
+                                <div class="align-self-auto hstack justify-content-center p-0" style="height:2rem; aspect-ratio:1;">
+                                    <img src="@image.ToGetImage(new(){ Width = 40, Ratio = "1/1" })" alt="@user.Name" class="img-thumbnail rounded-circle" itemprop="image"/>
+                                </div>
+                            }
+                            else 
+                            {
+                                <div class="btn btn-primary rounded-circle align-self-auto hstack justify-content-center p-0" style="height:2rem; aspect-ratio:1;" data-dw-button>
+                                    <div class="d-flex dw-h6 fs-7 lh-1 m-0">
                                         @(user.GetTwoLetterInitials())
                                     </div>
                                 </div>
-                                <div class="text-wrap-nowrap">@user.Name</div>
+                            }
+                            <div class="text-wrap-nowrap">@user.Name</div>
+
                             </div>
                         </td>
                         <td><span class="text-body text-opacity-50">@user.Email</span></td>
-                        <td><span class="badge lh-sm text-body border">@user.GetStatus()</span></td>
                         <td>
                             <div class="vstack">
                                 @(Dynamicweb.Security.UserManagement.UserManagementServices.Users.GetUserById(user.ID)?.LastLogOnOn?.ToShortDateString())
@@ -82,55 +91,40 @@
                         </td>
                         <td>
                             <div class="hstack gap-3">
-                                <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2 ms-auto" data-dw-button="outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                    <span class="icon-2">
-                                        @ReadFile("/Files/Images/Icons/ellipsis.svg")
-                                    </span>
-                                </button>
-                                <ul class="dropdown-menu shadow-sm p-1 fs-7">
-                                    <li>
-                                        @if (Pageview.User?.ID != user.ID)
-                                        {
-                                            <form method="get">
-                                                <input type="hidden" name="NowImpersonating" value="true" />
-                                                <button type="submit" name="DWExtranetSecondaryUserSelector" value="@user.ID" class="dropdown-item hstack pe-4">
-                                                    <span class="icon-2 me-2">
-                                                        @ReadFile("/Files/Images/Icons/user-group.svg") 
-                                                    </span>
-                                                    @Translate("Impersonate")
-                                                </button>
-                                            </form>
-                                        }
-                                        else
-                                        {
-                                            <a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item hstack pe-4" title="@Translate("Stop impersonation")">
-                                                <span class="icon-2 me-2">@ReadFile("/Files/Images/Icons/arrows-repeat.svg")</span>
-                                                <span>
-                                                    @Translate("Switch back to") @(UserContext.Current.ImpersonatingUser?.Name)
-                                                </span>
-                                            </a>
-                                        }
-                                    </li>
-                                </ul>
-                                <button type="button" class="btn btn-outline-secondary text-body hstack border-0 p-2 stretched-link" data-dw-button="outline-secondary" data-bs-toggle="collapse"  data-bs-target="#user_@(user.ID)" aria-expanded="false" aria-controls="user_@(user.ID)">
-                                    <span class="collapse-chevron-icon"></span>
-                                </button>
+                                @if (Pageview.User?.ID != user.ID)
+                                {
+                                    <form method="get" class="me-3">
+                                        <input type="hidden" name="NowImpersonating" value="true" />
+                                        <button 
+                                        type="submit" 
+                                        name="DWExtranetSecondaryUserSelector" 
+                                        value="@user.ID" 
+                                        class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" 
+                                        data-dw-button
+                                        data-bs-toggle="tooltip" data-bs-placement="top"
+                                        data-bs-title="@Translate("Impersonate")"
+                                        title="@Translate("Impersonate")"
+                                        >
+                                            <span class="icon-2">
+                                                @ReadFile("/Files/Images/Icons/user-group.svg") 
+                                            </span>
+                                        </button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="btn btn-secondary text-body hstack border-0 p-2 position-relative z-2 me-3" 
+                                    data-dw-button
+                                    data-bs-toggle="tooltip" data-bs-placement="top"
+                                    data-bs-title="@Translate("Switch back to") @(UserContext.Current.ImpersonatingUser?.Name)"
+                                    title="@Translate("Stop impersonation")"
+                                    >
+                                        <span class="icon-2">@ReadFile("/Files/Images/Icons/arrows-repeat.svg")</span>
+                                    </a>
+                                }
                             </div>
                         </td>
-                    </tr>
-                    <tr class="collapse" id="user_@(user.ID)">
-                        <td colspan="6" class="text-body text-opacity-75" style="background-color:rgba(var(--bs-body-color-rgb), .02);">
-                            <div class="grid grid-3 gap-3">
-                                @* Contact *@
-                                <div class="vstack">
-                                    <div class="fw-bold mb-0">@Translate("Contact information")</div>
-                                    <div>@(user.Name)</div>
-                                    <div>@(user.Email)</div>
-                                    <div>@(user.Phone)</div>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
+                    </tr>                    
                 }
 
                 @if( Model.Users.Count() < 1 )
