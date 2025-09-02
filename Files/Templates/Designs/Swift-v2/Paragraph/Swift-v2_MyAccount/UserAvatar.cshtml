@@ -1,0 +1,157 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Frontend.Navigation
+@using Dynamicweb.Content
+@using Dynamicweb.Ecommerce.Common
+@using Dynamicweb.Security.UserManagement
+@{
+	int myAccountPageId = GetPageIdByNavigationTag("MyAccountPage") != 0 ? GetPageIdByNavigationTag("MyAccountPage") : Pageview.ID;
+	if (Model.Item.TryGetLink("MyAccountPage", out var linkPage))
+	{
+		myAccountPageId = linkPage.PageId;
+	}
+}
+
+<div class="nav-wrapper" data-swift-menu="@Model.ID">
+	<div class="nav-item position-static">
+		
+		@if(Pageview?.User is null)
+		{
+			<a href="@(SearchEngineFriendlyURLs.GetFriendlyUrl(myAccountPageId))" class="hstack me-auto p-1 position-relative nav-link" role="button">
+        
+				<div class="btn btn-primary rounded-circle hstack justify-content-center p-0 me-2" style="height:2rem; aspect-ratio:1;" data-dw-button="primary">
+					@if (Model.Item.TryGetString("Icon", out var icon) && icon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+					{
+						<span class="icon-2 pe-none">@ReadFile(icon)</span>
+					}
+				</div>
+
+				@if (Model.Item.TryGetString("Title", out string title))
+				{
+					<div class="fw-bold fs-7">@title</div>
+				}
+				
+			</a>
+		}
+		else 
+		{
+			<button class="btn p-0 border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvas_@Model.ID" aria-controls="offcanvas_@Model.ID" aria-label="@Translate("Navigation open button")">
+				@RenderPartial("CustomerCenter/CustomerCenterUserAvatar.cshtml", ContentViewModelFactory.CreateUserViewModel(Pageview?.User))
+			</button>
+			
+			<aside class="offcanvas offcanvas-end border-0" tabindex="-1" id="offcanvas_@Model.ID" data-dw-colorscheme="light">
+		
+				<div class="offcanvas-header p-4 position-relative">
+					
+					<button type="button" class="btn btn-close" data-dw-button data-bs-dismiss="offcanvas" aria-label="@Translate("Close navigation")"></button>
+
+				</div>
+
+				<div class="offcanvas-body px-4 position-relative pt-0 vstack">
+
+					<div class="dw-h5">@(Model.Item.GetString("Title", string.Empty))</div>
+
+					@{						
+						var nav = Navigation.GetNavigationViewModel(new NavigationSettings(){
+							RootPageId = myAccountPageId,
+							StartLevel = 1,
+							StopLevel = 10,
+							IncludeFoldersAndHidden = true,
+							ExpandMode = ExpandMode.All,
+						});
+
+						if(nav.Nodes.Any())
+						{
+							<nav class="list-group gap-1 fs-7 pt-1" role="navigation" style="--bs-list-group-border-width: 0; --bs-list-group-action-hover-bg: rgba(var(--dw-color-foreground-rgb), .05); --bs-list-group-action-active-bg: rgba(var(--dw-color-foreground-rgb), .1); --bs-list-group-active-bg: rgba(var(--dw-color-foreground-rgb), .08);">
+								@foreach (var node in nav.Nodes)
+								{
+									if (node.ShowInMenu){
+										await RenderNavItem(node);
+									}
+								}
+							</nav>
+						}
+					}
+
+					<nav class="hstack gap-2 mt-auto pt-3 flex-wrap" role="navigation">
+						@if (UserContext.Current.ImpersonatingUser != null)
+						{
+							<a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="btn btn-outline-secondary hstack fs-8 py-2 px-3" data-dw-button="outline-secondary">
+								<span class="icon-2 me-2">@ReadFile("/Files/Images/Icons/arrows-repeat.svg")</span>
+								<span>
+									@Translate("Switch back to") @(UserContext.Current.ImpersonatingUser.Name)
+								</span>
+							</a>
+						}
+						<a href="/Admin/Public/ExtranetLogoff.aspx?redirect=no" class="btn btn-secondary hstack fs-8 py-2 px-3" data-dw-button="secondary">
+							<span class="icon-2 me-2">@ReadFile("/Files/Images/Icons/arrow-right-from-bracket.svg")</span>
+							@Translate("Sign out")
+						</a>
+					</nav>
+				</div>
+			</aside>
+		}	
+
+	</div>
+</div>
+
+@{
+	async Task RenderNavItem(NavigationTreeNodeViewModel node)
+	{
+		var pageIcon = string.Empty;
+		var nodePage = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
+		if (nodePage?.PropertyItem?.TryGetValue("Icon", out object pageIconValue) ?? false)
+		{
+			pageIcon = Dynamicweb.Core.Converter.ToString(pageIconValue);
+		}
+		bool hasNodes = node.Nodes.Any();
+
+		if (node.IsClickable)
+		{
+			<div class="list-group-item list-group-item-action hstack rounded @(node.IsActive || node.InPath ? "active" : null)" style="@(node.IsActive || node.InPath ? "z-index:initial;" : null)" x-data="{ open: @(node.IsActive || node.InPath ? "true" : "false") }">
+
+				<a class="hstack flex-fill text-decoration-none" aria-current="@(node.IsActive)" href="@(node.Link)">
+					@if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+					{
+						<span class="icon-2 me-2">@ReadFile(pageIcon)</span>
+					}
+					<span>@node.Name</span>
+				</a>
+				
+				@if (hasNodes)
+				{	
+					<button class="btn btn-link hstack p-2 position-absolute end-0 top-50 translate-middle-y" data-dw-button type="button" @@click="open = ! open">
+						<span class="icon-2">@ReadFile("/Files/Images/Icons/chevron-right.svg")</span>
+					</button>
+
+					<aside class="offcanvas offcanvas-end border-0" x-bind:class="open ? 'offcanvas-animate-in visible' : 'offcanvas-animate-out visible'" tabindex="-1" data-dw-colorscheme="light">
+						<div class="offcanvas-header px-4 hstack justify-content-between">
+							<button type="button" class="btn btn-link hstack p-2" data-dw-button @@click="open = ! open">
+								<span class="icon-2">@ReadFile("/Files/Images/Icons/chevron-left.svg")</span>
+							</button>
+							<div class="fw-bold">@(node.Name)</div>	
+							<button type="button" class="btn btn-close ms-0" data-bs-dismiss="offcanvas" data-bs-target="#offcanvas_@(Model.ID)" aria-label="@Translate("Navigation close button")"></button>
+						</div>
+						<div class="offcanvas-body px-4 pt-0">
+							<nav class="list-group gap-1 fs-7 rounded-0 pt-1" role="navigation" style="--bs-list-group-border-width: 0; --bs-list-group-action-hover-bg: rgba(var(--dw-color-foreground-rgb), .05); --bs-list-group-action-active-bg: rgba(var(--dw-color-foreground-rgb), .1); --bs-list-group-active-bg: rgba(var(--dw-color-foreground-rgb), .08);">
+								@foreach (var subnode in node.Nodes)
+								{
+									await RenderNavItem(subnode);
+								}           
+							</nav>
+						</div>
+					</aside>
+				}
+			</div>
+		}
+		else
+		{
+			<h6 class="fs-8 mt-3 mb-2  text-body text-opacity-50 text-uppercase">@node.Name</h6>
+			
+			@foreach (var subnode in node.Nodes)
+			{
+				await RenderNavItem(subnode);
+			}
+		}
+	}
+}
