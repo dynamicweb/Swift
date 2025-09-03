@@ -1,0 +1,88 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<PageViewModel>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Frontend.Navigation
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.Products
+@using Dynamicweb.Security.UserManagement
+
+@{
+    var navigationSettings = new NavigationSettings();
+    navigationSettings.ExpandMode = ExpandMode.All;
+    navigationSettings.IncludeFoldersAndHidden = true;
+    navigationSettings.StartLevel = 2;
+    navigationSettings.StopLevel = 5;
+    var sidebarNav = Navigation.GetNavigationViewModel(navigationSettings);
+
+    <nav class="list-group gap-1 fs-7 rounded-0 pt-1" style="--bs-border-width: 0; --bs-list-group-action-hover-bg: rgba(var(--dw-color-foreground-rgb), .05); --bs-list-group-action-active-bg: rgba(var(--dw-color-foreground-rgb), .1); --bs-list-group-active-bg: rgba(var(--dw-color-foreground-rgb), .08);" role="navigation">
+        @foreach (var node in sidebarNav.Nodes)
+        {
+            if (node.ShowInMenu){
+                await RenderNavItem(node);
+            }
+        }
+    </nav>
+
+    @if (Pageview.User != null)
+    {			
+        <nav class="hstack gap-2 mt-auto pt-3 flex-wrap" role="navigation">
+
+            @if (UserContext.Current.ImpersonatingUser != null)
+            {
+                <a href="Default.aspx?ID=@(Pageview.ID)&DwExtranetRemoveSecondaryUser=1" class="btn btn-outline-secondary hstack fs-8 py-2 px-3" data-dw-button="outline-secondary">
+                    <span class="icon-2 me-2">@ReadFile("/Files/Images/Icons/arrows-repeat.svg")</span>
+                    <span>
+                        @Translate("Switch back to") @(UserContext.Current.ImpersonatingUser.Name)
+                    </span>
+                </a>
+            }
+            <a href="/Admin/Public/ExtranetLogoff.aspx?redirect=no" class="btn btn-secondary hstack fs-8 py-2 px-3" data-dw-button="secondary">
+                <span class="icon-2 me-2">@ReadFile("/Files/Images/Icons/arrow-right-from-bracket.svg")</span>
+                @Translate("Sign out")
+            </a>
+        </nav>
+    }
+
+    async Task RenderNavItem(NavigationTreeNodeViewModel node)
+    {
+        var pageIcon = string.Empty;
+        var nodePage = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
+        if (nodePage?.PropertyItem?.TryGetValue("Icon", out object pageIconValue) ?? false)
+        {
+            pageIcon = Dynamicweb.Core.Converter.ToString(pageIconValue);
+        }
+
+        if (node.IsClickable)
+        {
+            <a class="list-group-item list-group-item-action rounded hstack gap-2 @(node.IsActive ? "active" : null)" aria-current="@(node.IsActive)" href="@(node.Link)">
+                @if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+                {
+                    <span class="icon-2">@ReadFile(pageIcon)</span>
+                }
+                <span>@node.Name</span>
+                @if (node.Nodes.Any())
+                {
+                    <span class="icon-2 ms-auto">@ReadFile("/Files/Images/Icons/chevron-right.svg")</span>
+                }
+            </a>
+            
+            @if(node.InPath && node.Nodes.Any()) 
+            {
+                <div class="border-3 border-start ps-2">
+                    @foreach (var subnode in node.Nodes)
+                    {
+                        await RenderNavItem(subnode);
+                    }           
+                </div>
+            }
+        }
+        else
+        {
+            <h6 class="fs-8 mt-3 mb-2  text-body text-opacity-50 text-uppercase">@node.Name</h6>
+            
+            @foreach (var subnode in node.Nodes)
+            {
+                await RenderNavItem(subnode);
+            }
+        }
+    }
+}

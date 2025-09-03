@@ -1,5 +1,140 @@
 # Changelog
 
+# v2.1.0
+
+## [v2.1.0] - 01-07-2025
+
+Swift v.2.1.0 introduces new features, accessibility improvements, enhancements to user modules together with minor bug fixes. 
+Highlights include the new **Posts Lists** feature for article-style content, expanded layout flexibility, and updates to ensure better WCAG compliance across video and map components.
+> [!NOTE]
+> **Requirements**
+>
+> * **Swift v2.1.0 requires DynamicWeb v10.17 `*` or newer, if Shipmondo is used, it requires Shipmondo.dll version 10.0.5 (installed) or newer**
+>
+
+`* Swift v2.x does not run on DynamicWeb 9`
+
+## Create Article-Style Content with Posts and Posts Lists
+Swift now offers a streamlined way to structure and present article-style content using Posts and Posts Lists.
+
+This feature allows editors to build flexible, visually engaging overviews — ideal for blogs, news sections, announcements, and other post-based content — using two methods tailored to different technical needs:
+
+You can display lists of pages as posts using:
+
+* Post List Paragraph – an intuitive, editor-friendly approach
+* Query Publisher – a more advanced, query-based method for developers
+
+### Method 1: Post List Paragraph
+Designed for editors who prefer a visual, no-code experience, the Post List Paragraph makes it easy to display posts by selecting a layout and (optionally) a parent source page.
+
+Key Benefits:
+* Intuitive paragraph editor interface
+* No coding required
+* Layout-driven and flexible
+* Ideal for landing pages, front pages, or section overviews
+
+### Method 2: Query Publisher (Advanced)
+For greater flexibility, the Query Publisher app lets developers filter and display posts using a query-based setup.
+
+Use Cases:
+* Advanced filtering or dynamic list generation
+* Full control over layout via templates
+
+> [!NOTE]
+> * Both methods rely on a Posts index
+> * The SEO → Image field defines the image shown in list views
+
+### Categorize Your Posts
+You can organize posts into categories using Swift’s folder structure. This makes it easy to manage and present content grouped by topic or section — useful for filtering and visual grouping in post overviews.
+
+## User Module Improvements & Template Updates
+To improve maintainability and follow best practices, user modules and templates have been renamed and restructured.
+
+### Renamed User Modules
+
+| Previous Name            | New Name                |
+| ------------------------ | ----------------------- |
+| Users - Login            | Users - Authentication  |
+| Users - Recover password | Users - Forgot Password |
+
+### Affected User Modules
+* Users - Create user
+* Users - Authentication (formerly Login)
+* Users - Forgot Password (formerly Recover password)
+* Users - Edit user
+* Users - View user
+* Users - Manage addresses
+* Users - Change password
+
+> [!IMPORTANT]
+>
+> If you're already using these modules, please review all related pages after upgrading to ensure updated templates are correctly selected in each app configuration.
+>
+
+### User Module Additions and Changes
+
+#### Create User
+* Changed flow
+	* When a user creates an account, the username is set during registration, and the password is set afterward via email verification
+
+#### View User
+* Added impersonation list search
+* Added employee list, configurable by selecting users or user groups
+
+#### Manage Addresses
+* Option to allow/disallow address editing
+* Support for active/inactive addresses
+  * Toggle visibility based on edit permissions 
+* Option to display addresses from users with the same customer number
+
+#### Login
+* Added links to Forgot Password and Create User
+
+#### General Improvements
+* Improved validation messages across all user module forms
+
+## Accessibility Enhancements
+Focused improvements have been made to enhance accessibility and align with WCAG standards. 
+Updates include improved support for screen readers, semantic clarity, and keyboard navigation across video and map components.
+
+### Video
+* Poster: Improved semantic structure and nullable reference handling
+* Player: Updated for WCAG compliance, including keyboard and screen reader support
+
+### Maps
+* Simple map: Added title attribute to iframe for screen reader accessibility
+* Location map:
+  * Improved keyboard accessibility for list actions
+  * Added ARIA labels for assistive technologies
+  * "View Location" now supports translation
+  * New Directions button added
+  * Cleaned up variable names and accessibility-related code
+
+## Rows
+Added support for more flexible grid structures:
+* New row options with 10 and 12 columns
+
+## Bug Fixes
+* Itemtypes: Fixed back-in-stock email errors
+* Itemtypes: Back-in-stock notification now supports button translations
+* Itemtypes: Slider paragraph – removed hover arrows on mobile
+* Itemtypes: Card paragraph – fixed image fill in CardTitleTop layout
+* Itemtypes: Product media – added fallbacks for Visual Editor
+* Itemtypes: Poster – fixed layout preview height in paragraph editor
+* Itemtypes: Mini cart – navigating from pending quote now goes directly to cart
+* General: Product links now URL encoded
+* General: Digital Assets Portal – corrected email export path parameters
+* General: Digital Assets Portal – fixed broken PDF image in asset info
+* Cart: VAT info now properly displayed
+
+## Changed
+* Itemtypes: Page restrictions – Cleaned up restrictions logic
+* Itemtypes: Feature paragraph – Now supports image files in addition to SVG
+* Itemtypes: Image alt text – Removed the field toggle in the paragraph editor to ensure the alt text field is always visible, highlighting its accessibility importance
+* Itemtypes: Image link – Enabled field toggle in the paragraph editor for the link field
+* Itemtypes: Header paragraphs – Styling improvements for better visual consistency
+* Itemtypes: Page structure – Updated restrictions to allow folders under pages
+
 # v2.0.0
 
 ## [v2.0.0] - 29-04-2025

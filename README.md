@@ -3,7 +3,7 @@
 Swift is a **customizable storefront** which provides a solid foundation for building tailored ecommerce websites with unique designs.
 Built upon the DynamicWeb 10 platform, Swift offers a robust foundation for businesses aiming to establish a strong and visually appealing online presence and allows you to get started quickly through simple configuration. For more complex requirements, where coding is necessary, Swift makes the process seamless, enabling you to bring your vision to life with ease.
 
-![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=black&label=Swift%20Release) [![GitHub DW10](https://img.shields.io/badge/DynamicWeb10%20Release-v10.15.0-blue)](https://doc.dynamicweb.dev/) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.3.3-purple)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-darkblue)](https://doc.dynamicweb.dev/swift/getting-started/index.html) 
+![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=black&label=Swift%20Release) [![GitHub DW10](https://img.shields.io/badge/DynamicWeb10%20Release-v10.17.0-blue)](https://doc.dynamicweb.dev/) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.3.3-purple)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-darkblue)](https://doc.dynamicweb.dev/swift/getting-started/index.html) 
 
 [Key features](#key-features) • [Build styles and scripts](#build-styles-and-scripts-npm) • [Requirements, Hosting environment and install](#requirements-hosting-environment-and-install) • [Database and demo data](#database-and-demo-data)
 
@@ -29,6 +29,7 @@ Swift uses npm to handle and compile styles and bundle scripts, assets and libra
 
 ## Requirements, Hosting environment and install
 
+* **Swift v2.1.0** requires **DynamicWeb version 10.17** and **Shipmondo dll v2.0.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
 * **Swift v2.0.0** requires **DynamicWeb version 10.15** and **Shipmondo dll v2.0.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
 
 * The baseline database is a .bacpac file created using the Microsoft SQL Server 2019 standard (version SQL server 15.0.2080.9) using SQL Server Management Studio 2019 version 15.018040.0.
@@ -52,3 +53,4 @@ After following these guides you will have a freshly installed DynamicWeb soluti
 | Demo Product Images | [Download Demo Product Images](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-2 "Download Demo Product Images") |
 | Demo Content Images | [Download Demo Content Images](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-2 "Download Demo Content Images") |
 | Styles | [Download Styles](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-2  "Download Styles") |
+| Styles | [Download Digital Assets](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-2  "Download Digital Assets") |

@@ -5,28 +5,33 @@
     string queryName = "PostsCurrentPage";
     string repositoryName = "Post";
     string layout = "PostListWithDate";
+    string facetGroup = "PostFacets";
     int parentPageId = Model.Item.GetLink("ParentPage")?.PageId != null ? Model.Item.GetLink("ParentPage").PageId : Pageview.Page.ID;
 
-    string queryPath =
-    $"/dwapi/query?QueryName={queryName}&RepositoryName={repositoryName}&AreaId={Pageview?.Area.ID}&ParentPageID={parentPageId}";
-    queryPath += !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("postq")) ?
-    $"&postq={Dynamicweb.Context.Current.Server.UrlEncode(Dynamicweb.Context.Current.Request.QueryString.Get("postq"))}" :
-    string.Empty;
+    string queryPath = $"/dwapi/query?QueryName={queryName}&RepositoryName={repositoryName}&AreaId={Pageview?.Area.ID}&FacetGroupNames={facetGroup}";
+    queryPath += Dynamicweb.Context.Current?.Request.Url.Query.Replace("?", "&");
+    queryPath += !queryPath.ToLower().Contains("parentpageid") ? $"&ParentPageID={parentPageId}" : string.Empty;
 }
 
 <div>
-    <div hx-get="@queryPath" hx-trigger="intersect once" hx-headers='{"x-dw-template": "/Designs/Swift-v2/QueryPublisher/@(layout).cshtml", "accept": "text/html"}'>
+    <div hx-get="@queryPath" 
+    hx-trigger="intersect once" 
+    hx-headers='{"x-dw-template": "/Designs/Swift-v2/QueryPublisher/@(layout).cshtml", "accept": "text/html"}'
+    hx-on:htmx:response-error="this.innerHTML = document.querySelector('#response-error-@(Model.ID)').innerHTML">
         <div class="grid gap-4">
             @for (var i = 0; i < 4; i++)
             {
                 <div class="g-col-12 card text-decoration-none">
                     <div class="grid gap-0">
                         <div class="g-col-12 g-col-md-4">
-                            <img src="https://placehold.co/600x400" class="img-fluid rounded-start" alt="...">
+                            <div class="card-img-top bg-body text-body bg-opacity-10 icon-6" style="aspect-ratio: 16/9; --bs-body-bg-rgb: var(--dw-color-foreground-rgb); --bs-text-opacity: .25;">
+                                @ReadFile("/Files/Images/Icons/image.svg")
+                            </div>
                         </div>
                         <div class="g-col-12 g-col-md-8">
                             <div class="card-body">
                                 <p class="card-text placeholder w-75"></p>
+                                <p class="card-text placeholder w-50"></p>
                                 <div class="opacity-75 fs-7">@DateTime.Now.ToShortDateString()</div>
                             </div>
                         </div>
@@ -36,3 +41,9 @@
         </div>
     </div>
 </div>
+
+<template id="response-error-@(Model.ID)">
+    <div class="alert alert-dark w-100 text-center" role="alert">
+        @Translate("No results found")
+    </div>
+</template>

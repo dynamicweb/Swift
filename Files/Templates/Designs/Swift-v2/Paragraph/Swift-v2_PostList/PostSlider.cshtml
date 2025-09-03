@@ -5,38 +5,41 @@
     string queryName = "PostsCurrentPage";
     string repositoryName = "Post";
     string layout = "PostSlider";
+    string facetGroup = "PostFacets";
     int parentPageId = Model.Item.GetLink("ParentPage")?.PageId != null ? Model.Item.GetLink("ParentPage").PageId : Pageview.Page.ID;
 
-    string queryPath =
-    $"/dwapi/query?QueryName={queryName}&RepositoryName={repositoryName}&AreaId={Pageview?.Area.ID}&ParentPageID={parentPageId}";
-    queryPath += !string.IsNullOrEmpty(Dynamicweb.Context.Current.Request.QueryString.Get("postq")) ?
-    $"&postq={Dynamicweb.Context.Current.Server.UrlEncode(Dynamicweb.Context.Current.Request.QueryString.Get("postq"))}" :
-    string.Empty;
+    string queryPath = $"/dwapi/query?QueryName={queryName}&RepositoryName={repositoryName}&AreaId={Pageview?.Area.ID}&FacetGroupNames={facetGroup}";
+    queryPath += Dynamicweb.Context.Current?.Request.Url.Query.Replace("?", "&");
+    queryPath += !queryPath.ToLower().Contains("parentpageid") ? $"&ParentPageID={parentPageId}" : string.Empty;
 
     AddStylesheet("/Files/Templates/Designs/Swift-v2/Assets/lib/swiffy-slider/dist/css/swiffy-slider.min.css");
 	AddScript("/Files/Templates/Designs/Swift-v2/Assets/lib/swiffy-slider/dist/js/swiffy-slider.min.js");
 }
 
 <div>
-    <div hx-get="@queryPath" hx-trigger="intersect once" hx-headers='{"x-dw-template": "/Designs/Swift-v2/QueryPublisher/@(layout).cshtml", "accept": "text/html"}'>
-        <div class="swiffy-slider">
-            <div class="d-grid gap-2" style="grid-template-columns: repeat(auto-fill, minmax(120px, 1fr))">
-                @for (var i = 0; i < 4; i++)
-                {
-                    <div class="card" aria-hidden="true">
-                        <img src="https://placehold.co/600x400" class="card-img-top" alt="...">
-                        <div class="card-body">
-                            <p class="card-text placeholder w-75"></p>
-                        </div>
+    <div hx-get="@queryPath"
+        hx-trigger="intersect once"
+        hx-headers='{"x-dw-template": "/Designs/Swift-v2/QueryPublisher/@(layout).cshtml", "accept": "text/html"}'
+        hx-on:htmx:response-error="this.innerHTML = document.querySelector('#response-error-@(Model.ID)').innerHTML">
+        <div class="d-grid gap-3" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))">
+            @for (var i = 0; i < 4; i++)
+            {
+                <div class="card" aria-hidden="true">
+                    <div class="card-img-top bg-body text-body bg-opacity-10 icon-6" style="aspect-ratio: 16/9; --bs-body-bg-rgb: var(--dw-color-foreground-rgb); --bs-text-opacity: .25;">
+                        @ReadFile("/Files/Images/Icons/image.svg")
                     </div>
-                }
-            </div>
-
-            <div class="slider-indicators">
-                <button class="active"></button>
-                <button></button>
-                <button></button>
-            </div>
+                    <div class="card-body">
+                        <p class="card-text placeholder w-75"></p>
+                        <p class="card-text placeholder w-50"></p>
+                    </div>
+                </div>
+            }
         </div>
     </div>
 </div>
+
+<template id="response-error-@(Model.ID)">
+    <div class="alert alert-dark w-100 text-center" role="alert">
+        @Translate("No results found")
+    </div>
+</template>

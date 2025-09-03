@@ -1,0 +1,96 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.PageViewModel>
+@using System
+@using Dynamicweb.Frontend
+@using Dynamicweb.Frontend.Devices
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Ecommerce.Products
+@MasterPageFile("Swift-v2_Master.cshtml")
+
+@{
+    bool isContentOnly = Dynamicweb.Core.Converter.ToBoolean(Dynamicweb.Context.Current?.Request.QueryString.Get("ContentOnly") ?? "false");
+    // Page headers
+    LinkViewModel headerLink;
+    if (!isContentOnly && ((Pageview.Device == DeviceType.Desktop && (Model.Area?.Item?.TryGetLink("HeaderDesktop", out headerLink) ?? false)) ||
+    !isContentOnly && (Pageview.Device == DeviceType.Mobile || Pageview.Device == DeviceType.Tablet) && (Model.Area?.Item?.TryGetLink("HeaderMobile", out headerLink) ?? false)))
+    {
+        string? headerCss = null;
+        var headerPage = ContentViewModelFactory.CreatePageInfoViewModel(Dynamicweb.Content.Services.Pages.GetPage(headerLink.PageId));
+        if ((headerPage.Item?.TryGetString("HeaderPosition", out string headerPosition) ?? false) && !headerPosition.Equals("static", StringComparison.OrdinalIgnoreCase))
+        {
+            headerCss = headerPosition;
+        }
+        <header data-swift-page-header="@(headerLink.PageId)" class="@headerCss" data-dw-colorscheme="@headerPage.ColorScheme?.Id">
+            @RenderGrid(headerLink.PageId)
+        </header>
+    }
+}
+
+<main id="content" data-dw-colorscheme="@(Model.ColorScheme?.Id ?? Model.Area?.ColorScheme?.Id)">
+	
+	<div data-swift-container class="grid row-gap-0 py-3 py-lg-5">
+
+		<aside class="g-col-12 g-col-lg-4 g-col-xl-3 d-none d-lg-block pe-lg-4">
+            
+            @if (Model.CurrentUser is not null)
+            {
+                @RenderPartial("CustomerCenter/CustomerCenterUserInfo.cshtml", Model.CurrentUser)
+            }
+            
+            @RenderPartial("CustomerCenter/CustomerCenterNavigation.cshtml")
+           
+		</aside>
+
+		<div class="g-col-12 g-col-lg-8 g-col-xl-9">
+			@Model.Grid("Grid", "Grid", "default:true;sort:1", "Page")
+		</div>
+
+	</div>
+	
+</main>
+
+@{ // Page footers
+    LinkViewModel footerLink;
+    if (!isContentOnly && ((Pageview.Device == DeviceType.Desktop) && (Model.Area?.Item?.TryGetLink("FooterDesktop", out footerLink) ?? false)) ||
+    !isContentOnly && ((Pageview.Device == DeviceType.Mobile || Pageview.Device == DeviceType.Tablet) && (Model.Area?.Item?.TryGetLink("FooterMobile", out footerLink) ?? false)))
+    {
+        var footerPage = ContentViewModelFactory.CreatePageInfoViewModel(Dynamicweb.Content.Services.Pages.GetPage(footerLink.PageId));
+        <footer data-swift-page-footer="@(footerLink.PageId)" data-dw-colorscheme="@footerPage.ColorScheme?.Id">
+            @RenderGrid(footerLink.PageId)
+        </footer>
+    }
+}
+
+@if (isContentOnly)
+{    
+    return;
+}
+
+@* Favorite toast *@
+<div aria-live="polite" aria-atomic="true">
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+        <div id="favoriteNotificationToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto">@Translate("Favorite list updated")</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="@Translate("Close")"></button>
+            </div>
+            <div class="toast-body d-flex gap-3">
+                <div id="favoriteNotificationToast_Image"></div>
+                <div id="favoriteNotificationToast_Text"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Modal for dynamic content *@
+<div class="modal fade js-product" id="DynamicModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-md">
+        <div class="modal-content" id="DynamicModalContent">
+            @* The content here comes from an external request *@
+        </div>
+    </div>
+</div>
+
+@* Offcanvas for dynamic content *@
+<div class="offcanvas offcanvas-end" tabindex="-1" id="DynamicOffcanvas">
+    @* The content here comes from an external request *@
+</div>
