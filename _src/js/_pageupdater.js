@@ -108,8 +108,8 @@ const PageUpdater = (function () {
         }, 200); //Small delay to secure that the preloader is not loaded all the time
 
         //Fetch
-        let response = await fetch(url, { redirect: "follow" });
-        console.log("URL"+url)
+        let response = await fetch(url);
+
         if (response.ok) {
           PageUpdater.Success(
             response,
