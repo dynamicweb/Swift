@@ -82,6 +82,12 @@ const PageUpdater = (function () {
         : "Swift-v2_PageClean.cshtml";
       url += "&LayoutTemplate=" + layoutTemplate;
 
+      url = url.replace(/([?&]ProductID=)([^&]*)/, (_, pfx, val) => {
+        // protect pluses (encode "+" -> "%2B"); leave existing %2B untouched
+        const fixed = val.replace(/\+(?![0-9A-Fa-f]{2})/g, "%2B");
+        return pfx + fixed;
+      });
+
       //By default the UpdateFromUrl simply targets the element that makes the call. But you do also have the choice of setting the target
       var responseTargetElement = clickedButton.getAttribute(
         "data-response-target-element"
