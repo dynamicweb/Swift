@@ -5,7 +5,7 @@
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
-    string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview.ID}");
+    string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview.Page.ID}");
 }
 
 <header class="hstack gap-3 mb-4">
@@ -137,7 +137,7 @@
                             </span>
                         </span>
                     </th>
-                    <th>&nbsp;</th>
+                    <th>@Translate("Actions")</th>
                 </tr>
             </thead>
             <tbody>
@@ -164,7 +164,7 @@
                                     <span class="fs-8 text-body text-opacity-50">@(order.CreatedAt.ToShortTimeString())</span>
                                 </div>
                             </td>
-                            <td>@(order.OrderLines.Count())</td>
+                            <td>@(order.OrderLines.Where(x => x.OrderLineType == Dynamicweb.Ecommerce.Orders.OrderLineType.Product).Count())</td>
                             <td>
                                 <div class="text-price">@(order.Price.PriceFormatted)</div>
                             </td>
@@ -172,14 +172,14 @@
                                 @(order.Price.CurrencyCode)
                             </td>
                             <td>
-                                <span class="badge lh-sm" style="background-color:@(Dynamicweb.Ecommerce.Services.OrderStates.GetStateById(order.StateId).Color);">
+                                <span class="badge lh-sm bg-secondary" style="background-color:@(Dynamicweb.Ecommerce.Services.OrderStates.GetStateById(order.StateId).Color) !important">
                                     @(order.StateName)
                                 </span>
                             </td>
                             <td>
                                 <div class="hstack gap-3">
 
-                                    <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2 ms-auto" data-dw-button="outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button="outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         <span class="icon-2">
                                             @ReadFile("/Files/Images/Icons/ellipsis.svg")
                                         </span>
@@ -205,7 +205,7 @@
                                 <div class="grid grid-3 gap-3">
                                     @* Customer *@
                                     <div class="vstack">
-                                        <div class="fw-bold mb-0">@Translate("Customer information")</div>
+                                        <div class="fw-bold mb-0">@Translate("Billing")</div>
                                         <div>@(order.CustomerName)</div>
                                         <div>@(order.CustomerEmail)</div>
                                         <div>@(order.CustomerPhone)</div>
@@ -213,9 +213,11 @@
                                     @* Shipping *@
                                     <div class="vstack">
                                         <div class="fw-bold mb-0">@Translate("Shipping")</div>
+                                        <div>@(order.DeliveryCompany)</div>
                                         <div>@(order.DeliveryAddress)</div>
                                         <div>@(order.DeliveryAddress2)</div>
-                                        <div>@(order.DeliveryCity) @(order.DeliveryZip)</div>
+                                        <div>@(order.DeliveryZip) @(order.DeliveryCity)</div>
+                                        <div>@(order.DeliveryCountry.ToUpperInvariant())</div>
                                     </div>
                                     @* Summary *@
                                     <div class="vstack">
@@ -224,18 +226,36 @@
                                             <div>@Translate("Subtotal"):</div>
                                             <div class="text-price ms-auto">@(order.TotalPriceBeforeFeesAndTaxes.PriceFormatted)</div>
                                         </div>
-                                        <div class="hstack">
-                                            <div>@Translate("Shipping"):</div>
-                                            <div class="text-price ms-auto">@(order.ShippingFee.PriceFormatted)</div>
-                                        </div>
-                                        <div class="hstack">
-                                            <div>@Translate("Payment"):</div>
-                                            <div class="text-price ms-auto">@(order.PaymentFee.PriceFormatted)</div>
-                                        </div>
-                                        <div class="hstack">
-                                            <div>@Translate("Taxes"):</div>
-                                            <div class="text-price ms-auto">@(order.TotalTaxes.PriceFormatted)</div>
-                                        </div>
+                                        @if (order.ShippingFee.Price != 0.0) {
+                                            <div class="hstack">
+                                                <div>@Translate("Shipping"):</div>
+                                                <div class="text-price ms-auto">@(order.ShippingFee.PriceFormatted)</div>
+                                            </div>
+                                        }
+                                        @if (order.PaymentFee.Price != 0.0) {
+                                            <div class="hstack">
+                                                <div>@Translate("Payment"):</div>
+                                                <div class="text-price ms-auto">@(order.PaymentFee.PriceFormatted)</div>
+                                            </div>
+                                        }
+                                        @if (order.TotalTaxes.Price != 0.0) {
+                                            <div class="hstack">
+                                                <div>@Translate("Taxes"):</div>
+                                                <div class="text-price ms-auto">@(order.TotalTaxes.PriceFormatted)</div>
+                                            </div>
+                                        }
+                                        @if (order.Price.Vat != 0.0) {
+                                            <div class="hstack">
+                                                <div>@Translate("VAT") @(order.Price.VATPercent)%:</div>
+                                                <div class="text-price ms-auto">@(order.Price.VatFormatted)</div>
+                                            </div>
+                                        }
+                                        @if (order.TotalDiscount.Price != 0.0) {
+                                            <div class="hstack">
+                                                <div>@Translate("Discount"):</div>
+                                                <div class="text-price ms-auto">@(order.TotalDiscount.PriceFormatted)</div>
+                                            </div>
+                                        }
                                         <div class="hstack">
                                             <div>@Translate("Total"):</div>
                                             <div class="text-price ms-auto">@(order.Price.PriceFormatted)</div>
@@ -250,8 +270,8 @@
                                                 <div class="list-group-item hstack gap-3">
                                                     @if(orderline.GetProduct()?.DefaultImage.TryGetImageFileViewModel(out var image) is true)
                                                     {
-                                                        <div>
-                                                            <img class="img-thumbnail" src="@(image?.ToGetImage(new(){Width = 30, Ratio = "1/1"}))" alt="@orderline.ProductName)">
+                                                        <div class="d-flex img-thumbnail" style="inline-size: 40px; aspect-ratio: 1;">
+                                                            <img class="my-auto" src="@(image?.ToGetImage(new(){Height = 30, Width = 30, Ratio = "1/1", Crop = Dynamicweb.Imaging.ImageHandling.CropMode.KeepAspectRatio }))" alt="@(orderline.ProductName)">
                                                         </div>
                                                     }
                                                     <div class="vstack align-self-auto">
@@ -259,7 +279,7 @@
                                                         <div class="text-body text-opacity-75">@(orderline.ProductId)</div>
                                                     </div>
                                                     <div class="vstack align-self-auto text-end">
-                                                        <div>@(orderline.Price.PriceFormatted)</div>
+                                                        <div>@(orderline.UnitPrice.PriceFormatted)</div>
                                                         <div class="text-body text-opacity-75">@Translate("Qty"): @(orderline.Quantity)</div>
                                                     </div>
                                                 </div>
