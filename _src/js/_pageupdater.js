@@ -109,7 +109,7 @@ const PageUpdater = (function () {
 
         //Fetch
         let response = await fetch(url, { redirect: "follow" });
-
+        console.log("URL"+url)
         if (response.ok) {
           PageUpdater.Success(
             response,
