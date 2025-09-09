@@ -12,6 +12,7 @@ class LocationsMap extends HTMLElement {
     this.locationsListElement = null;
     this.searchbarElement = null;
     this.settings = {};
+    this.bindingAttrName = "data-swift-location"; 
   }
 
   connectedCallback() {
@@ -20,7 +21,7 @@ class LocationsMap extends HTMLElement {
     const bootstrap = () => {
       this.mapElement = this.querySelector('[data-swift-locations-map]');
       this.locationsListElement = this.querySelector('[data-swift-locations-list]');
-      this.searchbarElement = this.querySelector('[data-swift-searchbar]');
+      this.searchbarElement = this.querySelector('[data-swift-locationsearch]');
 
       if (!this.mapElement) {
         console.error("Map element not found inside <swift-locations-map> (expected [data-swift-locations-map]).");
@@ -235,7 +236,7 @@ class LocationsMap extends HTMLElement {
 
     if (template?.content) {
       const fragment = template.content.cloneNode(true);
-      this.bindByAttr(fragment, "data-swift", location);
+      this.bindByAttr(fragment, this.bindingAttrName, location);
       const container = document.createElement("div");
       container.appendChild(fragment);
       this.infoWindow.setContent(container);
@@ -294,9 +295,9 @@ class LocationsMap extends HTMLElement {
     if (template?.content) {
       inView.forEach(({ location, index }) => {
         const clone = document.importNode(template.content, true);
-        this.bindByAttr(clone, "data-swift", location);
+        this.bindByAttr(clone, this.bindingAttrName, location);
         const clickable =
-          clone.querySelector("[data-swift='button']") ||
+          clone.querySelector(`[${this.bindingAttrName}='button']`) ||
           clone.querySelector("button") ||
           clone.firstElementChild;
         if (clickable) {
