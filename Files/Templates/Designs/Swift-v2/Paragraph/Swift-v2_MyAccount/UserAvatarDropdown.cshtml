@@ -26,9 +26,9 @@
 					}
 				</div>
 
-				@if (Model.Item.TryGetString("Title", out string title))
+				@if (Model.Item.TryGetString("Title", out string? title))
 				{
-					<div class="fw-bold fs-7">@title</div>
+					<div class="fw-bold fs-7">@(title)</div>
 				}
 
 				<span class="icon-1 pe-none ms-2">@ReadFile("/Files/Images/Icons/chevron-down.svg")</span>
@@ -45,30 +45,30 @@
 
 		<ul class="dropdown-menu dropdown-menu-end dropdown-menu-shadow" style="min-inline-size: 12rem;" aria-labelledby="SignInDropdown_@Model.ID" data-dw-colorscheme="light">
 			
-				<div class="dropdown-header">
-					@if (Pageview?.User is not null)
-					{
-						<span class="text-body text-opacity-50 fs-8">
-							@if ( UserContext.Current.ImpersonatingUser is not null)
-							{
-								@Translate("Impersonated by") <span class="fw-bold">@(UserContext.Current.ImpersonatingUser?.Name)</span>
-							}
-							else 
-							{
-								@Translate("Signed in as")
-							}
-						</span>
-						<span class="fw-bold d-block">@(Pageview?.User?.Name)</span>
-					}
-					else 
-					{
-						@if (Model.Item.TryGetString("Title", out string title))
+			<li class="dropdown-header">
+				@if (Pageview?.User is not null)
+				{
+					<span class="text-body text-opacity-50 fs-8">
+						@if ( UserContext.Current.ImpersonatingUser is not null)
 						{
-							<div class="">@title</div>
+							@Translate("Impersonated by") <span class="fw-bold">@(UserContext.Current.ImpersonatingUser?.Name)</span>
 						}
+						else 
+						{
+							@Translate("Signed in as")
+						}
+					</span>
+					<span class="fw-bold d-block">@(Pageview?.User?.Name)</span>
+				}
+				else 
+				{
+					if (Model.Item.TryGetString("Title", out string? title))
+					{
+						<div>@(title)</div>
 					}
-				</div>
-				<hr class="dropdown-divider">
+				}
+			</li>
+			<li><hr class="dropdown-divider"></li>
 
 			@{
 				var nav = Navigation.GetNavigationViewModel(new NavigationSettings(){
@@ -78,14 +78,15 @@
 					IncludeFoldersAndHidden = true,
 					ExpandMode = ExpandMode.All,
 				});
-
-				if(nav.Nodes.Any()) {
+				
+				if(nav?.Nodes.Any() ?? false) {
 					foreach (var node in nav.Nodes)
 					{
 						if (node.ShowInMenu){
 							await RenderNavItem(node);
 						}
 					}
+					<li><hr class="dropdown-divider"></li>
 				}
 			}
 			
@@ -107,7 +108,8 @@
 					</a>
 				</li>
 			}
-			else {
+			else 
+			{
 				<li>
 					<a href="@(SearchEngineFriendlyURLs.GetFriendlyUrl(Services.Pages.GetPage(GetPageIdByNavigationTag("SignInPage"))?.ID ?? 0))" class="dropdown-item fs-7 hstack">
 						<span class="icon-2 me-2">@ReadFile("/Files/Images/Icons/arrow-right-to-bracket.svg")</span>
@@ -126,16 +128,14 @@
 	{
 		var pageIcon = string.Empty;
 		var nodePage = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
-		if (nodePage?.PropertyItem?.TryGetValue("Icon", out object pageIconValue) ?? false)
+		if (nodePage?.PropertyItem?.TryGetValue("Icon", out object? pageIconValue) ?? false)
 		{
 			pageIcon = Dynamicweb.Core.Converter.ToString(pageIconValue);
 		}
-		bool hasNodes = node.Nodes.Any();
 
 		if (node.IsClickable)
 		{
 			<li>
-
 				<a class="dropdown-item hstack fs-7 flex-fill text-decoration-none @(node.IsActive ? "active" : null)" @(node.IsActive ? "aria-current='page'" : null) href="@(node.Link)">
 					@if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
 					{
@@ -147,14 +147,14 @@
 		}
 		else
 		{
-			<h6 class="fs-8 dropdown-header m-0 text-uppercase">@node.Name</h6>
+			<li><h6 class="fs-8 dropdown-header text-body text-opacity-50 m-0 text-uppercase">@node.Name</h6></li>
 			
-			@foreach (var subnode in node.Nodes)
+			@foreach (var subnode in node.Nodes.Where(node => node.ShowInMenu))
 			{
 				await RenderNavItem(subnode);
 			}
 
-			<hr class="dropdown-divider">
+			<li><hr class="dropdown-divider"></li>
 		}
 	}
 }
