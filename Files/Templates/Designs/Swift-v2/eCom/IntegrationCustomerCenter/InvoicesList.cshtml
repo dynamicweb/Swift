@@ -2,7 +2,7 @@
 @using Dynamicweb.Ecommerce.Prices
 
 @{
-	var invoiceList = GetLoop("Ecom:IntegrationCustomerCenter.InvoiceLoop");
+	var list = GetLoop("Ecom:IntegrationCustomerCenter.InvoiceLoop");
 	string shopId = Pageview.Area.EcomShopId != null ? Pageview.Area.EcomShopId : string.Empty;
 }
 
@@ -24,12 +24,12 @@
 				</tr>
 			</thead>
 			<tbody>
-				@foreach (LoopItem invoice in invoiceList)
+				@foreach (LoopItem item in list)
 				{
-					var currency = Dynamicweb.Ecommerce.Services.Currencies.GetCurrency(invoice.GetString("CurrencyCode")) ?? Dynamicweb.Ecommerce.Common.Context.Currency;
-					string price = new PriceInfo(currency) { PriceWithoutVAT = invoice.GetDouble("totalAmountIncVat") }.PriceWithoutVATFormatted;
-					string orderDate = !string.IsNullOrEmpty(invoice.GetString("orderDate")) ? invoice.GetDate("orderDate").TimeOfDay.Ticks > 0 ? invoice.GetDate("orderDate").ToString(Dynamicweb.Core.Helpers.DateHelper.DateOnlyFormatStringMedium) : invoice.GetDate("orderDate").ToShortDateString() : "";
-					string orderId = invoice.GetString("id");
+					var currency = Dynamicweb.Ecommerce.Services.Currencies.GetCurrency(item.GetString("CurrencyCode")) ?? null;
+					string price = currency != null ? new PriceInfo(currency) { PriceWithoutVAT = item.GetDouble("totalAmount") }.PriceWithoutVATFormatted : item.GetString("totalAmount");
+					string orderDate = !string.IsNullOrEmpty(item.GetString("orderDate")) ? item.GetDate("orderDate").TimeOfDay.Ticks > 0 ? item.GetDate("orderDate").ToString(Dynamicweb.Core.Helpers.DateHelper.DateOnlyFormatStringMedium) : item.GetDate("orderDate").ToShortDateString() : string.Empty;
+					string orderId = item.GetString("id");
 
 					<tr class="position-relative">
 						<td>
@@ -46,7 +46,7 @@
 								</button>
 								<ul class="dropdown-menu shadow-sm fs-7">
 									<li>
-										<a class="dropdown-item hstack gap-2" href="@GetString("Ecom:IntegrationCustomerCenter.Invoice.Link")&itemID=@orderId">
+										<a class="dropdown-item hstack gap-2" href="@GetString("Ecom:IntegrationCustomerCenter.OpenOrder.Link")&itemID=@orderId">
 											<span class="icon-2">
 												@ReadFile("/Files/Images/Icons/eye.svg")
 											</span>
@@ -54,11 +54,11 @@
 										</a>
 									</li>
 									<li>
-										<a class="dropdown-item hstack gap-2" href="/Admin/public/CustomerCenter/RequestExternalPdf.aspx?type=Invoice&id=@(orderId)&forceDownload=true&shopid=@(shopId)">
+										<a class="dropdown-item hstack gap-2" href="/Admin/public/CustomerCenter/RequestExternalPdf.aspx?type=OpenOrder&id=@(orderId)&forceDownload=true&shopid=@(shopId)" title="@Translate("Download")">
 											<span class="icon-2">
 												@ReadFile("/Files/Images/Icons/download.svg")
 											</span>
-											@Translate("Download PDF")
+											@Translate("Download")
 										</a>
 									</li>
 								</ul>
@@ -67,7 +67,7 @@
 					</tr>
 				}
 
-				@if( invoiceList.Count() < 1 )
+				@if( list.Count() < 1 )
 				{
 					<tr class="position-relative">
 						<td colspan="8">
@@ -89,7 +89,16 @@
 	</div>
 </div>
 
-@if (!string.IsNullOrWhiteSpace(GetString("Ecom:IntegrationCustomerCenter.Invoice.Paging.Show")))
-{
-	@Include("CustomerCenterPagination.cshtml")
-}
+<nav class="p-2 mt-3">
+	<ul class="pagination m-0">
+		@foreach (LoopItem nodePage in GetLoop("Ecom:IntegrationCustomerCenter.Paging.Pages"))
+		{
+			string isActive = nodePage.GetString("Ecom:IntegrationCustomerCenter.Paging.PageClass") == "currentPage" ? "active" : string.Empty;
+			<li class="page-item @(isActive)">
+				<a href="@nodePage.GetString("Ecom:IntegrationCustomerCenter.Paging.PageIndexUrl")" class="page-link">
+					@nodePage.GetString("Ecom:IntegrationCustomerCenter.Paging.PageIndex")
+				</a>
+			</li>
+		}
+	</ul>
+</nav>
