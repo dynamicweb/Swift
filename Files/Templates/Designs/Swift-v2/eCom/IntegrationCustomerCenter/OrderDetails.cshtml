@@ -1,234 +1,140 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 @using Dynamicweb
+@using Dynamicweb.Ecommerce.Prices
 
 @{
-	string showPricesWithVat = Dynamicweb.Ecommerce.Common.Context.DisplayPricesWithVat.ToString();
-	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
-	string currencyCode = !string.IsNullOrEmpty(GetString("CurrencyCode")) ? GetString("CurrencyCode") + " " : "";
-
-	string shopId = Pageview.Area.EcomShopId != null ? Pageview.Area.EcomShopId : string.Empty;
-	string orderId = string.IsNullOrEmpty(GetString("Id")) ? GetString("ID") : GetString("Id");
+	var showPricesWithVat = Dynamicweb.Ecommerce.Common.Context.DisplayPricesWithVat;
+	var currency = Dynamicweb.Ecommerce.Services.Currencies.GetCurrency(GetString("CurrencyCode")) ?? Dynamicweb.Ecommerce.Common.Context.Currency;
+	string id = string.IsNullOrEmpty(GetString("Id")) ? GetString("ID") : GetString("Id");
+	string date = !string.IsNullOrEmpty(GetString("Date")) ? GetDate("Date").Year > 0001 ? GetDate("Date").TimeOfDay.Ticks > 0 ? GetDate("Date").ToString(Dynamicweb.Core.Helpers.DateHelper.DateOnlyFormatStringMedium) : GetDate("Date").ToShortDateString() : GetString("Date") : string.Empty;
+	string totalPrice = new PriceInfo(currency) { PriceWithoutVAT = GetDouble("PriceWithVAT") }.PriceWithoutVATFormatted;
 }
 
-<div>
-	<header class="p-3 border-bottom">
-		<div class="d-flex flex-row align-items-center gap-3">
-			<h1 class="h6 m-0 flex-fill text-muted">@Translate("Your order")</h1>
-			<a href="/Admin/public/CustomerCenter/RequestExternalPdf.aspx?type=OpenOrder&id=@orderId&forceDownload=true&shopid=@(shopId)" class="d-inline me-2" title="@Translate("Download PDF")">@Translate("Download")</a>
-			<button onclick="javascript:print()" class="btn btn-link p-0">@Translate("Print")</button>
-		</div>
-	</header>
+<nav aria-label="breadcrumb">
+	<ol class="breadcrumb mb-4" style="--bs-breadcrumb-divider: '>'; --bs-breadcrumb-item-padding-x: 1rem; --bs-breadcrumb-font-size: .875em;">
+		<li class="breadcrumb-item"><a href="default.aspx?ID=@(Pageview.Page.ID)">@(Pageview.Page.GetDisplayName())</a></li>
+		<li class="breadcrumb-item active" aria-current="page">@id</li>
+	</ol>
+</nav>
 
-	<table class="table d-print-table m-0">
-		@if (!string.IsNullOrEmpty(orderId))
-		{
-			<tr>
-				<td class="">@Translate("Order number")</td>
-				<td class="text-end">@orderId</td>
-			</tr>
-		}
-
-		@if (!string.IsNullOrEmpty(GetString("Date")))
-		{
-			string date = !string.IsNullOrEmpty(GetString("Date")) ? GetDate("Date").Year > 0001 ? GetDate("Date").TimeOfDay.Ticks > 0 ? GetDate("Date").ToString(Dynamicweb.Core.Helpers.DateHelper.DateOnlyFormatStringMedium) : GetDate("Date").ToShortDateString() : GetString("Date") : "";
-			<tr>
-				<td>@Translate("Order date")</td>
-				<td class="text-end">@date</td>
-			</tr>
-		}
-
-		<tr>
-			<td>@Translate("Delivery address")</td>
-			<td class="text-end">
-				@{
-					if (!string.IsNullOrEmpty(GetString("DeliveryName")))
+<div class="card mb-4">
+	<div class="card-body">
+		<div class="hstack justify-content-between align-items-start mb-2">
+			<div>
+				<h1 class="h5 mb-2">@Translate("Order details")</h1>
+				<small class="d-block text-body text-opacity-75 lh-1 mb-2">@Translate("Order ID"): @id</small>
+				<div class="hstack gap-2">
+					@if (!string.IsNullOrEmpty(date))
 					{
-						<div>@GetString("DeliveryName")</div>
+						<small class="d-block text-body text-opacity-75 lh-1">@Translate("Placed on") @date</small>			
 					}
-					if (!string.IsNullOrEmpty(GetString("DeliveryAddress")))
-					{
-						<div>@GetString("DeliveryAddress")</div>
-					}
-					if (!string.IsNullOrEmpty(GetString("DeliveryAddress2")))
-					{
-						<div>@GetString("DeliveryAddress2")</div>
-					}
-
-					<div>
-						@if (!string.IsNullOrEmpty(GetString("DeliveryZip")))
-						{
-							<span>@GetString("DeliveryZip")</span>
-						}
-						@if (!string.IsNullOrEmpty(GetString("DeliveryCity")))
-						{
-							<span>@GetString("DeliveryCity")</span>
-						}
-					</div>
-
-					<div>
-						@if (!string.IsNullOrEmpty(GetString("DeliveryRegion")))
-						{
-							<span>@GetString("DeliveryRegion")</span>
-						}
-						@if (!string.IsNullOrEmpty(GetString("DeliveryCountry")))
-						{
-							<span>@GetString("DeliveryCountry")</span>
-						}
-					</div>
-
-					if (!string.IsNullOrEmpty(GetString("DeliveryEmail")))
-					{
-						<div>@GetString("DeliveryEmail")</div>
-					}
-					if (!string.IsNullOrEmpty(GetString("DeliveryPhone")))
-					{
-						<div>@GetString("DeliveryPhone")</div>
-					}
-				}
-			</td>
-		</tr>
-
-		<tr>
-			<td>@Translate("Billing address")</td>
-			<td class="text-end">
-				@{
-					if (!string.IsNullOrEmpty(GetString("CustomerName")))
-					{
-						<div>@GetString("CustomerName")</div>
-					}
-					if (!string.IsNullOrEmpty(GetString("CustomerAddress")))
-					{
-						<div>@GetString("CustomerAddress")</div>
-					}
-					if (!string.IsNullOrEmpty(GetString("CustomerAddress2")))
-					{
-						<div>@GetString("CustomerAddress2")</div>
-					}
-
-					<div>
-						@if (!string.IsNullOrEmpty(GetString("CustomerZip")))
-						{
-							<span>@GetString("CustomerZip")</span>
-						}
-						@if (!string.IsNullOrEmpty(GetString("CustomerCity")))
-						{
-							<span>@GetString("CustomerCity")</span>
-						}
-					</div>
-
-					<div>
-						@if (!string.IsNullOrEmpty(GetString("CustomerRegion")))
-						{
-							<span>@GetString("CustomerRegion")</span>
-						}
-						@if (!string.IsNullOrEmpty(GetString("CustomerCountry")))
-						{
-							<span>@GetString("CustomerCountry")</span>
-						}
-					</div>
-
-	                if (!string.IsNullOrEmpty(GetString("CustomerEmail")))
-	                {
-		                <div>@GetString("CustomerEmail")</div>
-	                }
-	                if (!string.IsNullOrEmpty(GetString("CustomerPhone")))
-	                {
-		                <div>@GetString("CustomerPhone")</div>
-	                }
-                }
-			</td>
-		</tr>
-
-		@if (!string.IsNullOrEmpty(GetString("ShippingMethodName")))
-		{
-			<tr>
-				<td>@Translate("Delivery method")</td>
-				<td class="text-end">@GetString("ShippingMethodName")</td>
-			</tr>
-		}
-
-		@if (!string.IsNullOrEmpty(GetString("PaymentMethodName")))
-		{
-			<tr>
-				<td>@Translate("Payment method")</td>
-				<td class="text-end">
-					<span>@GetString("PaymentMethodName")</span>
-				</td>
-			</tr>
-		}
-	</table>
-
-	<section class="p-3 d-flex flex-column gap-3">
-		@foreach (var orderline in GetLoop("OrderLinesLoop"))
-		{
-			string unitPriceWithVat = string.IsNullOrEmpty(orderline.GetString("UnitPriceWithVAT")) ? orderline.GetString("UnitPriceWithVat") : orderline.GetString("UnitPriceWithVAT");
-			string unitPriceWithoutVat = string.IsNullOrEmpty(orderline.GetString("UnitPriceWithoutVAT")) ? orderline.GetString("UnitPriceWithoutVat") : orderline.GetString("UnitPriceWithoutVAT");
-			string priceWithVAT = string.IsNullOrEmpty(orderline.GetString("PriceWithVAT")) ? orderline.GetString("PriceWithVat") : orderline.GetString("PriceWithVAT");
-			string priceWithoutVAT = string.IsNullOrEmpty(orderline.GetString("PriceWithoutVAT")) ? orderline.GetString("PriceWithoutVat") : orderline.GetString("PriceWithoutVAT");
-
-			string productName = !string.IsNullOrEmpty(orderline.GetString("ProductName")) ? orderline.GetString("ProductName") + " " + orderline.GetString("ProductNumber") : orderline.GetString("ProductNumber");
-			string productPrice = showPricesWithVat.ToLower() == "true" ? currencyCode + unitPriceWithVat : currencyCode + unitPriceWithoutVat;
-			string productPriceTotal = showPricesWithVat.ToLower() == "true" ? currencyCode + priceWithVAT : currencyCode + priceWithoutVAT;
-
-			var orderlineQuantity = orderline.GetString("Quantity");
-			var productId = orderline.GetString("ProductNumber");
-			var variantId = orderline.GetString("ProductVariantID");
-
-			var orderlineType = !string.IsNullOrEmpty(orderline.GetString("ParentLineID")) ? "discountOrFee" : "product";
-
-			<article>
-				<div class="grid grid-9 h-100">
-					<div class="g-col-9 g-col-md-5">
-						@if (orderlineType == "product") { 
-							<h2 class="h6 mb-3 fw-bold">@productName</h2>
-
-							<ul class="list-unstyled text-muted mb-0">
-								<li>
-									<span>@Translate("Price"):</span>
-									<span>@productPrice</span>
-
-								</li>
-								<li>
-									<span>@Translate("Quantity"):</span>
-									<span>@orderlineQuantity</span>
-								</li>
-							</ul>
-						} 
-					</div>
-
-					<div class="g-col-9 g-col-md-4 text-end">
-						<h6 class="h6 m-0">
-							<span class="text-price">@productPriceTotal</span>
-						</h6>
-					</div>
-				</div>
-			</article>
-		}
-
-		@{
-			string priceWithVat = string.IsNullOrEmpty(GetString("PriceWithVAT")) ? GetString("PriceWithVat") : GetString("PriceWithVAT");
-			string priceWithoutVat = string.IsNullOrEmpty(GetString("PriceWithoutVAT")) ? GetString("PriceWithoutVat") : GetString("PriceWithoutVAT");
-			string orderSubtotal = showPricesWithVat.ToLower() == "true" ? priceWithVat : priceWithoutVat;
-
-			<div class="cart-total grid mt-3">
-				<div class="g-col-12">
-					<dl class="m-0">
-						<div class="d-flex my-1 pt-4 border-dark border-top"></div>
-						<dt class="flex-fill fw-bold">@Translate("Total")</dt>
-						<dd class="flex-fill mb-0 text-end">
-							<span class="text-price fw-bold">@(currencyCode) @(orderSubtotal)</span>
-							@if (!neverShowVat && showPricesWithVat == "false")
-							{
-								<span class="fs-7 fw-normal d-block">@Translate("Excl. VAT")</span>
-							}
-							@if (!neverShowVat && showPricesWithVat == "true")
-							{
-								<span class="fs-7 fw-normal d-block">@Translate("Incl. VAT")</span>
-							}
-						</dd>
-					</dl>
 				</div>
 			</div>
-		}
-	</section>
+			<button onclick="javascript:print()" class="btn btn-secondary icon-2" data-dw-button title="@Translate("Print")">
+				@ReadFile("/Files/Images/Icons/print.svg")
+			</button>
+		</div>
+	</div>
+	<hr class="mx-4 my-0" style="opacity: .15;">
+	<div class="card-body table-responsive">
+		<table class="table table-md table-hover mb-0 align-middle fs-7" style="--bs-table-color: var(--bs-body-color);">
+			<thead style="--bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
+				<tr>
+					<th>@Translate("Item")</th>
+					<th class="text-end">@Translate("Price")</th>
+					<th class="text-end">@Translate("Quantity")</th>
+					<th class="text-end">@Translate("Total")</th>
+				</tr>
+			</thead>
+			<tbody>
+				@foreach (var orderline in GetLoop("OrderLinesLoop"))
+				{
+					string unitPrice = new PriceInfo(currency) { PriceWithoutVAT = orderline.GetDouble("UnitPriceWithVAT") }.PriceWithoutVATFormatted;
+					string price = new PriceInfo(currency) { PriceWithoutVAT = orderline.GetDouble("UnitPriceWithVAT") }.PriceWithoutVATFormatted;
+
+					<tr>
+						<td>
+							<div class="hstack gap-3">
+								<div class="vstack my-auto">
+									<span class="text-wrap-nowrap fw-bold">@orderline.GetString("ProductName")</span>
+									<span class="text-body text-opacity-50">@orderline.GetString("ProductNumber")</span>
+								</div>
+							</div>
+						</td>
+						<td class="text-end text-price">
+							@unitPrice
+						</td>
+						<td class="text-end">@orderline.GetString("Quantity")</td>
+						<td class="text-end text-price">
+							@price
+						</td>
+					</tr>
+				}
+			</tbody>
+			<tfoot>
+				<tr>
+					<td colspan="3" class="text-end fw-semibold border-0">@Translate("Total")</td>
+					<td class="text-end border-0">
+						<span class="text-price dw-h6">
+							@totalPrice
+						</span>
+					</td>
+				</tr>
+			</tfoot>
+		</table>
+	</div>
+</div>
+
+<div class="card mb-4">
+	<div class="card-body">
+		<h2 class="h5 mb-3">@Translate("Shipping Information")</h2>
+		<div class="d-grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+			<address class="mb-0 fs-7">
+				<div class="small mb-2 text-body text-opacity-75">@Translate("Delivery Address")</div>
+				<div>@GetString("DeliveryCompany")</div>
+				<div>@GetString("DeliveryName")</div>
+				<div>@GetString("DeliveryEmail")</div>
+				<div>@GetString("DeliveryPhone")</div>
+				<div>@GetString("DeliveryAddress")</div>
+				<div>@GetString("DeliveryAddress2")</div>
+				<div>@GetString("DeliveryZip") @GetString("DeliveryRegion") @GetString("DeliveryCity")</div>
+				<div>@GetString("DeliveryCountry")</div>
+			</address>
+			<div class="vstack gap-4 fs-7">
+				@if (!string.IsNullOrEmpty(GetString("ShippingMethodName"))) {					
+					<div>
+						<div class="small mb-2 text-body text-opacity-75">@Translate("Shipping Method")</div>
+						<div>@GetString("ShippingMethodName")</div>
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="card mb-4">
+	<div class="card-body">
+		<h2 class="h5 mb-3">@Translate("Billing Information")</h2>
+		<div class="d-grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+			<address class="mb-0 fs-7">
+				<div class="small mb-2 text-body text-opacity-75">@Translate("Billing Address")</div>
+				<div>@GetString("CustomerCompany")</div>
+				<div>@GetString("CustomerName")</div>
+				<div>@GetString("CustomerEmail")</div>
+				<div>@GetString("CustomerPhone")</div>
+				<div>@GetString("CustomerAddress")</div>
+				<div>@GetString("CustomerAddress2")</div>
+				<div>@GetString("CustomerZip") @GetString("CustomerRegion") @GetString("CustomerCity")</div>
+				<div>@GetString("CustomerCountry")</div>
+			</address>
+			@if (!string.IsNullOrEmpty(GetString("PaymentMethodName"))) {
+				<div class="vstack gap-4 fs-7">
+					<div>
+						<div class="small mb-2 text-body text-opacity-75">@Translate("Payment")</div>
+						<div>@GetString("PaymentMethodName")</div>
+					</div>
+				</div>
+			}
+		</div>
+	</div>
 </div>
