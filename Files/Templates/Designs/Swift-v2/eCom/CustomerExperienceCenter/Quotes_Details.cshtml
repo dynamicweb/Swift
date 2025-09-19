@@ -1,0 +1,197 @@
+@inherits ViewModelTemplate<OrderViewModel>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.Frontend
+@using Dynamicweb.Ecommerce.Orders
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview.Page.ID}");
+	var showPricesWithVat = Dynamicweb.Ecommerce.Common.Context.DisplayPricesWithVat;
+}
+
+<nav aria-label="breadcrumb">
+	<ol class="breadcrumb mb-4" style="--bs-breadcrumb-divider: '>'; --bs-breadcrumb-item-padding-x: 1rem; --bs-breadcrumb-font-size: .875em;">
+		<li class="breadcrumb-item"><a href="@(baseUrl)">@(Pageview.Page.GetDisplayName())</a></li>
+		<li class="breadcrumb-item active" aria-current="page">@Translate("Quote") @Model.Id</li>
+	</ol>
+</nav>
+
+<div class="card mb-4">
+	<div class="card-body">
+		<div class="hstack justify-content-between mb-2">
+			<h1 class="h5 m-0">@Translate("Quote Details")</h1>
+		</div>
+		<div>
+			<small class="d-block text-body text-opacity-75 lh-1 mb-2">@Translate("Quote ID"): @Model.Id</small>
+			<div class="hstack gap-2">
+				@if (Model.CompletedDate.HasValue)
+				{
+					<small class="d-block text-body text-opacity-75 lh-1">@Translate("Placed on") @Model.CompletedDate.Value.ToString(Pageview.Area.CultureInfo)</small>			
+				}
+				<span class="badge lh-sm bg-secondary" style="background-color:@(Dynamicweb.Ecommerce.Services.OrderStates.GetStateById(Model.StateId).Color) !important;">
+					@(Model.StateName)
+				</span>
+			</div>
+		</div>
+	</div>
+	<hr class="mx-4 my-0" style="opacity: .15;">
+	<div class="card-body table-responsive">
+		<table class="table table-md table-hover mb-0 align-middle fs-7" style="--bs-table-color: var(--bs-body-color);">
+			<thead style="--bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
+				<tr>
+					<th>@Translate("Item")</th>
+					<th class="text-end">@Translate("Price")</th>
+					<th class="text-end">@Translate("Quantity")</th>
+					<th class="text-end">@Translate("Total")</th>
+				</tr>
+			</thead>
+			<tbody>
+				@foreach (OrderLineViewModel orderline in Model.OrderLines)
+				{
+					<tr>
+						<td>
+							<div class="hstack gap-3">
+								@if(orderline.GetProduct()?.DefaultImage.TryGetImageFileViewModel(out var image) is true)
+								{
+									<div class="d-flex img-thumbnail" style="inline-size: 40px; aspect-ratio: 1;">
+										<img class="my-auto" src="@(image?.ToGetImage(new(){Height = 30, Width = 30, Ratio = "1/1", Crop = Dynamicweb.Imaging.ImageHandling.CropMode.KeepAspectRatio }))" alt="@(orderline.ProductName)">
+									</div>
+								}
+								
+								<div class="vstack my-auto">
+									<span class="text-wrap-nowrap fw-bold">@orderline.ProductName</span>
+									<span class="text-body text-opacity-50">@orderline.ProductNumber</span>
+								</div>
+							</div>
+						</td>
+						<td class="text-end text-price">@orderline.UnitPrice.PriceFormatted</td>
+						<td class="text-end">@orderline.Quantity</td>
+						<td class="text-end text-price">@orderline.Price.PriceFormatted</td>
+					</tr>
+				}
+			</tbody>
+			<tfoot>
+				<tr>
+					<td colspan="3" class="text-end fw-semibold">@Translate("Subtotal")</td>
+					<td class="text-end"><span class="text-price">@Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.PriceFormatted</span></td>
+				</tr>
+				@if (Model.ShippingFee.Price != 0.0)
+				{
+					<tr>
+						<td colspan="3" class="text-end">@Translate("Shipping")</td>
+						<td class="text-end"><span class="text-price">@Model.ShippingFee.PriceFormatted</span></td>
+					</tr>
+				}
+				@if (Model.PaymentFee.Price != 0.0)
+				{
+					<tr>
+						<td colspan="3" class="text-end">@Translate("Payment")</td>
+						<td class="text-end"><span class="text-price">@Model.PaymentFee.PriceFormatted</span></td>
+					</tr>
+				}
+				@if (Model.TotalDiscount.Price != 0.0)
+				{
+					<tr>
+						<td colspan="3" class="text-end">@Translate("Discount")</td>
+						<td class="text-end"><span class="text-price">@Model.TotalOrderDiscount.PriceFormatted</span></td>
+					</tr>
+				}
+				@if (showPricesWithVat && Model.TotalTaxes.Price != 0.0)
+				{
+					<tr>
+						<td colspan="3" class="text-end">@Translate("VAT")</td>
+						<td class="text-end"><span class="text-price">@Model.TotalTaxes.PriceFormatted</span></td>
+					</tr>
+				}
+				<tr>
+					<td colspan="3" class="text-end fw-semibold border-0">@Translate("Total")</td>
+					<td class="text-end border-0"><span class="text-price dw-h6">@Model.Price.PriceFormatted</span></td>
+				</tr>
+			</tfoot>
+		</table>
+	</div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.CustomerComment) || !string.IsNullOrEmpty(Model.Comment)) {
+	<div class="card mb-4">
+		<div class="card-body">
+			<h2 class="h5 mb-3">@Translate("Comments")</h2>
+			@if (!string.IsNullOrEmpty(Model.CustomerComment))
+			{
+				<div class="small mb-2 text-body text-opacity-75">@Translate("Customer")</div>
+				<div class="fs-7">@Model.CustomerComment</div>
+			}
+			@if (!string.IsNullOrEmpty(Model.Comment)) 
+			{
+				<hr class="text-body text-opacity-50">
+				<div class="small mb-2 text-body text-opacity-75">@Translate("Order")</div>
+				<div class="fs-7">@Model.Comment</div>
+			}
+		</div>
+	</div>
+}
+
+<div class="card mb-4">
+	<div class="card-body">
+		<h2 class="h5 mb-3">@Translate("Shipping Information")</h2>
+		<div class="d-grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+			<address class="mb-0 fs-7">
+				<div class="small mb-2 text-body text-opacity-75">@Translate("Shipping Address")</div>
+				<div>@Model.DeliveryCompany</div>
+				<div>@Model.DeliveryFirstName @Model.DeliverySurname</div>
+				<div>@Model.DeliveryAddress</div>
+				<div>@Model.DeliveryAddress2</div>
+				<div>@Model.DeliveryZip @Model.DeliveryRegion @Model.DeliveryCity</div>
+				<div>@Model.DeliveryCountry?.ToUpperInvariant()</div>
+			</address>
+			<div class="vstack gap-4 fs-7">
+				<div>
+					<div class="small mb-2 text-body text-opacity-75">@Translate("Shipping Method")</div>
+					<div>@Model.ShippingMethod.Name</div>
+				</div>
+				@if (!string.IsNullOrEmpty(Model.TrackAndTraceURL) || !string.IsNullOrEmpty(Model.TrackAndTraceNumber))
+				{
+					<div>
+						<div class="small mb-2 text-body text-opacity-75">@Translate("Tracking Number")</div>
+						<div>
+							@if (!string.IsNullOrEmpty(Model.TrackAndTraceURL))
+							{
+								<a href="@Model.TrackAndTraceURL" target="_blank">@(!string.IsNullOrEmpty(Model.TrackAndTraceNumber) ? $"{Model.TrackAndTraceNumber} ({Model.TrackAndTraceName})" : Model.TrackAndTraceName)</a>
+							}
+							else
+							{
+								<span>@Model.TrackAndTraceNumber</span>
+							}
+						</div>
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="card mb-4">
+	<div class="card-body">
+		<h2 class="h5 mb-3">@Translate("Billing Information")</h2>
+		<div class="d-grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+			<address class="mb-0 fs-7">
+				<div class="small mb-2 text-body text-opacity-75">@Translate("Billing Address")</div>
+				<div>@Model.CustomerCompany</div>
+				<div>@Model.CustomerName</div>
+				<div>@Model.CustomerEmail</div>
+				<div>@Model.CustomerPhone</div>
+				<div>@Model.CustomerAddress</div>
+				<div>@Model.CustomerAddress2</div>
+				<div>@Model.CustomerZip @Model.CustomerRegion @Model.CustomerCity</div>
+				<div>@Model.CustomerCountry?.ToUpperInvariant()</div>
+			</address>
+			<div class="vstack gap-4 fs-7">
+				<div>
+					<div class="small mb-2 text-body text-opacity-75">@Translate("Payment")</div>
+					<div>@Model.PaymentMethod.Name</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
