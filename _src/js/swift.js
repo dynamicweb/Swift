@@ -1,12 +1,12 @@
 // Swift Web Components
 import "./components/VideoPlayer";
+import "./components/Locationsmap";
 
 // Swift modules
 import { Favorites } from "./_favorites";
 import { Cart } from "./_cart";
 import { ProductList } from "./_productlist";
 import { PageUpdater } from "./_pageupdater";
-import { LocationsMap } from "./_locationsmap";
 import { Places } from "./_places";
 import { ProductExport } from "./_productexport";
 import { StaticVariants } from "./_staticvariants";
@@ -26,7 +26,6 @@ const swift = (function () {
     Favorites: Favorites,
     ProductList: ProductList,
     PageUpdater: PageUpdater,
-    LocationsMap: LocationsMap,
     Places: Places,
     ProductExport: ProductExport,
     StaticVariants: StaticVariants,
@@ -49,9 +48,14 @@ window.onpopstate = function () {
   swift.Typeahead.navigateToPage(document.location.href);
 };
 
-// Dropdown
 window.addEventListener("DOMContentLoaded", () => {
   const bootstrap = window.bootstrap || {};
+  
+  // Tooltip
+  const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+  [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+  
+  // Dropdown
   const dropdowns = document.querySelectorAll("[data-swift-page-header] .dropdown");
   Menu.setMenuContentOffset();
 

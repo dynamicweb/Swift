@@ -3,55 +3,76 @@
 @using Dynamicweb
 @using Dynamicweb.Frontend
 
-<form method="get" class="d-flex gap-3 mb-4 flex-wrap">
-	<div class="flex-fill" style="max-width: 26rem">
-		@RenderPartial("Designs/Swift-v2/QueryPublisher/Post/PostSearch.cshtml")
-	</div>
-	<div class="overflow-y-auto">
-		@RenderPartial("Designs/Swift-v2/QueryPublisher/Post/PostHorizontalFacets.cshtml")
-	</div>
-</form>
+@{
+	string? query = Dynamicweb.Context.Current?.Request.QueryString.Get("QueryName") ?? null;
+	string? repository = Dynamicweb.Context.Current?.Request.QueryString.Get("RepositoryName") ?? null;
+	string? areaid = Dynamicweb.Context.Current?.Request.QueryString.Get("AreaId") ?? null;
+}
 
-@if (Model.Results.Count() > 0)
-{
-	<div class="d-grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))">
-		@foreach (var post in Model.Results)
-		{
-			if (post.TryGetValue("PageId", out object? pageId) && pageId is int)
+<div>
+	<form class="d-flex gap-3 mb-4 flex-wrap"
+		hx-get="@Dynamicweb.Context.Current?.Request.RawUrl"
+		hx-trigger="keyup delay:1s, change"
+		hx-swap="outerHTML"
+		hx-replace-url="false"
+		hx-select="[data-swift-posts-list]"
+		hx-target="[data-swift-posts-list]">
+
+		@if (!string.IsNullOrEmpty(query)) {
+			<input type="hidden" name="QueryName" value="@query">
+			<input type="hidden" name="RepositoryName" value="@repository">
+			<input type="hidden" name="AreaId" value="@areaid">
+		}
+
+		<div class="flex-fill" style="max-width: 26rem">
+			@RenderPartial("Designs/Swift-v2/QueryPublisher/Post/PostSearch.cshtml")
+		</div>
+		<div class="overflow-y-auto">
+			@RenderPartial("Designs/Swift-v2/QueryPublisher/Post/PostHorizontalFacets.cshtml")
+		</div>
+	</form>
+
+	@if (Model.Results.Count() > 0)
+	{
+		<div class="d-grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))" data-swift-posts-list>
+			@foreach (var post in Model.Results)
 			{
-				var pageObject = Dynamicweb.Content.Services.Pages?.GetPage((int)pageId);
-				var pageInfo = pageObject != null ? Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(pageObject) : null;
-				string? parentCategory = pageObject?.Parent != null && pageObject.Parent.Level != 1 ? pageObject.Parent.GetDisplayName() : null;
-
-				if (pageInfo != null)
+				if (post.TryGetValue("PageId", out object? pageId) && pageId is int)
 				{
-					<a href="/Default.aspx?ID=@pageInfo.ID" class="card text-decoration-none">
-						@if (pageInfo.TryGetImageFile(out ImageFileViewModel imageFile))
-						{
-							<div class="position-relative">
-								<img src="@imageFile.ToGetImage(new GetImageSettings { Ratio = "16/9" })" class="card-img-top" alt="@pageInfo.Name">
-								@if (parentCategory != null) {
-									<div class="badge text-bg-secondary position-absolute top-0 end-0 m-2">@parentCategory</div>
-								}
+					var pageObject = Dynamicweb.Content.Services.Pages?.GetPage((int)pageId);
+					var pageInfo = pageObject != null ? Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(pageObject) : null;
+					string? parentCategory = pageObject?.Parent != null && pageObject.Parent.Level != 1 ? pageObject.Parent.GetDisplayName() : null;
+
+					if (pageInfo != null)
+					{
+						<a href="/Default.aspx?ID=@pageInfo.ID" class="card text-decoration-none">
+							@if (pageInfo.TryGetImageFile(out ImageFileViewModel imageFile))
+							{
+								<div class="position-relative">
+									<img src="@imageFile.ToGetImage(new GetImageSettings { Ratio = "16/9" })" class="card-img-top" alt="@pageInfo.Name">
+									@if (parentCategory != null) {
+										<div class="badge text-bg-secondary position-absolute top-0 end-0 m-2">@parentCategory</div>
+									}
+								</div>
+							}
+							<div class="card-body">
+								<h5 class="card-title">
+									@pageInfo.Name 
+								</h5>
+								<p class="card-text">
+									@pageInfo.Description
+								</p>
 							</div>
-						}
-						<div class="card-body">
-							<h5 class="card-title">
-								@pageInfo.Name 
-							</h5>
-							<p class="card-text">
-								@pageInfo.Description
-							</p>
-						</div>
-					</a>
+						</a>
+					}
 				}
 			}
-		}
-	</div>
-}
-else
-{
-	<div class="alert alert-dark w-100 text-center" role="alert">
-		@Translate("No results found")
-	</div>
-}
+		</div>
+	}
+	else
+	{
+		<div class="alert alert-dark w-100 text-center" role="alert">
+			@Translate("No results found")
+		</div>
+	}
+</div>

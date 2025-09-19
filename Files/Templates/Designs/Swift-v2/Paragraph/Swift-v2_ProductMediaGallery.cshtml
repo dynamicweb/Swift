@@ -111,13 +111,13 @@
 	bool includeImagePatternImages = Model.Item.GetBoolean("ImagePatternImages");
 
 	@* Needed image data collection to support both DefaultImage, ImagePatterns and Image Assets *@
-	string defaultImage = product.DefaultImage != null ? product.DefaultImage.Value : "";
+	string? defaultImage = product?.DefaultImage != null ? product.DefaultImage?.Value : null;
 	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedAssetCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
-	assetsImages = assetsImages.OrderByDescending(x => x.Value.Equals(defaultImage));
+	assetsImages = defaultImage != null ? assetsImages.OrderByDescending(x => x.Value.Equals(defaultImage)) : new List<MediaViewModel>();
 	IEnumerable<MediaViewModel> assetsList = new MediaViewModel[]{};
 	assetsList = assetsList.Union(assetsImages);
 	assetsList = includeImagePatternImages ? assetsList.Union(product.ImagePatternImages) : assetsList;
-	assetsList = includeImagePatternImages && assetsList.Count() == 0 ? assetsList.Append(product.DefaultImage) : assetsList;
+	assetsList = includeImagePatternImages && assetsList.Count() == 0 ? assetsList.Append(product?.DefaultImage).Where(x => x != null) : assetsList;
 
 	bool defaultImageFallback = Model.Item.GetBoolean("DefaultImageFallback");
 
@@ -133,7 +133,7 @@
 
 	if (totalAssets == 0)
 	{
-		if (defaultImageFallback) {
+		if (defaultImageFallback && product.DefaultImage != null) {
 			assetsList = new List<MediaViewModel>(){ product.DefaultImage };
 			totalAssets = 1;
 		} else {
@@ -168,7 +168,7 @@
 										if (assetValue.IndexOf(imageFormat, StringComparison.OrdinalIgnoreCase) >= 0)
 										{
 											string productName = product.Name;
-											string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+											string? imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product?.DefaultImage?.Value;
 
 											RatioSettings ratioSettings = GetRatioSettings(size);
 
@@ -200,11 +200,13 @@
 												parms.Add("cssClass", "mw-100 mh-100");
 											}
 
-											<a href="@imagePath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID">
-												<div class="d-flex align-items-center justify-content-center overflow-hidden h-100" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide-to="@desktopAssetNumber">
-													@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
-												</div>
-											</a>
+											@if (!string.IsNullOrEmpty(imagePath)) {
+												<a href="@imagePath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" data-bs-toggle="modal" data-bs-target="#modal_@Model.ID">
+													<div class="d-flex align-items-center justify-content-center overflow-hidden h-100" data-bs-target="#ModalCarousel_@Model.ID" data-bs-slide-to="@desktopAssetNumber">
+														@RenderPartial("Components/Image.cshtml", new FileViewModel { Path = imagePath }, parms)
+													</div>
+												</a>
+											}
 										}
 									}
 									@foreach (string videoFormat in supportedVideoFormats)
@@ -256,7 +258,7 @@
 											string iconPath = "/Files/Images/Icons/";
 
 											string productName = product.Name;
-											string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+											string? imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage?.Value;
 
 											RatioSettings ratioSettings = GetRatioSettings(size);
 
@@ -315,7 +317,7 @@
 											if (assetValue.IndexOf(imageFormat, StringComparison.OrdinalIgnoreCase) >= 0)
 											{
 												string productName = product.Name;
-												string imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+												string? imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage?.Value;
 
 												RatioSettings ratioSettings = GetRatioSettings(size);
 
@@ -490,7 +492,7 @@
 						<div id="ModalCarousel_@Model.ID" class="carousel@(GetArrowsColor()) h-100" data-bs-ride="carousel">
 							<div class="carousel-inner h-100" data-dw-colorscheme="@Model.ColorScheme?.Id">
 								@foreach (MediaViewModel asset in assetsList) {
-									var assetValue = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage.Value;
+									var assetValue = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage?.Value;
 									foreach (string format in allSupportedFormats) {
 										if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0) {
 											string imagePath = assetValue;
