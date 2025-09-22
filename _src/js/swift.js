@@ -42,18 +42,43 @@ const swift = (function () {
 
 export { swift };
 window.swift = swift;
+const bootstrap = window.bootstrap || {};
 
 // Popstate
 window.onpopstate = function () {
   swift.Typeahead.navigateToPage(document.location.href);
 };
 
-window.addEventListener("DOMContentLoaded", () => {
-  const bootstrap = window.bootstrap || {};
-  
-  // Tooltip
+// Function to initialize Bootstrap tooltips
+function initializeTooltips() {
   const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
   [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
+}
+
+// Function to reinitialize tooltips after HTMX updates
+function reinitializeTooltips() {
+    
+  // Dispose of existing tooltips to prevent memory leaks
+  const existingTooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+  [...existingTooltips].map(tooltipTriggerEl => {
+    const tooltip = bootstrap.Tooltip.getInstance(tooltipTriggerEl);
+    if (tooltip) {
+      tooltip.dispose();
+    }
+  });
+  
+  // Reinitialize all tooltips
+  initializeTooltips();
+}
+
+// Make reinitializeTooltips available globally for HTMX
+window.reinitializeTooltips = reinitializeTooltips;
+
+window.addEventListener("htmx:afterRequest", reinitializeTooltips);
+
+window.addEventListener("DOMContentLoaded", () => {
+  // Initialize tooltips on page load
+  initializeTooltips();
   
   // Dropdown
   const dropdowns = document.querySelectorAll("[data-swift-page-header] .dropdown");
