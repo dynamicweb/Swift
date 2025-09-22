@@ -1,0 +1,119 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend
+
+<div>
+	@if (Model.Item.TryGetGeolocation("DefaultMapCenter", out var defaultMapCenter)) {
+		if (Pageview.AreaSettings.TryGetString("Google_APIKey", out string apiKey)) {
+			var locationList = Model.Item.GetUserGroup("UserGroup")?.GetUsers(0, 1000);
+			string jsonLocationList = System.Net.WebUtility.HtmlEncode(
+				System.Text.Json.JsonSerializer.Serialize(locationList)
+			);
+
+			string regionCode = "DK";
+			if (Model.Item.TryGetString("RegionCode", out string region))
+			{
+				regionCode = region;
+			}
+
+			<swift-locations-map
+				class="grid position-relative"
+				api-key="@apiKey"
+				locations="@jsonLocationList"
+				default-lat="@defaultMapCenter.Latitude"
+				default-lng="@defaultMapCenter.Longitude"
+				initial-zoom-level="@Model.Item.GetInt32("InitialZoomLevel")"
+				region-code="@regionCode"
+				no-locations-found-label="@Translate("No options available in the selected area")"
+				map-style='@ReadFile(Model?.Item?.GetString("MapStyle"))'
+				map-icon-url="/Files/Images/Icons/location-dot.svg">
+
+				<div class="g-col-12 g-col-lg-8 order-1 order-lg-4">
+					<div class="map" data-swift-locations-map></div>
+				</div>
+
+				@if (locationList?.Count() > 1) {
+					<div class="g-col-12 g-col-lg-4 order-2 order-lg-3" style="max-height: 100%">
+						@if (Model.Item.TryGetString("Title", out string? title))
+						{
+							@title
+						}
+						<form class="mb-3" data-swift-locationsearch>
+							<div class="hstack position-relative">
+								<span class="position-absolute icon-2 px-3">
+									<span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
+									<span class="icon-2" data-swift-indicator-origin>@ReadFile("/Files/Images/Icons/magnifying-glass.svg")</span>
+								</span>
+								<input type="text" class="form-control rounded-pill bg-body py-2 ps-5 pe-5" oninput="this.nextElementSibling.hidden = !this.value.trim()" name="FilterText" placeholder="@Translate("Enter city, state or zip")">
+								<button type="button"
+										onclick="var f = this.closest('form').querySelector('input'); f.value = ''; f.focus(); f.closest('form').submit();"
+										class="btn position-absolute end-0 icon-2 reset-search"
+										hidden
+										aria-label="@Translate("Clear search field")">
+									@ReadFile("/Files/Images/Icons/xmark.svg")
+								</button>
+							</div>
+						</form>
+						<div class="h-100 overflow-y-auto" style="max-height: 60vh">
+							<div class="list-group" data-swift-locations-list></div>
+						</div>
+					</div>
+				} 
+			</swift-locations-map>
+
+			<template data-swift-template="location-item">
+				<div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+					<button type="button" data-swift-location="button" class="btn text-start p-0 w-100 border-0 location-info">
+					<h6 data-swift-location="Name" class="mb-1"></h6>
+					<div class="fs-7" data-swift-location="Address"></div>
+					<div class="fs-7">
+						<span data-swift-location="Zip"></span>
+						<span data-swift-location="City"></span>
+					</div>
+					<div class="fs-7" data-swift-location="Country"></div>
+					</button>
+					<a href="#" target="_blank" rel="noopener noreferrer" title="@Translate("Get directions")" data-swift-location="DirectionsUrl" aria-label="@Translate("Get directions")" class="icon-2" style="flex-shrink: 0; margin-left: 12px;">
+					@ReadFile("/Files/Images/Icons/arrow-turn-right.svg")
+					</a>
+				</div>
+			</template>
+
+			<template data-swift-template="info-window">
+				<div>
+					<h6 class="mb-0">@Translate("Address")</h6>
+					<div class="fs-7" data-swift-location="Address"></div>
+					<div class="fs-7">
+						<span data-swift-location="Zip"></span>
+						<span data-swift-location="City"></span>
+					</div>
+					<h6 class="mb-0 mt-2">@Translate("Contact")</h6>
+					<div>
+						<span class="icon-1 me-1">@ReadFile("/Files/Images/Icons/phone.svg")</span>
+						<span>@Translate("Phone"): </span>
+						<span data-swift-location="Phone"></span>
+					</div>
+					<div>
+						<span class="icon-1 me-1">@ReadFile("/Files/Images/Icons/envelope.svg")</span>
+						<span>@Translate("Email"): </span>
+						<span data-swift-location="Email"></span>
+					</div>
+					<div class="mt-3">
+						<a href="#" class="hstack gap-2" target="_blank" rel="noopener noreferrer" data-swift-location="DirectionsUrl" title="@Translate("Get directions")" aria-label="@Translate("Get directions")">
+							<span class="icon-1">@ReadFile("/Files/Images/Icons/arrow-turn-right.svg")</span>
+							<span>@Translate("Directions")</span>
+						</a>
+					</div>
+				</div>
+			</template>
+		} 
+		else 
+		{
+			<div class="alert alert-info" role="alert">
+				@Translate("Google maps API key is missing")
+			</div>
+		}
+	} else {
+		<div class="alert alert-info" role="alert">
+			@Translate("The map is not properly configured")
+		</div>
+	}
+</div>
