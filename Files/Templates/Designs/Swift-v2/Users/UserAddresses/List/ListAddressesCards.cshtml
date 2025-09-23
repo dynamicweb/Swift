@@ -5,169 +5,173 @@
 @using Dynamicweb.Ecommerce.Frontend
 @using Dynamicweb.Security.UserManagement
 
-<div class="grid">
+<header class="hstack gap-3 mb-4">
+    <div class="vstack gap-1 flex-fill">
+        <h1 class="h4 mb-0">@(Pageview.Page.GetDisplayName())</h1>
+        @Translate("Manage your delivery and billing addresses")
+    </div>
     @if (Model.AllowEditAddress) 
     {
-        <div class="g-col-12 g-col-lg-4 card" role="button"
+        <button class="btn btn-primary btn-sm d-flex" data-dw-button="primary"
             tabindex="0"
             aria-label="@Translate("New address")"
             data-bs-toggle="offcanvas" 
             data-bs-target="#DynamicOffcanvas"
             hx-trigger="click" 
-            hx-target="#DynamicOffcanvas" 
             hx-get
+            hx-target="#DynamicOffcanvas" 
             hx-vals='{"ParagraphId": "@Pageview.CurrentParagraph.ID", "LayoutTemplate": "Swift-v2_PageClean.cshtml", "Cmd": "EditAddress"}'>
-            
-            <div class="card-body d-flex flex-column align-items-center justify-content-center gap-3">
-                <div class="btn btn-primary p-2" data-dw-button="primary" id="NewAddress">
-                    <div class="icon-2">
-                        @ReadFile("/Files/Images/Icons/plus.svg")
-                    </div>
-                </div>
-                <div>
-                    @Translate("Add address")
-                </div>
-            </div>
-        </div>
+            <span class="icon-2 me-2">
+                @ReadFile("/Files/Images/Icons/plus.svg")
+            </span>
+            <span>@Translate("Add new")</span>
+        </button>
     }
+</header>
 
+<div class="grid" data-swift-addresses>
     @foreach (var address in Model.Addresses)
     {
         <address class="g-col-12 g-col-lg-4 card m-0">
-            <div class="card-body d-flex flex-column">
-                <div class="d-flex">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
                     @if (!string.IsNullOrEmpty(address.Name))
                     {
-                        <h5 class="card-title flex-fill @(address.Active ? string.Empty : "opacity-50")">
+                        <h6 class="card-title m-0 fw-bold flex-fill">
                             @address.Name
-                        </h5>
+                        </h6>
+                    }
+                    @if (Model.AllowEditAddress) {
+                        <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button="outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
+                            <span class="icon-2">
+                                @ReadFile("/Files/Images/Icons/ellipsis.svg")
+                            </span>
+                        </button>
+                        <ul class="dropdown-menu shadow-sm fs-7 p-1">
+                            <li>
+                                <button type="button" name="Cmd" value="EditAddress" class="btn dropdown-item hstack gap-2 ps-2 pe-3 rounded-1" 
+                                    data-dw-button="link" 
+                                    aria-label="@Translate("Edit address")" 
+                                    data-bs-toggle="offcanvas"
+                                    data-bs-target="#DynamicOffcanvas" 
+                                    hx-trigger="click" 
+                                    hx-target="#DynamicOffcanvas" 
+                                    hx-get=""
+                                    hx-vals='{"ParagraphId": "@Pageview.CurrentParagraph.ID", "LayoutTemplate": "Swift-v2_PageClean.cshtml", "AddressId": "@address.Id"}'
+                                >
+
+                                    <span class="icon-2">
+                                        @ReadFile("/Files/Images/Icons/pen-to-square.svg")
+                                    </span>
+                                    @Translate("Edit")
+                                </button>
+                            </li>
+                            @if(address.AddressKind == UserAddressKind.Shipping) 
+                            {
+                                <li>
+                                    <button type="button" name="Cmd" value="SaveAddress" class="dropdown-item hstack gap-2 ps-2 pe-3 rounded-1"
+                                        hx-trigger="click"
+                                        hx-post
+                                        hx-swap="outerHTML"
+                                        hx-vals='{"AddressId": "@address.Id", "IsDefault": "true"}'
+                                        hx-target="[data-swift-addresses]"
+                                        hx-select="[data-swift-addresses]"
+                                    >
+                                        <span class="icon-2">
+                                            @ReadFile("/Files/Images/Icons/circle-check.svg")
+                                        </span>
+                                        @Translate("Default delivery")
+                                    </button>
+                                </li>
+                            }
+                            <li class="mx-n1"><hr class="dropdown-divider my-1"></li>
+                            <li>
+                                <button type="button" class="btn dropdown-item hstack gap-2 ps-2 pe-3 rounded-1" data-dw-button="link" data-bs-toggle="modal" data-bs-target="#deleteAddressModal_@address.Id">
+                                    <span class="icon-2">
+                                        @ReadFile("/Files/Images/Icons/trash-can.svg")
+                                    </span>
+                                    @Translate("Delete")
+                                </button>
+                            </li>
+                        </ul>
+                        
+                        <div class="modal fade" id="deleteAddressModal_@address.Id" tabindex="-1"
+                            aria-labelledby="deleteAddressModalLabel_@address.Id" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h1 class="modal-title fs-5 m-0" id="deleteAddressModalLabel_@address.Id">
+                                            @Translate("Confirm delete address")</h1>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                            aria-label="@Translate("Cancel")"></button>
+                                    </div>
+                                    <div class="modal-body py-4">
+                                        <span>@Translate("Are you sure you want to delete this address?")</span>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dw-button="secondary"
+                                            data-bs-dismiss="modal">@Translate("Cancel")</button>
+                                        <form method="post">
+                                            <input type="hidden" name="AddressId" value="@address.Id">
+                                            <button type="submit" name="Cmd" value="DeleteAddress" class="btn btn-primary"
+                                                data-dw-button="primary">
+                                                @Translate("Delete")
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     }
                 </div>
 
                 <div class="card-text flex-fill">
-                    <div>@address.Company</div>
-                    <div>@address.Address</div>
-                    <div>@address.Address2</div>
-                    @if (address.CountryCode == "US" || address.CountryCode == "CA")
-                    {
-                        <div>@address.City @address.GetStateName() @address.Zip</div>
-                    }
-                    else
-                    {
-                        <div>@address.Zip @address.City</div>
-                    }
-                    <div>@address.Country</div>
-                    <div class="mt-2">
-                        <div>@address.Phone</div>
-                        <div>@address.Email</div>
-                    </div>
-                </div>
-
-                <div class="mt-5">
-                    @if (address.IsDefault && address.AddressKind == UserAddressKind.Shipping)
-                    {
-                        <div>
-                            <span class="icon-1 me-2">
-                                @ReadFile("/Files/Images/Icons/check.svg")
-                            </span>
-                            <span>
-                                @Translate("Default delivery address")
-                            </span>
+                    @if (address.AddressKind != UserAddressKind.None) {
+                        <div class="d-flex gap-2 mb-3">
+                            @if (address.AddressKind == UserAddressKind.Shipping)
+                            {
+                                <div class="badge text-bg-warning text-light">
+                                    @Translate("Delivery")
+                                </div>
+                            }
+                            else if (address.AddressKind == UserAddressKind.Billing)
+                            {
+                                <div class="badge text-light" style="background-color: #A020F0">
+                                    @Translate("Billing")
+                                </div>
+                            }
+                            @if (address.IsDefault && address.AddressKind == UserAddressKind.Shipping)
+                            {
+                                <div class="badge text-bg-light opacity-50">
+                                    @Translate("Default shipping")
+                                </div>
+                            }
                         </div>
                     }
-                    else if (Model.AllowEditAddress && address.AddressKind == UserAddressKind.Shipping)
-                    {
-                        string disabled = !address.Active ? "disabled" : string.Empty;
 
-                        <form method="post">
-                            <input type="hidden" name="AddressId" value="@address.Id">
-                            <input type="hidden" name="IsDefault" value="true">
-                            <button type="submit" name="Cmd" value="SaveAddress" class="btn btn-link p-0" data-dw-button="link" @disabled>
-                                @Translate("Set as default delivery address")
-                            </button>
-                        </form>
-                    }
-                </div>
-            </div>
-
-            <div class="card-footer d-flex align-items-center gap-2" style="min-height: 3rem;">
-                @if (address.AddressKind == UserAddressKind.Shipping)
-                {
-                    <div class="icon-2 opacity-50">@ReadFile("/Files/Images/Icons/truck.svg")</div>
-                    <div class="opacity-50 flex-fill">
-                        @Translate("Delivery")
-                    </div>
-                }
-                else if (address.AddressKind == UserAddressKind.Billing)
-                {
-                    <div class="icon-2 opacity-50">@ReadFile("/Files/Images/Icons/clipboard-list.svg")</div>
-                    <div class="opacity-50 flex-fill">
-                        @Translate("Billing")
-                    </div>
-                }
-                else
-                {
-                    <div class="opacity-50 flex-fill">
-                        @Translate("Billing and delivery")
-                    </div>
-                }
-                @if (Model.AllowEditAddress) {
-                    <button type="button"
-                        class="btn btn-link p-0"
-                        data-dw-button="link" data-bs-toggle="modal"
-                        data-bs-target="#deleteAddressModal_@address.Id">
-                        <span class="icon-2">
-                            @ReadFile("/Files/Images/Icons/trash-can.svg")
-                        </span>
-                    </button>
-                    <div class="modal fade" id="deleteAddressModal_@address.Id" tabindex="-1"
-                        aria-labelledby="deleteAddressModalLabel_@address.Id" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h1 class="modal-title fs-5 m-0" id="deleteAddressModalLabel_@address.Id">
-                                        @Translate("Confirm delete address")</h1>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                        aria-label="@Translate("Cancel")"></button>
-                                </div>
-                                <div class="modal-body py-4">
-                                    <span>@Translate("Are you sure you want to delete this address?")</span>
-                                </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-dw-button="secondary"
-                                        data-bs-dismiss="modal">@Translate("Cancel")</button>
-                                    <form method="post">
-                                        <input type="hidden" name="AddressId" value="@address.Id">
-                                        <button type="submit" name="Cmd" value="DeleteAddress" class="btn btn-primary"
-                                            data-dw-button="primary">
-                                            @Translate("Delete")
-                                        </button>
-                                    </form>
-                                </div>
-                            </div>
+                    <address class="fs-7 mb-0">
+                        <div>@address.Company</div>
+                        <div>@address.Address</div>
+                        <div>@address.Address2</div>
+                        @if (address.CountryCode == "US" || address.CountryCode == "CA")
+                        {
+                            <div>@address.City @address.GetStateName() @address.Zip</div>
+                        }
+                        else
+                        {
+                            <div>@address.Zip @address.City</div>
+                        }
+                        <div>@address.Country</div>
+                        <div class="mt-2">
+                            @if (!string.IsNullOrEmpty(address.Phone)) {
+                                <div>@Translate("Phone"): @address.Phone</div>
+                            }
+                            @if (!string.IsNullOrEmpty(address.Email)) {
+                                <div>@Translate("Email"): @address.Email</div>
+                            }
                         </div>
-                    </div>
-                    if (address.Active)
-                    {
-                        <button type="button" name="Cmd" value="EditAddress" class="btn btn-link p-0"
-                            data-dw-button="link" aria-label="@Translate("Edit address")" data-bs-toggle="offcanvas"
-                            data-bs-target="#DynamicOffcanvas" hx-trigger="click" hx-target="#DynamicOffcanvas" hx-get=""
-                            hx-vals='{"ParagraphId": "@Pageview.CurrentParagraph.ID", "LayoutTemplate": "Swift-v2_PageClean.cshtml", "AddressId": "@address.Id"}'>
-
-                            <span class="icon-2">
-                                @ReadFile("/Files/Images/Icons/pen-to-square.svg")
-                            </span>
-                        </button>
-                    }
-                    else 
-                    {
-                        <button type="button" class="btn btn-link p-0" data-dw-button="link" disabled>
-                            <span class="icon-2">
-                                @ReadFile("/Files/Images/Icons/pen-to-square.svg")
-                            </span>
-                        </button>
-                    }
-                }
+                    </address>
+                </div>
             </div>
         </address>
     }
