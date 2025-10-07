@@ -1,9 +1,14 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb.Ecommerce.Prices
 
 @{
-	var ordersList = GetLoop("Ecom:IntegrationCustomerCenter.OpenOrderLoop");
+	var list = GetLoop("Ecom:IntegrationCustomerCenter.OpenOrderLoop");
 	string shopId = Pageview.Area.EcomShopId != null ? Pageview.Area.EcomShopId : string.Empty;
 }
+
+<header class="hstack gap-3 mb-4">
+    <h1 class="h4 mb-0">@(Pageview.Page.GetDisplayName())</h1>
+</header>
 
 <div class="card overflow-hidden">
     <div class="table-responsive" style="margin-bottom:-1px;" >
@@ -17,16 +22,16 @@
 				</tr>
 			</thead>
 			<tbody>
-				@foreach (LoopItem order in ordersList)
+				@foreach (LoopItem item in list)
 				{
-					var currency = Dynamicweb.Ecommerce.Services.Currencies.GetCurrency(order.GetString("CurrencyCode")) ?? Dynamicweb.Ecommerce.Common.Context.Currency;
-					string price = new PriceInfo(currency) { PriceWithoutVAT = order.GetDouble("totalAmountIncVat") }.PriceWithoutVATFormatted;
-					string orderDate = !string.IsNullOrEmpty(order.GetString("orderDate")) ? order.GetDate("orderDate").TimeOfDay.Ticks > 0 ? order.GetDate("orderDate").ToString(Dynamicweb.Core.Helpers.DateHelper.DateOnlyFormatStringMedium) : order.GetDate("orderDate").ToShortDateString() : "";
-					string orderId = order.GetString("id");
+					var currency = Dynamicweb.Ecommerce.Services.Currencies.GetCurrency(item.GetString("CurrencyCode")) ?? null;
+					string price = currency != null ? new PriceInfo(currency) { PriceWithoutVAT = item.GetDouble("totalAmount") }.PriceWithoutVATFormatted : item.GetString("totalAmount");
+					string orderDate = !string.IsNullOrEmpty(item.GetString("orderDate")) ? item.GetDate("orderDate").TimeOfDay.Ticks > 0 ? item.GetDate("orderDate").ToString(Dynamicweb.Core.Helpers.DateHelper.DateOnlyFormatStringMedium) : item.GetDate("orderDate").ToShortDateString() : string.Empty;
+					string orderId = item.GetString("id");
 
 					<tr class="position-relative">
 						<td>
-							<a href="@GetString("Ecom:IntegrationCustomerCenter.OpenOrder.Link")&itemID=@orderId" class="border-0 btn btn-outline-secondary btn-sm py-2 px-3 position-relative z-2" data-dw-button="outline-secondary"  title="@Translate("View order")">@Translate("No.") @orderId</a>
+							<a href="@GetString("Ecom:IntegrationCustomerCenter.Order.Link")&itemID=@orderId" class="position-relative z-2 text-decoration-none text-decoration-underline-hover" data-dw-button="outline-secondary"  title="@Translate("View order")">@orderId</a>
 						</td>
 						<td>@orderDate</td>
 						<td class="text-price">@price</td>
@@ -47,11 +52,11 @@
 										</a>
 									</li>
 									<li>
-										<a class="dropdown-item hstack gap-2" href="/Admin/public/CustomerCenter/RequestExternalPdf.aspx?type=OpenOrder&id=@(orderId)&forceDownload=true&shopid=@(shopId)">
+										<a class="dropdown-item hstack gap-2" href="/Admin/public/CustomerCenter/RequestExternalPdf.aspx?type=OpenOrder&id=@(orderId)&forceDownload=true&shopid=@(shopId)" title="@Translate("Download")">
 											<span class="icon-2">
 												@ReadFile("/Files/Images/Icons/download.svg")
 											</span>
-											@Translate("Download PDF")
+											@Translate("Download")
 										</a>
 									</li>
 								</ul>
@@ -60,7 +65,7 @@
 					</tr>
 				}
 
-				@if( ordersList.Count() < 1 )
+				@if( list.Count() < 1 )
 				{
 					<tr class="position-relative">
 						<td colspan="8">
@@ -82,7 +87,16 @@
 	</div>
 </div>
 
-@if (!string.IsNullOrWhiteSpace(GetString("Ecom:IntegrationCustomerCenter.OpenOrder.Paging.Show")))
-{
-	@Include("CustomerCenterPagination.cshtml")
-}
+<nav class="p-2 mt-3">
+	<ul class="pagination m-0">
+		@foreach (LoopItem nodePage in GetLoop("Ecom:IntegrationCustomerCenter.Paging.Pages"))
+		{
+			string isActive = nodePage.GetString("Ecom:IntegrationCustomerCenter.Paging.PageClass") == "currentPage" ? "active" : string.Empty;
+			<li class="page-item @(isActive)">
+				<a href="@nodePage.GetString("Ecom:IntegrationCustomerCenter.Paging.PageIndexUrl")" class="page-link">
+					@nodePage.GetString("Ecom:IntegrationCustomerCenter.Paging.PageIndex")
+				</a>
+			</li>
+		}
+	</ul>
+</nav>
