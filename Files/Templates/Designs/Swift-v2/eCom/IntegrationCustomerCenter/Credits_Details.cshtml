@@ -1,0 +1,141 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb
+@using Dynamicweb.Ecommerce.Prices
+
+@{
+	string id = string.IsNullOrEmpty(GetString("Id")) ? GetString("ID") : GetString("Id");
+	string shopId = Pageview?.Area.EcomShopId != null ? Pageview.Area.EcomShopId : string.Empty;
+	string date = !string.IsNullOrEmpty(GetString("Date")) ? GetDate("Date").Year > 0001 ? GetDate("Date").TimeOfDay.Ticks > 0 ? GetDate("Date").ToString(Dynamicweb.Core.Helpers.DateHelper.DateOnlyFormatStringMedium) : GetDate("Date").ToShortDateString() : GetString("Date") : string.Empty;
+}
+
+<nav aria-label="breadcrumb">
+	<ol class="breadcrumb mb-4" style="--bs-breadcrumb-divider: '>'; --bs-breadcrumb-item-padding-x: 1rem; --bs-breadcrumb-font-size: .875em;">
+		<li class="breadcrumb-item"><a href="default.aspx?ID=@(Pageview?.Page.ID)">@(Pageview?.Page.GetDisplayName())</a></li>
+		<li class="breadcrumb-item active" aria-current="page">@id</li>
+	</ol>
+</nav>
+
+<div class="card mb-4">
+	<div class="card-body">
+		<div class="hstack gap-2 align-items-start mb-2">
+			<div class="flex-fill">
+				<h1 class="h5 mb-2">@Translate("Credit details")</h1>
+				<small class="d-block text-body text-opacity-75 lh-1 mb-2">@Translate("Credit ID"): @id</small>
+				<small class="d-block text-body text-opacity-75 lh-1 mb-2">@Translate("Currency"): @GetString("CurrencyCode")</small>
+				<div class="hstack gap-2">
+					@if (!string.IsNullOrEmpty(date))
+					{
+						<small class="d-block text-body text-opacity-75 lh-1">@Translate("Placed on") @date</small>			
+					}
+				</div>
+			</div>
+			<a class="btn btn-secondary icon-2" data-dw-button href="/Admin/public/CustomerCenter/RequestExternalPdf.aspx?type=Invoice&id=@(id)&forceDownload=true&shopid=@(shopId)" title="@Translate("Download")">
+				@ReadFile("/Files/Images/Icons/download.svg")
+			</a>
+			<button onclick="javascript:print()" class="btn btn-secondary icon-2" data-dw-button title="@Translate("Print")">
+				@ReadFile("/Files/Images/Icons/print.svg")
+			</button>
+		</div>
+	</div>
+	<hr class="mx-4 my-0" style="opacity: .15;">
+	<div class="card-body table-responsive">
+		<table class="table table-md table-hover mb-0 align-middle fs-7" style="--bs-table-color: var(--bs-body-color);">
+			<thead style="--bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
+				<tr>
+					<th>@Translate("Item")</th>
+					<th class="text-end">@Translate("Price")</th>
+					<th class="text-end">@Translate("Quantity")</th>
+					<th class="text-end">@Translate("Total")</th>
+				</tr>
+			</thead>
+			<tbody>
+				@foreach (var orderline in GetLoop("OrderLinesLoop"))
+				{
+					string productName = !string.IsNullOrEmpty(orderline.GetString("ProductName")) ? orderline.GetString("ProductName") : orderline.GetString("Description"); //BC Default field fallback
+
+					<tr>
+						<td>
+							<div class="hstack gap-3">
+								<div class="vstack my-auto">
+									<span class="text-wrap-nowrap fw-bold">@productName</span>
+									<span class="text-body text-opacity-50">@orderline.GetString("ProductNumber")</span>
+								</div>
+							</div>
+						</td>
+						<td class="text-end text-price">
+							@orderline.GetString("UnitPriceWithoutVAT")
+						</td>
+						<td class="text-end">@orderline.GetString("Quantity")</td>
+						<td class="text-end text-price">
+							@orderline.GetString("PriceWithoutVAT")
+						</td>
+					</tr>
+				}
+			</tbody>
+			<tfoot>
+				<tr>
+					<td colspan="3" class="text-end fw-semibold border-0">@Translate("Total")</td>
+					<td class="text-end border-0">
+						<span class="text-price dw-h6">
+							@GetString("PriceWithoutVAT")
+						</span>
+					</td>
+				</tr>
+			</tfoot>
+		</table>
+	</div>
+</div>
+
+<div class="card mb-4">
+	<div class="card-body">
+		<h2 class="h5 mb-3">@Translate("Shipping Information")</h2>
+		<div class="d-grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+			<address class="mb-0 fs-7">
+				<div class="small mb-2 text-body text-opacity-75">@Translate("Delivery Address")</div>
+				<div>@GetString("DeliveryCompany")</div>
+				<div>@GetString("DeliveryName")</div>
+				<div>@GetString("DeliveryEmail")</div>
+				<div>@GetString("DeliveryPhone")</div>
+				<div>@GetString("DeliveryAddress")</div>
+				<div>@GetString("DeliveryAddress2")</div>
+				<div>@GetString("DeliveryZip") @GetString("DeliveryRegion") @GetString("DeliveryCity")</div>
+				<div>@GetString("DeliveryCountry")</div>
+			</address>
+			<div class="vstack gap-4 fs-7">
+				@if (!string.IsNullOrEmpty(GetString("ShippingMethodName"))) {					
+					<div>
+						<div class="small mb-2 text-body text-opacity-75">@Translate("Shipping Method")</div>
+						<div>@GetString("ShippingMethodName")</div>
+					</div>
+				}
+			</div>
+		</div>
+	</div>
+</div>
+
+<div class="card mb-4">
+	<div class="card-body">
+		<h2 class="h5 mb-3">@Translate("Billing Information")</h2>
+		<div class="d-grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+			<address class="mb-0 fs-7">
+				<div class="small mb-2 text-body text-opacity-75">@Translate("Billing Address")</div>
+				<div>@GetString("CustomerCompany")</div>
+				<div>@GetString("CustomerName")</div>
+				<div>@GetString("CustomerEmail")</div>
+				<div>@GetString("CustomerPhone")</div>
+				<div>@GetString("CustomerAddress")</div>
+				<div>@GetString("CustomerAddress2")</div>
+				<div>@GetString("CustomerZip") @GetString("CustomerRegion") @GetString("CustomerCity")</div>
+				<div>@GetString("CustomerCountry")</div>
+			</address>
+			@if (!string.IsNullOrEmpty(GetString("PaymentMethodName"))) {
+				<div class="vstack gap-4 fs-7">
+					<div>
+						<div class="small mb-2 text-body text-opacity-75">@Translate("Payment")</div>
+						<div>@GetString("PaymentMethodName")</div>
+					</div>
+				</div>
+			}
+		</div>
+	</div>
+</div>
