@@ -1,0 +1,332 @@
+@inherits ViewModelTemplate<OrderListViewModel>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.Frontend
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+    string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview.Page.ID}");
+    
+    @*Mock Data*@
+    var mockPayments = new[]
+    {
+        new { Id = "PAY-2001", InvoiceId = "INV-0998", Client = "Acme Corp", Amount = 1250.75, PaymentDate = new DateTime(2025, 8, 1), Method = "Bank Transfer", Status = "Completed" },
+        new { Id = "PAY-2002", InvoiceId = "INV-0997", Client = "BlueSky Logistics", Amount = 980.00, PaymentDate = new DateTime(2025, 7, 12), Method = "Credit Card", Status = "Completed" },
+        new { Id = "PAY-2003", InvoiceId = "INV-0996", Client = "Northwind Traders", Amount = 2200.50, PaymentDate = new DateTime(2025, 6, 30), Method = "Bank Transfer", Status = "Completed" },
+        new { Id = "PAY-2004", InvoiceId = "INV-0994", Client = "GlobalFoods Ltd", Amount = 1500.25, PaymentDate = new DateTime(2025, 5, 25), Method = "Credit Card", Status = "Completed" },
+        new { Id = "PAY-2005", InvoiceId = "INV-0993", Client = "TechStart Inc", Amount = 3200.00, PaymentDate = new DateTime(2025, 5, 5), Method = "Check", Status = "Completed" },
+        new { Id = "PAY-2006", InvoiceId = "INV-0991", Client = "Acme Corp", Amount = 2100.00, PaymentDate = new DateTime(2025, 4, 2), Method = "Check", Status = "Completed" },
+        new { Id = "PAY-2007", InvoiceId = "INV-0989", Client = "Metro Services", Amount = 850.00, PaymentDate = new DateTime(2025, 3, 18), Method = "Credit Card", Status = "Completed" },
+        new { Id = "PAY-2008", InvoiceId = "INV-0988", Client = "BlueSky Logistics", Amount = 1450.00, PaymentDate = new DateTime(2025, 2, 14), Method = "Bank Transfer", Status = "Completed" },
+    };
+    
+    @*Sorting Mock Data*@
+    string sortBy = Dynamicweb.Context.Current?.Request.QueryString.Get("SortBy") ?? "PaymentDate";
+    string sortOrder = Dynamicweb.Context.Current?.Request.QueryString.Get("SortOrder") ?? "desc";
+
+    var payments = mockPayments.AsEnumerable();
+
+    payments = (sortBy, sortOrder) switch
+    {
+        ("Id", "asc") => payments.OrderBy(p => p.Id),
+        ("Id", "desc") => payments.OrderByDescending(p => p.Id),
+        ("Amount", "asc") => payments.OrderBy(p => p.Amount),
+        ("Amount", "desc") => payments.OrderByDescending(p => p.Amount),
+        ("PaymentDate", "asc") => payments.OrderBy(p => p.PaymentDate),
+        ("PaymentDate", "desc") => payments.OrderByDescending(p => p.PaymentDate),
+        _ => payments.OrderByDescending(p => p.PaymentDate)
+    };
+    
+    @*Filtering Mock Data*@
+    string searchText = Dynamicweb.Context.Current?.Request.QueryString.Get("FilterText") ?? "";
+    string clientFilter = Dynamicweb.Context.Current?.Request.QueryString.Get("Client") ?? "";
+    string methodFilter = Dynamicweb.Context.Current?.Request.QueryString.Get("Method") ?? "";
+    string paymentDateRange = Dynamicweb.Context.Current?.Request.QueryString.Get("PaymentDateRange") ?? "";
+    string minAmountStr = Dynamicweb.Context.Current?.Request.QueryString.Get("MinAmount") ?? "";
+    string maxAmountStr = Dynamicweb.Context.Current?.Request.QueryString.Get("MaxAmount") ?? "";
+
+    double? minAmount = double.TryParse(minAmountStr, out var min) ? min : null;
+    double? maxAmount = double.TryParse(maxAmountStr, out var max) ? max : null;
+
+    // Calculate date range based on selection
+    DateTime? paymentDateFromDate = null;
+    if (paymentDateRange == "LastMonth")
+    {
+        paymentDateFromDate = DateTime.Now.AddMonths(-1);
+    }
+    else if (paymentDateRange == "Last3Months")
+    {
+        paymentDateFromDate = DateTime.Now.AddMonths(-3);
+    }
+
+    payments = payments
+        .Where(p => string.IsNullOrEmpty(searchText) || 
+                    p.Id.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                    p.InvoiceId.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                    p.Client.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+        .Where(p => string.IsNullOrEmpty(clientFilter) || p.Client.Contains(clientFilter, StringComparison.OrdinalIgnoreCase))
+        .Where(p => string.IsNullOrEmpty(methodFilter) || p.Method == methodFilter)
+        .Where(p => !paymentDateFromDate.HasValue || p.PaymentDate >= paymentDateFromDate)
+        .Where(p => !minAmount.HasValue || p.Amount >= minAmount)
+        .Where(p => !maxAmount.HasValue || p.Amount <= maxAmount);
+}
+
+<header class="hstack justify-content-between gap-2 mb-4">
+    <div>
+        <h1 class="h4 mb-1">@(Pageview.Page.GetDisplayName())</h1>
+        <p class="text-muted">@Translate("Track all received payments and their details")</p>
+    </div>
+</header>
+
+<nav class="hstack gap-2 mb-3">
+    <form class="flex-fill"
+          hx-get="@(baseUrl)"
+          hx-trigger="keyup delay:.5s, change" 
+          hx-target="[data-swift-payments-filter]"
+          hx-swap="outerHTML"
+          hx-select="[data-swift-payments-filter]"
+          hx-include="[name='Client'],[name='Method'],[name='MinAmount'],[name='MaxAmount'],[name='PaymentDateRange'],[name='SortBy'],[name='SortOrder'],[name='PageNum']"
+          hx-replace-url="false"
+    >
+        <div class="input-group">
+            <span class="input-group-text border-end-0 bg-body">
+                <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
+                <span class="icon-2" data-swift-indicator-origin>@ReadFile("/Files/Images/Icons/magnifying-glass.svg")</span>
+            </span>
+            <input type="text" class="form-control border-start-0 border-end-0" name="FilterText" placeholder="@Translate("Search payments, invoices, or PO numbers")...">
+            <button type="reset" class="input-group-text border-start-0 bg-body" hx-on:click="this.closest('form').dispatchEvent(new Event('change', { bubbles: true }))">
+                <span class="icon-2">@ReadFile("/Files/Images/Icons/xmark.svg")</span>
+                <span class="visually-hidden">@Translate("Clear search")</span>
+            </button>
+        </div>
+    </form>
+
+    <form class="dropdown hstack"
+          hx-get="@(baseUrl)"
+          hx-trigger="change"
+          hx-swap="outerHTML"
+          hx-target="[data-swift-payments-filter]"
+          hx-select="[data-swift-payments-filter]"
+          hx-include="[name='FilterText'],[name='SortBy'],[name='SortOrder'],[name='PageNum']"
+          hx-replace-url="false">
+
+        <button class="btn btn-sm btn-outline-secondary hstack gap-2 ms-auto py-2 px-3 text-body"
+                type="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false">
+            <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
+            <span class="icon-2" data-swift-indicator-origin>
+                @ReadFile("/Files/Images/Icons/filter.svg")
+            </span>
+            @Translate("Filter")
+        </button>
+
+        <div class="dropdown-menu p-3 fs-7 shadow" style="--bs-dropdown-min-width:18rem;">
+            <div class="fw-bold mb-1">@Translate("Payment Method")</div>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <input class="visually-hidden" type="radio" name="Method" id="method_all" value="" @(string.IsNullOrEmpty(methodFilter) ? "checked" : "")>
+                <label for="method_all" class="btn btn-outline-secondary btn-sm">@Translate("All")</label>
+
+                <input class="visually-hidden" type="radio" name="Method" id="method_bank" value="Bank Transfer" @(methodFilter == "Bank Transfer" ? "checked" : "")>
+                <label for="method_bank" class="btn btn-outline-secondary btn-sm">@Translate("Bank Transfer")</label>
+
+                <input class="visually-hidden" type="radio" name="Method" id="method_credit" value="Credit Card" @(methodFilter == "Credit Card" ? "checked" : "")>
+                <label for="method_credit" class="btn btn-outline-secondary btn-sm">@Translate("Credit Card")</label>
+
+                <input class="visually-hidden" type="radio" name="Method" id="method_check" value="Check" @(methodFilter == "Check" ? "checked" : "")>
+                <label for="method_check" class="btn btn-outline-secondary btn-sm">@Translate("Check")</label>
+            </div>
+
+            <div class="fw-bold mb-1">@Translate("Customer")</div>
+            <input type="text" name="Client" class="form-control mb-3" placeholder="@Translate("Filter by client")..." value="@clientFilter">
+
+            <div class="fw-bold mb-1">@Translate("Payment Date Range")</div>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <input class="visually-hidden" type="radio" name="PaymentDateRange" id="date_all" value="" @(string.IsNullOrEmpty(paymentDateRange) ? "checked" : "")>
+                <label for="date_all" class="btn btn-outline-secondary btn-sm">@Translate("All Time")</label>
+
+                <input class="visually-hidden" type="radio" name="PaymentDateRange" id="date_last_month" value="LastMonth" @(paymentDateRange == "LastMonth" ? "checked" : "")>
+                <label for="date_last_month" class="btn btn-outline-secondary btn-sm">@Translate("Last Month")</label>
+
+                <input class="visually-hidden" type="radio" name="PaymentDateRange" id="date_last_3_months" value="Last3Months" @(paymentDateRange == "Last3Months" ? "checked" : "")>
+                <label for="date_last_3_months" class="btn btn-outline-secondary btn-sm">@Translate("Last 3 Months")</label>
+            </div>
+
+            <div class="fw-bold mb-1">@Translate("Amount Range")</div>
+            <div class="d-flex gap-2 mb-3">
+                <input type="number" name="MinAmount" class="form-control" placeholder="@Translate("Min")" value="@minAmountStr">
+                <input type="number" name="MaxAmount" class="form-control" placeholder="@Translate("Max")" value="@maxAmountStr">
+            </div>
+
+            <button type="reset"
+                    class="btn btn-outline-secondary w-100"
+                    hx-on:click="
+                        const form = this.closest('form');
+                        form.reset();
+                        setTimeout(() => form.dispatchEvent(new Event('change', { bubbles: true })), 10);
+                    ">
+                @Translate("Clear All")
+            </button>
+        </div>
+    </form>
+        
+</nav>
+
+<div class="my-3">
+    <h1 class="h5">@Translate("Payments") (@(payments.Count()))</h1>
+</div>
+
+<div class="card overflow-hidden">
+    <div class="table-responsive" style="margin-bottom:-1px;"
+         x-data="{
+            sortBy: '@(Dynamicweb.Context.Current?.Request.QueryString.Get("SortBy") ?? "PaymentDate")',
+            sortOrder: '@(Dynamicweb.Context.Current?.Request.QueryString.Get("SortOrder") ?? "desc")',
+            sort(val) {
+                if(this.sortBy === val) {
+                    this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+                } else {
+                    this.sortBy = val;
+                }
+                this.$refs.sortForm.SortBy.value = this.sortBy;
+                this.$refs.sortForm.SortOrder.value = this.sortOrder;
+                this.$refs.sortForm.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        }">
+        
+        <div data-swift-payments-filter>
+            <table class="table table-md table-hover mb-0 align-middle fs-7" style="--bs-table-color: var(--bs-body-color);">
+                <thead style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .0275); --bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
+                <tr>
+                    <th>
+                        <form x-ref="sortForm"
+                              hx-get="@(baseUrl)"
+                              hx-trigger="change"
+                              hx-target="[data-swift-payments-filter]"
+                              hx-swap="outerHTML"
+                              hx-select="[data-swift-payments-filter]"
+                              hx-include="[name='FilterText'],[name='Client'],[name='Method'],[name='MinAmount'],[name='MaxAmount'],[name='PaymentDateRange'],[name='PageNum']">
+                            <input type="hidden" name="SortBy" x-bind:value="sortBy"/>
+                            <input type="hidden" name="SortOrder" x-bind:value="sortOrder"/>
+                        </form>
+                        <span role="button" class="hstack gap-1 text-nowrap" x-on:click="sort('Id')">
+                            @Translate("Payment ID")
+                            <span x-show="sortBy === 'Id'">
+                                <span x-text="sortOrder === 'asc' ? '↑' : '↓'"></span>
+                            </span>
+                        </span>
+                    </th>
+                    <th>
+                        <span role="button" class="hstack gap-1" x-on:click="sort('PaymentDate')">
+                            @Translate("Payment Date")
+                            <span x-show="sortBy === 'PaymentDate'">
+                                <span x-text="sortOrder === 'asc' ? '↑' : '↓'"></span>
+                            </span>
+                        </span>
+                    </th>
+                    <th>@Translate("Method")</th>
+                    <th>
+                        <span role="button" class="hstack gap-1" x-on:click="sort('Amount')">
+                            @Translate("Amount")
+                            <span x-show="sortBy === 'Amount'">
+                                <span x-text="sortOrder === 'asc' ? '↑' : '↓'"></span>
+                            </span>
+                        </span>
+                    </th>
+                    <th class="text-end">@Translate("Actions")</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr class="position-relative htmx-indicator" style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .02);">
+                    <td colspan="5">
+                        <div class="d-grid py-4">
+                            <span class="m-auto align-items-center text-body text-opacity-25">
+                                <div class="spinner spinner-border"></div>
+                            </span>
+                        </div>
+                    </td>
+                </tr>
+                @{
+                    foreach (var payment in payments)
+                    {
+                        string methodIcon = payment.Method switch
+                        {
+                            "Bank Transfer" => "arrow-right-to-bracket",
+                            "Credit Card" => "credit-card",
+                            "Check" => "receipt",
+                            _ => "file-invoice-dollar"
+                        };
+                        
+                        <tr class="position-relative">
+                            <td>
+                                <div class="vstack position-relative">
+                                    <a href="@(baseUrl)?PaymentId=@(payment.Id)" class="hstack gap-2 text-decoration-none text-decoration-underline-hover position-relative z-2">
+                                        @(payment.Id)
+                                    </a>
+                                </div>
+                            </td>
+                            <td>
+                                <div>@(payment.PaymentDate.ToShortDateString())</div>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="icon-2">
+                                        @ReadFile($"/Files/Images/Icons/{methodIcon}.svg")
+                                    </span>
+                                    <span>@payment.Method</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="fw-bold text-success">@(Dynamicweb.Ecommerce.Services.Currencies.Format(Dynamicweb.Ecommerce.Common.Context.Currency, payment.Amount))</div>
+                            </td>
+                            <td class="text-end">
+                                <div class="hstack d-flex justify-content-end gap-2">
+                                    <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
+                                        <span class="icon-2">
+                                            @ReadFile("/Files/Images/Icons/ellipsis.svg")
+                                        </span>
+                                    </button>
+                                    <ul class="dropdown-menu shadow-sm fs-7 p-1">
+                                        <li>
+                                            <a class="dropdown-item hstack gap-2 ps-2 pe-3 rounded-1" href="@(baseUrl)?PaymentId=@(payment.Id)">
+                                                <span class="icon-2">
+                                                    @ReadFile("/Files/Images/Icons/eye.svg")
+                                                </span>
+                                                @Translate("View Details")
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div hx-swap-oob="true outerHTML:[data-swift-cart-list-pagination]" data-swift-cart-list-pagination>
+    @if (Model.PageCount > 1)
+    {
+        <form class="mt-3">
+            <ul class="pagination m-0">
+                @for (int i = 1; i <= Model.PageCount; i++)
+                {
+                    var active = (i == Model.CurrentPage) ? "active" : string.Empty;
+                    <li class="page-item @active">
+                        <button type="submit"
+                                class="page-link"
+                                name="PageNum"
+                                value="@i"
+                                aria-label="@Translate("Go to page") @i"
+                                @(active == "active" ? "aria-current=\"page\"" : "")>
+                            @i
+                        </button>
+                    </li>
+                }
+            </ul>
+        </form>
+    }
+</div>
