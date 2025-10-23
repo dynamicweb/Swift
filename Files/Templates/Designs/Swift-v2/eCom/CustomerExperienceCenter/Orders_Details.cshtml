@@ -8,7 +8,8 @@
 @{
 	string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview.Page.ID}");
 	var showPricesWithVat = Dynamicweb.Ecommerce.Common.Context.DisplayPricesWithVat;
-	var orderlines = Model.OrderLines?.Where(x => x.OrderLineType != Dynamicweb.Ecommerce.Orders.OrderLineType.Discount && x.OrderLineType != Dynamicweb.Ecommerce.Orders.OrderLineType.ProductDiscount);
+	var orderlines = Model.OrderLines?.Where(x => x.OrderLineType is not OrderLineType.Discount && x.OrderLineType is not OrderLineType.ProductDiscount);
+	var orderDiscounts = Model.OrderLines?.Where(x => x.OrderLineType is OrderLineType.Discount);
 }
 
 <nav aria-label="breadcrumb">
@@ -22,12 +23,12 @@
 	<div class="card-body">
 		<h1 class="h5 mb-2 text-nowrap">@Translate("Order Details")</h1>
 		<div>
-			<small class="d-block text-muted lh-1 mb-2">@Translate("ID"): <span class="fw-bold">@(Model.Id)</span></small>
-			<small class="d-block text-muted lh-1 mb-2">@Translate("Currency"): <span class="fw-bold">@(Model.Price.CurrencyCode)</span></small>
+			<small class="d-block text-muted text-opacity-75 lh-1 mb-2">@Translate("ID"): <span class="fw-bold">@(Model.Id)</span></small>
+			<small class="d-block text-muted text-opacity-75 lh-1 mb-2">@Translate("Currency"): <span class="fw-bold">@(Model.Price.CurrencyCode)</span></small>
 			<div class="hstack gap-2">
 				@if (Model.CompletedDate.HasValue)
 				{
-					<small class="d-block text-muted lh-1">@Translate("Placed on") @Model.CompletedDate.Value.ToString(Pageview.Area.CultureInfo)</small>			
+					<small class="d-block text-muted text-opacity-75 lh-1">@Translate("Placed on") @Model.CompletedDate.Value.ToString(Pageview.Area.CultureInfo)</small>			
 				}
 				<span class="badge lh-sm bg-secondary" style="background-color:@(Dynamicweb.Ecommerce.Services.OrderStates.GetStateById(Model.StateId).Color) !important;">
 					@(Model.StateName)
@@ -65,6 +66,7 @@
 									<div class="vstack my-auto">
 										<span class="text-wrap-nowrap fw-bold">@orderline.ProductName</span>
 										<span class="text-muted">@orderline.ProductNumber</span>
+										<span class="text-muted">@orderline.ProductNumber</span>
 									</div>
 								</div>
 							</td>
@@ -78,7 +80,7 @@
 									}
 									else
 									{
-										<div class="text-price text-decoration-line-through text-body text-opacity-50">@orderline.UnitPrice.PriceFormattedNoSymbol</div>
+										<div class="text-price text-decoration-line-through text-muted">@orderline.UnitPrice.PriceFormattedNoSymbol</div>
 										<div class="text-price">@orderline.UnitPriceWithProductDiscount.PriceFormattedNoSymbol</div>
 									}
 								</div>
@@ -91,7 +93,7 @@
 									}
 									else
 									{
-										<div class="text-price text-decoration-line-through text-body text-opacity-50">@orderline.Price.PriceFormattedNoSymbol</div>
+										<div class="text-price text-decoration-line-through text-muted">@orderline.Price.PriceFormattedNoSymbol</div>
 										<div class="text-price">@orderline.TotalPriceWithProductDiscounts.PriceFormattedNoSymbol</div>
 									}
 								</div>
@@ -116,8 +118,29 @@
 			<tfoot>
 				<tr>
 					<td colspan="4" class="text-end fw-semibold">@Translate("Subtotal")</td>
-					<td class="text-end"><span class="text-price">@Model.TotalPriceBeforeFeesAndTaxes.PriceFormattedNoSymbol</span></td>
+					<td class="text-end">
+						@if (Comparer<String>.Equals(Model.TotalPriceWithoutDiscountsFeesAndTaxes.PriceFormattedNoSymbol, Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.PriceFormattedNoSymbol) is false)
+						{
+							<span class="text-price text-muted text-decoration-line-through">@(Model.TotalPriceWithoutDiscountsFeesAndTaxes.PriceFormattedNoSymbol)</span>
+						}
+						<span class="text-price">
+							@(Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.PriceFormattedNoSymbol)
+						</span>
+					</td>
 				</tr>
+				@if (orderDiscounts != null)
+				{
+					foreach (var discount in orderDiscounts)
+					{
+						if ( string.IsNullOrEmpty(discount?.ProductId) || string.IsNullOrEmpty(discount?.ProductNumber ))
+						{
+							<tr>
+								<td colspan="4" class="text-end">@discount?.ProductName</td>
+								<td class="text-end"><span class="text-price">@discount?.Price.PriceFormattedNoSymbol</span></td>
+							</tr>
+						}
+					}
+				}
 				@if (Model.ShippingFee.Price != 0.0)
 				{
 					<tr>
@@ -132,30 +155,30 @@
 						<td class="text-end"><span class="text-price">@Model.PaymentFee.PriceFormattedNoSymbol</span></td>
 					</tr>
 				}
-				@if (Model.TotalDiscount.Price != 0.0)
-				{
-					<tr>
-						<td colspan="4" class="text-end">@Translate("Discount")</td>
-						<td class="text-end"><span class="text-price">@Model.TotalDiscount.PriceFormattedNoSymbol</span></td>
-					</tr>
-				}
 				@if (Model.TotalTaxes.Price != 0.0) {
 					<tr>
 						<td colspan="4" class="text-end">@Translate("Taxes")</td>
 						<td class="text-end"><span class="text-price">@Model.TotalTaxes.PriceFormattedNoSymbol</span></td>
 					</tr>
 				}
+				<tr>
+					<td colspan="4" class="text-end fw-semibold">@Translate("Total")</td>
+					<td class="text-end"><span class="text-price dw-h6">@Model.Price.PriceFormattedNoSymbol</span></td>
+				</tr>
 				@if (showPricesWithVat && Model.Price.Vat != 0.0)
 				{
 					<tr>
-						<td colspan="4" class="text-end">@Translate("VAT") @(Model.Price.VATPercent)%</td>
-						<td class="text-end"><span class="text-price">@Model.Price.Vat</span></td>
+						<td colspan="4" class="text-end border-0">@Translate("VAT") @(Model.Price.VATPercent)%</td>
+						<td class="text-end border-0"><span class="text-price">@Model.Price.Vat</span></td>
 					</tr>
 				}
-				<tr>
-					<td colspan="4" class="text-end fw-semibold border-0">@Translate("Total")</td>
-					<td class="text-end border-0"><span class="text-price dw-h6">@Model.Price.PriceFormattedNoSymbol</span></td>
-				</tr>
+				@if (Model.TotalDiscount.Price != 0.0)
+				{
+					<tr>
+						<td colspan="4" class="text-end border-0">@Translate("Discount")</td>
+						<td class="text-end border-0"><span class="text-price">(@Model.TotalDiscount.PriceFormattedNoSymbol)</span></td>
+					</tr>
+				}
 			</tfoot>
 		</table>
 	</div>
@@ -166,7 +189,7 @@
 		<h2 class="h5 mb-3">@Translate("Shipping Information")</h2>
 		<div class="d-grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
 			<address class="mb-0 fs-7">
-				<div class="small mb-2 text-muted">@Translate("Shipping Address")</div>
+				<div class="small mb-2 text-muted text-opacity-75">@Translate("Shipping Address")</div>
 				<div>@Model.DeliveryCompany</div>
 				<div>@Model.DeliveryFirstName @Model.DeliverySurname</div>
 				<div>@Model.DeliveryAddress</div>
@@ -176,13 +199,13 @@
 			</address>
 			<div class="vstack gap-4 fs-7">
 				<div>
-					<div class="small mb-2 text-muted">@Translate("Shipping Method")</div>
+					<div class="small mb-2 text-muted text-opacity-75">@Translate("Shipping Method")</div>
 					<div>@Model.ShippingMethod?.Name</div>
 				</div>
 				@if (!string.IsNullOrEmpty(Model.TrackAndTraceURL) || !string.IsNullOrEmpty(Model.TrackAndTraceNumber))
 				{
 					<div>
-						<div class="small mb-2 text-muted">@Translate("Tracking Number")</div>
+						<div class="small mb-2 text-muted text-opacity-75">@Translate("Tracking Number")</div>
 						<div>
 							@if (!string.IsNullOrEmpty(Model.TrackAndTraceURL))
 							{
@@ -205,7 +228,7 @@
 		<h2 class="h5 mb-3">@Translate("Billing Information")</h2>
 		<div class="d-grid gap-4" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
 			<address class="mb-0 fs-7">
-				<div class="small mb-2 text-muted">@Translate("Billing Address")</div>
+				<div class="small mb-2 text-muted text-opacity-75">@Translate("Billing Address")</div>
 				<div>@Model.CustomerCompany</div>
 				<div>@Model.CustomerName</div>
 				<div>@Model.CustomerEmail</div>
@@ -217,7 +240,7 @@
 			</address>
 			<div class="vstack gap-4 fs-7">
 				<div>
-					<div class="small mb-2 text-muted">@Translate("Payment Method")</div>
+					<div class="small mb-2 text-muted text-opacity-75">@Translate("Payment Method")</div>
 					<div>@Model.PaymentMethod?.Name</div>
 				</div>
 			</div>
