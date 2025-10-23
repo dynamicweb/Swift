@@ -8,6 +8,7 @@
 @{
 	string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview.Page.ID}");
 	var showPricesWithVat = Dynamicweb.Ecommerce.Common.Context.DisplayPricesWithVat;
+	var orderlines = Model.OrderLines?.Where(x => x.OrderLineType != Dynamicweb.Ecommerce.Orders.OrderLineType.Discount && x.OrderLineType != Dynamicweb.Ecommerce.Orders.OrderLineType.ProductDiscount);
 }
 
 <nav aria-label="breadcrumb">
@@ -22,7 +23,7 @@
 		<div class="flex-fill">
 			<h1 class="h5 mb-2 text-nowrap">@Translate("Quote Details")</h1>
 			<div>
-				<small class="d-block text-muted text-opacity-75 lh-1 mb-2">@Translate("ID"): <span class="fw-bold">@Model.Id</span></span></small>
+				<small class="d-block text-muted text-opacity-75 lh-1 mb-2">@Translate("ID"): <span class="fw-bold">@Model.Id</span></small>
 				<small class="d-block text-muted text-opacity-75 lh-1 mb-2">@Translate("Currency"): <span class="fw-bold">@Model.Price.CurrencyCode</span></small>
 				<div class="hstack gap-2">
 					@if (Model.CompletedDate.HasValue)
@@ -54,34 +55,50 @@
 				<tr>
 					<th>@Translate("Item")</th>
 					<th class="text-center">@Translate("Unit")</th>
-					<th class="text-end">@Translate("Quantity")</th>
+					<th class="text-end">@Translate("Qty")</th>
 					<th class="text-end">@Translate("Price")</th>
 					<th class="text-end">@Translate("Total")</th>
 				</tr>
 			</thead>
 			<tbody>
-				@foreach (OrderLineViewModel orderline in Model.OrderLines)
+				@if (orderlines?.Count() > 0)
+				{
+					foreach (var orderline in orderlines)
+					{
+						<tr>
+							<td>
+								<div class="hstack gap-3">
+									@if(orderline.GetProduct()?.DefaultImage.TryGetImageFileViewModel(out var image) is true)
+									{
+										<div class="d-flex img-thumbnail" style="inline-size: 40px; aspect-ratio: 1;">
+											<img class="m-auto" src="@(image?.ToGetImage(new(){Height = 30, Width = 30, Ratio = "1/1", Crop = Dynamicweb.Imaging.ImageHandling.CropMode.KeepAspectRatio }))" alt="@(orderline.ProductName)">
+										</div>
+									}
+									
+									<div class="vstack my-auto">
+										<span class="text-wrap-nowrap fw-bold">@orderline.ProductName</span>
+										<span class="text-muted">@orderline.ProductNumber</span>
+									</div>
+								</div>
+							</td>
+							<td class="text-center">@orderline.UnitName</td>
+							<td class="text-end">@orderline.Quantity</td>
+							<td class="text-end text-price">@orderline.UnitPrice.PriceFormattedNoSymbol</td>
+							<td class="text-end text-price">@orderline.Price.PriceFormattedNoSymbol</td>
+						</tr>
+					}
+				}
+				else 
 				{
 					<tr>
-						<td>
-							<div class="hstack gap-3">
-								@if(orderline.GetProduct()?.DefaultImage.TryGetImageFileViewModel(out var image) is true)
-								{
-									<div class="d-flex img-thumbnail" style="inline-size: 40px; aspect-ratio: 1;">
-										<img class="m-auto" src="@(image?.ToGetImage(new(){Height = 30, Width = 30, Ratio = "1/1", Crop = Dynamicweb.Imaging.ImageHandling.CropMode.KeepAspectRatio }))" alt="@(orderline.ProductName)">
-									</div>
-								}
-								
-								<div class="vstack my-auto">
-									<span class="text-wrap-nowrap fw-bold">@orderline.ProductName</span>
-									<span class="text-muted">@orderline.ProductNumber</span>
-								</div>
+						<td colspan="5" class="py-3 text-center text-muted">
+							<div class="d-grid rounded-circle m-auto" style="width:4rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
+								<span class="icon-4">
+									@ReadFile("/Files/Images/Icons/file-contract.svg")
+								</span>
 							</div>
+							<div class="mt-1">@Translate("No items")</div>
 						</td>
-						<td class="text-center">@orderline.UnitName</td>
-						<td class="text-end">@orderline.Quantity</td>
-						<td class="text-end text-price">@orderline.UnitPrice.PriceFormattedNoSymbol</td>
-						<td class="text-end text-price">@orderline.Price.PriceFormattedNoSymbol</td>
 					</tr>
 				}
 			</tbody>
