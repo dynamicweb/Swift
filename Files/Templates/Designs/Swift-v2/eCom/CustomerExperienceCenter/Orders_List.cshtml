@@ -7,153 +7,124 @@
 
 @{
     string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview.Page.ID}");
+    string currentSortBy = Dynamicweb.Context.Current?.Request.QueryString.Get("SortBy") ?? Pageview.CurrentParagraph?.ModuleProperties?.GetValue("SortByField") ?? string.Empty;
+    string currentSortOrder = Dynamicweb.Context.Current?.Request.QueryString.Get("SortOrder") ?? Pageview.CurrentParagraph?.ModuleProperties?.GetValue("SortOrder") ?? string.Empty;
+    string nextSortOrder = currentSortOrder == "asc" ? "desc" : "asc";
+    string arrow = currentSortOrder == "asc" ? @ReadFile("/Files/Images/Icons/arrow-up.svg") : @ReadFile("/Files/Images/Icons/arrow-down.svg");
 }
 
 <header class="hstack gap-3 mb-4">
     <h1 class="h4 mb-0">@(Pageview.Page.GetDisplayName())</h1>
 </header>
 
-<nav class="hstack gap-2 mb-3">
-    <form class="flex-fill"
-        hx-get="@(baseUrl)"
-        hx-trigger="keyup delay:1s, change" 
-        hx-swap="outerHTML"
-        hx-target="[data-swift-order-state-filter]"
-        hx-select="[data-swift-order-state-filter]"
-        hx-replace-url="true"
-        hx-include='[name="FilterOrderStateId"]'
-    >
-        <div class="input-group">
-            <span class="input-group-text border-end-0 bg-body">
-                <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
-                <span class="icon-2" data-swift-indicator-origin>@ReadFile("/Files/Images/Icons/magnifying-glass.svg")</span>
-            </span>
-            <input type="text" class="form-control border-start-0 border-end-0" name="FilterText" placeholder="@Translate("Search orders")...">
-            <button type="reset" class="input-group-text border-start-0 bg-body" hx-on:click="this.closest('form').dispatchEvent(new Event('change', { bubbles: true }))">
-                <span class="icon-2">@ReadFile("/Files/Images/Icons/xmark.svg")</span>
-                <span class="visually-hidden">@Translate("Clear search")</span>
-            </button>
-        </div>
-    </form>
-    <form class="dropdown hstack"
-        hx-get="@(baseUrl)"
-        hx-trigger="change" 
-        hx-swap="outerHTML"
-        hx-target="[data-swift-order-state-filter]"
-        hx-select="[data-swift-order-state-filter]"
-        hx-replace-url="true"
-        hx-include='[name="FilterText"]'
-        >
-        <button class="btn btn-sm btn-outline-secondary hstack gap-2 ms-auto py-2 px-3 text-body" data-dw-button="outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
-            <span class="icon-2" data-swift-indicator-origin>
-                @ReadFile("/Files/Images/Icons/filter.svg")
-            </span>
-            @Translate("Filter")
-        </button>
-        <div class="dropdown-menu p-3 fs-7 shadow" style="--bs-dropdown-min-width:18rem;">
-            <div class="fw-bold mb-1">@Translate("Status")</div>
-            <div class="d-flex flex-wrap gap-2" data-swift-order-state-filter>
-                <input class="visually-hidden" type="radio" name="FilterOrderStateId" value="" id="state_all" checked="@((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId") ?? string.Empty) == string.Empty)">
-                <label for="state_all" class="fs-8 py-1 px-2 btn @((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId") ?? string.Empty) == string.Empty ? "btn-primary" : "btn-outline-secondary text-body") lh-1" role="button" data-dw-button>@Translate("All")</label>
-                @foreach (var state in Dynamicweb.Ecommerce.Services.OrderStates.GetStatesByOrderType(Dynamicweb.Ecommerce.Orders.OrderType.Order))
-                {
-                    <input class="visually-hidden" type="radio" name="FilterOrderStateId" value="@(state.Id)" id="state_@(state.Id)" checked="@((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId")) == state.Id)">
-                    <label for="state_@(state.Id)" class="fs-8 py-1 px-2 btn @((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId")) == state.Id ? "btn-primary" : "btn-outline-secondary text-body") lh-1" role="button" data-dw-button>@(state.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID))</label>
-                }
+<form data-swift-order-list 
+    hx-get="@(baseUrl)"
+    hx-trigger="keyup delay:.3s, change, click from:input[type='radio'][name='SortBy']" 
+    hx-swap="outerHTML"
+    hx-target="[data-swift-order-list]"
+    hx-select="[data-swift-order-list]"
+    hx-replace-url="true"
+    hx-on:click="if (event.target.querySelector('input[type=radio][name=SortBy]') && event.target.querySelector('input[type=radio][name=SortBy]').checked) {
+     this.querySelector('[name=SortOrder]').value = '@(nextSortOrder)';
+    }">
+
+    <input type="hidden" name="SortOrder" value="@(currentSortOrder)">
+
+    <nav class="hstack gap-2 mb-3">
+        <div class="flex-fill">
+            <div class="input-group">
+                <span class="input-group-text border-end-0 bg-body">
+                    <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    <span class="icon-2" data-swift-indicator-origin>@ReadFile("/Files/Images/Icons/magnifying-glass.svg")</span>
+                </span>
+                <input type="text" class="form-control border-start-0 border-end-0" name="FilterText" value="@Dynamicweb.Context.Current?.Request.QueryString.Get("FilterText")" placeholder="@Translate("Search orders")...">
+                <button type="reset" class="input-group-text border-start-0 bg-body" onclick="this.closest('form').querySelector('[name=FilterText]').value = ''; this.closest('form').dispatchEvent(new Event('change', { bubbles: true }))">
+                    <span class="icon-2">@ReadFile("/Files/Images/Icons/xmark.svg")</span>
+                    <span class="visually-hidden">@Translate("Clear search")</span>
+                </button>
             </div>
         </div>
-    </form>
-</nav>
-
-<div class="card overflow-hidden">
-    <div class="table-responsive" style="margin-bottom:-1px;" 
-        x-data="{
-            sortBy: '@(Dynamicweb.Context.Current?.Request.QueryString.Get("SortBy") ?? "CreatedAt")',
-            sortOrder: '@(Dynamicweb.Context.Current?.Request.QueryString.Get("SortOrder") ?? "desc")',
-            sort(val) {
-                if(this.sortBy === val) {
-                    this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
-                } else {
-                    this.sortBy = val;
-                }
-                this.$refs.sortForm.SortBy.value = this.sortBy;
-                this.$refs.sortForm.SortOrder.value = this.sortOrder;
-                this.$refs.sortForm.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        }"
-    >
-        <table class="table table-md table-hover mb-0 align-middle fs-7" style="--bs-table-color: var(--bs-body-color);" hx-swap-oob="true outerHTML:[data-swift-order-list]" data-swift-order-list>
-            <thead style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .0275); --bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
-                <tr>
-                    <th>
-                        <form x-ref="sortForm" 
-                            hx-get="@(baseUrl)" 
-                            hx-swap="none" 
-                            hx-replace-url="true" 
-                            hx-trigger="change"
-                            hx-include='[name="FilterText"],[name="FilterOrderStateId"],[name="PageNum"]'
-                        >
-                            <input type="hidden" name="SortBy" :value="sortBy">
-                            <input type="hidden" name="SortOrder" :value="sortOrder">
-                        </form>
-                        <span role="button" class="hstack gap-1" @@click="sort('Id')">
-                            @Translate("Order number")
-                            <span x-show="sortBy === 'Id'">
-                                <span x-text="sortOrder === 'asc' ? '↑' : '↓'"></span>
-                            </span>
-                        </span>
-                    </th>
-                    <th>
-                        <span role="button" class="hstack gap-1" @@click="sort('CustomerName')">
-                            @Translate("Customer")
-                            <span x-show="sortBy === 'CustomerName'">
-                                <span x-text="sortOrder === 'asc' ? '↑' : '↓'"></span>
-                            </span>
-                        </span>
-                    </th>
-                    <th>
-                        <span role="button" class="hstack gap-1" @@click="sort('CreatedAt')">
-                            @Translate("Placed")
-                            <span x-show="sortBy === 'CreatedAt'">
-                                <span x-text="sortOrder === 'asc' ? '↑' : '↓'"></span>
-                            </span>
-                        </span>
-                    </th>
-                    <th>
-                        <span role="button" class="hstack gap-1" @@click="sort('StateId')">
-                            @Translate("Status")
-                            <span x-show="sortBy === 'StateId'">
-                                <span x-text="sortOrder === 'asc' ? '↑' : '↓'"></span>
-                            </span>
-                        </span>
-                    </th>
-                    <th>@Translate("Qty")</th>
-                    <th>
-                        <span role="button" class="hstack gap-1" @@click="sort('PriceBeforeFees')">
-                            @Translate("Total")
-                            <span x-show="sortBy === 'PriceBeforeFees'">
-                                <span x-text="sortOrder === 'asc' ? '↑' : '↓'"></span>
-                            </span>
-                        </span>
-                    </th>
-                    <th>@Translate("Actions")</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr class="position-relative htmx-indicator" style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .02);">
-                    <td colspan="9">
-                        <div class="d-grid py-4">
-                            <span class="m-auto align-items-center text-body text-opacity-25">
-                                <div class="spinner spinner-border"></div>
-                            </span>
-                        </div>
-                    </td>
-                </tr>
-                @{
-                    foreach ( var order in Model.Orders )
+        <div class="dropdown hstack">
+            <button class="btn btn-sm btn-outline-secondary hstack gap-2 ms-auto py-2 px-3 text-body" data-dw-button type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="icon-2">
+                    @ReadFile("/Files/Images/Icons/filter.svg")
+                </span>
+                @Translate("Filter")
+            </button>
+            <div class="dropdown-menu p-3 fs-7 shadow" style="--bs-dropdown-min-width:18rem;">
+                <div class="fw-bold mb-1">@Translate("Status")</div>
+                <div class="d-flex flex-wrap gap-2" data-swift-order-state-filter>
+                    <input class="visually-hidden" type="radio" name="FilterOrderStateId" value="" id="state_all" checked="@((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId") ?? string.Empty) == string.Empty)">
+                    <label for="state_all" class="fs-8 py-1 px-2 btn @((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId") ?? string.Empty) == string.Empty ? "btn-primary" : "btn-outline-secondary text-body") lh-1" role="button" data-dw-button>@Translate("All")</label>
+                    @foreach (var state in Dynamicweb.Ecommerce.Services.OrderStates.GetStatesByOrderType(Dynamicweb.Ecommerce.Orders.OrderType.Order))
                     {
-                        var orderlines = order.OrderLines.Where(x => x.OrderLineType != OrderLineType.ProductDiscount && (!string.IsNullOrEmpty(x.ProductId) || !string.IsNullOrEmpty(x.ProductNumber)));
+                        <input class="visually-hidden" type="radio" name="FilterOrderStateId" value="@(state.Id)" id="state_@(state.Id)" checked="@((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId")) == state.Id)">
+                        <label for="state_@(state.Id)" class="fs-8 py-1 px-2 btn @((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId")) == state.Id ? "btn-primary" : "btn-outline-secondary text-body") lh-1" role="button" data-dw-button>@(state.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID))</label>
+                    }
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="card overflow-hidden">
+        <div class="table-responsive" style="margin-bottom:-1px;">
+            <table class="table table-md table-hover mb-0 align-middle fs-7" style="--bs-table-color: var(--bs-body-color);">
+                <thead style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .0275); --bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
+                    <tr>
+                        <th>
+                            <label class="hstack gap-1" role="button">
+                                <input type="radio" name="SortBy" value="Id" class="visually-hidden" checked="@(currentSortBy=="Id")" />
+                                @Translate("Order number") 
+                                @if(currentSortBy=="Id") {
+                                    <span class="icon-1">@arrow</span>
+                                }
+                            </label>
+                        </th>
+                        <th>
+                            <label class="hstack gap-1" role="button">
+                                <input type="radio" name="SortBy" value="CustomerName" class="visually-hidden" checked="@(currentSortBy=="CustomerName")" />
+                                @Translate("Customer") 
+                                @if(currentSortBy=="CustomerName") {
+                                    <span class="icon-1">@arrow</span>
+                                }
+                            </label>
+                        </th>
+                        <th>
+                            <label class="hstack gap-1" role="button">
+                                <input type="radio" name="SortBy" value="CreatedAt" class="visually-hidden" checked="@(currentSortBy=="CreatedAt")" />
+                                @Translate("Placed") 
+                                @if(currentSortBy=="CreatedAt") {
+                                    <span class="icon-1">@arrow</span>
+                                }
+                            </label>
+                        </th>
+                        <th>
+                            <label class="hstack gap-1" role="button">
+                                <input type="radio" name="SortBy" value="StateId" class="visually-hidden" checked="@(currentSortBy=="StateId")" />
+                                @Translate("Status") 
+                                @if(currentSortBy=="StateId") {
+                                    <span class="icon-1">@arrow</span>
+                                }
+                            </label>
+                        </th>
+                        <th>@Translate("Qty")</th>
+                        <th>
+                            <label class="hstack gap-1" role="button">
+                                <input type="radio" name="SortBy" value="PriceBeforeFees" class="visually-hidden" checked="@(currentSortBy=="PriceBeforeFees")" />
+                                @Translate("Total") 
+                                @if(currentSortBy=="PriceBeforeFees") {
+                                    <span class="icon-1">@arrow</span>
+                                }
+                            </label>
+                        </th>
+                        <th>@Translate("Actions")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @{
+                        foreach ( var order in Model.Orders )
+                        {
+                            var orderlines = order.OrderLines.Where(x => x.OrderLineType != OrderLineType.ProductDiscount && (!string.IsNullOrEmpty(x.ProductId) || !string.IsNullOrEmpty(x.ProductNumber)));
 
                         <tr class="position-relative">
                             <td>
@@ -236,22 +207,22 @@
                                                 <div class="text-price ms-auto">@(order.PaymentFee.PriceFormatted)</div>
                                             </div>
                                         }
-                                        @if (order.TotalDiscount.Price != 0.0) {
-                                            <div class="hstack">
-                                                <div>@Translate("Discount"):</div>
-                                                <div class="text-price ms-auto">@(order.TotalDiscount.PriceFormatted)</div>
-                                            </div>
-                                        }
                                         @if (order.TotalTaxes.Price != 0.0) {
                                             <div class="hstack">
                                                 <div>@Translate("Taxes"):</div>
                                                 <div class="text-price ms-auto">@(order.TotalTaxes.PriceFormatted)</div>
                                             </div>
                                         }
-                                        @if (Dynamicweb.Ecommerce.Common.Context.DisplayPricesWithVat && order.Price.Vat != 0.0) {
+                                        @if (order.Price.Vat != 0.0) {
                                             <div class="hstack">
                                                 <div>@Translate("VAT") @(order.Price.VATPercent)%:</div>
                                                 <div class="text-price ms-auto">@(order.Price.VatFormatted)</div>
+                                            </div>
+                                        }
+                                        @if (order.TotalDiscount.Price != 0.0) {
+                                            <div class="hstack">
+                                                <div>@Translate("Discount"):</div>
+                                                <div class="text-price ms-auto">@(order.TotalDiscount.PriceFormatted)</div>
                                             </div>
                                         }
                                         <div class="hstack">
@@ -320,68 +291,63 @@
                                                             <div class="text-price">@(orderline.TotalPriceWithProductDiscounts.PriceFormatted)</div>
                                                         }
                                                     </div>
-                                                </div>
-                                            }
-                                            @if( orderlines.Count() > 7 )
-                                            {
-                                                <div class="list-group-item hstack">
-                                                    <a class="mx-auto" href="@(Pageview.SearchFriendlyUrl)?OrderId=@(order.Id)">@Translate("View all orderlines") (@(orderlines.Count()))</a>
-                                                </div>
-                                            }
+                                                }
+                                                @if( orderlines.Count() > 7 )
+                                                {
+                                                    <div class="list-group-item hstack">
+                                                        <a class="mx-auto" href="@(Pageview.SearchFriendlyUrl)?OrderId=@(order.Id)">@Translate("View all orderlines") (@(orderlines.Count()))</a>
+                                                    </div>
+                                                }
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </td>
-                        </tr>
+                                </td>
+                            </tr>
+                        }
+
+                        @if( Model.Orders.Count() < 1 )
+                        {
+                            <tr class="position-relative">
+                                <td colspan="8">
+                                    <div class="d-grid py-4">
+                                        <span class="m-auto">
+                                            <div class="d-grid rounded-circle m-auto" style="width:4rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
+                                                <span class="icon-4 text-muted">
+                                                    @ReadFile("/Files/Images/Icons/file-contract.svg")
+                                                </span>
+                                            </div>
+                                            <div class="mt-3">@Translate("No orders found")</div>
+                                        </span>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
                     }
 
-                    if( Model.Orders.Count() < 1 )
-                    {
-                        <tr class="position-relative">
-                            <td colspan="8">
-                                <div class="d-grid py-4">
-                                    <span class="m-auto">
-                                        <div class="d-grid rounded-circle m-auto" style="width:4rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
-                                            <span class="icon-4 text-muted">
-                                                @ReadFile("/Files/Images/Icons/file-contract.svg")
-                                            </span>
-                                        </div>
-                                        <div class="mt-3">@Translate("No orders found")</div>
-                                    </span>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                }
+                </tbody>
 
-            </tbody>
+            </table>
 
-        </table>
-
+        </div>
     </div>
-</div>
 
-
-<div hx-swap-oob="true outerHTML:[data-swift-order-list-pagination]" data-swift-order-list-pagination>
     @if (Model.PageCount > 1)
     {
-        <form class="mt-3">
-            <ul class="pagination m-0">
-                @for (int i = 1; i <= Model.PageCount; i++)
-                {
-                    var active = (i == Model.CurrentPage) ? "active" : string.Empty;
-                    <li class="page-item @active">
-                        <button type="submit"
-                                class="page-link"
-                                name="PageNum"
-                                value="@i"
-                                aria-label="@Translate("Go to page") @i"
-                                @(active == "active" ? "aria-current=\"page\"" : "")>
-                            @i
-                        </button>
-                    </li>
-                }
-            </ul>
-        </form>
+        <ul class="pagination m-0 mt-3">
+            @for (int i = 1; i <= Model.PageCount; i++)
+            {
+                var active = (i == Model.CurrentPage) ? "active" : string.Empty;
+                <li class="page-item @active">
+                    <button type="submit"
+                            class="page-link"
+                            name="PageNum"
+                            value="@i"
+                            aria-label="@Translate("Go to page") @i"
+                            @(active == "active" ? "aria-current=\"page\"" : "")>
+                        @i
+                    </button>
+                </li>
+            }
+        </ul>
     }
-</div>
+</form>
