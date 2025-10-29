@@ -31,7 +31,7 @@ class VideoPlayer extends HTMLElement {
       try {
         this.internals.states.add("playing");
         this.internals.states.add("controls");
-      } catch (e) {
+      } catch {
         this.internals.states.add('--playing');
         this.internals.states.add('--controls');
       }
