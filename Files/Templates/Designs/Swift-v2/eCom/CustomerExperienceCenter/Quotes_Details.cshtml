@@ -9,6 +9,7 @@
 	string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview.Page.ID}");
 	var showPricesWithVat = Dynamicweb.Ecommerce.Common.Context.DisplayPricesWithVat;
 	var orderlines = Model.OrderLines?.Where(x => x.OrderLineType != OrderLineType.ProductDiscount && (!string.IsNullOrEmpty(x.ProductId) || !string.IsNullOrEmpty(x.ProductNumber)));
+	var orderDiscounts = Model.OrderLines?.Where(x => x.OrderLineType is OrderLineType.Discount);
 }
 
 <nav aria-label="breadcrumb">
@@ -83,8 +84,36 @@
 							</td>
 							<td class="text-center">@orderline.UnitName</td>
 							<td class="text-end">@orderline.Quantity</td>
-							<td class="text-end text-price">@(orderline.OrderLineType == OrderLineType.Discount ? Translate("Free") : orderline.UnitPrice.PriceFormattedNoSymbol)</td>
-							<td class="text-end text-price">@orderline.Price.PriceFormattedNoSymbol</td>
+							<td class="text-end">
+								<div class="vstack align-self-auto text-end">
+									@if(orderline.OrderLineType == OrderLineType.Discount)
+									{
+										<div class="text-price">@Translate("Free")</div>
+									}
+									else if (orderline.HasProductDiscount())
+									{
+										<div class="text-price text-decoration-line-through text-muted">@orderline.UnitPrice.PriceFormattedNoSymbol</div>
+										<div class="text-price">@orderline.UnitPriceWithProductDiscount.PriceFormattedNoSymbol</div>
+									}
+									else
+									{
+										<div class="text-price">@orderline.UnitPrice.PriceFormattedNoSymbol</div>
+									}
+								</div>
+							</td>
+							<td class="text-end">
+								<div class="vstack align-self-auto text-end">
+									@if(orderline.HasProductDiscount())
+									{
+										<div class="text-price text-decoration-line-through text-muted">@orderline.Price.PriceFormattedNoSymbol</div>
+										<div class="text-price">@orderline.TotalPriceWithProductDiscounts.PriceFormattedNoSymbol</div>
+									}
+									else
+									{
+										<div class="text-price">@orderline.Price.PriceFormattedNoSymbol</div>
+									}
+								</div>
+							</td>
 						</tr>
 					}
 				}
@@ -105,8 +134,29 @@
 			<tfoot>
 				<tr>
 					<td colspan="4" class="text-end fw-semibold">@Translate("Subtotal")</td>
-					<td class="text-end"><span class="text-price">@Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.PriceFormattedNoSymbol</span></td>
+					<td class="text-end">
+						@if (Model.TotalProductDiscount.Price != 0.0) //As we only render product order lines before this, we can safely check for any product discounts
+						{
+							<span class="text-price text-muted text-decoration-line-through">@(Model.TotalPriceWithoutDiscountsFeesAndTaxes.PriceFormattedNoSymbol)</span>
+						}
+						<span class="text-price">
+							@(Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.PriceFormattedNoSymbol)
+						</span>
+					</td>
 				</tr>
+				@if (orderDiscounts != null)
+				{
+					foreach (var discount in orderDiscounts)
+					{
+						if ( string.IsNullOrEmpty(discount?.ProductId) || string.IsNullOrEmpty(discount?.ProductNumber ))
+						{
+							<tr>
+								<td colspan="4" class="text-end">@discount?.ProductName</td>
+								<td class="text-end"><span class="text-price">@discount?.Price.PriceFormattedNoSymbol</span></td>
+							</tr>
+						}
+					}
+				}
 				@if (Model.ShippingFee.Price != 0.0)
 				{
 					<tr>
@@ -121,24 +171,30 @@
 						<td class="text-end"><span class="text-price">@Model.PaymentFee.PriceFormattedNoSymbol</span></td>
 					</tr>
 				}
-				@if (Model.TotalDiscount.Price != 0.0)
-				{
+				@if (Model.TotalTaxes.Price != 0.0) {
 					<tr>
-						<td colspan="4" class="text-end">@Translate("Discount")</td>
-						<td class="text-end"><span class="text-price">@Model.TotalOrderDiscount.PriceFormattedNoSymbol</span></td>
-					</tr>
-				}
-				@if (showPricesWithVat && Model.TotalTaxes.Price != 0.0)
-				{
-					<tr>
-						<td colspan="4" class="text-end">@Translate("VAT")</td>
+						<td colspan="4" class="text-end">@Translate("Taxes")</td>
 						<td class="text-end"><span class="text-price">@Model.TotalTaxes.PriceFormattedNoSymbol</span></td>
 					</tr>
 				}
 				<tr>
-					<td colspan="4" class="text-end fw-semibold border-0">@Translate("Total")</td>
-					<td class="text-end border-0"><span class="text-price dw-h6">@Model.Price.PriceFormattedNoSymbol</span></td>
+					<td colspan="4" class="text-end fw-semibold">@Translate("Total")</td>
+					<td class="text-end"><span class="text-price dw-h6">@Model.Price.PriceFormattedNoSymbol</span></td>
 				</tr>
+				@if (showPricesWithVat && Model.Price.Vat != 0.0)
+				{
+					<tr>
+						<td colspan="4" class="text-end border-0">@Translate("VAT") @(Model.Price.VATPercent)%</td>
+						<td class="text-end border-0"><span class="text-price">@Model.Price.Vat</span></td>
+					</tr>
+				}
+				@if (Model.TotalDiscount.Price != 0.0)
+				{
+					<tr>
+						<td colspan="4" class="text-end border-0">@Translate("Discount")</td>
+						<td class="text-end border-0"><span class="text-price">(@Model.TotalDiscount.PriceFormattedNoSymbol)</span></td>
+					</tr>
+				}
 			</tfoot>
 		</table>
 	</div>
