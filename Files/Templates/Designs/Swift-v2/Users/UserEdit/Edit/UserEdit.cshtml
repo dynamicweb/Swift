@@ -15,17 +15,38 @@
     <h1 class="h4 mb-0">@Translate("Edit profile")</h1>
 </header>
 
-<div class="card mb-3">
+<div class="card mb-4">
 	<div class="card-body hstack gap-4 align-items-start p-4">
-        <form method="post" enctype="multipart/form-data" id="UserManagementEditForm">
+        <form enctype="multipart/form-data" id="UserManagementEditForm" data-swift-avatar-input
+            hx-trigger="change"
+            hx-post
+            hx-swap="outerHTML"
+            hx-target="[data-swift-avatar-input]"
+            hx-select="[data-swift-avatar-input]"
+        >
             <input type="hidden" name="ID" value="@Pageview.ID">
             <input type="hidden" name="CMD" value="UpdateUser">
 
-            <label for="ProfileImage" class="d-flex position-relative" title="@Translate("Upload your profile picture")">
-                <input type="file" name="ProfileImage" id="ProfileImage" accept="image/x-png,image/gif,image/jpeg,image/webp" class="visually-hidden" onchange="this.closest('form').submit();" />
+            <label for="ProfileImage" role="button" class="d-flex position-relative" title="@Translate("Upload your profile picture")">
+                <input type="file" name="ProfileImage" id="ProfileImage" class="visually-hidden" 
+                    accept="image/x-png,image/gif,image/jpeg,image/webp"
+                    data-swift-max-bytes="2097152"
+                    hx-on:change="
+                    const f = this.files[0];
+                    const max = +this.dataset.swiftMaxBytes;
+                    this.setCustomValidity('');           // reset
+                    this.classList.remove('is-invalid');
+                    if (f && f.size > max) {
+                        this.setCustomValidity(`@Translate("Max file size is 2 MB.")`);
+                        this.reportValidity();             
+                        this.classList.add('is-invalid');   
+                        this.value = '';                    
+                        return false;                       
+                    }" 
+                >
                 @if(Model.User.TryGetImageFile(out ImageFileViewModel? image))
                 {
-                    <div class="align-self-auto hstack justify-content-center p-0" style="height:6rem; aspect-ratio:1; cursor: pointer;">
+                    <div class="align-self-auto hstack justify-content-center p-0" style="height:6rem; aspect-ratio:1">
                         <img src="@image.ToGetImage(new(){ Width = 500, Ratio = "1/1" })" alt="@Translate("Avatar image")" class="img-thumbnail rounded-circle" itemprop="image"/>
                     </div>
                 } else {
@@ -37,6 +58,9 @@
                 }
                 <div class="btn btn-secondary rounded-circle icon-2 p-2 position-absolute bottom-0 end-0" data-dw-button>
                     @ReadFile("/Files/Images/Icons/upload.svg")
+                </div>
+                <div class="icon-2 position-absolute m-auto w-100 h-100" >
+                    <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
                 </div>
             </label>
         </form>
@@ -57,15 +81,15 @@
 
 @if (Model.Result == UserEditResultType.Success)
 {
-    <div class="alert alert-success">@Translate("Your changes have been saved successfully!")</div>
+    <div class="alert alert-success mb-4">@Translate("Your changes have been saved successfully!")</div>
 } 
 else if (Model.Result == UserEditResultType.InvalidEmail)
 {
-    <div class="alert alert-danger">@Translate("The email is invalid")</div>
+    <div class="alert alert-danger mb-4">@Translate("The email is invalid")</div>
 } 
 else if (Model.Result != UserEditResultType.None)
 {
-    <div class="alert alert-danger">@Translate(Model.Result.ToString())</div>
+    <div class="alert alert-danger mb-4">@Translate(Model.Result.ToString())</div>
 }
 
 <form method="post" id="UserManagementEditForm">
