@@ -12,16 +12,19 @@
         ExpandMode = ExpandMode.All
     });
 
-    <nav class="list-group gap-1 fs-7 rounded-0 pt-1" style="--bs-border-width: 0; --bs-list-group-action-hover-bg: rgba(var(--dw-color-foreground-rgb), .05); --bs-list-group-action-active-bg: rgba(var(--dw-color-foreground-rgb), .1); --bs-list-group-active-bg: rgba(var(--dw-color-foreground-rgb), .08);" role="navigation">
-        @foreach (var node in sidebarNav?.Nodes?.Where(n => n.ShowInMenu) ?? Array.Empty<NavigationTreeNodeViewModel>())
-        {
-            await RenderNavItem(node);
-        }
-    </nav>
+    @if (sidebarNav?.Nodes?.Any() ?? false)
+    {
+        <nav class="list-group gap-1 fs-7 rounded-0 pt-1" style="--bs-border-width: 0; --bs-list-group-action-hover-bg: rgba(var(--dw-color-foreground-rgb), .05); --bs-list-group-action-active-bg: rgba(var(--dw-color-foreground-rgb), .1); --bs-list-group-active-bg: rgba(var(--dw-color-foreground-rgb), .08);" role="navigation">
+            @foreach (var node in sidebarNav.Nodes.Where(n => n.ShowInMenu))
+            {
+                await RenderNavItem(node, (sidebarNav.Nodes.Count(n => (n.Nodes.Any())) > 1));
+            }
+        </nav>
+    }
 
     @if (Model.CurrentUser is not null)
     {			
-        <span class="border-top d-block my-3"></span>
+        <span class="border-top d-block mb-3"></span>
         <nav class="list-group gap-1 fs-7 pt-1" role="navigation" style="--bs-list-group-border-width: 0; --bs-list-group-action-hover-bg: rgba(var(--dw-color-foreground-rgb), .05); --bs-list-group-action-active-bg: rgba(var(--dw-color-foreground-rgb), .1); --bs-list-group-active-bg: rgba(var(--dw-color-foreground-rgb), .08);">
 
             @if (UserContext.Current.ImpersonatingUser != null)
@@ -40,7 +43,7 @@
         </nav>
     }
 
-    async Task RenderNavItem(NavigationTreeNodeViewModel node)
+    async Task RenderNavItem(NavigationTreeNodeViewModel node, bool isMultiGroupNavigation = false)
     {
         var pageIcon = string.Empty;
         var nodePage = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
@@ -75,12 +78,17 @@
         }
         else
         {
-            <h6 class="fs-8 mt-3 mb-2 text-muted text-uppercase pt-4 border-1 border-top">@(node.Name)</h6>
+            @if (isMultiGroupNavigation || node.IsClickable)
+            {
+                <h6 class="fs-8 mb-2 text-muted mt-3 text-uppercase"><a class="text-muted @(node.IsClickable ? "text-decoration-underline" : "text-decoration-none") @(node.IsActive ? "active fw-bold" : null)" aria-current="@(node.IsActive)" href="@(node.IsClickable ? node.Link : null)">@(node.Name)</a></h6>
+            }
             
             @foreach (var subnode in node.Nodes.Where(n => n.ShowInMenu))
             {
                 await RenderNavItem(subnode);
             }
+            
+            <span class="d-block mt-3"></span>
         }
     }
 }
