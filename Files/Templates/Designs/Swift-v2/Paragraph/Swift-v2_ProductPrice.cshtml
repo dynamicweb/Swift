@@ -26,22 +26,6 @@
 			PriceWithVat = 99,
 			PriceWithVatFormatted = "99 " + Pageview.Area.EcomCurrencyId
 		};
-		product.PriceInformative = new PriceViewModel() {
-			Price = 49,
-			PriceFormatted = "49 " + Pageview.Area.EcomCurrencyId,
-			PriceWithoutVat = 49,
-			PriceWithoutVatFormatted = "49 " + Pageview.Area.EcomCurrencyId,
-			PriceWithVat = 49,
-			PriceWithVatFormatted = "49 " + Pageview.Area.EcomCurrencyId
-		};
-		product.PriceBeforeDiscount = new PriceViewModel() {
-			Price = 199,
-			PriceFormatted = "199 " + Pageview.Area.EcomCurrencyId,
-			PriceWithoutVat = 199,
-			PriceWithoutVatFormatted = "199 " + Pageview.Area.EcomCurrencyId,
-			PriceWithVat = 199,
-			PriceWithVatFormatted = "99 " + Pageview.Area.EcomCurrencyId
-		};
 	}
 
 	string anonymousUsersLimitations = Pageview.AreaSettings.GetRawValueString("AnonymousUsers", "");
@@ -78,133 +62,58 @@
 	string flexGap = layout == "horizontal" ? "gap-3" : string.Empty;
 	string order = layout == "horizontal" ? string.Empty : "order-2";
 
-	string showPricesWithVat = Dynamicweb.Ecommerce.Common.Context.DisplayPricesWithVat.ToString();
-	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
+	string priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : string.Empty;
+	string priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : string.Empty;
+	string price = !string.IsNullOrEmpty(unitId) ? product.GetPrice(unitId).Price.PriceFormatted : product?.Price.PriceFormatted;
+	price = priceMin != priceMax ? price = priceMin + " - " + priceMax : price;
 
-	string priceMin = "";
-	string priceMax = "";
+	string beforePrice = !string.IsNullOrEmpty(unitId) ? product.GetPrice(unitId).PriceBeforeDiscount.PriceFormatted : product?.PriceBeforeDiscount.PriceFormatted;
 
-	<div class="@textAlign item_@Model.Item.SystemName.ToLower()" data-product-id="@product.Id" data-variant-id="@product.VariantId">
-		@if (showInformativePrice && product.PriceInformative.Price != 0)
+	Uri url = Dynamicweb.Context.Current.Request.Url;
+	bool IsNeverOutOfStock = product.NeverOutOfstock;
+
+
+	<div class="@textAlign item_@Model.Item?.SystemName?.ToLower()" data-product-id="@product?.Id" data-variant-id="@product?.VariantId">
+		@if (showInformativePrice && product?.PriceInformative.Price != 0)
 		{
 			<div class="opacity-50">
 				<span>@Translate("RRP") </span>
-				<span class="text-decoration-line-through text-price">@product.PriceInformative.PriceFormatted</span>
+				<span class="text-decoration-line-through text-price">@product?.PriceInformative.PriceFormatted</span>
 			</div>
 		}
 		<div class="@priceFontSize m-0 d-flex flex-wrap @flexDirection @flexGap @horizontalAlign" style="row-gap: 0 !important" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
-			<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
+			<span itemprop="priceCurrency" content="@product?.Price.CurrencyCode" class="d-none"></span>
+			<span itemprop="price" content="@product?.Price.Price" class="d-none"></span>
 
-
-			@if (showPricesWithVat == "false" && !neverShowVat)
+			@if (product.HasDiscount())
 			{
-				string beforePrice = !string.IsNullOrEmpty(unitId) ? product.GetPrice(unitId).PriceBeforeDiscount.PriceWithoutVatFormatted : product.PriceBeforeDiscount.PriceWithoutVatFormatted;
-
-				<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
-				if (product.Price.Price != product.PriceBeforeDiscount.Price)
-				{
-					<span class="text-decoration-line-through opacity-75 @order">@beforePrice</span>
-				}
+				<span class="text-decoration-line-through opacity-75 @order">
+					<span class="text-price">@beforePrice</span>
+				</span>
 			}
-			else
-			{
-				string beforePrice = !string.IsNullOrEmpty(unitId) ? product.GetPrice(unitId).PriceBeforeDiscount.PriceFormatted : product.PriceBeforeDiscount.PriceFormatted;
-
-				<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
-
-				if (product.Price.Price != product.PriceBeforeDiscount.Price)
-				{
-					<span class="text-decoration-line-through opacity-75 @order">
-						<span class="text-price">@beforePrice</span>
-					</span>
-				}
-			}
-
-			@if (showPricesWithVat == "false" && !neverShowVat)
-			{
-				string price = !string.IsNullOrEmpty(unitId) ? product.GetPrice(unitId).Price.PriceWithoutVatFormatted : product.Price.PriceWithoutVatFormatted;
-
-				if (product?.VariantInfo?.VariantInfo != null)
-				{
-					priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
-					priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
-				}
-				if (priceMin != priceMax)
-				{
-					price = priceMin + " - " + priceMax;
-				}
-				
-				<span class="text-price">@price</span>
-			}
-			else
-			{
-				string price = !string.IsNullOrEmpty(unitId) ? product.GetPrice(unitId).Price.PriceFormatted : product.Price.PriceFormatted;
-
-				if (product?.VariantInfo?.VariantInfo != null)
-				{
-					priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
-					priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
-				}
-				if (priceMin != priceMax)
-				{
-					price = priceMin + " - " + priceMax;
-				}
-				
-				<span class="text-price">@price</span>
+			
+			<span class="text-price">@price</span>
+			@if (product.Price.GetVatMode() == PriceVatMode.ExclusiveVat) {
+				<span>@Translate(product.Price.GetVatLabel())</span>
 			}
 
 			@* Stock state for Schema.org, start *@
-			@{
-				Uri url = Dynamicweb.Context.Current.Request.Url;
-			}
-
 			<link itemprop="url" href="@url">
-
-			@{
-				bool IsNeverOutOfStock = product.NeverOutOfstock;
-			}
 
 			@if (IsNeverOutOfStock)
 			{
 				<span itemprop="availability" class="d-none">@Translate("Available in stock")</span>
 			}
+			else if (product.StockLevel > 0)
+			{
+				<span itemprop="availability" class="d-none">InStock</span>
+			}
 			else
 			{
-				if (product.StockLevel > 0)
-				{
-					<span itemprop="availability" class="d-none">InStock</span>
-				}
-				else
-				{
-					<span itemprop="availability" class="d-none">OutOfStock</span>
-				}
+				<span itemprop="availability" class="d-none">OutOfStock</span>
 			}
 			@* Stock state for Schema.org, stop *@
-
 		</div>
-
-		@if (showPricesWithVat == "false" && !neverShowVat)
-		{
-			if (!Pageview.IsVisualEditorMode)
-			{
-				<small class="opacity-85 fst-normal js-text-price-with-vat d-none" data-suffix="@Translate("Incl. VAT")"></small>
-			}
-			else
-			{
-				string price = !string.IsNullOrEmpty(unitId) ? product.GetPrice(unitId).Price.PriceWithVatFormatted : product.Price.PriceWithVatFormatted;
-
-				if (product?.VariantInfo?.VariantInfo != null)
-				{
-					priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
-					priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
-				}
-				if (priceMin != priceMax)
-				{
-					price = priceMin + " - " + priceMax;
-				}
-				<small class="opacity-85 fst-normal">@price @Translate("Incl. VAT")</small>
-			}
-		}
 	</div>
 }
 else if (Pageview.IsVisualEditorMode)
