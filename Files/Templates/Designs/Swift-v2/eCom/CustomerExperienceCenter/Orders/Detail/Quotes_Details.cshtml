@@ -8,33 +8,46 @@
 @{
 	string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview.Page.ID}");
 	var showPricesWithVat = Dynamicweb.Ecommerce.Common.Context.DisplayPricesWithVat;
-	var orderlines = Model.OrderLines?.Where(x => x.OrderLineType is not OrderLineType.Discount && x.OrderLineType is not OrderLineType.ProductDiscount);
+	var orderlines = Model.OrderLines?.Where(x => x.OrderLineType != OrderLineType.ProductDiscount && (!string.IsNullOrEmpty(x.ProductId) || !string.IsNullOrEmpty(x.ProductNumber)));
 	var orderDiscounts = Model.OrderLines?.Where(x => x.OrderLineType is OrderLineType.Discount);
 }
 
 <nav aria-label="breadcrumb">
 	<ol class="breadcrumb mb-4" style="--bs-breadcrumb-divider: '>'; --bs-breadcrumb-item-padding-x: 1rem; --bs-breadcrumb-font-size: .875em;">
 		<li class="breadcrumb-item"><a href="@(baseUrl)">@(Pageview.Page.GetDisplayName())</a></li>
-		<li class="breadcrumb-item active" aria-current="page">@Translate("Order") @Model.Id</li>
+		<li class="breadcrumb-item active" aria-current="page">@Translate("Quote") @Model.Id</li>
 	</ol>
 </nav>
 
 <div class="card mb-4">
-	<div class="card-body">
-		<h1 class="h5 mb-2 text-nowrap">@Translate("Order Details")</h1>
-		<div>
-			<small class="d-block text-muted text-opacity-75 lh-1 mb-2">@Translate("ID"): <span class="fw-bold">@(Model.Id)</span></small>
-			<small class="d-block text-muted text-opacity-75 lh-1 mb-2">@Translate("Currency"): <span class="fw-bold">@(Model.Price.CurrencyCode)</span></small>
-			<div class="hstack gap-2">
-				@if (Model.CompletedDate.HasValue)
-				{
-					<small class="d-block text-muted text-opacity-75 lh-1">@Translate("Placed on") @Model.CompletedDate.Value.ToString(Pageview.Area.CultureInfo)</small>			
-				}
-				<span class="badge lh-sm bg-secondary" style="background-color:@(Dynamicweb.Ecommerce.Services.OrderStates.GetStateById(Model.StateId).Color) !important;">
-					@(Model.StateName)
-				</span>
+	<div class="card-body hstack gap-3 flex-wrap">
+		<div class="flex-fill">
+			<h1 class="h5 mb-2 text-nowrap">@Translate("Quote Details")</h1>
+			<div>
+				<small class="d-block text-muted text-opacity-75 lh-1 mb-2">@Translate("ID"): <span class="fw-bold">@Model.Id</span></small>
+				<small class="d-block text-muted text-opacity-75 lh-1 mb-2">@Translate("Currency"): <span class="fw-bold">@Model.Price.CurrencyCode</span></small>
+				<div class="hstack gap-2">
+					@if (Model.CompletedDate.HasValue)
+					{
+						<small class="d-block text-muted text-opacity-75 lh-1">@Translate("Placed on") @Model.CompletedDate.Value.ToString(Pageview.Area.CultureInfo)</small>			
+					}
+					<span class="badge lh-sm bg-secondary" style="background-color:@(Dynamicweb.Ecommerce.Services.OrderStates.GetStateById(Model.StateId).Color) !important;">
+						@(Model.StateName)
+					</span>
+				</div>
 			</div>
 		</div>
+		<button class="btn btn-primary btn-sm hstack gap-2 py-2 px-3 align-self-start" data-dw-button
+			hx-get="/dwapi/ecommerce/carts/@(Model.Secret)"
+			hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/AcceptQuoteModal.cshtml", "accept": "text/html"}'
+			hx-target="main"
+			hx-swap="beforeend"
+		>
+			<span class="icon-2">
+				@ReadFile("/Files/Images/Icons/check.svg")
+			</span>
+			@Translate("Accept quote")
+		</button>
 	</div>
 	<hr class="mx-4 my-0" style="opacity: .15;">
 	<div class="card-body table-responsive">
@@ -49,9 +62,9 @@
 				</tr>
 			</thead>
 			<tbody>
-				@if (orderlines != null)
+				@if (orderlines?.Count() > 0)
 				{
-					foreach (var orderline in orderlines)
+					foreach (var orderline in orderlines.Reverse())
 					{
 						<tr>
 							<td>
@@ -73,39 +86,56 @@
 							<td class="text-end">@orderline.Quantity</td>
 							<td class="text-end">
 								<div class="vstack align-self-auto text-end">
-									@if(orderline.UnitPrice.Price == orderline.UnitPriceWithProductDiscount.Price)
+									@if(orderline.OrderLineType == OrderLineType.Discount)
 									{
-										<div class="text-price">@orderline.UnitPrice.PriceFormattedNoSymbol</div>
+										<div class="text-price">@Translate("Free")</div>
 									}
-									else
+									else if (orderline.HasProductDiscount())
 									{
 										<div class="text-price text-decoration-line-through text-muted">@orderline.UnitPrice.PriceFormattedNoSymbol</div>
 										<div class="text-price">@orderline.UnitPriceWithProductDiscount.PriceFormattedNoSymbol</div>
+									}
+									else
+									{
+										<div class="text-price">@orderline.UnitPrice.PriceFormattedNoSymbol</div>
 									}
 								</div>
 							</td>
 							<td class="text-end">
 								<div class="vstack align-self-auto text-end">
-									@if(orderline.Price.Price == orderline.TotalPriceWithProductDiscounts.Price)
-									{
-										<div class="text-price">@orderline.Price.PriceFormattedNoSymbol</div>
-									}
-									else
+									@if(orderline.HasProductDiscount())
 									{
 										<div class="text-price text-decoration-line-through text-muted">@orderline.Price.PriceFormattedNoSymbol</div>
 										<div class="text-price">@orderline.TotalPriceWithProductDiscounts.PriceFormattedNoSymbol</div>
+									}
+									else
+									{
+										<div class="text-price">@orderline.Price.PriceFormattedNoSymbol</div>
 									}
 								</div>
 							</td>
 						</tr>
 					}
 				}
+				else 
+				{
+					<tr>
+						<td colspan="5" class="py-3 text-center text-muted">
+							<div class="d-grid rounded-circle m-auto" style="width:4rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
+								<span class="icon-4">
+									@ReadFile("/Files/Images/Icons/file-contract.svg")
+								</span>
+							</div>
+							<div class="mt-1">@Translate("No items")</div>
+						</td>
+					</tr>
+				}
 			</tbody>
 			<tfoot>
 				<tr>
 					<td colspan="4" class="text-end fw-semibold">@Translate("Subtotal")</td>
 					<td class="text-end">
-						@if (Comparer<String>.Equals(Model.TotalPriceWithoutDiscountsFeesAndTaxes.PriceFormattedNoSymbol, Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.PriceFormattedNoSymbol) is false)
+						@if (Model.TotalProductDiscount.Price != 0.0)
 						{
 							<span class="text-price text-muted text-decoration-line-through">@(Model.TotalPriceWithoutDiscountsFeesAndTaxes.PriceFormattedNoSymbol)</span>
 						}
@@ -169,6 +199,25 @@
 		</table>
 	</div>
 </div>
+
+@if (!string.IsNullOrEmpty(Model.CustomerComment) || !string.IsNullOrEmpty(Model.Comment)) {
+	<div class="card mb-4">
+		<div class="card-body">
+			<h2 class="h5 mb-3">@Translate("Comments")</h2>
+			@if (!string.IsNullOrEmpty(Model.CustomerComment))
+			{
+				<div class="small mb-2 text-muted text-opacity-75">@Translate("Customer")</div>
+				<div class="fs-7">@Model.CustomerComment</div>
+			}
+			@if (!string.IsNullOrEmpty(Model.Comment)) 
+			{
+				<hr class="text-muted">
+				<div class="small mb-2 text-muted text-opacity-75">@Translate("Order")</div>
+				<div class="fs-7">@Model.Comment</div>
+			}
+		</div>
+	</div>
+}
 
 <div class="card mb-4">
 	<div class="card-body">
