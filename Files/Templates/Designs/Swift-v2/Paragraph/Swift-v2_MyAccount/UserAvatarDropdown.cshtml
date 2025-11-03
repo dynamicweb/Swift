@@ -71,18 +71,15 @@
 			<li><hr class="dropdown-divider"></li>
 
 			@{
-				var nav = Navigation.GetNavigationViewModel(new NavigationSettings(){
+				var nav = Navigation.GetNavigationViewModel(new(){
 					RootPageId = myAccountPageId,
-					IncludeFoldersAndHidden = true,
 					ExpandMode = ExpandMode.All,
 				});
 				
 				if(nav?.Nodes.Any() ?? false) {
-					foreach (var node in nav.Nodes)
+					foreach (var node in nav.Nodes.Where(n => n.ShowInMenu))
 					{
-						if (node.ShowInMenu){
-							await RenderNavItem(node);
-						}
+						await RenderNavItem(node, (nav.Nodes.Count(n => (n.Nodes.Any())) > 0));
 					}
 					<li><hr class="dropdown-divider"></li>
 				}
@@ -125,7 +122,7 @@
 </div>
 
 @{
-	async Task RenderNavItem(NavigationTreeNodeViewModel node)
+	async Task RenderNavItem(NavigationTreeNodeViewModel node, bool isGroupNode = false)
 	{
 		var pageIcon = string.Empty;
 		var nodePage = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
@@ -134,19 +131,9 @@
 			pageIcon = Dynamicweb.Core.Converter.ToString(pageIconValue);
 		}
 
-		if (node.IsClickable)
-		{
-			<li>
-				<a class="dropdown-item hstack fs-7 flex-fill text-decoration-none @(node.IsActive ? "active" : null)" @(node.IsActive ? "aria-current='page'" : null) href="@(node.Link)">
-					@if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
-					{
-						<span class="icon-2 me-2">@ReadFile(pageIcon)</span>
-					}
-					<span>@node.Name</span>
-				</a>
-			</li>
-		}
-		else
+		bool isGroupHeader = isGroupNode && node.Nodes.Any();
+
+		if (isGroupHeader)
 		{
 			<li><h6 class="fs-8 dropdown-header text-muted m-0 text-uppercase">@node.Name</h6></li>
 			
@@ -156,6 +143,18 @@
 			}
 
 			<li><hr class="dropdown-divider"></li>
+		}
+		else 
+		{
+			<li>
+				<a class="dropdown-item hstack fs-7 flex-fill text-decoration-none @(node.IsActive ? "active" : null)" @(node.IsActive ? "aria-current='page'" : null) href="@(node.IsClickable ? node.Link : null)">
+					@if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+					{
+						<span class="icon-2 me-2">@ReadFile(pageIcon)</span>
+					}
+					<span>@node.Name</span>
+				</a>
+			</li>
 		}
 	}
 }
