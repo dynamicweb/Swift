@@ -5,8 +5,8 @@
 @using Dynamicweb.Ecommerce.Common
 @using Dynamicweb.Security.UserManagement
 @{
-	int myAccountPageId = GetPageIdByNavigationTag("CustomerCenter") != 0 ? GetPageIdByNavigationTag("CustomerCenter") : Pageview.ID;
-	if (Model.Item.TryGetLink("MyAccountPage", out var linkPage))
+	int myAccountPageId = GetPageIdByNavigationTag("CustomerCenter") != 0 ? GetPageIdByNavigationTag("CustomerCenter") : Pageview?.ID ?? 0;
+	if (Model.Item?.TryGetLink("MyAccountPage", out var linkPage) ?? false)
 	{
 		myAccountPageId = linkPage.PageId;
 	}
@@ -19,14 +19,14 @@
 		{
 			<a href="@(SearchEngineFriendlyURLs.GetFriendlyUrl(myAccountPageId))" class="hstack me-auto p-1 position-relative nav-link" role="button">
         
-				<div class="btn btn-primary rounded-circle hstack justify-content-center p-0 me-2" style="height:2rem; aspect-ratio:1;" data-dw-button="primary">
-					@if (Model.Item.TryGetString("Icon", out var icon) && icon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+				<div class="btn btn-primary rounded-circle hstack justify-content-center p-0 me-2" style="height:2rem; aspect-ratio:1;" data-dw-button>
+					@if ((Model.Item?.TryGetString("Icon", out var icon) ?? false) && icon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
 					{
 						<span class="icon-2 pe-none">@ReadFile(icon)</span>
 					}
 				</div>
 
-				@if (Model.Item.TryGetString("Title", out string title))
+				@if (Model.Item?.TryGetString("Title", out string? title) ?? false)
 				{
 					<div class="fw-bold fs-7">@title</div>
 				}
@@ -54,26 +54,25 @@
 					}
 
 					@{						
-						var nav = Navigation.GetNavigationViewModel(new NavigationSettings(){
+						var nav = Navigation.GetNavigationViewModel(new() {
 							RootPageId = myAccountPageId,
 							StartLevel = 1,
 							StopLevel = 10,
-							IncludeFoldersAndHidden = true,
-							ExpandMode = ExpandMode.All,
+							ExpandMode = ExpandMode.All
 						});
 
-						if(nav.Nodes.Any())
+						if(nav?.Nodes?.Any() ?? false)
 						{
 							<nav class="list-group gap-1 fs-7 pt-1" role="navigation" style="--bs-list-group-border-width: 0; --bs-list-group-action-hover-bg: rgba(var(--dw-color-foreground-rgb), .05); --bs-list-group-action-active-bg: rgba(var(--dw-color-foreground-rgb), .1); --bs-list-group-active-bg: rgba(var(--dw-color-foreground-rgb), .08);">
 								@foreach (var node in nav.Nodes.Where(n => n.ShowInMenu))
 								{
-									await RenderNavItem(node);
+									await RenderNavItem(node, (nav.Nodes.Count(n => (n.Nodes.Any())) > 0));
 								}
 							</nav>
 						}
 					}
 					
-					<span class="border-top d-block my-3"></span>
+					<span class="border-top d-block mb-3"></span>
 					<nav class="list-group gap-1 fs-7 pt-1" role="navigation" style="--bs-list-group-border-width: 0; --bs-list-group-action-hover-bg: rgba(var(--dw-color-foreground-rgb), .05); --bs-list-group-action-active-bg: rgba(var(--dw-color-foreground-rgb), .1); --bs-list-group-active-bg: rgba(var(--dw-color-foreground-rgb), .08);">
 
 						@if (UserContext.Current.ImpersonatingUser != null)
@@ -99,21 +98,33 @@
 </div>
 
 @{
-	async Task RenderNavItem(NavigationTreeNodeViewModel node)
+	async Task RenderNavItem(NavigationTreeNodeViewModel node, bool isGroupNode = false)
 	{
 		var pageIcon = string.Empty;
 		var nodePage = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
-		if (nodePage?.PropertyItem?.TryGetValue("Icon", out object pageIconValue) ?? false)
+		if (nodePage?.PropertyItem?.TryGetValue("Icon", out object? pageIconValue) ?? false)
 		{
 			pageIcon = Dynamicweb.Core.Converter.ToString(pageIconValue);
 		}
-		bool hasNodes = node.Nodes.Any();
+		bool isGroupHeader = isGroupNode && node.Nodes.Any();
+		
+		if (isGroupHeader)
+		{
+			<h6 class="fs-8 mb-2 text-muted mt-3 text-uppercase"><a class="text-muted @(node.IsClickable ? "text-decoration-underline" : "text-decoration-none") @(node.IsActive ? "active fw-bold" : null)" aria-current="@(node.IsActive)" href="@(node.IsClickable ? node.Link : null)">@(node.Name)</a></h6>
+			
+			foreach (var subnode in node.Nodes.Where(n => n.ShowInMenu))
+			{
+				await RenderNavItem(subnode);
+			}
 
-		if (node.IsClickable)
+			<span class="d-block mt-3"></span>			
+		}
+		
+		else
 		{
 			<div class="list-group-item list-group-item-action hstack rounded @(node.IsActive || node.InPath ? "active" : null)" style="@(node.IsActive || node.InPath ? "z-index:initial;" : null)" x-data="{ open: @(node.IsActive || node.InPath ? "true" : "false") }">
 
-				<a class="hstack flex-fill text-decoration-none" aria-current="@(node.IsActive)" href="@(node.Link)">
+				<a class="hstack flex-fill text-decoration-none" aria-current="@(node.IsActive)" href="@(node.IsClickable ? node.Link : null)">
 					@if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
 					{
 						<span class="icon-2 me-2">@ReadFile(pageIcon)</span>
@@ -121,7 +132,7 @@
 					<span>@node.Name</span>
 				</a>
 				
-				@if (hasNodes)
+				@if (node.Nodes.Any())
 				{	
 					<button class="btn btn-link hstack p-2 position-absolute end-0 top-50 translate-middle-y" data-dw-button type="button" @@click="open = ! open">
 						<span class="icon-2">@ReadFile("/Files/Images/Icons/chevron-right.svg")</span>
@@ -147,14 +158,6 @@
 				}
 			</div>
 		}
-		else
-		{
-			<h6 class="fs-8 mt-3 mb-2 text-muted text-uppercase pt-4 border-1 border-top">@node.Name</h6>
-			
-			@foreach (var subnode in node.Nodes.Where(n => n.ShowInMenu))
-			{
-				await RenderNavItem(subnode);
-			}
-		}
+
 	}
 }
