@@ -71,6 +71,15 @@ function reinitializeTooltips() {
   initializeTooltips();
 }
 
+// Secure external links
+function secureExternalLinks() {
+    document.querySelectorAll('a[href*="://"]').forEach(link => {
+        if (!link.hasAttribute('target')) link.target = '_blank';
+        const rel = link.getAttribute('rel') || '';
+        link.setAttribute('rel', `${rel} noopener noreferrer`.trim());
+    });
+}
+
 // Make reinitializeTooltips available globally for HTMX
 window.reinitializeTooltips = reinitializeTooltips;
 
@@ -79,6 +88,11 @@ window.addEventListener("htmx:afterRequest", reinitializeTooltips);
 window.addEventListener("DOMContentLoaded", () => {
   // Initialize tooltips on page load
   initializeTooltips();
+
+  // Secure external links on page load
+  if (document.documentElement.hasAttribute('data-swift-openlinksinnewtab')) {
+    secureExternalLinks();
+  }
   
   // Dropdown
   const dropdowns = document.querySelectorAll("[data-swift-page-header] .dropdown");
