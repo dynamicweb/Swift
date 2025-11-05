@@ -6,50 +6,29 @@
 
 
 <div class="mx-auto w-100" style="max-width: 30rem;">
+    @if (Model.Result != UserAuthenticationResultType.None) {
+        var resultText = Model.Result switch
+        {
+            UserAuthenticationResultType.IncorrectLogin => "The username or password you entered is incorrect. Please try again.",
+            UserAuthenticationResultType.PasswordLengthInvalid => "The password you entered does not meet the required length. Please ensure it meets the minimum length criteria and try again.",
+            UserAuthenticationResultType.ExceededFailedLogOnLimit => "You have exceeded the maximum number of failed login attempts. Please wait a while before trying again.",
+            UserAuthenticationResultType.LoginLocked => "Your account has been locked due to multiple failed login attempts.",
+            UserAuthenticationResultType.ExternalProviderAuthenticationFailed => "External provider authentication failed",
+            UserAuthenticationResultType.ExternalProviderEmailNotProvided => "External provider email not provided",
+            UserAuthenticationResultType.ExternalProviderNotRegisteredOrInactive => "External provider not registered or inactive",
+            UserAuthenticationResultType.UserAutoCreationDisabled => "User auto creation is disabled",
+            UserAuthenticationResultType.UserCreationFailed => "User auto creation failed",
+            UserAuthenticationResultType.Success => "You have successfully logged in. Welcome back!",
+            UserAuthenticationResultType.PasswordChangedSuccess => "You have successfully changed the password.",
+            _ => Model.Result.ToString()
+        };
+        var alertClass = (Model.Result == UserAuthenticationResultType.Success || Model.Result == UserAuthenticationResultType.PasswordChangedSuccess) ? "success" : "danger";
+
+        <div class="alert alert-@alertClass" role="alert">@Translate(resultText)</div>
+    }
+
     <form method="post">
         <input type="hidden" name="redirect" value="@Model.RedirectAfterLogin">
-        @{
-            if(Model.Result == UserAuthenticationResultType.IncorrectLogin)
-            {
-                <div class="alert alert-danger" role="alert">
-                    @Translate("The username or password you entered is incorrect. Please try again.")
-                </div>
-            }
-            else if(Model.Result == UserAuthenticationResultType.PasswordLengthInvalid)
-            {
-                <div class="alert alert-danger" role="alert">
-                    @Translate("The password you entered does not meet the required length. Please ensure it meets the minimum length criteria and try again.")
-                </div>
-            }
-            else if(Model.Result == UserAuthenticationResultType.ExceededFailedLogOnLimit)
-            {
-                <div class="alert alert-danger" role="alert">
-                    @Translate("You have exceeded the maximum number of failed login attempts. Please wait a while before trying again.")
-                </div>
-            }
-            else if(Model.Result == UserAuthenticationResultType.LoginLocked)
-            {
-                <div class="alert alert-danger" role="alert">
-                    @Translate("Your account has been locked due to multiple failed login attempts.")
-                </div>
-            }
-            else if(Model.Result == UserAuthenticationResultType.Success)
-            {
-                <div class="alert alert-success" role="alert">
-                    @Translate("You have successfully logged in. Welcome back!")
-                </div>
-            }
-            else if(Model.Result == UserAuthenticationResultType.PasswordChangedSuccess)
-            {
-                <div class="alert alert-success" role="alert">
-                    @Translate("You have successfully changed the password.")
-                </div>
-            }
-            else if (Model.Result != UserAuthenticationResultType.None)
-            {
-                <div class="alert alert-danger">@Translate(Model.Result.ToString())</div>
-            }
-        }
 
         <div class="form-floating mb-4">
             <input type="text" class="form-control" id="Username" name="username" placeholder="@Translate("Email")" required>
@@ -75,18 +54,46 @@
             }
         </div>
 
-        <div class="d-grid align-items-center">
-            <button type="submit" class="btn btn-primary" data-dw-button="primary" id="SignIn">@Translate("Sign in")</button>
-        </div>
-
-        @if (!string.IsNullOrEmpty(Model.CreateUserLink))
-        {
-            <div class="d-flex justify-content-center mt-4 gap-2">
-                @Translate("Don't have an account?") 
-                <span class="fw-bold">
-                    <a href="@Model.CreateUserLink" class="text-decoration-none text-decoration-underline-hover">@Translate("Sign up")</a>
-                </span>
-            </div>
-        }
+        <button type="submit" class="btn btn-primary w-100" data-dw-button id="SignIn">@Translate("Sign in")</button>
     </form>
+
+    @if (Model.ExternalLogins.Any()) {
+        <div class="hstack gap-3 my-4">
+            <span class="border-top flex-fill"></span>
+            <span class="text-uppercase text-muted fs-7">@Translate("or")</span>
+            <span class="border-top flex-fill"></span>
+        </div>
+        foreach(var provider in Model.ExternalLogins)
+        {
+            <form class="grid grid-1 gap-4 mb-4" method="post">            
+                <button type="submit" name="DwExternalLoginProvider" value="@provider.Id" class="btn btn-outline-primary w-100" data-dw-button>
+                    <span class="hstack gap-2 justify-content-center align-items-center">
+                        @if (!string.IsNullOrEmpty(provider.Icon)) 
+                        {
+                            if (provider.Icon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase)) {
+                                <span class="icon-3">
+                                    @ReadFile(provider.Icon)
+                                </span>
+                            } 
+                            else
+                            {
+                                <img src="/Admin/Public/GetImage.ashx?image=@(provider.Icon)&width=18&format=webp" >
+                            }
+                        }
+                        <span>@Translate("Sign in with") @provider.Name</span>
+                    </span>
+                </button>
+            </form>
+        }
+    }
+
+    @if (!string.IsNullOrEmpty(Model.CreateUserLink))
+    {
+        <div class="hstack justify-content-center mt-4 gap-2">
+            @Translate("Don't have an account?") 
+            <span class="fw-bold">
+                <a href="@Model.CreateUserLink" class="text-decoration-none text-decoration-underline-hover">@Translate("Sign up")</a>
+            </span>
+        </div>
+    }
 </div>
