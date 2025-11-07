@@ -17,20 +17,16 @@
     <h1 class="h4 mb-0">@(Pageview.Page.GetDisplayName())</h1>
 </header>
 
-<form data-swift-order-list 
+<form data-swift-order-list-filter
     hx-get="@(baseUrl)"
-    hx-trigger="input from:input[name='FilterText'] changed delay:700ms queue:last, click from:button[type='reset'], click from:input[name='FilterOrderStateId'], click from:input[name='SortBy']" 
+    hx-trigger="input from:input[name='FilterText'] changed delay:700ms queue:last, click from:button[type='reset'], change from:input[name='FilterOrderStateId']" 
     hx-sync="this:abort"
     hx-swap="outerHTML"
     hx-target="[data-swift-order-list]"
     hx-select="[data-swift-order-list]"
     hx-replace-url="true"
-    hx-on:click="if (event.target.querySelector('input[type=radio][name=SortBy]') && event.target.querySelector('input[type=radio][name=SortBy]').checked) {
-     this.querySelector('[name=SortOrder]').value = '@(nextSortOrder)';
-    }">
-
-    <input type="hidden" name="SortOrder" value="@(currentSortOrder)">
-
+    hx-include='[data-swift-order-list]'
+    >
     <nav class="hstack gap-2 mb-3">
         <div class="flex-fill">
             <div class="input-group">
@@ -54,18 +50,34 @@
             </button>
             <div class="dropdown-menu p-3 fs-7 shadow" style="--bs-dropdown-min-width:18rem;">
                 <div class="fw-bold mb-1">@Translate("Status")</div>
-                <div class="d-flex flex-wrap gap-2" data-swift-order-state-filter>
-                    <input class="visually-hidden" type="radio" name="FilterOrderStateId" value="" id="state_all" checked="@((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId") ?? string.Empty) == string.Empty)">
-                    <label for="state_all" class="fs-8 py-1 px-2 btn @((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId") ?? string.Empty) == string.Empty ? "btn-primary" : "btn-outline-secondary text-body") lh-1" role="button" data-dw-button>@Translate("All")</label>
+                <div class="d-flex flex-wrap gap-2" data-swift-order-state-filter role="group" aria-label="@Translate("Filter by status")">
+                    <input class="btn-check" type="radio" name="FilterOrderStateId" value="" id="state_all" autocomplete="off" checked="@((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId") ?? string.Empty) == string.Empty)">
+                    <label for="state_all" class="fs-8 py-1 px-2 btn btn-outline-secondary text-body lh-1" data-dw-button>@Translate("All")</label>
                     @foreach (var state in Dynamicweb.Ecommerce.Services.OrderStates.GetStatesByOrderType(Dynamicweb.Ecommerce.Orders.OrderType.Order))
                     {
-                        <input class="visually-hidden" type="radio" name="FilterOrderStateId" value="@(state.Id)" id="state_@(state.Id)" checked="@((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId")) == state.Id)">
-                        <label for="state_@(state.Id)" class="fs-8 py-1 px-2 btn @((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId")) == state.Id ? "btn-primary" : "btn-outline-secondary text-body") lh-1" role="button" data-dw-button>@(state.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID))</label>
+                        var isChecked = (Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId")) == state.Id;
+                        <input class="btn-check" type="radio" name="FilterOrderStateId" value="@(state.Id)" id="state_@(state.Id)" autocomplete="off" checked="@isChecked">
+                        <label for="state_@(state.Id)" class="fs-8 py-1 px-2 btn btn-outline-secondary text-body lh-1" data-dw-button>@(state.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID))</label>
                     }
                 </div>
             </div>
         </div>
     </nav>
+</form>
+
+<form data-swift-order-list 
+    hx-get="@(baseUrl)"
+    hx-trigger="click from:input[name='SortBy'], click from:button[name='PageNum']" 
+    hx-swap="outerHTML"
+    hx-target="[data-swift-order-list]"
+    hx-select="[data-swift-order-list]"
+    hx-include='[data-swift-order-list-filter]'
+    hx-replace-url="true"
+    hx-on:click="if (event.target.querySelector('input[type=radio][name=SortBy]') && event.target.querySelector('input[type=radio][name=SortBy]').checked) {
+     this.querySelector('[name=SortOrder]').value = '@(nextSortOrder)';
+    }">
+
+    <input type="hidden" name="SortOrder" value="@(currentSortOrder)">
 
     <div class="card overflow-hidden">
         <div class="table-responsive" style="margin-bottom:-1px;">
@@ -338,7 +350,7 @@
             {
                 var active = (i == Model.CurrentPage) ? "active" : string.Empty;
                 <li class="page-item @active">
-                    <button type="submit"
+                    <button type="button"
                             class="page-link"
                             name="PageNum"
                             value="@i"
