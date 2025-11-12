@@ -90,7 +90,7 @@ window.addEventListener("DOMContentLoaded", () => {
   initializeTooltips();
 
   // Secure external links on page load
-  if (document.documentElement.hasAttribute('data-swift-openlinksinnewtab')) {
+  if (document.documentElement.getAttribute('data-swift-openlinksinnewtab')?.toLowerCase() === 'true') {
     secureExternalLinks();
   }
   
