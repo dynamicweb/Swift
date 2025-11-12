@@ -11,27 +11,90 @@
     string countrySelectorColumnSize = regions.Count > 1 ? "g-col-12 g-col-lg-3" : "g-col-12 g-col-lg-6";
 }
 
-@if (Model.Result == UserEditResultType.Success)
-{
-    <div class="alert alert-success">@Translate("Your changes have been saved successfully!")</div>
-} 
-else if (Model.Result == UserEditResultType.InvalidEmail)
-{
-    <div class="alert alert-danger">@Translate("The email is invalid")</div>
-} 
-else if (Model.Result != UserEditResultType.None)
-{
-    <div class="alert alert-danger">@Translate(Model.Result.ToString())</div>
-}
-
 <header class="mb-4">
     <h1 class="h4 mb-0">@Translate("Edit profile")</h1>
 </header>
 
+<div class="card mb-4">
+	<div class="card-body hstack gap-4 align-items-start p-4">
+        <form enctype="multipart/form-data" id="UserManagementEditForm" data-swift-avatar-upload
+            hx-trigger="change"
+            hx-post
+            hx-swap="outerHTML"
+            hx-target="[data-swift-avatar-upload]"
+            hx-select="[data-swift-avatar-upload]"
+        >
+            <input type="hidden" name="ID" value="@Pageview.ID">
+            <input type="hidden" name="CMD" value="UpdateUser">
+
+            <label for="ProfileImage" role="button" class="d-flex position-relative" title="@Translate("Upload your profile picture") (@Translate("Format"): Png, Jpg or Gif. @Translate("Filesize max.") 2mb)")" data-bs-toggle="tooltip" data-bs-placement="top">
+                <input type="file" name="ProfileImage" id="ProfileImage" class="visually-hidden" 
+                    accept="image/x-png,image/gif,image/jpeg,image"
+                    data-swift-max-bytes="2097152"
+                    hx-on:change="
+                        const f = this.files[0];
+                        const max = this.dataset.swiftMaxBytes;
+                        this.setCustomValidity('');           // reset
+                        this.classList.remove('is-invalid');
+                        if (f && f.size > max) {
+                            this.setCustomValidity(`@Translate("Max file size is 2 MB.")`);
+                            this.reportValidity();             
+                            this.classList.add('is-invalid');   
+                            this.value = '';                    
+                            return false;                       
+                    }" 
+                >
+                @if(Model.User.TryGetImageFile(out ImageFileViewModel? image))
+                {
+                    <div class="align-self-auto hstack justify-content-center p-0" style="height:6rem; aspect-ratio:1">
+                        <img src="@image.ToGetImage(new(){ Width = 500, Ratio = "1/1" })" alt="@Translate("Avatar image")" class="img-thumbnail rounded-circle" itemprop="image"/>
+                    </div>
+                } else {
+                    <div class="btn btn-primary rounded-circle align-self-auto hstack justify-content-center p-0 disabled opacity-100" data-dw-button style="height:6rem; aspect-ratio:1; --bs-btn-disabled-bg: var(--dw-color-button-primary)" title="@Translate("Upload your profile picture")">
+                        <div class="d-flex dw-h4 lh-1 m-0">
+                            @(Model.User.GetTwoLetterInitials())
+                        </div>
+                    </div>
+                }
+                <div class="btn btn-secondary rounded-circle icon-2 p-2 position-absolute bottom-0 end-0" data-dw-button>
+                    @ReadFile("/Files/Images/Icons/upload.svg")
+                </div>
+                <div class="icon-2 position-absolute m-auto w-100 h-100" >
+                    <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
+                </div>
+            </label>
+        </form>
+
+        <div class="flex-fill align-self-center">
+            @if (!string.IsNullOrEmpty(Model.User.Name)) {
+                <h4 class="mb-1">@Model.User.Name</h4>
+            }
+            <div class="text-muted fs-7">
+                <span>@string.Join(" - ", new[]{ Model.User.Title, Model.User.Company }.Where(s => !string.IsNullOrWhiteSpace(s)))</span>
+            </div>
+            <div class="text-muted fs-8">
+                <span>@string.Join(", ", new[]{ Model.User.City, Model.User.Country }.Where(s => !string.IsNullOrWhiteSpace(s)))</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Result == UserEditResultType.Success)
+{
+    <div class="alert alert-success mb-4">@Translate("Your changes have been saved successfully!")</div>
+} 
+else if (Model.Result == UserEditResultType.InvalidEmail)
+{
+    <div class="alert alert-danger mb-4">@Translate("The email is invalid")</div>
+} 
+else if (Model.Result != UserEditResultType.None)
+{
+    <div class="alert alert-danger mb-4">@Translate(Model.Result.ToString())</div>
+}
+
 <form method="post" id="UserManagementEditForm">
     <div class="grid">
         <input type="hidden" name="ID" value="@Pageview.ID">
-        <input type="hidden" name="Cmd" value="updateuser">
 
         <div class="g-col-12">
             <div class="form-floating">
@@ -123,7 +186,7 @@ else if (Model.Result != UserEditResultType.None)
         </div>
 
         <div class="g-col-12">
-            <button type="submit" class="btn btn-primary me-2" data-dw-button="primary" id="SaveUserButton">@Translate("Save")</button>
+            <button type="submit" class="btn btn-primary me-2" name="cmd" value="UpdateUser" data-dw-button id="SaveUserButton">@Translate("Save")</button>
             @if (!string.IsNullOrEmpty(Dynamicweb.Context.Current?.Request.QueryString.Get("GoBackToPage")))
 			{
 				<a href="/Default.aspx?ID=@(Dynamicweb.Context.Current?.Request.QueryString.Get("GoBackToPage"))" class="btn btn-secondary" data-dw-button="secondary" id="BackToCheckoutButtonButton">@Translate("Go back to checkout")</a>
