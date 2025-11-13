@@ -7,19 +7,39 @@
 
 @{
     string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview.Page.ID}");
+    string pageSize = Dynamicweb.Context.Current?.Request.QueryString.Get("PageSize") ?? Pageview.CurrentParagraph?.ModuleProperties?.GetValue("PageSize") ?? string.Empty;
     string currentSortBy = Dynamicweb.Context.Current?.Request.QueryString.Get("SortBy") ?? Pageview.CurrentParagraph?.ModuleProperties?.GetValue("SortByField") ?? string.Empty;
     string currentSortOrder = Dynamicweb.Context.Current?.Request.QueryString.Get("SortOrder") ?? Pageview.CurrentParagraph?.ModuleProperties?.GetValue("SortOrder") ?? string.Empty;
     string nextSortOrder = currentSortOrder == "asc" ? "desc" : "asc";
     string arrow = currentSortOrder == "asc" ? @ReadFile("/Files/Images/Icons/arrow-up.svg") : @ReadFile("/Files/Images/Icons/arrow-down.svg");
+
+    string statusFilter = Dynamicweb.Context.Current?.Request.QueryString.Get("Status") ?? string.Empty;
+    string clientFilter = Dynamicweb.Context.Current?.Request.QueryString.Get("Client") ?? string.Empty;
+    string dueDateFrom = Dynamicweb.Context.Current?.Request.QueryString.Get("DueDateFrom") ?? string.Empty;
+    string dueDateTo = Dynamicweb.Context.Current?.Request.QueryString.Get("DueDateTo") ?? string.Empty;
+    string minAmountStr = Dynamicweb.Context.Current?.Request.QueryString.Get("MinAmount") ?? string.Empty;
+    string maxAmountStr = Dynamicweb.Context.Current?.Request.QueryString.Get("MaxAmount") ?? string.Empty;
+
+    DateTime? dueDateFromDate = DateTime.TryParse(dueDateFrom, out var tempFromDate) ? tempFromDate : null;
+    DateTime? dueDateToDate = DateTime.TryParse(dueDateTo, out var tempToDate) ? tempToDate : null;
+    double? minAmount = double.TryParse(minAmountStr, out var min) ? min : null;
+    double? maxAmount = double.TryParse(maxAmountStr, out var max) ? max : null;
 }
 
-<header class="hstack gap-3 mb-4">
-    <h1 class="h4 mb-0">@(Pageview.Page.GetDisplayName())</h1>
+<header class="hstack justify-content-between gap-3 mb-4">
+    <div>
+        <h1 class="h4 mb-0">@(Pageview.Page.GetDisplayName())</h1>
+    </div>
+
+    <div class="text-end visually-hidden">
+        <h2 class="h6 mb-0">@Translate("Total"): <span>$0.00</span></h2>
+        <p class="fs-7 mb-0 text-muted"><span>0</span> @Translate("invoices selected")</p>
+    </div>
 </header>
 
 <form data-swift-order-list 
     hx-get="@(baseUrl)"
-    hx-trigger="keyup delay:.3s, change, click from:input[type='radio'][name='SortBy']" 
+    hx-trigger="keyup delay:.3s, change, click from:input[type='radio'][name='SortBy'], click from:button[name='apply']" 
     hx-swap="outerHTML"
     hx-target="[data-swift-order-list]"
     hx-select="[data-swift-order-list]"
@@ -44,6 +64,7 @@
                 </button>
             </div>
         </div>
+
     </nav>
 
     <div class="card overflow-hidden">
@@ -62,9 +83,18 @@
                         </th>
                         <th>
                             <label class="hstack gap-1" role="button">
-                                <input type="radio" name="SortBy" value="CreatedAt" class="visually-hidden" checked="@(currentSortBy=="CreatedAt")" />
-                                @Translate("Issue date") 
-                                @if(currentSortBy=="CreatedAt") {
+                                <input type="radio" name="SortBy" value="PriceBeforeFees" class="visually-hidden" checked="@(currentSortBy=="PriceBeforeFees")" />
+                                @Translate("Amount") 
+                                @if(currentSortBy=="PriceBeforeFees") {
+                                    <span class="icon-1">@arrow</span>
+                                }
+                            </label>
+                        </th>
+                        <th>
+                            <label class="hstack gap-1" role="button">
+                                <input type="radio" name="SortBy" value="TotalDiscount" class="visually-hidden" checked="@(currentSortBy=="TotalDiscount")" />
+                                @Translate("Discount") 
+                                @if(currentSortBy=="TotalDiscount") {
                                     <span class="icon-1">@arrow</span>
                                 }
                             </label>
@@ -72,7 +102,7 @@
                         <th>
                             <label class="hstack gap-1" role="button">
                                 <input type="radio" name="SortBy" value="Price" class="visually-hidden" checked="@(currentSortBy=="Price")" />
-                                @Translate("Amount") 
+                                @Translate("Balance") 
                                 @if(currentSortBy=="Price") {
                                     <span class="icon-1">@arrow</span>
                                 }
@@ -88,33 +118,25 @@
                             <td>
                                 <a class="stretched-link text-decoration-none text-decoration-underline-hover" href="@(baseUrl)?OrderId=@(invoice.Id)">@(invoice.Id)</a>
                             </td>
+                            <td>@(invoice.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.PriceFormatted)</td>
+                            <td>@(invoice.TotalOrderDiscount.PriceFormatted)</td>
+                            <td>@(invoice.Price.PriceFormatted)</td>
                             <td>
-                                <div class="vstack">
-                                    @(invoice.CreatedAt.ToShortDateString())
-                                    <span class="fs-8 text-muted">@(invoice.CreatedAt.ToShortTimeString())</span>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="text-price">@(invoice.Price.PriceFormatted)</div>
-                            </td>
-                            <td>
-                                <div class="hstack gap-3">
-                                    <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
-                                        <span class="icon-2">
-                                            @ReadFile("/Files/Images/Icons/ellipsis.svg")
-                                        </span>
-                                    </button>
-                                    <ul class="dropdown-menu shadow-sm fs-7">
-                                        <li>
-                                            <a class="dropdown-item hstack gap-2" href="@(baseUrl)?OrderId=@(invoice.Id)">
-                                                <span class="icon-2">
-                                                    @ReadFile("/Files/Images/Icons/eye.svg")
-                                                </span>
-                                                @Translate("View")
-                                            </a>
-                                        </li>
-                                    </ul>
-                                </div>
+                                <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
+                                    <span class="icon-2">
+                                        @ReadFile("/Files/Images/Icons/ellipsis.svg")
+                                    </span>
+                                </button>
+                                <ul class="dropdown-menu shadow-sm fs-7 p-1">
+                                    <li>
+                                        <a class="dropdown-item hstack gap-2 ps-2 pe-3 rounded-1" href="@(baseUrl)?OrderId=@(invoice.Id)">
+                                            <span class="icon-2">
+                                                @ReadFile("/Files/Images/Icons/eye.svg")
+                                            </span>
+                                            @Translate("View")
+                                        </a>
+                                    </li>
+                                </ul>
                             </td>
                         </tr>
                     }
