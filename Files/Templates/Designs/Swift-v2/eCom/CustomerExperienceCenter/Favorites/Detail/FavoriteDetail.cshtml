@@ -44,9 +44,6 @@
 }
 
 @{
-	string showPricesWithVat = Dynamicweb.Ecommerce.Common.Context.DisplayPricesWithVat.ToString();
-	bool neverShowVat = string.IsNullOrEmpty(showPricesWithVat);
-
 	int favoriteListId = Model.Id;
 	string currentPageUrl = "/Default.aspx?ID=" + Pageview.Page.ID + "&FavoriteListId=" + favoriteListId;
 	int listItemsCount = Model?.ProductList?.TotalProductsCount != null ? Model.ProductList.TotalProductsCount : 0;
@@ -61,9 +58,6 @@
 	{
 		url += url.Contains("?") ? "&LayoutTemplate=Swift-v2_MiniCart.cshtml" : "?LayoutTemplate=Swift-v2_MiniCart.cshtml";
 	}
-
-	string priceMin = string.Empty;
-	string priceMax = string.Empty;
 
 	var favoriteParameters = new Dictionary<string, object>();
 	int defaultFavoriteListId = 0;
@@ -121,6 +115,10 @@
 				double? stepQty = product.PurchaseQuantityStep > 0 ? product.PurchaseQuantityStep : 1;
 				double? minQty = product.PurchaseMinimumQuantity > 0 ? product.PurchaseMinimumQuantity : 1;
 				double? valueQty = minQty > stepQty ? minQty : stepQty;
+
+				string? priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted;
+				string? priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted;
+				string? price = priceMin != priceMax ? price = priceMin + " - " + priceMax : product?.Price.PriceFormatted;
 
 				string productImage = "/Admin/Public/GetImage.ashx?Image=" + @product.DefaultImage.Value + "&Format=webp&Width=450&Height=450";
 				productImage = !product.DefaultImage.Value.StartsWith("/Files/", StringComparison.OrdinalIgnoreCase) ? product.DefaultImage.Value : productImage;
@@ -184,71 +182,17 @@
 					<div>
 						<div class="h4" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
 							<span itemprop="priceCurrency" content="@product.Price.CurrencyCode" class="d-none"></span>
+							<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
 
-							@if (showPricesWithVat == "false" && !neverShowVat)
+							@if (product.HasDiscount())
 							{
-								string beforePrice = product.PriceBeforeDiscount.PriceWithoutVatFormatted;
-
-								<span itemprop="price" content="@product.Price.PriceWithoutVat" class="d-none"></span>
-								if (product.Price.Price != product.PriceBeforeDiscount.Price)
-								{
-									<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
-								}
+								<span class="text-decoration-line-through opacity-75 me-3">@product.PriceBeforeDiscount.PriceFormatted</span>
 							}
-							else
-							{
-								string beforePrice = product.PriceBeforeDiscount.PriceFormatted;
-
-								<span itemprop="price" content="@product.Price.Price" class="d-none"></span>
-								if (product.Price.Price != product.PriceBeforeDiscount.Price)
-								{
-									<span class="text-decoration-line-through opacity-75 me-3">@beforePrice</span>
-								}
-							}
-
-							@if (showPricesWithVat == "false" && !neverShowVat)
-							{
-								string price = product.Price.PriceWithoutVatFormatted;
-								if (product?.VariantInfo?.VariantInfo != null)
-								{
-									priceMin = product?.VariantInfo?.PriceMin?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithoutVatFormatted : "";
-									priceMax = product?.VariantInfo?.PriceMax?.PriceWithoutVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithoutVatFormatted : "";
-								}
-								if (priceMin != priceMax)
-								{
-									price = priceMin + " - " + priceMax;
-								}
-								<span class="text-price">@price</span>
-							}
-							else
-							{
-								string price = product.Price.PriceFormatted;
-								if (product?.VariantInfo?.VariantInfo != null)
-								{
-									priceMin = product?.VariantInfo?.PriceMin?.PriceFormatted != null ? product.VariantInfo.PriceMin.PriceFormatted : "";
-									priceMax = product?.VariantInfo?.PriceMax?.PriceFormatted != null ? product.VariantInfo.PriceMax.PriceFormatted : "";
-								}
-								if (priceMin != priceMax)
-								{
-									price = priceMin + " - " + priceMax;
-								}
-								<span class="text-price">@price</span>
+							<span class="text-price">@price</span>
+							@if (product.Price.TryGetVatLabel(out string vatLabel)) {
+								<small class="opacity-85 fst-normal">@Translate(vatLabel)</small>
 							}
 						</div>
-						@if (showPricesWithVat == "false" && !neverShowVat)
-						{
-							string price = product.Price.PriceWithVatFormatted;
-							if (product?.VariantInfo?.VariantInfo != null)
-							{
-								priceMin = product?.VariantInfo?.PriceMin?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMin.PriceWithVatFormatted : "";
-								priceMax = product?.VariantInfo?.PriceMax?.PriceWithVatFormatted != null ? product.VariantInfo.PriceMax.PriceWithVatFormatted : "";
-							}
-							if (priceMin != priceMax)
-							{
-								price = priceMin + " - " + priceMax;
-							}
-							<small class="opacity-85 fst-normal">@price @Translate("Incl. VAT")</small>
-						}
 					</div>
 
 					<div class="d-flex align-items-center gap-3 gap-md-2">
