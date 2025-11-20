@@ -1,19 +1,213 @@
 @inherits ViewModelTemplate<UserGroupListViewModel>
+@using Dynamicweb.Frontend
 @using Dynamicweb.Rendering
 @using Dynamicweb.Users.Frontend
-@using Dynamicweb.Frontend
 @using Dynamicweb.Users.Frontend.UserGroups
 
 @{
-    string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview.Page.ID}");
+    string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview?.Page?.ID ?? 0}");
+    string currentSortBy = Dynamicweb.Context.Current?.Request.QueryString.Get("SortBy") ?? Pageview?.CurrentParagraph?.ModuleProperties?.GetValue("SortByField") ?? string.Empty;
+    string currentSortOrder = Dynamicweb.Context.Current?.Request.QueryString.Get("SortOrder") ?? Pageview?.CurrentParagraph?.ModuleProperties?.GetValue("SortOrder") ?? string.Empty;
+    string nextSortOrder = currentSortOrder == "asc" ? "desc" : "asc";
+    string arrow = currentSortOrder == "asc" ? @ReadFile("/Files/Images/Icons/arrow-up.svg") : @ReadFile("/Files/Images/Icons/arrow-down.svg");
+
+    string GetInitials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpperInvariant();
+        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpperInvariant();
+    }
 }
 
 <header class="hstack gap-3 mb-4">
-    <h1 class="h4 mb-0">@(Pageview.Page.GetDisplayName())</h1>
+    <h1 class="h4 mb-0">@(Pageview?.Page?.GetDisplayName() ?? null)</h1>
 </header>
 
+<form hx-get="@(baseUrl)"
+    hx-disinherit="*"
+    hx-trigger="submit, 
+        input from:input[name='FilterText'] changed delay:500ms queue:last, 
+        click from:button[type='reset'],
+        change from:input[name='SortBy']"
+    hx-sync="this:abort"
+    hx-swap="outerHTML"
+    hx-target="[data-swift-order-list]"
+    hx-select="[data-swift-order-list]"
+    hx-replace-url="true"
+    hx-on:click="
+        const sortInput = event.target.closest('label')?.querySelector('input[name=SortBy]');
+        if (!sortInput) return;
+        const sortOrderField = this.querySelector('[name=SortOrder]');
+        if (!sortOrderField) return;
+        if (sortInput.checked) {
+            sortOrderField.value = sortOrderField.value === 'asc' ? 'desc' : 'asc';
+            this.requestSubmit();
+        } else {
+            sortOrderField.value = 'asc';
+        }">
+    
+    <nav class="hstack gap-2 mb-3">
+        <div class="flex-fill">
+            <div class="input-group">
+                <span class="input-group-text border-end-0 bg-body">
+                    <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    <span class="icon-2" data-swift-indicator-origin>@ReadFile("/Files/Images/Icons/magnifying-glass.svg")</span>
+                </span>
+                <input type="search" class="form-control border-start-0 border-end-0" name="FilterText" value="@Dynamicweb.Context.Current?.Request.QueryString.Get("FilterText")" placeholder="@Translate("Search accounts by name, number or email")...">
+                <button type="reset" class="input-group-text border-start-0 bg-body" onclick="this.closest('form').querySelector('[name=FilterText]').value = ''; this.closest('form').dispatchEvent(new Event('change', { bubbles: true }))">
+                    <span class="icon-2">@ReadFile("/Files/Images/Icons/xmark.svg")</span>
+                    <span class="visually-hidden">@Translate("Clear search")</span>
+                </button>
+            </div>
+        </div>
+        <div class="hstack">
+            <button type="button" class="btn btn-sm btn-primary hstack py-2 px-3" data-dw-button
+                hx-trigger="click"
+                hx-push-url="false"
+                hx-get="@(baseUrl)"
+                hx-vals='{"LayoutTemplate": "/Designs/Swift-v2/Users/UserGroups/Modals/AddAccountModal.cshtml"}'
+                hx-target="main"
+                hx-swap="beforeend">
+                <span class="icon-2 me-2 d-flex hstack">
+                    @ReadFile("/Files/Images/Icons/user-group.svg")
+                    @ReadFile("/Files/Images/Icons/plus.svg")
+                </span>
+                @Translate("Add account")
+            </button>
+        </div>
+    </nav>
 
-@foreach (var group in Model.Groups)
-{
-    <div>hej</div>
-}
+    <div data-swift-order-list>
+        <input type="hidden" name="SortOrder" value="@(currentSortOrder)">
+        
+        <div class="card overflow-hidden">            
+            <div class="table-responsive" style="margin-bottom:-1px;">
+                <table class="table table-md table-hover mb-0 align-middle fs-7" style="--bs-table-color: var(--bs-body-color);">
+                    <thead style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .0275); --bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
+                        <tr>
+                            <th>
+                                <label class="hstack gap-1" role="button">
+                                    <input type="radio" name="SortBy" value="Name" class="visually-hidden" checked="@(currentSortBy=="Name")" />
+                                    @Translate("Account") 
+                                    @if(currentSortBy=="Name") {
+                                        <span class="icon-1">@arrow</span>
+                                    }
+                                </label>
+                            </th>
+                            <th>
+                                <label class="hstack gap-1" role="button">
+                                    <input type="radio" name="SortBy" value="CustomerNumber" class="visually-hidden" checked="@(currentSortBy=="CustomerNumber")" />
+                                    @Translate("Customer number") 
+                                    @if(currentSortBy=="CustomerNumber") {
+                                        <span class="icon-1">@arrow</span>
+                                    }
+                                </label>
+                            </th>
+                            <th>
+                                <label class="hstack gap-1" role="button">
+                                    <input type="radio" name="SortBy" value="Email" class="visually-hidden" checked="@(currentSortBy=="Email")" />
+                                    @Translate("Email") 
+                                    @if(currentSortBy=="Email") {
+                                        <span class="icon-1">@arrow</span>
+                                    }
+                                </label>
+                            </th>
+                            <th>@Translate("Actions")</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach (var group in Model.Groups)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="hstack gap-2">
+                                       
+                                        @if(group.TryGetImageFile(out ImageFileViewModel? image))
+                                        {
+                                            <div class="d-grid rounded overflow-hidden" style="width:3rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0675);">
+                                                <img src="@image.ToGetImage(new(){ Quality = 100, Width = 48, Ratio = "1/1" })" alt="@group.Name" class="img-fluid h-100 w-100" itemprop="image"/>
+                                            </div>
+                                        }
+                                        else 
+                                        {
+                                            <div class="d-grid rounded" style="width:3rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
+                                                <span class="text-muted m-auto">
+                                                    @(GetInitials(group.Name))
+                                                </span>
+                                            </div>
+                                        }
+                                        <div class="text-wrap-nowrap">@(group.Name)</div>
+                                    </div>
+                                </td>
+                                <td>@(group.CustomerNumber)</td>
+                                <td>@(group.EmailAddress)</td>
+                                <td>
+                                    <div class="hstack gap-3">
+                                        <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button="outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
+                                            <span class="icon-2">
+                                                @ReadFile("/Files/Images/Icons/ellipsis.svg")
+                                            </span>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-shadow">
+                                            <li>
+                                                <a class="dropdown-item hstack gap-2" href="@(baseUrl)?GroupId=@(group.Id)">
+                                                    <span class="icon-2">
+                                                        @ReadFile("/Files/Images/Icons/user-group.svg")
+                                                    </span>
+                                                    @Translate("View account users")
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+
+                        @if (Model.Groups.Count() < 1)
+                        {
+                            <tr>
+                                <td colspan="4">@Translate("No groups found")</td>
+                            </tr>
+                            <tr>
+                                <td colspan="4">
+                                    <div class="d-grid py-4">
+                                        <span class="m-auto">
+                                            <div class="d-grid rounded-circle m-auto" style="width:4rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
+                                                <span class="icon-4 text-muted">
+                                                    @ReadFile("/Files/Images/Icons/user-group.svg")
+                                                </span>
+                                            </div>
+                                            <div class="mt-3">@Translate("No groups found")</div>
+                                        </span>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="hstack gap-2 mt-3">
+            <div class="text-muted fs-7">
+                @Translate("Showing") x @Translate("of") @Model.Groups?.Count() @Translate("accounts")
+            </div>
+            <div class="ms-auto hstack gap-2">
+                <button class="btn btn-outline-secondary text-body hstack p-2" data-dw-button type="button">
+                    <span class="icon-2">
+                        @ReadFile("/Files/Images/Icons/chevron-left.svg")
+                    </span>
+                </button>
+                <button class="btn btn-outline-secondary text-body hstack p-2" data-dw-button type="button">
+                    <span class="icon-2">
+                        @ReadFile("/Files/Images/Icons/chevron-right.svg")
+                    </span>
+                </button>
+            </div>
+        </div>
+        
+    </div>
+
+</form>
