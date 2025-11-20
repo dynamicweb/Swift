@@ -17,18 +17,27 @@
     <h1 class="h4 mb-0">@(Pageview.Page.GetDisplayName())</h1>
 </header>
 
-<form data-swift-order-list 
-    hx-get="@(baseUrl)"
-    hx-trigger="keyup delay:.3s, change, click from:input[type='radio'][name='SortBy']" 
+<form hx-get="@(baseUrl)"
+    hx-trigger="submit, 
+                input from:input[name='FilterText'] changed delay:500ms queue:last, 
+                click from:button[type='reset'], 
+                change from:input[name='FilterOrderStateId'], 
+                change from:input[name='SortBy']" 
+    hx-sync="this:abort"
     hx-swap="outerHTML"
     hx-target="[data-swift-order-list]"
     hx-select="[data-swift-order-list]"
     hx-replace-url="true"
-    hx-on:click="if (event.target.querySelector('input[type=radio][name=SortBy]') && event.target.querySelector('input[type=radio][name=SortBy]').checked) {
-     this.querySelector('[name=SortOrder]').value = '@(nextSortOrder)';
-    }">
-
-    <input type="hidden" name="SortOrder" value="@(currentSortOrder)">
+    hx-on:click="const sortInput = event.target.closest('label')?.querySelector('input[name=SortBy]');
+                 if (!sortInput) return;
+                 const sortOrderField = this.querySelector('[name=SortOrder]');
+                 if (!sortOrderField) return;
+                 if (sortInput.checked) {
+                     sortOrderField.value = sortOrderField.value === 'asc' ? 'desc' : 'asc';
+                     this.requestSubmit();
+                 } else {
+                     sortOrderField.value = 'asc';
+                 }">
 
     <nav class="hstack gap-2 mb-3">
         <div class="flex-fill">
@@ -37,7 +46,7 @@
                     <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
                     <span class="icon-2" data-swift-indicator-origin>@ReadFile("/Files/Images/Icons/magnifying-glass.svg")</span>
                 </span>
-                <input type="text" class="form-control border-start-0 border-end-0" name="FilterText" value="@Dynamicweb.Context.Current?.Request.QueryString.Get("FilterText")" placeholder="@Translate("Search orders")...">
+                <input type="search" class="form-control border-start-0 border-end-0" name="FilterText" value="@Dynamicweb.Context.Current?.Request.QueryString.Get("FilterText")" placeholder="@Translate("Search orders")...">
                 <button type="reset" class="input-group-text border-start-0 bg-body" onclick="this.closest('form').querySelector('[name=FilterText]').value = ''; this.closest('form').dispatchEvent(new Event('change', { bubbles: true }))">
                     <span class="icon-2">@ReadFile("/Files/Images/Icons/xmark.svg")</span>
                     <span class="visually-hidden">@Translate("Clear search")</span>
@@ -51,302 +60,307 @@
                 </span>
                 @Translate("Filter")
             </button>
-            <div class="dropdown-menu p-3 fs-7 shadow" style="--bs-dropdown-min-width:18rem;">
+            <div class="dropdown-menu dropdown-menu-shadow p-3" style="--bs-dropdown-min-width:18rem;">
                 <div class="fw-bold mb-1">@Translate("Status")</div>
-                <div class="d-flex flex-wrap gap-2" data-swift-order-state-filter>
-                    <input class="visually-hidden" type="radio" name="FilterOrderStateId" value="" id="state_all" checked="@((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId") ?? string.Empty) == string.Empty)">
-                    <label for="state_all" class="fs-8 py-1 px-2 btn @((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId") ?? string.Empty) == string.Empty ? "btn-primary" : "btn-outline-secondary text-body") lh-1" role="button" data-dw-button>@Translate("All")</label>
+                <div class="d-flex flex-wrap gap-2" data-swift-order-state-filter role="group" aria-label="@Translate("Filter by status")">
+                    <input class="btn-check" type="radio" name="FilterOrderStateId" value="" id="state_all" autocomplete="off" checked="@((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId") ?? string.Empty) == string.Empty)">
+                    <label for="state_all" class="fs-8 py-1 px-2 btn btn-outline-secondary text-body lh-1" data-dw-button>@Translate("All")</label>
                     @foreach (var state in Dynamicweb.Ecommerce.Services.OrderStates.GetStatesByOrderType(Dynamicweb.Ecommerce.Orders.OrderType.Order))
                     {
-                        <input class="visually-hidden" type="radio" name="FilterOrderStateId" value="@(state.Id)" id="state_@(state.Id)" checked="@((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId")) == state.Id)">
-                        <label for="state_@(state.Id)" class="fs-8 py-1 px-2 btn @((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId")) == state.Id ? "btn-primary" : "btn-outline-secondary text-body") lh-1" role="button" data-dw-button>@(state.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID))</label>
+                        var isChecked = (Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId")) == state.Id;
+                        <input class="btn-check" type="radio" name="FilterOrderStateId" value="@(state.Id)" id="state_@(state.Id)" autocomplete="off" checked="@isChecked">
+                        <label for="state_@(state.Id)" class="fs-8 py-1 px-2 btn btn-outline-secondary text-body lh-1" data-dw-button>@(state.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID))</label>
                     }
                 </div>
             </div>
         </div>
     </nav>
 
-    <div class="card overflow-hidden">
-        <div class="table-responsive" style="margin-bottom:-1px;">
-            <table class="table table-md table-hover mb-0 align-middle fs-7" style="--bs-table-color: var(--bs-body-color);">
-                <thead style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .0275); --bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
-                    <tr>
-                        <th>
-                            <label class="hstack gap-1" role="button">
-                                <input type="radio" name="SortBy" value="Id" class="visually-hidden" checked="@(currentSortBy=="Id")" />
-                                @Translate("Order number") 
-                                @if(currentSortBy=="Id") {
-                                    <span class="icon-1">@arrow</span>
-                                }
-                            </label>
-                        </th>
-                        <th>
-                            <label class="hstack gap-1" role="button">
-                                <input type="radio" name="SortBy" value="CustomerName" class="visually-hidden" checked="@(currentSortBy=="CustomerName")" />
-                                @Translate("Customer") 
-                                @if(currentSortBy=="CustomerName") {
-                                    <span class="icon-1">@arrow</span>
-                                }
-                            </label>
-                        </th>
-                        <th>
-                            <label class="hstack gap-1" role="button">
-                                <input type="radio" name="SortBy" value="CreatedAt" class="visually-hidden" checked="@(currentSortBy=="CreatedAt")" />
-                                @Translate("Placed") 
-                                @if(currentSortBy=="CreatedAt") {
-                                    <span class="icon-1">@arrow</span>
-                                }
-                            </label>
-                        </th>
-                        <th>
-                            <label class="hstack gap-1" role="button">
-                                <input type="radio" name="SortBy" value="StateId" class="visually-hidden" checked="@(currentSortBy=="StateId")" />
-                                @Translate("Status") 
-                                @if(currentSortBy=="StateId") {
-                                    <span class="icon-1">@arrow</span>
-                                }
-                            </label>
-                        </th>
-                        <th>@Translate("Qty")</th>
-                        <th>
-                            <label class="hstack gap-1" role="button">
-                                <input type="radio" name="SortBy" value="PriceBeforeFees" class="visually-hidden" checked="@(currentSortBy=="PriceBeforeFees")" />
-                                @Translate("Total") 
-                                @if(currentSortBy=="PriceBeforeFees") {
-                                    <span class="icon-1">@arrow</span>
-                                }
-                            </label>
-                        </th>
-                        <th>@Translate("Actions")</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach ( var order in Model.Orders )
-                    {
-                        var orderlines = order.OrderLines.Where(x => x.OrderLineType != OrderLineType.ProductDiscount && (!string.IsNullOrEmpty(x.ProductId) || !string.IsNullOrEmpty(x.ProductNumber)));
-
-                        <tr class="position-relative">
-                            <td>
-                                <a class="position-relative z-2 text-decoration-none text-decoration-underline-hover" href="@(baseUrl)?OrderId=@(order.Id)">@(order.Id)</a>
-                            </td>
-                            <td>@(order.CustomerName)</td>
-                            <td>
-                                <div class="vstack">
-                                    @(order.CreatedAt.ToShortDateString())
-                                    <span class="fs-8 text-muted">@(order.CreatedAt.ToShortTimeString())</span>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge lh-sm bg-secondary" style="background-color:@(Dynamicweb.Ecommerce.Services.OrderStates.GetStateById(order.StateId).Color) !important">
-                                    @(order.StateName)
-                                </span>
-                            </td>
-                            <td>@(order.SumProductQuantities())</td>
-                            <td>
-                                <div class="text-price">@(order.Price.PriceFormatted)</div>
-                            </td>
-                            <td>
-                                <div class="hstack gap-3">
-                                    <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button="outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
-                                        <span class="icon-2">
-                                            @ReadFile("/Files/Images/Icons/ellipsis.svg")
-                                        </span>
-                                    </button>
-                                    <ul class="dropdown-menu shadow-sm fs-7">
-                                        <li>
-                                            <a class="dropdown-item hstack gap-2" href="@(baseUrl)?OrderId=@(order.Id)">
-                                                <span class="icon-2">
-                                                    @ReadFile("/Files/Images/Icons/eye.svg")
-                                                </span>
-                                                @Translate("View")
-                                            </a>
-                                        </li>
-                                    </ul>
-                                    <button type="button" class="btn btn-outline-secondary text-body hstack border-0 p-2 stretched-link ms-auto" data-dw-button="outline-secondary" data-bs-toggle="collapse"  data-bs-target="#order_@(order.Id)" aria-expanded="false" aria-controls="order_@(order.Id)">
-                                        <span class="collapse-chevron-icon"></span>
-                                    </button>
-                                </div>
-                            </td>
+    <div data-swift-order-list>
+        <input type="hidden" name="SortOrder" value="@(currentSortOrder)">
+        
+        <div class="card overflow-hidden">            
+            <div class="table-responsive" style="margin-bottom:-1px;">
+                <table class="table table-md table-hover mb-0 align-middle fs-7" style="--bs-table-color: var(--bs-body-color);">
+                    <thead style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .0275); --bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
+                        <tr>
+                            <th>
+                                <label class="hstack gap-1" role="button">
+                                    <input type="radio" name="SortBy" value="Id" class="visually-hidden" checked="@(currentSortBy=="Id")" />
+                                    @Translate("Order number") 
+                                    @if(currentSortBy=="Id") {
+                                        <span class="icon-1">@arrow</span>
+                                    }
+                                </label>
+                            </th>
+                            <th>
+                                <label class="hstack gap-1" role="button">
+                                    <input type="radio" name="SortBy" value="CustomerName" class="visually-hidden" checked="@(currentSortBy=="CustomerName")" />
+                                    @Translate("Customer") 
+                                    @if(currentSortBy=="CustomerName") {
+                                        <span class="icon-1">@arrow</span>
+                                    }
+                                </label>
+                            </th>
+                            <th>
+                                <label class="hstack gap-1" role="button">
+                                    <input type="radio" name="SortBy" value="CreatedAt" class="visually-hidden" checked="@(currentSortBy=="CreatedAt")" />
+                                    @Translate("Placed") 
+                                    @if(currentSortBy=="CreatedAt") {
+                                        <span class="icon-1">@arrow</span>
+                                    }
+                                </label>
+                            </th>
+                            <th>
+                                <label class="hstack gap-1" role="button">
+                                    <input type="radio" name="SortBy" value="StateId" class="visually-hidden" checked="@(currentSortBy=="StateId")" />
+                                    @Translate("Status") 
+                                    @if(currentSortBy=="StateId") {
+                                        <span class="icon-1">@arrow</span>
+                                    }
+                                </label>
+                            </th>
+                            <th>@Translate("Qty")</th>
+                            <th>
+                                <label class="hstack gap-1" role="button">
+                                    <input type="radio" name="SortBy" value="PriceBeforeFees" class="visually-hidden" checked="@(currentSortBy=="PriceBeforeFees")" />
+                                    @Translate("Total") 
+                                    @if(currentSortBy=="PriceBeforeFees") {
+                                        <span class="icon-1">@arrow</span>
+                                    }
+                                </label>
+                            </th>
+                            <th>@Translate("Actions")</th>
                         </tr>
-                        <tr class="collapse" id="order_@(order.Id)">
-                            <td colspan="10" class="text-muted text-opacity-75 fs-8" style="background-color:rgba(var(--bs-body-color-rgb), .02);">
-                                <div class="grid grid-3 gap-3">
-                                    @* Customer *@
-                                    <div class="vstack">
-                                        <div class="fw-bold mb-0">@Translate("Billing")</div>
-                                        <div>@(order.CustomerName)</div>
-                                        <div>@(order.CustomerEmail)</div>
-                                        <div>@(order.CustomerPhone)</div>
-                                    </div>
-                                    @* Shipping *@
-                                    <div class="vstack">
-                                        <div class="fw-bold mb-0">@Translate("Shipping")</div>
-                                        <div>@(order.DeliveryCompany)</div>
-                                        <div>@(order.DeliveryAddress)</div>
-                                        <div>@(order.DeliveryAddress2)</div>
-                                        <div>@(order.DeliveryZip) @(order.DeliveryCity)</div>
-                                        <div>@(order.DeliveryCountry.ToUpperInvariant())</div>
-                                    </div>
-                                    @* Summary *@
-                                    <div class="vstack">
-                                        <div class="fw-bold mb-0">@Translate("Order summary")</div>
-                                        <div class="hstack">
-                                            <div>@Translate("Subtotal"):</div>
-                                            <div class="text-price ms-auto">@(order.TotalPriceBeforeFeesAndTaxes.PriceFormatted)</div>
-                                        </div>
-                                        @if (order.ShippingFee.Price != 0.0) {
-                                            <div class="hstack">
-                                                <div>@Translate("Shipping"):</div>
-                                                <div class="text-price ms-auto">@(order.ShippingFee.PriceFormatted)</div>
-                                            </div>
-                                        }
-                                        @if (order.PaymentFee.Price != 0.0) {
-                                            <div class="hstack">
-                                                <div>@Translate("Payment"):</div>
-                                                <div class="text-price ms-auto">@(order.PaymentFee.PriceFormatted)</div>
-                                            </div>
-                                        }
-                                        @if (order.TotalTaxes.Price != 0.0) {
-                                            <div class="hstack">
-                                                <div>@Translate("Taxes"):</div>
-                                                <div class="text-price ms-auto">@(order.TotalTaxes.PriceFormatted)</div>
-                                            </div>
-                                        }
-                                        @if (order.Price.Vat != 0.0) {
-                                            <div class="hstack">
-                                                <div>@Translate("VAT") @(order.Price.VATPercent)%:</div>
-                                                <div class="text-price ms-auto">@(order.Price.VatFormatted)</div>
-                                            </div>
-                                        }
-                                        @if (order.TotalDiscount.Price != 0.0) {
-                                            <div class="hstack">
-                                                <div>@Translate("Discount"):</div>
-                                                <div class="text-price ms-auto">@(order.TotalDiscount.PriceFormatted)</div>
-                                            </div>
-                                        }
-                                        <div class="hstack">
-                                            <div>@Translate("Total"):</div>
-                                            <div class="text-price ms-auto">@(order.Price.PriceFormatted)</div>
-                                        </div>
-                                    </div>
-                                    @* Orderlines *@
-                                    <div style="grid-column:1/-1;">
-                                        <div class="grid pb-2" style="grid-template-columns: 40px 2fr 1fr 1fr 1fr 1fr;">
-                                            <div></div>
-                                            <div>@Translate("Items") (@(orderlines.Count()))</div>
-                                            <div class="text-center">@Translate("Unit")</div>
-                                            <div class="text-center">@Translate("Qty")</div>
-                                            <div class="text-end">@Translate("Price")</div>
-                                            <div class="text-end">@Translate("Total")</div>
-                                        </div>
-                                        <div class="list-group gap-2" style="--bs-list-group-border-width: 0;--bs-list-group-item-padding-x:.5rem;">
-                                            @foreach( var orderline in orderlines.Reverse().Take(7) )
-                                            {
-                                                <div class="list-group-item d-grid align-items-center gap-3" style="grid-template-columns: 40px 2fr 1fr 1fr 1fr 1fr;">
-                                                    @if(orderline.GetProduct()?.DefaultImage.TryGetImageFileViewModel(out var image) is true)
-                                                    {
-                                                        <div class="d-flex img-thumbnail" style="inline-size: 40px; aspect-ratio: 1;">
-                                                            <img class="m-auto" src="@(image?.ToGetImage(new(){Height = 30, Width = 30, Ratio = "1/1", Crop = Dynamicweb.Imaging.ImageHandling.CropMode.KeepAspectRatio }))" alt="@(orderline.ProductName)">
-                                                        </div>
-                                                    }
-                                                    else 
-                                                    {
-                                                        <div></div>
-                                                    }
-                                                    
-                                                    <div class="vstack align-self-auto">
-                                                        <div>@(orderline.ProductName)</div>
-                                                        <div class="text-muted">@(orderline.ProductId)</div>
-                                                    </div>
-                                                    <div class="vstack align-self-auto text-center">
-                                                        <div>@(orderline.UnitName)</div>
-                                                    </div>
-                                                    <div class="vstack align-self-auto text-center">
-                                                        <div>@(orderline.Quantity)</div>
-                                                    </div>
-                                                    <div class="vstack align-self-auto text-end">
-                                                        @if(orderline.OrderLineType == OrderLineType.Discount)
-                                                        {
-                                                            <div class="text-price">@Translate("Free")</div>
-                                                        }
-                                                        else if(orderline.HasProductDiscount())
-                                                        {
-                                                            <div class="text-price text-decoration-line-through text-muted">@(orderline.UnitPrice.PriceFormatted)</div>
-                                                            <div class="text-price">@(orderline.UnitPriceWithProductDiscount.PriceFormatted)</div>
-                                                        }
-                                                        else
-                                                        {
-                                                            <div class="text-price">@(orderline.UnitPrice.PriceFormatted)</div>
-                                                        }
-                                                    </div>
-                                                    <div class="vstack align-self-auto text-end">
-                                                        @if(orderline.HasProductDiscount())
-                                                        {
-                                                            <div class="text-price text-decoration-line-through text-muted">@(orderline.Price.PriceFormatted)</div>
-                                                            <div class="text-price">@(orderline.TotalPriceWithProductDiscounts.PriceFormatted)</div>
-                                                        }
-                                                        else
-                                                        {
-                                                            <div class="text-price">@(orderline.Price.PriceFormatted)</div>
-                                                        }
-                                                    </div>
-                                                </div>
-                                            }
-                                            @if( orderlines.Count() > 7 )
-                                            {
-                                                <div class="list-group-item hstack">
-                                                    <a class="mx-auto" href="@(baseUrl)?OrderId=@(order.Id)">@Translate("View all orderlines") (@(orderlines.Count()))</a>
-                                                </div>
-                                            }
-                                            
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-
-                        @if( Model.Orders.Count() < 1 )
+                    </thead>
+                    <tbody>
+                        @foreach ( var order in Model.Orders )
                         {
+                            var orderlines = order.OrderLines.Where(x => x.OrderLineType != OrderLineType.ProductDiscount && (!string.IsNullOrEmpty(x.ProductId) || !string.IsNullOrEmpty(x.ProductNumber)));
+
                             <tr class="position-relative">
-                                <td colspan="8">
-                                    <div class="d-grid py-4">
-                                        <span class="m-auto">
-                                            <div class="d-grid rounded-circle m-auto" style="width:4rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
-                                                <span class="icon-4 text-muted">
-                                                    @ReadFile("/Files/Images/Icons/file-contract.svg")
-                                                </span>
-                                            </div>
-                                            <div class="mt-3">@Translate("No orders found")</div>
-                                        </span>
+                                <td>
+                                    <a class="position-relative z-2 text-decoration-none text-decoration-underline-hover" href="@(baseUrl)?OrderId=@(order.Id)">@(order.Id)</a>
+                                </td>
+                                <td>@(order.CustomerName)</td>
+                                <td>
+                                    <div class="vstack">
+                                        @(order.CreatedAt.ToShortDateString())
+                                        <span class="fs-8 text-muted">@(order.CreatedAt.ToShortTimeString())</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge lh-sm bg-secondary" style="background-color:@(Dynamicweb.Ecommerce.Services.OrderStates.GetStateById(order.StateId).Color) !important">
+                                        @(order.StateName)
+                                    </span>
+                                </td>
+                                <td>@(order.SumProductQuantities())</td>
+                                <td>
+                                    <div class="text-price">@(order.Price.PriceFormatted)</div>
+                                </td>
+                                <td>
+                                    <div class="hstack gap-3">
+                                        <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button="outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
+                                            <span class="icon-2">
+                                                @ReadFile("/Files/Images/Icons/ellipsis.svg")
+                                            </span>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-shadow">
+                                            <li>
+                                                <a class="dropdown-item hstack gap-2" href="@(baseUrl)?OrderId=@(order.Id)">
+                                                    <span class="icon-2">
+                                                        @ReadFile("/Files/Images/Icons/eye.svg")
+                                                    </span>
+                                                    @Translate("View")
+                                                </a>
+                                            </li>
+                                        </ul>
+                                        <button type="button" class="btn btn-outline-secondary text-body hstack border-0 p-2 stretched-link ms-auto" data-dw-button data-bs-toggle="collapse"  data-bs-target="#order_@(order.Id)" aria-expanded="false" aria-controls="order_@(order.Id)">
+                                            <span class="collapse-chevron-icon"></span>
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
-                        }
+                            <tr class="collapse" id="order_@(order.Id)">
+                                <td colspan="10" class="text-muted text-opacity-75 fs-8" style="background-color:rgba(var(--bs-body-color-rgb), .02);">
+                                    <div class="grid grid-3 gap-3">
+                                        @* Customer *@
+                                        <div class="vstack">
+                                            <div class="fw-bold mb-0">@Translate("Billing")</div>
+                                            <div>@(order.CustomerName)</div>
+                                            <div>@(order.CustomerEmail)</div>
+                                            <div>@(order.CustomerPhone)</div>
+                                        </div>
+                                        @* Shipping *@
+                                        <div class="vstack">
+                                            <div class="fw-bold mb-0">@Translate("Shipping")</div>
+                                            <div>@(order.DeliveryCompany)</div>
+                                            <div>@(order.DeliveryAddress)</div>
+                                            <div>@(order.DeliveryAddress2)</div>
+                                            <div>@(order.DeliveryZip) @(order.DeliveryCity)</div>
+                                            <div>@(order.DeliveryCountry.ToUpperInvariant())</div>
+                                        </div>
+                                        @* Summary *@
+                                        <div class="vstack">
+                                            <div class="fw-bold mb-0">@Translate("Order summary")</div>
+                                            <div class="hstack">
+                                                <div>@Translate("Subtotal"):</div>
+                                                <div class="text-price ms-auto">@(order.TotalPriceBeforeFeesAndTaxes.PriceFormatted)</div>
+                                            </div>
+                                            @if (order.ShippingFee.Price != 0.0) {
+                                                <div class="hstack">
+                                                    <div>@Translate("Shipping"):</div>
+                                                    <div class="text-price ms-auto">@(order.ShippingFee.PriceFormatted)</div>
+                                                </div>
+                                            }
+                                            @if (order.PaymentFee.Price != 0.0) {
+                                                <div class="hstack">
+                                                    <div>@Translate("Payment"):</div>
+                                                    <div class="text-price ms-auto">@(order.PaymentFee.PriceFormatted)</div>
+                                                </div>
+                                            }
+                                            @if (order.TotalTaxes.Price != 0.0) {
+                                                <div class="hstack">
+                                                    <div>@Translate("Taxes"):</div>
+                                                    <div class="text-price ms-auto">@(order.TotalTaxes.PriceFormatted)</div>
+                                                </div>
+                                            }
+                                            @if (order.Price.Vat != 0.0) {
+                                                <div class="hstack">
+                                                    <div>@Translate("VAT") @(order.Price.VATPercent)%:</div>
+                                                    <div class="text-price ms-auto">@(order.Price.VatFormatted)</div>
+                                                </div>
+                                            }
+                                            @if (order.TotalDiscount.Price != 0.0) {
+                                                <div class="hstack">
+                                                    <div>@Translate("Discount"):</div>
+                                                    <div class="text-price ms-auto">@(order.TotalDiscount.PriceFormatted)</div>
+                                                </div>
+                                            }
+                                            <div class="hstack">
+                                                <div>@Translate("Total"):</div>
+                                                <div class="text-price ms-auto">@(order.Price.PriceFormatted)</div>
+                                            </div>
+                                        </div>
+                                        @* Orderlines *@
+                                        <div style="grid-column:1/-1;">
+                                            <div class="grid pb-2" style="grid-template-columns: 40px 2fr 1fr 1fr 1fr 1fr;">
+                                                <div></div>
+                                                <div>@Translate("Items") (@(orderlines.Count()))</div>
+                                                <div class="text-center">@Translate("Unit")</div>
+                                                <div class="text-center">@Translate("Qty")</div>
+                                                <div class="text-end">@Translate("Price")</div>
+                                                <div class="text-end">@Translate("Total")</div>
+                                            </div>
+                                            <div class="list-group gap-2" style="--bs-list-group-border-width: 0;--bs-list-group-item-padding-x:.5rem;">
+                                                @foreach( var orderline in orderlines.Reverse().Take(7) )
+                                                {
+                                                    <div class="list-group-item d-grid align-items-center gap-3" style="grid-template-columns: 40px 2fr 1fr 1fr 1fr 1fr;">
+                                                        @if(orderline.GetProduct()?.DefaultImage.TryGetImageFileViewModel(out var image) is true)
+                                                        {
+                                                            <div class="d-flex img-thumbnail" style="inline-size: 40px; aspect-ratio: 1;">
+                                                                <img class="m-auto" src="@(image?.ToGetImage(new(){Height = 30, Width = 30, Ratio = "1/1", Crop = Dynamicweb.Imaging.ImageHandling.CropMode.KeepAspectRatio }))" alt="@(orderline.ProductName)">
+                                                            </div>
+                                                        }
+                                                        else 
+                                                        {
+                                                            <div></div>
+                                                        }
+                                                        
+                                                        <div class="vstack align-self-auto">
+                                                            <div>@(orderline.ProductName)</div>
+                                                            <div class="text-muted">@(orderline.ProductId)</div>
+                                                        </div>
+                                                        <div class="vstack align-self-auto text-center">
+                                                            <div>@(orderline.UnitName)</div>
+                                                        </div>
+                                                        <div class="vstack align-self-auto text-center">
+                                                            <div>@(orderline.Quantity)</div>
+                                                        </div>
+                                                        <div class="vstack align-self-auto text-end">
+                                                            @if(orderline.OrderLineType == OrderLineType.Discount)
+                                                            {
+                                                                <div class="text-price">@Translate("Free")</div>
+                                                            }
+                                                            else if(orderline.HasProductDiscount())
+                                                            {
+                                                                <div class="text-price text-decoration-line-through text-muted">@(orderline.UnitPrice.PriceFormatted)</div>
+                                                                <div class="text-price">@(orderline.UnitPriceWithProductDiscount.PriceFormatted)</div>
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="text-price">@(orderline.UnitPrice.PriceFormatted)</div>
+                                                            }
+                                                        </div>
+                                                        <div class="vstack align-self-auto text-end">
+                                                            @if(orderline.HasProductDiscount())
+                                                            {
+                                                                <div class="text-price text-decoration-line-through text-muted">@(orderline.Price.PriceFormatted)</div>
+                                                                <div class="text-price">@(orderline.TotalPriceWithProductDiscounts.PriceFormatted)</div>
+                                                            }
+                                                            else
+                                                            {
+                                                                <div class="text-price">@(orderline.Price.PriceFormatted)</div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+                                                @if( orderlines.Count() > 7 )
+                                                {
+                                                    <div class="list-group-item hstack">
+                                                        <a class="mx-auto" href="@(baseUrl)?OrderId=@(order.Id)">@Translate("View all orderlines") (@(orderlines.Count()))</a>
+                                                    </div>
+                                                }
+                                                
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
 
-                </tbody>
+                            @if( Model.Orders.Count() < 1 )
+                            {
+                                <tr class="position-relative">
+                                    <td colspan="8">
+                                        <div class="d-grid py-4">
+                                            <span class="m-auto">
+                                                <div class="d-grid rounded-circle m-auto" style="width:4rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
+                                                    <span class="icon-4 text-muted">
+                                                        @ReadFile("/Files/Images/Icons/file-contract.svg")
+                                                    </span>
+                                                </div>
+                                                <div class="mt-3">@Translate("No orders found")</div>
+                                            </span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
 
-            </table>
+                    </tbody>
 
+                </table>
+
+            </div>
         </div>
-    </div>
 
-    @if (Model.PageCount > 1)
-    {
-        <ul class="pagination m-0 mt-3">
-            @for (int i = 1; i <= Model.PageCount; i++)
-            {
-                var active = (i == Model.CurrentPage) ? "active" : string.Empty;
-                <li class="page-item @active">
-                    <button type="submit"
-                            class="page-link"
-                            name="PageNum"
-                            value="@i"
-                            aria-label="@Translate("Go to page") @i"
-                            @(active == "active" ? "aria-current=\"page\"" : "")>
-                        @i
-                    </button>
-                </li>
-            }
-        </ul>
-    }
+        @if (Model.PageCount > 1)
+        {
+            <ul class="pagination m-0 mt-3">
+                @for (int i = 1; i <= Model.PageCount; i++)
+                {
+                    var active = (i == Model.CurrentPage) ? "active" : string.Empty;
+                    <li class="page-item @active">
+                        <button type="submit"
+                                class="page-link"
+                                name="PageNum"
+                                value="@i"
+                                aria-label="@Translate("Go to page") @i"
+                                @(active == "active" ? "aria-current=\"page\"" : "")>
+                            @i
+                        </button>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
 </form>
