@@ -12,8 +12,20 @@
     string arrow = currentSortOrder == "asc" ? @ReadFile("/Files/Images/Icons/arrow-up.svg") : @ReadFile("/Files/Images/Icons/arrow-down.svg");
 }
 
-<header class="hstack gap-3 mb-4">
+<header class="hstack gap-3 justify-content-between mb-3">
     <h1 class="h4 mb-0">@(Pageview.Page.GetDisplayName())</h1>
+
+    <button type="button" class="btn btn-sm btn-primary hstack gap-2 ms-auto py-2 px-3" data-dw-button
+        hx-trigger="click"
+        hx-get="@(baseUrl)"
+        hx-vals='{"LayoutTemplate": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Modals/CreateCartModal.cshtml"}'
+        hx-target="main"
+        hx-swap="beforeend">
+        <span class="icon-2 text-opacity-50">
+            @ReadFile("/Files/Images/Icons/plus.svg")
+        </span>
+        @Translate("Add cart")
+    </button>
 </header>
 
 <form hx-get="@(baseUrl)"
@@ -21,7 +33,8 @@
                 input from:input[name='FilterText'] changed delay:500ms queue:last, 
                 click from:button[type='reset'], 
                 change from:input[name='FilterOrderStateId'], 
-                change from:input[name='SortBy']" 
+                change from:input[name='SortBy'],
+                set-cart from:body"
     hx-sync="this:abort"
     hx-swap="outerHTML"
     hx-disinherit="*"
@@ -62,7 +75,7 @@
             </button>
             <div class="dropdown-menu dropdown-menu-shadow p-3" style="--bs-dropdown-min-width:18rem;">
                 <div class="fw-bold mb-1">@Translate("Status")</div>
-                <div class="d-flex flex-wrap gap-2" data-swift-order-state-filter role="group" aria-label="@Translate("Filter by status")">
+                <div class="d-flex flex-wrap gap-2" role="group" aria-label="@Translate("Filter by status")">
                     <input class="btn-check" type="radio" name="FilterOrderStateId" value="" id="state_all" autocomplete="off" checked="@((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId") ?? string.Empty) == string.Empty)">
                     <label for="state_all" class="fs-8 py-1 px-2 btn btn-outline-secondary text-body lh-1" data-dw-button>@Translate("All")</label>
                     @foreach (var state in Dynamicweb.Ecommerce.Services.OrderStates.GetStatesByOrderType(Dynamicweb.Ecommerce.Orders.OrderType.Cart))
@@ -74,17 +87,6 @@
                 </div>
             </div>
         </div>
-        <button type="button" class="btn btn-sm btn-primary hstack gap-2 ms-auto py-2 px-3" data-dw-button
-            hx-trigger="click"
-            hx-get="@(baseUrl)"
-            hx-vals='{"LayoutTemplate": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/CreateCartModal.cshtml"}'
-            hx-target="main"
-            hx-swap="beforeend">
-            <span class="icon-2 text-opacity-50">
-                @ReadFile("/Files/Images/Icons/plus.svg")
-            </span>
-            @Translate("Add cart")
-        </button>
     </nav>
 
     <div data-swift-cart-list>
@@ -202,7 +204,7 @@
                                                 <button type="button" class="dropdown-item hstack gap-2"
                                                     hx-trigger="click"
                                                     hx-get="/dwapi/ecommerce/carts/@(order.Secret)" 
-                                                    hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/CheckoutCartModal.cshtml", "accept": "text/html"}'
+                                                    hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Modals/CheckoutCartModal.cshtml", "accept": "text/html"}'
                                                     hx-target="main"
                                                     hx-swap="beforeend"
                                                 >
@@ -215,17 +217,20 @@
                                             <li>
                                                 <div hx-post="@(baseUrl)"
                                                     hx-trigger="click"
-                                                    hx-swap="outerHTML"
+                                                    hx-swap="none"
                                                     hx-replace-url="false"
-                                                    hx-target="[data-swift-cart-list]"
-                                                    hx-select="[data-swift-cart-list]"
                                                     hx-vals='{"CartID": "@order.Id", "CartCmd": "setcart"}'
-                                                    hx-on:click="
-                                                        const toast = document.getElementById('setCartToast');
-                                                        if (toast) {
-                                                            bootstrap.Toast.getOrCreateInstance(toast).show();
-                                                        }
+                                                    hx-on:htmx:after-request="
+                                                        htmx.trigger('body','set-cart');
+                                                        htmx.trigger('body','set-cart-@order.Id');
                                                     ">
+
+                                                    <div hx-trigger="set-cart-@order.Id from:body"
+                                                        hx-get="/dwapi/ecommerce/carts/@(order.Secret)" 
+                                                        hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Toasts/SetCartToast.cshtml", "accept": "text/html"}'
+                                                        hx-target="main"
+                                                        hx-swap="beforeend">
+                                                    </div>
 
                                                     <button type="button" class="dropdown-item hstack gap-2 ps-2 pe-3 rounded-1" @(isActiveCart ? "disabled" : null)>
                                                         <span class="icon-2">
@@ -240,7 +245,7 @@
                                                 <button class="dropdown-item hstack gap-2"
                                                     hx-trigger="click"
                                                     hx-get="/dwapi/ecommerce/carts/@(order.Secret)" 
-                                                    hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/RenameCartModal.cshtml", "accept": "text/html"}'
+                                                    hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Modals/RenameCartModal.cshtml", "accept": "text/html"}'
                                                     hx-target="main"
                                                     hx-swap="beforeend"
                                                 >
@@ -248,19 +253,6 @@
                                                         @ReadFile("/Files/Images/Icons/pen.svg")
                                                     </span>
                                                     @Translate("Rename")
-                                                </button>
-                                            </li>
-                                            <li>
-                                                <button class="dropdown-item hstack gap-2"
-                                                    hx-get="@(baseUrl)"
-                                                    hx-trigger="click"
-                                                    hx-vals='{"CartID": "@order.Id", "CartName": "@order.DisplayName", "LayoutTemplate": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/RenameCartModal2.cshtml"}'
-                                                    hx-target="main"
-                                                    hx-swap="beforeend">
-                                                    <span class="icon-2 text-opacity-50">
-                                                        @ReadFile("/Files/Images/Icons/pen.svg")
-                                                    </span>
-                                                    @Translate("Rename") v2
                                                 </button>
                                             </li>
                                             <li>
@@ -276,7 +268,7 @@
                                                 <button class="dropdown-item hstack gap-2 text-danger"
                                                     hx-trigger="click"
                                                     hx-get="/dwapi/ecommerce/carts/@(order.Secret)" 
-                                                    hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/DeleteCartModal.cshtml", "accept": "text/html"}'
+                                                    hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Modals/DeleteCartModal.cshtml", "accept": "text/html"}'
                                                     hx-target="main"
                                                     hx-swap="beforeend"
                                                 >
@@ -338,6 +330,3 @@
         }
     </div>
 </form>
-
-
-@RenderPartial("/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/SetCartToast.cshtml")
