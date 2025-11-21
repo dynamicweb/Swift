@@ -6,325 +6,303 @@
 
 @{
     string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview.Page.ID}");
+    string currentSortBy = Dynamicweb.Context.Current?.Request.QueryString.Get("SortBy") ?? Pageview.CurrentParagraph?.ModuleProperties?.GetValue("SortByField") ?? string.Empty;
+    string currentSortOrder = Dynamicweb.Context.Current?.Request.QueryString.Get("SortOrder") ?? Pageview.CurrentParagraph?.ModuleProperties?.GetValue("SortOrder") ?? string.Empty;
+    string nextSortOrder = currentSortOrder == "asc" ? "desc" : "asc";
+    string arrow = currentSortOrder == "asc" ? @ReadFile("/Files/Images/Icons/arrow-up.svg") : @ReadFile("/Files/Images/Icons/arrow-down.svg");
 }
 
 <header class="hstack gap-3 mb-4">
     <h1 class="h4 mb-0">@(Pageview.Page.GetDisplayName())</h1>
 </header>
 
-<nav class="hstack gap-2 mb-3">
-    <form class="flex-fill"
-        hx-get="@(baseUrl)"
-        hx-trigger="keyup delay:.5s, change" 
-        hx-swap="none"
-        hx-replace-url="false"
-    >
-        <div class="input-group">
-            <span class="input-group-text border-end-0 bg-body">
-                <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
-                <span class="icon-2" data-swift-indicator-origin>@ReadFile("/Files/Images/Icons/magnifying-glass.svg")</span>
-            </span>
-            <input type="text" class="form-control border-start-0 border-end-0" name="FilterText" placeholder="@Translate("Search carts")...">
-            <button type="reset" class="input-group-text border-start-0 bg-body" hx-on:click="this.closest('form').dispatchEvent(new Event('change', { bubbles: true }))">
-                <span class="icon-2">@ReadFile("/Files/Images/Icons/xmark.svg")</span>
-                <span class="visually-hidden">@Translate("Clear search")</span>
-            </button>
-        </div>
-    </form>
+<form hx-get="@(baseUrl)"
+    hx-trigger="submit, 
+                input from:input[name='FilterText'] changed delay:500ms queue:last, 
+                click from:button[type='reset'], 
+                change from:input[name='FilterOrderStateId'], 
+                change from:input[name='SortBy']" 
+    hx-sync="this:abort"
+    hx-swap="outerHTML"
+    hx-disinherit="*"
+    hx-target="[data-swift-cart-list]"
+    hx-select="[data-swift-cart-list]"
+    hx-replace-url="true"
+    hx-on:click="const sortInput = event.target.closest('label')?.querySelector('input[name=SortBy]');
+                 if (!sortInput) return;
+                 const sortOrderField = this.querySelector('[name=SortOrder]');
+                 if (!sortOrderField) return;
+                 if (sortInput.checked) {
+                     sortOrderField.value = sortOrderField.value === 'asc' ? 'desc' : 'asc';
+                     this.requestSubmit();
+                 } else {
+                     sortOrderField.value = 'asc';
+                 }">
 
-    <form class="dropdown hstack"
-        hx-get="@(baseUrl)"
-        hx-trigger="change" 
-        hx-swap="outerHTML"
-        hx-target="[data-swift-cart-state-filter]"
-        hx-select="[data-swift-cart-state-filter]"
-        hx-replace-url="false"
-        >
-        <button class="btn btn-sm btn-outline-secondary hstack gap-2 ms-auto py-2 px-3 text-body" data-dw-button="outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
-            <span class="icon-2" data-swift-indicator-origin>
-                @ReadFile("/Files/Images/Icons/filter.svg")
-            </span>
-            @Translate("Filter")
-        </button>
-        <div class="dropdown-menu dropdown-menu-shadow p-3" style="--bs-dropdown-min-width:18rem;">
-            <div class="fw-bold mb-1">@Translate("Status")</div>
-            <div class="d-flex flex-wrap gap-2" data-swift-cart-state-filter>
-                <input class="visually-hidden" type="radio" name="FilterOrderStateId" value="" id="state_all" checked="@((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId") ?? string.Empty) == string.Empty)">
-                <label for="state_all" class="fs-8 py-1 px-2 btn @((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId") ?? string.Empty) == string.Empty ? "btn-primary" : "btn-outline-secondary text-body") lh-1" role="button" data-dw-button>@Translate("All")</label>
-                @foreach (var state in Dynamicweb.Ecommerce.Services.OrderStates.GetStatesByOrderType(Dynamicweb.Ecommerce.Orders.OrderType.Cart))
-                {
-                    <input class="visually-hidden" type="radio" name="FilterOrderStateId" value="@(state.Id)" id="state_@(state.Id)" checked="@((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId")) == state.Id)">
-                    <label for="state_@(state.Id)" class="fs-8 py-1 px-2 btn @((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId")) == state.Id ? "btn-primary" : "btn-outline-secondary text-body") lh-1" role="button" data-dw-button>@(state.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID))</label>
-                }
+    <nav class="hstack gap-2 mb-3">
+        <div class="flex-fill">
+            <div class="input-group">
+                <span class="input-group-text border-end-0 bg-body">
+                    <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    <span class="icon-2" data-swift-indicator-origin>@ReadFile("/Files/Images/Icons/magnifying-glass.svg")</span>
+                </span>
+                <input type="search" class="form-control border-start-0 border-end-0" name="FilterText" value="@Dynamicweb.Context.Current?.Request.QueryString.Get("FilterText")" placeholder="@Translate("Search carts")...">
+                <button type="reset" class="input-group-text border-start-0 bg-body" onclick="this.closest('form').querySelector('[name=FilterText]').value = ''; this.closest('form').dispatchEvent(new Event('change', { bubbles: true }))">
+                    <span class="icon-2">@ReadFile("/Files/Images/Icons/xmark.svg")</span>
+                    <span class="visually-hidden">@Translate("Clear search")</span>
+                </button>
             </div>
         </div>
-    </form>
-
-    <button type="button" class="btn btn-sm btn-primary hstack gap-2 ms-auto py-2 px-3" data-dw-button
-        hx-trigger="click"
-        hx-get="@(baseUrl)"
-        hx-vals='{"LayoutTemplate": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/CreateCartModal.cshtml"}'
-        hx-target="main"
-        hx-target="main"
-        hx-swap="beforeend">
-        <span class="icon-2 text-opacity-50">
-            @ReadFile("/Files/Images/Icons/plus.svg")
-        </span>
-        @Translate("Add cart")
-    </button>
-        
-</nav>
-
-<div class="card overflow-hidden">
-    <div class="table-responsive" style="margin-bottom:-1px;" 
-        x-data="{
-            sortBy: '@(Dynamicweb.Context.Current?.Request.QueryString.Get("SortBy") ?? "CreatedAt")',
-            sortOrder: '@(Dynamicweb.Context.Current?.Request.QueryString.Get("SortOrder") ?? "desc")',
-            sort(val) {
-                if(this.sortBy === val) {
-                    this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
-                } else {
-                    this.sortBy = val;
-                }
-                this.$refs.sortForm.SortBy.value = this.sortBy;
-                this.$refs.sortForm.SortOrder.value = this.sortOrder;
-                this.$refs.sortForm.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        }"
-    >
-        <table class="table table-md table-hover mb-0 align-middle fs-7" style="--bs-table-color: var(--bs-body-color);" hx-swap-oob="true outerHTML:[data-swift-cart-list]" data-swift-cart-list>
-            <thead style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .0275); --bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
-                <tr>
-                    <th>
-                        <form x-ref="sortForm" 
-                            hx-get="@(baseUrl)" 
-                            hx-swap="none" 
-                            hx-replace-url="false" 
-                            hx-trigger="change"
-                            hx-include='[name="FilterText"],[name="PageNum"]'
-                        >
-                            <input type="hidden" name="SortBy" :value="sortBy">
-                            <input type="hidden" name="SortOrder" :value="sortOrder">
-                        </form>
-                        <span role="button" class="hstack gap-1 text-nowrap" @@click="sort('Id')">
-                            @Translate("Cart number")
-                            <span x-show="sortBy === 'Id'">
-                                <span x-text="sortOrder === 'asc' ? '↑' : '↓'"></span>
-                            </span>
-                        </span>
-                    </th>
-                    <th>
-                        <span role="button" class="hstack gap-1" @@click="sort('CreatedAt')">
-                            @Translate("Created")
-                            <span x-show="sortBy === 'CreatedAt'">
-                                <span x-text="sortOrder === 'asc' ? '↑' : '↓'"></span>
-                            </span>
-                        </span>
-                    </th>
-                    <th>
-                        <span role="button" class="hstack gap-1" @@click="sort('StateId')">
-                            @Translate("Status")
-                            <span x-show="sortBy === 'StateId'">
-                                <span x-text="sortOrder === 'asc' ? '↑' : '↓'"></span>
-                            </span>
-                        </span>
-                    </th>
-                    <th>@Translate("Qty")</th>
-                    <th>
-                        <span role="button" class="hstack gap-1" @@click="sort('PriceBeforeFees')">
-                            @Translate("Total")
-                            <span x-show="sortBy === 'PriceBeforeFees'">
-                                <span x-text="sortOrder === 'asc' ? '↑' : '↓'"></span>
-                            </span>
-                        </span>
-                    </th>
-                    <th>@Translate("Actions")</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr class="position-relative htmx-indicator" style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .02);">
-                    <td colspan="9">
-                        <div class="d-grid py-4">
-                            <span class="m-auto align-items-center text-body text-opacity-25">
-                                <div class="spinner spinner-border"></div>
-                            </span>
-                        </div>
-                    </td>
-                </tr>
-                @{
-                    foreach ( var order in Model.Orders )
+        <div class="dropdown hstack">
+            <button class="btn btn-sm btn-outline-secondary hstack gap-2 ms-auto py-2 px-3 text-body" data-dw-button type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="icon-2">
+                    @ReadFile("/Files/Images/Icons/filter.svg")
+                </span>
+                @Translate("Filter")
+            </button>
+            <div class="dropdown-menu dropdown-menu-shadow p-3" style="--bs-dropdown-min-width:18rem;">
+                <div class="fw-bold mb-1">@Translate("Status")</div>
+                <div class="d-flex flex-wrap gap-2" data-swift-order-state-filter role="group" aria-label="@Translate("Filter by status")">
+                    <input class="btn-check" type="radio" name="FilterOrderStateId" value="" id="state_all" autocomplete="off" checked="@((Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId") ?? string.Empty) == string.Empty)">
+                    <label for="state_all" class="fs-8 py-1 px-2 btn btn-outline-secondary text-body lh-1" data-dw-button>@Translate("All")</label>
+                    @foreach (var state in Dynamicweb.Ecommerce.Services.OrderStates.GetStatesByOrderType(Dynamicweb.Ecommerce.Orders.OrderType.Cart))
                     {
-                        bool isActiveCart = Dynamicweb.Ecommerce.Common.Context.Cart?.Id == order.Id;
+                        var isChecked = (Dynamicweb.Context.Current?.Request.QueryString.Get("FilterOrderStateId")) == state.Id;
+                        <input class="btn-check" type="radio" name="FilterOrderStateId" value="@(state.Id)" id="state_@(state.Id)" autocomplete="off" checked="@isChecked">
+                        <label for="state_@(state.Id)" class="fs-8 py-1 px-2 btn btn-outline-secondary text-body lh-1" data-dw-button>@(state.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID))</label>
+                    }
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-sm btn-primary hstack gap-2 ms-auto py-2 px-3" data-dw-button
+            hx-trigger="click"
+            hx-get="@(baseUrl)"
+            hx-vals='{"LayoutTemplate": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/CreateCartModal.cshtml"}'
+            hx-target="main"
+            hx-swap="beforeend">
+            <span class="icon-2 text-opacity-50">
+                @ReadFile("/Files/Images/Icons/plus.svg")
+            </span>
+            @Translate("Add cart")
+        </button>
+    </nav>
 
-                        <tr class="position-relative" style="@(isActiveCart ? "--bs-table-bg: rgba(var(--bs-body-color-rgb), .03);" : null)">
-                            <td>
-                                <div class="vstack position-relative" style="max-inline-size: min-content;">
-                                    <a href="@(baseUrl)?OrderId=@(order.Id)" class="hstack gap-2 text-decoration-none text-decoration-underline-hover position-relative z-2" style="margin-top:-1.2rem;">
-                                        @(order.Id)
-                                        
-                                        @if(isActiveCart)
-                                        {
-                                            <span class="hstack text-success align-self-auto"
-                                                data-bs-toggle="tooltip"
-                                                title="@Translate("Active cart")"
-                                            >
-                                                <span class="icon-2">
-                                                    @ReadFile("/Files/Images/Icons/circle-check.svg")
+    <div data-swift-cart-list>
+        <input type="hidden" name="SortOrder" value="@(currentSortOrder)">
+
+        <div class="card overflow-hidden">
+            <div class="table-responsive" style="margin-bottom:-1px;">
+                <table class="table table-md table-hover mb-0 align-middle fs-7" style="--bs-table-color: var(--bs-body-color);">
+                    <thead style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .0275); --bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
+                        <tr>
+                            <th>
+                                <label class="hstack gap-1" role="button">
+                                    <input type="radio" name="SortBy" value="Id" class="visually-hidden" checked="@(currentSortBy=="Id")" />
+                                    @Translate("Cart number") 
+                                    @if(currentSortBy=="Id") {
+                                        <span class="icon-1">@arrow</span>
+                                    }
+                                </label>
+                            </th>
+                            <th>
+                                <label class="hstack gap-1" role="button">
+                                    <input type="radio" name="SortBy" value="CreatedAt" class="visually-hidden" checked="@(currentSortBy=="CreatedAt")" />
+                                    @Translate("Created") 
+                                    @if(currentSortBy=="CreatedAt") {
+                                        <span class="icon-1">@arrow</span>
+                                    }
+                                </label>
+                            </th>
+                            <th>
+                                <label class="hstack gap-1" role="button">
+                                    <input type="radio" name="SortBy" value="StateId" class="visually-hidden" checked="@(currentSortBy=="StateId")" />
+                                    @Translate("Status") 
+                                    @if(currentSortBy=="StateId") {
+                                        <span class="icon-1">@arrow</span>
+                                    }
+                                </label>
+                            </th>
+                            <th>@Translate("Qty")</th>
+                            <th>
+                                <label class="hstack gap-1" role="button">
+                                    <input type="radio" name="SortBy" value="Price" class="visually-hidden" checked="@(currentSortBy=="Price")" />
+                                    @Translate("Total") 
+                                    @if(currentSortBy=="Price") {
+                                        <span class="icon-1">@arrow</span>
+                                    }
+                                </label>
+                            </th>
+                            <th>@Translate("Actions")</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ( var order in Model.Orders )
+                        {
+                            bool isActiveCart = Dynamicweb.Ecommerce.Common.Context.Cart?.Id == order.Id;
+
+                            <tr class="position-relative" style="@(isActiveCart ? "--bs-table-bg: rgba(var(--bs-body-color-rgb), .03);" : null)">
+                                <td>
+                                    <div class="vstack position-relative" style="max-inline-size: min-content;">
+                                        <a href="@(baseUrl)?OrderId=@(order.Id)" class="hstack gap-2 text-decoration-none text-decoration-underline-hover position-relative z-2" style="margin-top:-1.2rem;">
+                                            @(order.Id)
+                                            
+                                            @if(isActiveCart)
+                                            {
+                                                <span class="hstack text-success align-self-auto"
+                                                    data-bs-toggle="tooltip"
+                                                    title="@Translate("Active cart")"
+                                                >
+                                                    <span class="icon-2">
+                                                        @ReadFile("/Files/Images/Icons/circle-check.svg")
+                                                    </span>
                                                 </span>
+                                            }
+                                        </a>
+                                        <a 
+                                            href="@(baseUrl)?OrderId=@(order.Id)" 
+                                            class="fs-8 text-muted text-truncate position-absolute top-100 w-100 text-decoration-none"
+                                            @if(!string.IsNullOrEmpty(order.DisplayName))
+                                            {
+                                                <text>
+                                                    data-bs-toggle="tooltip"
+                                                    title="@(order.DisplayName)"
+                                                </text>
+                                            }
+                                        >@(!string.IsNullOrEmpty(order.DisplayName) ? order.DisplayName : "-")</a>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="vstack">
+                                        @(order.CreatedAt.ToShortDateString())
+                                        <span class="fs-8 text-muted">@(order.CreatedAt.ToShortTimeString())</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge lh-sm bg-secondary" style="background-color:@(Dynamicweb.Ecommerce.Services.OrderStates.GetStateById(order.StateId).Color) !important">
+                                        @(order.StateName)
+                                    </span>
+                                </td>
+                                <td>@(order.SumProductQuantities())</td>
+                                <td>
+                                    <div class="text-price">@(order.Price.PriceFormatted)</div>
+                                </td>
+                                <td>
+                                    <div class="hstack gap-3">
+                                        <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
+                                            <span class="icon-2">
+                                                @ReadFile("/Files/Images/Icons/ellipsis.svg")
                                             </span>
-                                        }
-                                    </a>
-                                    <a 
-                                        href="@(baseUrl)?OrderId=@(order.Id)" 
-                                        class="fs-8 text-muted text-truncate position-absolute top-100 w-100 text-decoration-none"
-                                        @if(!string.IsNullOrEmpty(order.DisplayName))
-                                        {
-                                            <text>
-                                                data-bs-toggle="tooltip"
-                                                title="@(order.DisplayName)"
-                                            </text>
-                                        }
-                                    >@(!string.IsNullOrEmpty(order.DisplayName) ? order.DisplayName : "-")</a>
-                                </div>
-                            </td>
-                            <td>
-                                <div class="vstack">
-                                    @(order.CreatedAt.ToShortDateString())
-                                    <span class="fs-8 text-muted">@(order.CreatedAt.ToShortTimeString())</span>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge lh-sm bg-secondary" style="background-color:@(Dynamicweb.Ecommerce.Services.OrderStates.GetStateById(order.StateId).Color) !important">
-                                    @(order.StateName)
-                                </span>
-                            </td>
-                            <td>@(order.SumProductQuantities())</td>
-                            <td>
-                                <div class="text-price">@(order.Price.PriceFormatted)</div>
-                            </td>
-                            <td>
-                                <div class="hstack gap-3">
-                                    <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
-                                        <span class="icon-2">
-                                            @ReadFile("/Files/Images/Icons/ellipsis.svg")
-                                        </span>
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-shadow">
-                                        <li>
-                                            <a class="dropdown-item hstack gap-2" href="@(baseUrl)?OrderId=@(order.Id)">
-                                                <span class="icon-2">
-                                                    @ReadFile("/Files/Images/Icons/eye.svg")
-                                                </span>
-                                                @Translate("View")
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <button type="button" class="dropdown-item hstack gap-2"
-                                                hx-trigger="click"
-                                                hx-get="/dwapi/ecommerce/carts/@(order.Secret)" 
-                                                hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/CheckoutCartModal.cshtml", "accept": "text/html"}'
-                                                hx-target="main"
-                                                hx-swap="beforeend"
-                                            >
-                                                <span class="icon-2">
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-shadow">
+                                            <li>
+                                                <a class="dropdown-item hstack gap-2" href="@(baseUrl)?OrderId=@(order.Id)">
+                                                    <span class="icon-2">
+                                                        @ReadFile("/Files/Images/Icons/eye.svg")
+                                                    </span>
+                                                    @Translate("View")
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <button type="button" class="dropdown-item hstack gap-2"
+                                                    hx-trigger="click"
+                                                    hx-get="/dwapi/ecommerce/carts/@(order.Secret)" 
+                                                    hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/CheckoutCartModal.cshtml", "accept": "text/html"}'
+                                                    hx-target="main"
+                                                    hx-swap="beforeend"
+                                                >
+                                                    <span class="icon-2">
+                                                        @ReadFile("/Files/Images/Icons/cart-shopping.svg")
+                                                    </span>
+                                                    @Translate("Go to checkout")
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <button type="button" class="dropdown-item hstack gap-2"
+                                                    hx-trigger="click"
+                                                    hx-get="/dwapi/ecommerce/carts/@(order.Secret)" 
+                                                    hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/SetCartToast.cshtml", "accept": "text/html"}'
+                                                    hx-target="main"
+                                                    hx-swap="beforeend"
+                                                    @(isActiveCart ? "disabled" : null)
+                                                >
+                                                    <span class="icon-2">
+                                                        @ReadFile("/Files/Images/Icons/circle-check.svg")
+                                                    </span>
+                                                    @Translate("Set as active")
+                                                </button>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <button class="dropdown-item hstack gap-2"
+                                                    hx-trigger="click"
+                                                    hx-get="/dwapi/ecommerce/carts/@(order.Secret)" 
+                                                    hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/RenameCartModal.cshtml", "accept": "text/html"}'
+                                                    hx-target="main"
+                                                    hx-swap="beforeend"
+                                                >
+                                                    <span class="icon-2">
+                                                        @ReadFile("/Files/Images/Icons/pen.svg")
+                                                    </span>
+                                                    @Translate("Rename")
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item hstack gap-2" href="@(baseUrl)?cartcmd=copy&CartId=@(order.Id)&CartUserID=@(order.CustomerUserId)&CartName=@($"Copy_of_{order.Id}")">
+                                                    <span class="icon-2">
+                                                        @ReadFile("/Files/Images/Icons/copy.svg")
+                                                    </span>
+                                                    @Translate("Copy")
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <button class="dropdown-item hstack gap-2 text-danger"
+                                                    hx-trigger="click"
+                                                    hx-get="/dwapi/ecommerce/carts/@(order.Secret)" 
+                                                    hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/DeleteCartModal.cshtml", "accept": "text/html"}'
+                                                    hx-target="main"
+                                                    hx-swap="beforeend"
+                                                >
+                                                    <span class="icon-2">
+                                                        @ReadFile("/Files/Images/Icons/trash.svg")
+                                                    </span>
+                                                    @Translate("Delete")
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+
+                        @if( Model.Orders.Count() < 1 )
+                        {
+                            <tr class="position-relative">
+                                <td colspan="8">
+                                    <div class="d-grid py-4">
+                                        <span class="m-auto">
+                                            <div class="d-grid rounded-circle m-auto" style="width:4rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
+                                                <span class="icon-4 text-body text-muted">
                                                     @ReadFile("/Files/Images/Icons/cart-shopping.svg")
                                                 </span>
-                                                @Translate("Go to checkout")
-                                            </button>
-                                        </li>
-                                        <li>
-                                            <button type="button" class="dropdown-item hstack gap-2"
-                                                hx-trigger="click"
-                                                hx-get="/dwapi/ecommerce/carts/@(order.Secret)" 
-                                                hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/SetCartToast.cshtml", "accept": "text/html"}'
-                                                hx-target="main"
-                                                hx-target="main"
-                                                hx-swap="beforeend"
-                                                @(isActiveCart ? "disabled" : null)
-                                            >
-                                                <span class="icon-2">
-                                                    @ReadFile("/Files/Images/Icons/circle-check.svg")
-                                                </span>
-                                                @Translate("Set as active")
-                                            </button>
-                                        </li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <button class="dropdown-item hstack gap-2"
-                                                hx-trigger="click"
-                                                hx-get="/dwapi/ecommerce/carts/@(order.Secret)" 
-                                                hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/RenameCartModal.cshtml", "accept": "text/html"}'
-                                                hx-target="main"
-                                                hx-swap="beforeend"
-                                            >
-                                                <span class="icon-2">
-                                                    @ReadFile("/Files/Images/Icons/pen.svg")
-                                                </span>
-                                                @Translate("Rename")
-                                            </button>
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item hstack gap-2" href="@(baseUrl)?cartcmd=copy&CartId=@(order.Id)&CartUserID=@(order.CustomerUserId)&CartName=@($"Copy_of_{order.Id}")">
-                                                <span class="icon-2">
-                                                    @ReadFile("/Files/Images/Icons/copy.svg")
-                                                </span>
-                                                @Translate("Copy")
-                                            </a>
-                                        </li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li>
-                                            <button class="dropdown-item hstack gap-2 text-danger"
-                                                hx-trigger="click"
-                                                hx-get="/dwapi/ecommerce/carts/@(order.Secret)" 
-                                                hx-headers='{"x-dw-template": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Carts/DeleteCartModal.cshtml", "accept": "text/html"}'
-                                                hx-target="main"
-                                                hx-swap="beforeend"
-                                            >
-                                                <span class="icon-2">
-                                                    @ReadFile("/Files/Images/Icons/trash.svg")
-                                                </span>
-                                                @Translate("Delete")
-                                            </button>
-                                        </li>
-                                    </ul>
-                                </div>
-                            </td>
-                        </tr>
-                    }
+                                            </div>
+                                            <div class="mt-3">@Translate("No carts found")</div>
+                                        </span>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
 
-                    if( Model.Orders.Count() < 1 )
-                    {
-                        <tr class="position-relative">
-                            <td colspan="8">
-                                <div class="d-grid py-4">
-                                    <span class="m-auto">
-                                        <div class="d-grid rounded-circle m-auto" style="width:4rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
-                                            <span class="icon-4 text-body text-muted">
-                                                @ReadFile("/Files/Images/Icons/cart-shopping.svg")
-                                            </span>
-                                        </div>
-                                        <div class="mt-3">@Translate("No carts found")</div>
-                                    </span>
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                }
+                    </tbody>
 
-            </tbody>
+                </table>
 
-        </table>
+            </div>
+        </div>
 
-    </div>
-</div>
-
-
-<div hx-swap-oob="true outerHTML:[data-swift-cart-list-pagination]" data-swift-cart-list-pagination>
-    @if (Model.PageCount > 1)
-    {
-        <form class="mt-3">
-            <ul class="pagination m-0">
+        @if (Model.PageCount > 1)
+        {
+            <ul class="pagination m-0 mt-3">
                 @for (int i = 1; i <= Model.PageCount; i++)
                 {
                     var active = (i == Model.CurrentPage) ? "active" : string.Empty;
@@ -340,6 +318,6 @@
                     </li>
                 }
             </ul>
-        </form>
-    }
-</div>
+        }
+    </div>
+</form>
