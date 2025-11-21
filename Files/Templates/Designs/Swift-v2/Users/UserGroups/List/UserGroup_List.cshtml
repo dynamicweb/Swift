@@ -6,25 +6,34 @@
 
 @{
     string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview?.Page?.ID ?? 0}");
+    string baseUrlRaw = Dynamicweb.Context.Current?.Request.RawUrl ?? string.Empty;
     string currentSortBy = Dynamicweb.Context.Current?.Request.QueryString.Get("SortBy") ?? Pageview?.CurrentParagraph?.ModuleProperties?.GetValue("SortByField") ?? string.Empty;
     string currentSortOrder = Dynamicweb.Context.Current?.Request.QueryString.Get("SortOrder") ?? Pageview?.CurrentParagraph?.ModuleProperties?.GetValue("SortOrder") ?? string.Empty;
     string nextSortOrder = currentSortOrder == "asc" ? "desc" : "asc";
     string arrow = currentSortOrder == "asc" ? @ReadFile("/Files/Images/Icons/arrow-up.svg") : @ReadFile("/Files/Images/Icons/arrow-down.svg");
-
-    string GetInitials(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return "?";
-        var parts = name.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 1) return parts[0].Substring(0, Math.Min(2, parts[0].Length)).ToUpperInvariant();
-        return (parts[0][0].ToString() + parts[^1][0].ToString()).ToUpperInvariant();
-    }
 }
 
-<header class="hstack gap-3 mb-4">
+<header class="hstack gap-3 justify-content-between mb-3">
     <h1 class="h4 mb-0">@(Pageview?.Page?.GetDisplayName() ?? null)</h1>
+
+    <div class="ms-auto">
+        <button class="btn btn-sm btn-primary hstack py-2 px-3" data-dw-button
+            hx-trigger="click"
+            hx-push-url="false"
+            hx-get="@(baseUrl)"
+            hx-vals='{"LayoutTemplate": "/Designs/Swift-v2/Users/UserGroups/Modals/AddAccountModal.cshtml"}'
+            hx-target="main"
+            hx-swap="beforeend">
+            <span class="icon-2 me-2 d-flex hstack">
+                @ReadFile("/Files/Images/Icons/user-group.svg")
+                @ReadFile("/Files/Images/Icons/plus.svg")
+            </span>
+            @Translate("Add account")
+        </button>
+    </div>
 </header>
 
-<form hx-get="@(baseUrl)"
+<form hx-get="@(baseUrlRaw)"
     hx-disinherit="*"
     hx-trigger="submit, 
         input from:input[name='FilterText'] changed delay:500ms queue:last, 
@@ -49,32 +58,27 @@
     
     <nav class="hstack gap-2 mb-3">
         <div class="flex-fill">
-            <div class="input-group">
-                <span class="input-group-text border-end-0 bg-body">
+            <div class="input-group" x-data="{ searchQuery: '' }">
+                <span class="input-group-text px-3 border-0 bg-transparent position-absolute top-0 bottom-0 start-0 z-2">
                     <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
                     <span class="icon-2" data-swift-indicator-origin>@ReadFile("/Files/Images/Icons/magnifying-glass.svg")</span>
                 </span>
-                <input type="search" class="form-control border-start-0 border-end-0" name="FilterText" value="@Dynamicweb.Context.Current?.Request.QueryString.Get("FilterText")" placeholder="@Translate("Search accounts by name, number or email")...">
-                <button type="reset" class="input-group-text border-start-0 bg-body" onclick="this.closest('form').querySelector('[name=FilterText]').value = ''; this.closest('form').dispatchEvent(new Event('change', { bubbles: true }))">
-                    <span class="icon-2">@ReadFile("/Files/Images/Icons/xmark.svg")</span>
-                    <span class="visually-hidden">@Translate("Clear search")</span>
+                <input id="searchField_@(Pageview?.ID)"
+                    class="form-control rounded z-1 ps-5"
+                    type="search"
+                    placeholder="@Translate("Search groups by name, number or email")..."
+                    autocomplete="off"
+                    maxlength="255"
+                    name="FilterText"
+                    value="@Dynamicweb.Context.Current?.Request.QueryString.Get("FilterText")"
+                    aria-label="@Translate("Search groups by name, number or email")..."
+                    x-ref="searchInput"
+                    x-model="searchQuery"
+                >
+                <button x-show="searchQuery.length > 0" type="reset" class="btn btn-link btn-sm px-3 position-absolute top-0 bottom-0 end-0 z-2" aria-label="@Translate("Clear search")" @@click="searchQuery = ''; $refs.searchInput.focus();">
+                    <span>@Translate("Clear")</span>
                 </button>
             </div>
-        </div>
-        <div class="hstack">
-            <button type="button" class="btn btn-sm btn-primary hstack py-2 px-3" data-dw-button
-                hx-trigger="click"
-                hx-push-url="false"
-                hx-get="@(baseUrl)"
-                hx-vals='{"LayoutTemplate": "/Designs/Swift-v2/Users/UserGroups/Modals/AddAccountModal.cshtml"}'
-                hx-target="main"
-                hx-swap="beforeend">
-                <span class="icon-2 me-2 d-flex hstack">
-                    @ReadFile("/Files/Images/Icons/user-group.svg")
-                    @ReadFile("/Files/Images/Icons/plus.svg")
-                </span>
-                @Translate("Add account")
-            </button>
         </div>
     </nav>
 
@@ -133,16 +137,16 @@
                                         else 
                                         {
                                             <div class="d-grid rounded" style="width:3rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
-                                                <span class="text-muted m-auto">
-                                                    @(GetInitials(group.Name))
-                                                </span>
+                                                <h6 class="fs-7 lh-1 text-muted m-auto">
+                                                    @(group.GetTwoLetterInitials())
+                                                </h6>
                                             </div>
                                         }
                                         <div class="text-wrap-nowrap">@(group.Name)</div>
                                     </div>
                                 </td>
-                                <td>@(group.CustomerNumber)</td>
-                                <td>@(group.EmailAddress)</td>
+                                <td class="text-muted">@(group.CustomerNumber)</td>
+                                <td class="text-muted">@(group.EmailAddress)</td>
                                 <td>
                                     <div class="hstack gap-3">
                                         <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button="outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
@@ -192,7 +196,7 @@
 
         <div class="hstack gap-2 mt-3">
             <div class="text-muted fs-7">
-                @Translate("Showing") x @Translate("of") @Model.Groups?.Count() @Translate("accounts")
+                @Translate("Showing") @(Model.Groups?.Count()) @Translate("of") @Model.TotalCount @Translate("accounts")
             </div>
             <div class="ms-auto hstack gap-2">
                 <button class="btn btn-outline-secondary text-body hstack p-2" data-dw-button type="button">
