@@ -1,110 +1,112 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
 
-@{
-	var cartContext = string.Empty;
-	string cartId = string.Empty;
-	string jsCartClass = "js-cart-qty";
-    bool userHasPendingQuote = Dynamicweb.Ecommerce.Common.Context.Cart != null && Dynamicweb.Ecommerce.Common.Context.Cart.IsQuote;
+<div hx-swap-oob="true outerHTML:#swiftMinicart@(Model.ID)" id="swiftMinicart@(Model.ID)">
+    @{
+        var cartContext = string.Empty;
+        string cartId = string.Empty;
+        string jsCartClass = "js-cart-qty";
+        bool userHasPendingQuote = Dynamicweb.Ecommerce.Common.Context.Cart != null && Dynamicweb.Ecommerce.Common.Context.Cart.IsQuote;
 
-	Dynamicweb.Ecommerce.Common.Context.CartContext = null;
-	if (Model.Item.TryGetString("ContextCart", out var cartContextSelection))
-	{
-		cartContext = cartContextSelection;
-		cartId = $"ID=\"Cart_{cartContext}\"";
-		jsCartClass = string.Empty;
-
-		Dynamicweb.Ecommerce.Common.Context.CartContext = Dynamicweb.Ecommerce.Services.OrderContexts.GetOrderContextById(cartContext);
-	}
-
-	double totalProducts = 0;
-	if (Dynamicweb.Ecommerce.Common.Context.Cart != null)
-	{
-		totalProducts = Dynamicweb.Ecommerce.Common.Context.Cart.GetParentProductLineQuantityCount(Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines);
-	}
-
-	var cartPageId = GetPageIdByNavigationTag("CartPage");
-	if (Model.Item.TryGetLink("CartPage", out var cartPage))
-	{
-		cartPageId = cartPage.PageId;
-	}
-	var cartSummaryPageId = Dynamicweb.Content.Services.Pages.GetPageByNavigationTag(Pageview.AreaID, "CartSummary")?.ID ?? 0;
-}
-
-<div class="nav-wrapper">
-    <a href="/Default.aspx?ID=@cartPageId" class="p-2 nav-link d-inline-flex align-items-center gap-2 text-nowrap text-decoration-underline-hover">
-        @if (Model.Item.TryGetString("Icon", out string iconPath))
+        Dynamicweb.Ecommerce.Common.Context.CartContext = null;
+        if (Model.Item.TryGetString("ContextCart", out var cartContextSelection))
         {
-            <span class="icon-3 pe-none">@ReadFile(iconPath)</span>
+            cartContext = cartContextSelection;
+            cartId = $"ID=\"Cart_{cartContext}\"";
+            jsCartClass = string.Empty;
+
+            Dynamicweb.Ecommerce.Common.Context.CartContext = Dynamicweb.Ecommerce.Services.OrderContexts.GetOrderContextById(cartContext);
         }
-        @if (Model.Item.TryGetString("Title", out string title))
+
+        double totalProducts = 0;
+        if (Dynamicweb.Ecommerce.Common.Context.Cart != null)
         {
-            <span>@title</span>
+            totalProducts = Dynamicweb.Ecommerce.Common.Context.Cart.GetParentProductLineQuantityCount(Dynamicweb.Ecommerce.Common.Context.Cart.OrderLines);
         }
-        <span class="mini-cart-quantity pe-none @jsCartClass" @cartId data-order-context="@cartContext">@totalProducts</span>
-    </a>
-</div>
 
-@* Offcanvas minicart *@
-@if ((Model.Item?.TryGetString("OffcanvasMinicartBehaviour", out string offcanvasMiniCartBehaviour) ?? false) && (!offcanvasMiniCartBehaviour.Equals("0")) && (cartSummaryPageId > 0) && !userHasPendingQuote)
-{
-    @* Open MiniCart when the cart is updated *@
-    <script type="module">
-        document.addEventListener('updated.swift.cart', (event) => {
-            let orderContext = event?.detail?.formData?.get("OrderContext");
-            updateCartSummary(orderContext);
-
-            let offcanvasMiniCartBehaviourJs = "@offcanvasMiniCartBehaviour";
-                
-            if (event?.detail?.formData?.get("MiniCartBehaviour")) {
-                offcanvasMiniCartBehaviourJs = event?.detail?.formData?.get("MiniCartBehaviour");
-            }
-
-            if (offcanvasMiniCartBehaviourJs == "2" || offcanvasMiniCartBehaviourJs == "3") {
-                openMiniCartOffcanvas();
-            }
-        });
-    </script>
-
-    if (offcanvasMiniCartBehaviour == "1" || offcanvasMiniCartBehaviour == "3")
-    {
-        @* Open MiniCart when toggle is clicked *@
-        <script type="module">
-            let miniCartToggles = document.querySelectorAll('.mini-cart-quantity');
-            miniCartToggles?.forEach((toggle) => {
-                toggle.parentElement.addEventListener('click', (event) => {
-                    event.preventDefault();
-                    let orderContext = toggle.dataset?.orderContext;
-                    updateCartSummary(orderContext);
-
-                    openMiniCartOffcanvas();
-                });
-            });
-        </script>
+        var cartPageId = GetPageIdByNavigationTag("CartPage");
+        if (Model.Item.TryGetLink("CartPage", out var cartPage))
+        {
+            cartPageId = cartPage.PageId;
+        }
+        var cartSummaryPageId = Dynamicweb.Content.Services.Pages.GetPageByNavigationTag(Pageview.AreaID, "CartSummary")?.ID ?? 0;
     }
 
-    <script>
-        const updateCartSummary = (orderContext) => {
-            const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
-            swift.PageUpdater.UpdateFromUrlInline(event, '/Default.aspx?ID=@(cartSummaryPageId)&CartType=minicart&RequestPageID=@(Pageview.Page.ID)&OrderContext=' + orderContext +'', 'Swift-v2_CartSummary.cshtml', dynamicOffcanvas);
-        };
-        const openMiniCartOffcanvas = () => {
-            const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
-            const miniCartOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(dynamicOffcanvas);
-            dynamicOffcanvas.classList.add('overflow-y-auto');
-
-            if (!miniCartOffcanvas._isShown) {
-                miniCartOffcanvas.show();
-                hideActiveOffcanvases(miniCartOffcanvas);
+    <div class="nav-wrapper">
+        <a href="/Default.aspx?ID=@cartPageId" class="p-2 nav-link d-inline-flex align-items-center gap-2 text-nowrap text-decoration-underline-hover">
+            @if (Model.Item.TryGetString("Icon", out string iconPath))
+            {
+                <span class="icon-3 pe-none">@ReadFile(iconPath)</span>
             }
-        };
-        const hideActiveOffcanvases = (miniCartOffcanvas) => {
-            let activeOffcanvases = document.querySelectorAll('.offcanvas.show');
-            activeOffcanvases?.forEach((offCanvas) => {
-                offCanvas = bootstrap.Offcanvas.getInstance(offCanvas);
-                if (offCanvas !== miniCartOffcanvas) {
-                    offCanvas.hide();
+            @if (Model.Item.TryGetString("Title", out string title))
+            {
+                <span>@title</span>
+            }
+            <span class="mini-cart-quantity pe-none @jsCartClass" @cartId data-order-context="@cartContext">@totalProducts</span>
+        </a>
+    </div>
+
+    @* Offcanvas minicart *@
+    @if ((Model.Item?.TryGetString("OffcanvasMinicartBehaviour", out string offcanvasMiniCartBehaviour) ?? false) && (!offcanvasMiniCartBehaviour.Equals("0")) && (cartSummaryPageId > 0) && !userHasPendingQuote)
+    {
+        @* Open MiniCart when the cart is updated *@
+        <script type="module">
+            document.addEventListener('updated.swift.cart', (event) => {
+                let orderContext = event?.detail?.formData?.get("OrderContext");
+                updateCartSummary(orderContext);
+
+                let offcanvasMiniCartBehaviourJs = "@offcanvasMiniCartBehaviour";
+                    
+                if (event?.detail?.formData?.get("MiniCartBehaviour")) {
+                    offcanvasMiniCartBehaviourJs = event?.detail?.formData?.get("MiniCartBehaviour");
+                }
+
+                if (offcanvasMiniCartBehaviourJs == "2" || offcanvasMiniCartBehaviourJs == "3") {
+                    openMiniCartOffcanvas();
                 }
             });
-        };
-    </script>
-}
+        </script>
+
+        if (offcanvasMiniCartBehaviour == "1" || offcanvasMiniCartBehaviour == "3")
+        {
+            @* Open MiniCart when toggle is clicked *@
+            <script type="module">
+                let miniCartToggles = document.querySelectorAll('.mini-cart-quantity');
+                miniCartToggles?.forEach((toggle) => {
+                    toggle.parentElement.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        let orderContext = toggle.dataset?.orderContext;
+                        updateCartSummary(orderContext);
+
+                        openMiniCartOffcanvas();
+                    });
+                });
+            </script>
+        }
+
+        <script>
+            const updateCartSummary = (orderContext) => {
+                const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
+                swift.PageUpdater.UpdateFromUrlInline(event, '/Default.aspx?ID=@(cartSummaryPageId)&CartType=minicart&RequestPageID=@(Pageview.Page.ID)&OrderContext=' + orderContext +'', 'Swift-v2_CartSummary.cshtml', dynamicOffcanvas);
+            };
+            const openMiniCartOffcanvas = () => {
+                const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
+                const miniCartOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(dynamicOffcanvas);
+                dynamicOffcanvas.classList.add('overflow-y-auto');
+
+                if (!miniCartOffcanvas._isShown) {
+                    miniCartOffcanvas.show();
+                    hideActiveOffcanvases(miniCartOffcanvas);
+                }
+            };
+            const hideActiveOffcanvases = (miniCartOffcanvas) => {
+                let activeOffcanvases = document.querySelectorAll('.offcanvas.show');
+                activeOffcanvases?.forEach((offCanvas) => {
+                    offCanvas = bootstrap.Offcanvas.getInstance(offCanvas);
+                    if (offCanvas !== miniCartOffcanvas) {
+                        offCanvas.hide();
+                    }
+                });
+            };
+        </script>
+    }
+</div>    
