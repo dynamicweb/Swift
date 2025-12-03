@@ -20,6 +20,9 @@
     string minAmountStr = Dynamicweb.Context.Current?.Request.QueryString.Get("MinAmount") ?? string.Empty;
     string maxAmountStr = Dynamicweb.Context.Current?.Request.QueryString.Get("MaxAmount") ?? string.Empty;
 
+    string invoiceIdsString = Dynamicweb.Context.Current?.Request.QueryString.Get("Ids") ?? string.Empty;
+    string[] invoiceIds = invoiceIdsString.Split(',');
+
     DateTime? dueDateFromDate = DateTime.TryParse(dueDateFrom, out var tempFromDate) ? tempFromDate : null;
     DateTime? dueDateToDate = DateTime.TryParse(dueDateTo, out var tempToDate) ? tempToDate : null;
     double? minAmount = double.TryParse(minAmountStr, out var min) ? min : null;
@@ -37,18 +40,20 @@
     </div>
 </header>
 
-<form data-swift-order-list 
-    hx-get="@(baseUrl)"
-    hx-trigger="keyup delay:.3s, change, click from:input[type='radio'][name='SortBy'], click from:button[name='apply']" 
+<form hx-get="@(baseUrl)"
+    hx-trigger="change, keyup delay:.3s from:input[name='FilterText'], 
+                change from:input[name='FilterText'], 
+                click from:input[type='radio'][name='SortBy'], 
+                click from:button[name='apply']"
+    hx-sync="this:abort"
     hx-swap="outerHTML"
-    hx-target="[data-swift-order-list]"
-    hx-select="[data-swift-order-list]"
-    hx-replace-url="true"
+    hx-disinherit="*"
+    hx-target="[data-swift-invoice-list]"
+    hx-select="[data-swift-invoice-list]"
+    hx-replace-url="false"
     hx-on:click="if (event.target.querySelector('input[type=radio][name=SortBy]') && event.target.querySelector('input[type=radio][name=SortBy]').checked) {
      this.querySelector('[name=SortOrder]').value = '@(nextSortOrder)';
     }">
-
-    <input type="hidden" name="SortOrder" value="@(currentSortOrder)">
 
     <nav class="hstack gap-2 mb-3">
         <div class="flex-fill">
@@ -64,10 +69,32 @@
                 </button>
             </div>
         </div>
-
     </nav>
 
-    <div data-swift-order-list>
+    <div data-swift-invoice-list>
+        @if (!string.IsNullOrEmpty(invoiceIdsString)) {
+            <div class="card mb-3">
+                <div class="card-body p-3">
+                    <div class="hstack gap-2 justify-content-between">
+                        <div>@(invoiceIds.Count()) @Translate("Selected")</div>
+                        <button type="button" class="btn btn-sm btn-primary"
+                            hx-trigger="click"
+                            hx-get="@(baseUrl)"
+                            hx-include="[name=Ids]:checked"
+                            hx-vals='{"LayoutTemplate": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Modals/ContinueToPaymentModal.cshtml"}'
+                            hx-target="main"
+                            hx-swap="beforeend"
+                        >
+                            <span class="icon-2">
+                                @ReadFile("/Files/Images/Icons/credit-card.svg")
+                            </span>
+                            @Translate("Continue to payment")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+
         <input type="hidden" name="SortOrder" value="@(currentSortOrder)">
         
         <div class="card overflow-hidden">
@@ -75,6 +102,7 @@
                 <table class="table table-md table-hover mb-0 align-middle fs-7" style="--bs-table-color: var(--bs-body-color);">
                     <thead style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .0275); --bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
                         <tr>
+                            <th>&nbsp;</th>
                             <th>
                                 <label class="hstack gap-1" role="button">
                                     <input type="radio" name="SortBy" value="Id" class="visually-hidden" checked="@(currentSortBy=="Id")" />
@@ -136,6 +164,11 @@
                         @foreach ( var invoice in Model.Orders )
                         {
                             <tr class="position-relative">
+                                <td>
+                                    <label class="position-relative z-2 p-2" style="cursor: pointer;">
+                                        <input type="checkbox" name="Ids" value="@(invoice.Id)" style="cursor: pointer;" checked="@(invoiceIds.Contains(invoice.Id))">
+                                    </label>
+                                </td>
                                 <td>
                                     <a class="stretched-link text-decoration-none text-decoration-underline-hover" href="@(baseUrl)?OrderId=@(invoice.Id)">@(invoice.Id)</a>
                                 </td>
