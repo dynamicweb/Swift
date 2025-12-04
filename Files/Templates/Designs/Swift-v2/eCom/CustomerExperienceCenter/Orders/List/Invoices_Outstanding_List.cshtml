@@ -34,44 +34,65 @@
         <h1 class="h4 mb-0">@(Pageview.Page.GetDisplayName())</h1>
     </div>
 
-    <div class="text-end visually-hidden">
-        <h2 class="h6 mb-0">@Translate("Total"): <span>$0.00</span></h2>
-        <p class="fs-7 mb-0 text-muted"><span>0</span> @Translate("invoices selected")</p>
+    <div class="text-end" data-swift-invoice-list-total hx-swap-oob="true outerHTML:[data-swift-invoice-list-total]">
+        @if (!string.IsNullOrEmpty(invoiceIdsString)) {            
+            <h2 class="h6 mb-0 fw-bold">@Translate("Selected total"): <span>@Dynamicweb.Ecommerce.Services.Currencies.Format(Dynamicweb.Ecommerce.Common.Context.Currency, Model.Orders.Where(o => invoiceIds.Contains(o.Id)).Sum(o => o.Price.Price))</span></h2>
+        }
     </div>
 </header>
 
 <form hx-get="@(baseUrl)"
-    hx-trigger="change, keyup delay:.3s from:input[name='FilterText'], 
-                change from:input[name='FilterText'], 
-                click from:input[type='radio'][name='SortBy'], 
-                click from:button[name='apply']"
+    hx-trigger="change,
+                submit,
+                input from:input[name='FilterText'] changed delay:500ms queue:last, 
+                click from:button[type='reset'], 
+                change from:input[name='FilterOrderStateId'], 
+                change from:input[name='SortBy']"
     hx-sync="this:abort"
     hx-swap="outerHTML"
     hx-disinherit="*"
     hx-target="[data-swift-invoice-list]"
     hx-select="[data-swift-invoice-list]"
     hx-replace-url="true"
-    hx-on:click="if (event.target.querySelector('input[type=radio][name=SortBy]') && event.target.querySelector('input[type=radio][name=SortBy]').checked) {
-     this.querySelector('[name=SortOrder]').value = '@(nextSortOrder)';
-    }">
+    hx-on:click="const sortInput = event.target.closest('label')?.querySelector('input[name=SortBy]');
+                 if (!sortInput) return;
+                 const sortOrderField = this.querySelector('[name=SortOrder]');
+                 if (!sortOrderField) return;
+                 if (sortInput.checked) {
+                     sortOrderField.value = sortOrderField.value === 'asc' ? 'desc' : 'asc';
+                     this.requestSubmit();
+                 } else {
+                     sortOrderField.value = 'asc';
+                 }">
 
     <nav class="hstack gap-2 mb-3">
         <div class="flex-fill">
-            <div class="input-group">
-                <span class="input-group-text border-end-0 bg-body">
+            <div class="input-group" x-data="{ searchQuery: '' }" x-init="searchQuery = $refs.searchInput.value">
+                <span class="input-group-text px-3 border-0 bg-transparent position-absolute top-0 bottom-0 start-0 z-2">
                     <span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
                     <span class="icon-2" data-swift-indicator-origin>@ReadFile("/Files/Images/Icons/magnifying-glass.svg")</span>
                 </span>
-                <input type="text" class="form-control border-start-0 border-end-0" name="FilterText" value="@Dynamicweb.Context.Current?.Request.QueryString.Get("FilterText")" placeholder="@Translate("Search invoices or PO numbers")...">
-                <button type="reset" class="input-group-text border-start-0 bg-body" onclick="this.closest('form').querySelector('[name=FilterText]').value = ''; this.closest('form').dispatchEvent(new Event('change', { bubbles: true }))">
-                    <span class="icon-2">@ReadFile("/Files/Images/Icons/xmark.svg")</span>
-                    <span class="visually-hidden">@Translate("Clear search")</span>
+                <input class="form-control rounded z-1 ps-5"
+                    type="search"
+                    placeholder="@Translate("Search invoices or PO numbers")"
+                    autocomplete="off"
+                    maxlength="255"
+                    name="FilterText" 
+                    value="@Dynamicweb.Context.Current?.Request.QueryString.Get("FilterText")"
+                    aria-label="@Translate("Search invoices or PO numbers")"
+                    x-ref="searchInput"
+                    x-model="searchQuery"
+                >
+                <button x-show="searchQuery.length > 0" @@click.prevent="searchQuery = ''" type="reset" class="btn btn-link btn-sm px-3 position-absolute top-0 bottom-0 end-0 z-2" aria-label="@Translate("Clear search")">
+                    <span>@Translate("Clear")</span>
                 </button>
             </div>
         </div>
     </nav>
 
     <div data-swift-invoice-list>
+        <input type="hidden" name="SortOrder" value="@(currentSortOrder)">
+
         @if (!string.IsNullOrEmpty(invoiceIdsString)) {
             <div class="card mb-3">
                 <div class="card-body p-3">
@@ -99,8 +120,6 @@
                 </div>
             </div>
         }
-
-        <input type="hidden" name="SortOrder" value="@(currentSortOrder)">
         
         <div class="card overflow-hidden">
             <div class="table-responsive" style="margin-bottom:-1px;">
