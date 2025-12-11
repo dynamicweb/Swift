@@ -3,6 +3,7 @@
 @using Dynamicweb.Rendering
 @using Dynamicweb.Users.Frontend
 @using Dynamicweb.Users.Frontend.UserGroups
+@using Dynamicweb.Security.UserManagement
 
 @{
     string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview?.Page?.ID ?? 0}");
@@ -48,8 +49,8 @@
         change from:input[name='SortBy']"
     hx-sync="this:abort"
     hx-swap="outerHTML"
-    hx-target="[data-swift-order-list]"
-    hx-select="[data-swift-order-list]"
+    hx-target="[data-swift-user-list]"
+    hx-select="[data-swift-user-list]"
     hx-replace-url="true"
     hx-on:click="
         const sortInput = event.target.closest('label')?.querySelector('input[name=SortBy]');
@@ -89,7 +90,7 @@
         </div>
     </nav>
 
-    <div data-swift-order-list>
+    <div data-swift-user-list>
         <input type="hidden" name="SortOrder" value="@(currentSortOrder)">
         
         <div class="card overflow-hidden">            
@@ -100,7 +101,7 @@
                             <th>
                                 <label class="hstack gap-1" role="button">
                                     <input type="radio" name="SortBy" value="Name" class="visually-hidden" checked="@(currentSortBy=="Name")" />
-                                    @Translate("Account") 
+                                    @Translate("User") 
                                     @if(currentSortBy=="Name") {
                                         <span class="icon-1">@arrow</span>
                                     }
@@ -124,6 +125,15 @@
                                     }
                                 </label>
                             </th>
+                            <th>
+                                <label class="hstack gap-1" role="button">
+                                    <input type="radio" name="SortBy" value="LastActive" class="visually-hidden" checked="@(currentSortBy=="LastActive")" />
+                                    @Translate("Last active") 
+                                    @if(currentSortBy=="LastActive") {
+                                        <span class="icon-1">@arrow</span>
+                                    }
+                                </label>
+                            </th>
                             <th>@Translate("Actions")</th>
                         </tr>
                     </thead>
@@ -134,26 +144,34 @@
                             <tr>
                                 <td>
                                     <div class="hstack gap-2">
-                                       
                                         @if(user.TryGetImageFile(out ImageFileViewModel? image))
                                         {
-                                            <div class="d-grid" style="width:2.5rem;aspect-ratio:1;">
-                                                <img src="@image.ToGetImage(new(){ Quality = 100, Width = 30, Ratio = "1/1" })" alt="@user.Name" class="img-thumbnail rounded-circle" itemprop="image"/>
+                                            <div class="align-self-auto hstack justify-content-center p-0" style="height:2rem; aspect-ratio:1;">
+                                                <img src="@image.ToGetImage(new(){ Width = 40, Ratio = "1/1" })" alt="@user.Name" class="img-thumbnail rounded-circle" itemprop="image"/>
                                             </div>
                                         }
                                         else 
                                         {
-                                            <div class="d-grid rounded-circle" style="width:2.5rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
-                                                <h6 class="fs-7 lh-1 text-muted m-auto">
+                                            <div class="btn btn-primary rounded-circle align-self-auto hstack justify-content-center p-0 pe-none" style="height:2rem; aspect-ratio:1;" data-dw-button>
+                                                <div class="d-flex dw-h6 fs-7 lh-1 m-0">
                                                     @(user.GetTwoLetterInitials())
-                                                </h6>
+                                                </div>
                                             </div>
                                         }
-                                        <div class="text-wrap-nowrap">@(user.Name)</div>
+                                        <div class="vstack">
+                                            <div class="text-wrap-nowrap">@(user.Name)</div>
+                                            <span class="fs-8 text-muted">@(user.Company)</span>
+                                        </div>
                                     </div>
                                 </td>
                                 <td>@(user.CustomerNumber)</td>
-                                <td>@(user.Email)</td>
+                                <td class="text-muted">@(user.Email)</td>
+                                <td>
+                                    <div class="vstack">
+                                        @(Dynamicweb.Security.UserManagement.UserManagementServices.Users.GetUserById(user.ID)?.LastLogOnOn?.ToShortDateString())
+                                        <span class="fs-8 text-muted">@(Dynamicweb.Security.UserManagement.UserManagementServices.Users.GetUserById(user.ID)?.LastLogOnOn?.ToShortTimeString())</span>
+                                    </div>
+                                </td>
                                 <td>
                                     <div class="hstack gap-3">
                                         <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button="outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
@@ -163,12 +181,34 @@
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-shadow">
                                             <li>
-                                                <a class="dropdown-item hstack gap-2" href="@(baseUrl)?UserID=@(user.ID)">
-                                                    <span class="icon-2">
-                                                        @ReadFile("/Files/Images/Icons/user-group.svg")
-                                                    </span>
-                                                    @Translate("View account users")
-                                                </a>
+                                                @if (Pageview.User?.ID != user.ID)
+                                                {
+                                                    <button 
+                                                        type="button"
+                                                        class="dropdown-item hstack gap-2"
+                                                        hx-get="@(baseUrl)"
+                                                        hx-target="[data-swift-user-list]"
+                                                        hx-select="[data-swift-user-list]"
+                                                        hx-vals='{"NowImpersonating": "true", "DWExtranetSecondaryUserSelector": "@user.ID"}'>
+                                                        <span class="icon-2">
+                                                            @ReadFile("/Files/Images/Icons/user-group.svg") 
+                                                        </span>
+                                                        @Translate("Impersonate")
+                                                    </button>
+                                                }
+                                                else
+                                                {
+                                                    <button type="button"
+                                                        class="dropdown-item hstack gap-2"
+                                                        hx-get="@(baseUrl)"
+                                                        hx-target="[data-swift-user-list]"
+                                                        hx-select="[data-swift-user-list]"
+                                                        hx-vals='{"DwExtranetRemoveSecondaryUser": "1"}'
+                                                        >
+                                                        <span class="icon-2">@ReadFile("/Files/Images/Icons/arrows-repeat.svg")</span>
+                                                        @Translate("Switch back to") @(UserContext.Current.ImpersonatingUser?.Name)
+                                                    </button>
+                                                }
                                             </li>
                                         </ul>
                                     </div>
