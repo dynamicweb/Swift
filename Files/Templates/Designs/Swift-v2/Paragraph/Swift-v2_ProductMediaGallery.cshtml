@@ -130,33 +130,28 @@
 	bool includeImagePatternImages = Model.Item.GetBoolean("ImagePatternImages");
 
 	@* Needed image data collection to support both DefaultImage, ImagePatterns and Image Assets *@
-	string? defaultImage = product?.DefaultImage != null ? product.DefaultImage?.Value : null;
+	string defaultImage = product.DefaultImage != null ? product.DefaultImage.Value : "";
 	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedAssetCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
-	assetsImages = defaultImage != null ? assetsImages.OrderByDescending(x => x.Value.Equals(defaultImage)) : new List<MediaViewModel>();
-	IEnumerable<MediaViewModel> assetsList = new MediaViewModel[]{};
+	assetsImages = assetsImages.OrderByDescending(x => x.Value.Equals(defaultImage));
+	IEnumerable<MediaViewModel> assetsList = new MediaViewModel[] { };
 	assetsList = assetsList.Union(assetsImages);
 	assetsList = includeImagePatternImages ? assetsList.Union(product.ImagePatternImages) : assetsList;
-	assetsList = includeImagePatternImages && assetsList.Count() == 0 ? assetsList.Append(product?.DefaultImage).Where(x => x != null) : assetsList;
+	assetsList = includeImagePatternImages && assetsList.Count() == 0 ? assetsList.Append(product.DefaultImage) : assetsList;
 
 	bool defaultImageFallback = Model.Item.GetBoolean("DefaultImageFallback");
 
 	int totalAssets = assetsList.Count(asset => MatchesFormat(asset.Value, allSupportedFormats));
 
-	if (totalAssets == 0)
+	if ((totalAssets == 0 && product.DefaultImage != null && selectedAssetCategories.Count() == 0) || totalAssets == 0 && defaultImageFallback)
 	{
-		if (defaultImageFallback && product.DefaultImage != null) {
-			assetsList = new List<MediaViewModel>(){ product.DefaultImage };
-			totalAssets = 1;
-		} else {
-			assetsList = new List<MediaViewModel>(){ };
-			totalAssets = 0;
-		}
+		assetsList = new List<MediaViewModel>() { product.DefaultImage };
+		totalAssets = 1;
 	}
 
 	galleryLayout = Model.Item.GetRawValueString("Layout", "grid");
 
 	@* Get assets from selected categories or get all assets *@
-	if (totalAssets != 0 && assetsList.Count() != 0) {
+	if (totalAssets != 0) {
 		int desktopAssetNumber = 0;
 		int mobileAssetNumber = 0;
 		int mobileAssetThumbnailNumber = 0;
