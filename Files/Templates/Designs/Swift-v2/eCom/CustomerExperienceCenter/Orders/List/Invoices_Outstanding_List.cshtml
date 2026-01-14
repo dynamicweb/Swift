@@ -20,6 +20,11 @@
     string minAmountStr = Dynamicweb.Context.Current?.Request.QueryString.Get("MinAmount") ?? string.Empty;
     string maxAmountStr = Dynamicweb.Context.Current?.Request.QueryString.Get("MaxAmount") ?? string.Empty;
 
+    string invoiceIdsString = Dynamicweb.Context.Current?.Request.QueryString.Get("Ids") ?? string.Empty;
+    string[] invoiceIds = invoiceIdsString.Split(',');
+
+    string currentPageNum = Dynamicweb.Context.Current?.Request.QueryString.Get("PageNum") ?? (Model.CurrentPage > 1 ? Model.CurrentPage.ToString() : string.Empty);
+
     DateTime? dueDateFromDate = DateTime.TryParse(dueDateFrom, out var tempFromDate) ? tempFromDate : null;
     DateTime? dueDateToDate = DateTime.TryParse(dueDateTo, out var tempToDate) ? tempToDate : null;
     double? minAmount = double.TryParse(minAmountStr, out var min) ? min : null;
@@ -30,19 +35,28 @@
     <div>
         <h1 class="h4 mb-0">@(Pageview.Page.GetDisplayName())</h1>
     </div>
+
+    <div class="text-end" data-swift-invoice-list-total hx-swap-oob="true outerHTML:[data-swift-invoice-list-total]">
+        @if (!string.IsNullOrEmpty(invoiceIdsString)) {            
+            <h2 class="h6 mb-0 fw-bold">@Translate("Selected total"): <span>@Dynamicweb.Ecommerce.Services.Currencies.Format(Dynamicweb.Ecommerce.Common.Context.Currency, Model.Orders.Where(o => invoiceIds.Contains(o.Id)).Sum(o => o.Price.Price))</span></h2>
+        }
+    </div>
 </header>
 
 <form hx-get="@(baseUrl)"
-    hx-trigger="submit, 
+    hx-trigger="change,
+                submit,
                 input from:input[name='FilterText'] changed delay:500ms queue:last, 
                 click from:button[type='reset'], 
-                change from:input[name='SortBy']" 
+                change from:input[name='FilterOrderStateId'], 
+                change from:input[name='SortBy']"
     hx-sync="this:abort"
     hx-swap="outerHTML"
     hx-disinherit="*"
     hx-target="[data-swift-invoice-list]"
     hx-select="[data-swift-invoice-list]"
     hx-replace-url="true"
+    hx-include="[name='Ids']:checked"
     hx-on:click="const sortInput = event.target.closest('label')?.querySelector('input[name=SortBy]');
                  if (!sortInput) return;
                  const sortOrderField = this.querySelector('[name=SortOrder]');
@@ -69,10 +83,11 @@
                     name="FilterText" 
                     value="@Dynamicweb.Context.Current?.Request.QueryString.Get("FilterText")"
                     aria-label="@Translate("Search invoices or PO numbers")"
+                    onkeyup="this.closest('form').querySelectorAll('input[name=Ids]').forEach(checkbox => checkbox.checked = false);"
                     x-ref="searchInput"
                     x-model="searchQuery"
                 >
-                <button x-show="searchQuery.length > 0" @@click.prevent="searchQuery = ''" type="reset" class="btn btn-link btn-sm px-3 position-absolute top-0 bottom-0 end-0 z-2" aria-label="@Translate("Search invoices or PO numbers")">
+                <button x-show="searchQuery.length > 0" @@click.prevent="searchQuery = ''" type="reset" class="btn btn-link btn-sm px-3 position-absolute top-0 bottom-0 end-0 z-2" aria-label="@Translate("Clear search")">
                     <span>@Translate("Clear")</span>
                 </button>
             </div>
@@ -81,12 +96,40 @@
 
     <div data-swift-invoice-list>
         <input type="hidden" name="SortOrder" value="@(currentSortOrder)">
+        @if (!string.IsNullOrEmpty(currentPageNum))
+        {
+            <input type="hidden" name="PageNum" value="@(currentPageNum)">
+        }
+
+        @if (!string.IsNullOrEmpty(invoiceIdsString)) {
+            <div class="card mb-3">
+                <div class="card-body p-3">
+                    <div class="hstack gap-2 justify-content-between">
+                        <div>@(invoiceIds.Count()) @Translate(invoiceIds.Count() > 1 ? "Invoices selected" : "Invoice selected")</div>
+                        <button type="button" class="btn btn-sm btn-primary hstack gap-2" data-dw-button
+                            hx-trigger="click"
+                            hx-get="@(baseUrl)"
+                            hx-include="[name=Ids]:checked"
+                            hx-vals='{"LayoutTemplate": "/Designs/Swift-v2/eCom/CustomerExperienceCenter/Orders/Modals/ContinueToPaymentModal.cshtml"}'
+                            hx-target="main"
+                            hx-swap="beforeend"
+                        >
+                            <span class="icon-2">
+                                @ReadFile("/Files/Images/Icons/credit-card.svg")
+                            </span>
+                            @Translate("Continue to payment")
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
         
         <div class="card overflow-hidden">
             <div class="table-responsive" style="margin-bottom:-1px;">
                 <table class="table table-md table-hover mb-0 align-middle fs-7" style="--bs-table-color: var(--bs-body-color);">
                     <thead style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .0275); --bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
                         <tr>
+                            <th>&nbsp;</th>
                             <th>
                                 <label class="hstack gap-1" role="button">
                                     <input type="radio" name="SortBy" value="Id" class="visually-hidden" checked="@(currentSortBy=="Id")" />
@@ -158,13 +201,21 @@
                         {
                             <tr class="position-relative">
                                 <td>
+                                    <label class="form-check-label position-relative z-2 p-2" role="button">
+                                        <input type="checkbox" class="form-check-input" name="Ids" value="@(invoice.Id)" role="button" checked="@(invoiceIds.Contains(invoice.Id))">
+                                    </label>
+                                </td>
+                                <td>
                                     <a class="stretched-link text-decoration-none text-decoration-underline-hover" href="@(baseUrl)?OrderId=@(invoice.Id)">@(invoice.Id)</a>
                                 </td>
                                 <td>@(invoice.PurchaseOrderNumber)</td>
                                 <td>
-                                    <span class="badge lh-sm bg-secondary" style="background-color:@(Dynamicweb.Ecommerce.Services.OrderStates?.GetStateById(invoice?.StateId)?.Color) !important">
-                                        @(invoice.StateName)
-                                    </span>
+                                    @if (invoice.TryGetOrderState(out var orderState)) 
+                                    {
+                                        <span class="badge lh-sm bg-secondary" style="background-color:@(orderState.StateColor?.Hex) !important">
+                                            @(orderState.Name)
+                                        </span>
+                                    }
                                 </td>
                                 <td>@(invoice.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.PriceFormatted)</td>
                                 <td>@(invoice.TotalOrderDiscount.PriceFormatted)</td>
@@ -193,7 +244,7 @@
                         @if( Model.Orders.Count() < 1 )
                         {
                             <tr class="position-relative">
-                                <td colspan="7">
+                                <td colspan="9">
                                     <div class="d-grid py-4">
                                         <span class="m-auto">
                                             <div class="d-grid rounded-circle m-auto" style="width:4rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
@@ -223,12 +274,12 @@
                 </div>
 
                 <div class="hstack gap-2">
-                    <button type="submit" class="btn btn-outline-secondary text-body hstack p-2" name="PageNum" value="@(Model.CurrentPage - 1)" data-dw-button disabled="@(Model.CurrentPage == 1)">
+                    <button type="submit" class="btn btn-outline-secondary text-body hstack p-2" name="PageNum" value="@(Model.CurrentPage - 1)" data-dw-button disabled="@(Model.CurrentPage == 1)" onclick="this.closest('form').querySelectorAll('input[name=Ids]').forEach(checkbox => checkbox.checked = false);">
                         <span class="icon-2">
                             @ReadFile("/Files/Images/Icons/chevron-left.svg")
                         </span>
                     </button>
-                    <button type="submit" class="btn btn-outline-secondary text-body hstack p-2" name="PageNum" value="@(Model.CurrentPage + 1)" data-dw-button disabled="@(Model.CurrentPage == Model.PageCount)">
+                    <button type="submit" class="btn btn-outline-secondary text-body hstack p-2" name="PageNum" value="@(Model.CurrentPage + 1)" data-dw-button disabled="@(Model.CurrentPage == Model.PageCount)" onclick="this.closest('form').querySelectorAll('input[name=Ids]').forEach(checkbox => checkbox.checked = false);">
                         <span class="icon-2">
                             @ReadFile("/Files/Images/Icons/chevron-right.svg")
                         </span>

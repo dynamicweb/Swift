@@ -78,6 +78,25 @@
 		string youtubeThumbnail = $"https://img.youtube.com/vi/{videoId}/{quality}.jpg";
 		return youtubeThumbnail;
 	}
+
+	public string GetFileTypeIcon(string filePath)
+	{
+		string fileType = Path.GetExtension(filePath).ToLower();
+		string fileTypeIconPath = "/Files/Templates/Designs/Swift-v2/Assets/images/FileTypes/";
+		var iconMap = new Dictionary<string, string>
+		{
+			{ ".pdf", $"{fileTypeIconPath}pdf.svg" },
+			{ ".docx", $"{fileTypeIconPath}docx.svg" },
+			{ ".xlsx", $"{fileTypeIconPath}xlsx.svg" },
+			{ ".ppt", $"{fileTypeIconPath}ppt.svg" }
+		};
+		return iconMap.ContainsKey(fileType) ? iconMap[fileType] : $"/Files/Images/Icons/download.svg";
+	}
+
+	public bool MatchesFormat(string assetValue, string[] formats)
+	{
+		return formats.Any(format => assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0);
+	}
 }
 
 @{
@@ -85,16 +104,6 @@
 	if (Dynamicweb.Context.Current.Items.Contains("ProductDetails"))
 	{
 		product = (ProductViewModel)Dynamicweb.Context.Current.Items["ProductDetails"];
-	}
-	else if (Pageview.Page.Item["DummyProduct"] != null && Pageview.IsVisualEditorMode)
-	{
-		var pageViewModel = Dynamicweb.Frontend.ContentViewModelFactory.CreatePageInfoViewModel(Pageview.Page);
-		ProductListViewModel productList = pageViewModel.Item.GetValue("DummyProduct") != null ? pageViewModel.Item.GetValue("DummyProduct") as ProductListViewModel : new ProductListViewModel();
-
-		if (productList?.Products is object)
-		{
-			product = productList.Products[0];
-		}
 	}
 }
 
@@ -111,41 +120,28 @@
 	bool includeImagePatternImages = Model.Item.GetBoolean("ImagePatternImages");
 
 	@* Needed image data collection to support both DefaultImage, ImagePatterns and Image Assets *@
-	string? defaultImage = product?.DefaultImage != null ? product.DefaultImage?.Value : null;
+	string defaultImage = product.DefaultImage != null ? product.DefaultImage.Value : "";
 	IEnumerable<MediaViewModel> assetsImages = product.AssetCategories.Where(x => selectedAssetCategories.Contains(x.SystemName)).SelectMany(x => x.Assets);
-	assetsImages = defaultImage != null ? assetsImages.OrderByDescending(x => x.Value.Equals(defaultImage)) : new List<MediaViewModel>();
-	IEnumerable<MediaViewModel> assetsList = new MediaViewModel[]{};
+	assetsImages = assetsImages.OrderByDescending(x => x.Value.Equals(defaultImage));
+	IEnumerable<MediaViewModel> assetsList = new MediaViewModel[] { };
 	assetsList = assetsList.Union(assetsImages);
 	assetsList = includeImagePatternImages ? assetsList.Union(product.ImagePatternImages) : assetsList;
-	assetsList = includeImagePatternImages && assetsList.Count() == 0 ? assetsList.Append(product?.DefaultImage).Where(x => x != null) : assetsList;
+	assetsList = includeImagePatternImages && assetsList.Count() == 0 ? assetsList.Append(product.DefaultImage) : assetsList;
 
 	bool defaultImageFallback = Model.Item.GetBoolean("DefaultImageFallback");
 
-	int totalAssets = 0;
-	foreach (MediaViewModel asset in assetsList) {
-		var assetValue = asset.Value;
-		foreach (string format in allSupportedFormats) {
-			if (assetValue.IndexOf(format, StringComparison.OrdinalIgnoreCase) >= 0) {
-				totalAssets++;
-			}
-		}
-	}
+	int totalAssets = assetsList.Count(asset => MatchesFormat(asset.Value, allSupportedFormats));
 
-	if (totalAssets == 0)
+	if ((totalAssets == 0 && product.DefaultImage != null && selectedAssetCategories.Count() == 0) || totalAssets == 0 && defaultImageFallback)
 	{
-		if (defaultImageFallback && product.DefaultImage != null) {
-			assetsList = new List<MediaViewModel>(){ product.DefaultImage };
-			totalAssets = 1;
-		} else {
-			assetsList = new List<MediaViewModel>(){ };
-			totalAssets = 0;
-		}
+		assetsList = new List<MediaViewModel>() { product.DefaultImage };
+		totalAssets = 1;
 	}
 
 	galleryLayout = Model.Item.GetRawValueString("Layout", "grid");
 
 	@* Get assets from selected categories or get all assets *@
-	if (totalAssets != 0 && assetsList.Count() != 0) {
+	if (totalAssets != 0) {
 		int desktopAssetNumber = 0;
 		int mobileAssetNumber = 0;
 		int mobileAssetThumbnailNumber = 0;
@@ -255,10 +251,9 @@
 									{ //Documents
 										if (assetValue.IndexOf(documentFormat, StringComparison.OrdinalIgnoreCase) >= 0)
 										{
-											string iconPath = "/Files/Images/Icons/";
-
 											string productName = product.Name;
 											string? imagePath = !string.IsNullOrEmpty(asset.Value) ? asset.Value : product.DefaultImage?.Value;
+											string fileTypeIcon = GetFileTypeIcon(asset.Value);
 
 											RatioSettings ratioSettings = GetRatioSettings(size);
 
@@ -267,6 +262,7 @@
 											parms.Add("itemprop", "image");
 											parms.Add("fullwidth", true);
 											parms.Add("columns", Model.GridRowColumnCount);
+
 											if (!string.IsNullOrEmpty(asset.DisplayName))
 											{
 												parms.Add("title", asset.DisplayName);
@@ -281,10 +277,9 @@
 												parms.Add("cssClass", "mw-100 mh-100");
 											}
 
-											<a href="@imagePath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download title="@Translate("Download")">
+											<a href="@imagePath" class="d-block @(ratioSettings.CssClass)@(ratioSettings.Fill)" style="@(ratioSettings.CssVariable)" download title="@Translate("Download"): @(asset.Name)@Path.GetExtension(asset.Value).ToLower()">
 												<div class="d-flex align-items-center justify-content-center text-center overflow-hidden h-100 border">
-													<div class="icon-5 position-absolute" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
-														<span>@Translate("Download") @(asset.Name)@Path.GetExtension(asset.Value).ToLower()</span>	
+													<div class="icon-7 position-absolute" style="z-index: 1">@ReadFile(fileTypeIcon)</div>
 												</div>
 											</a>
 										}
@@ -460,11 +455,11 @@
 										if (assetValue.IndexOf(documentFormat, StringComparison.OrdinalIgnoreCase) >= 0)
 										{
 											string imagePath = !string.IsNullOrEmpty(asset.Value) ? $"/Admin/Public/GetImage.ashx?image={asset.Value}&width=180&format=webp" : string.Empty;
+											string fileTypeIcon = GetFileTypeIcon(asset.Value);
 
-											<a href="@(assetValue)" class="flex-grow-0 flex-shrink-0" style="cursor: pointer; width: clamp(4.5rem, 18vw, 8rem);" download title="@Translate("Download")">
+											<a href="@(assetValue)" class="flex-grow-0 flex-shrink-0" style="cursor: pointer" download title="@Translate("Download"): @(asset.Name)@Path.GetExtension(asset.Value).ToLower()">
 												<div class="d-flex align-items-center justify-content-center text-center overflow-hidden h-100 border">
-													<div class="icon-5 position-absolute" style="z-index: 1">@ReadFile(iconPath + "download.svg")</div>
-														<span>@Translate("Download") @(asset.Name)@Path.GetExtension(asset.Value).ToLower()</span>	
+													<div class="icon-7 position-absolute" style="z-index: 1">@ReadFile(fileTypeIcon)</div>
 												</div>
 											</a>
 										}

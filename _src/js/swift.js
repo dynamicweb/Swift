@@ -73,11 +73,11 @@ function reinitializeTooltips() {
 
 // Secure external links
 function secureExternalLinks() {
-    document.querySelectorAll('a[href*="://"]').forEach(link => {
-        if (!link.hasAttribute('target')) link.target = '_blank';
-        const rel = link.getAttribute('rel') || '';
-        link.setAttribute('rel', `${rel} noopener noreferrer`.trim());
-    });
+  document.querySelectorAll('a[href*="://"]').forEach(link => {
+    if (!link.hasAttribute('target')) link.target = '_blank';
+    const rel = link.getAttribute('rel') || '';
+    link.setAttribute('rel', `${rel} noopener noreferrer`.trim());
+  });
 }
 
 // Make reinitializeTooltips available globally for HTMX
