@@ -1,49 +1,13 @@
 @inherits ViewModelTemplate<PageViewModel>
 @using Dynamicweb.Frontend
 @using Dynamicweb.Rendering
-@using System.Text.RegularExpressions
+@using Dynamicweb.Ecommerce
 @using Microsoft.AspNetCore.WebUtilities
 
 @{
-	var languages = new List<Dynamicweb.Content.Page>();
-	var ecomCountries = Dynamicweb.Ecommerce.Services.Countries.GetCountries()?.OrderBy(country => country.GetName(Pageview?.Area?.EcomLanguageId ?? string.Empty)) ?? null;
-	var currencies = Dynamicweb.Ecommerce.Services.Currencies.GetAllCurrencies();
-
 	var uri = Dynamicweb.Context.Current?.Request?.Url;
 	var queryParams = QueryHelpers.ParseQuery(uri?.Query);
-	queryParams.Remove("LayoutTemplate");
-	
-	if (Pageview?.Page?.Area?.IsMaster == true)
-	{
-		languages.Add(Pageview.Page);
-		if (Pageview.Page.Languages is not null)
-		{
-			foreach (var language in Pageview.Page.Languages)
-			{
-				if (language?.Area?.Active == true)
-				{
-					languages.Add(language);
-				}
-			}
-		}
-	}
-	else
-	{
-		if (Pageview?.Page?.MasterPage is not null)
-		{
-			languages.Add(Pageview.Page.MasterPage);
-			if (Pageview.Page.MasterPage.Languages is not null)
-			{
-				foreach (var language in Pageview.Page.MasterPage.Languages)
-				{
-					if (language?.Area?.Active == true)
-					{
-						languages.Add(language);
-					}
-				}
-			}
-		}
-	}
+	queryParams.Remove("LayoutTemplate"); // Remove LayoutTemplate from query params
 }
 
 <div class="modal fade" id="languageModal" tabindex="-1" aria-labelledby="LanguageModal" 
@@ -62,20 +26,22 @@
 	  		<div class="modal-body">
 				<p class="text-muted">@Translate("Select a language")</p>
 				<div class="list-group d-grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
-					@foreach (var language in languages)
+					
+					@foreach (var language in Model.Languages)
 					{
-						var region = new System.Globalization.RegionInfo(language?.Area?.CultureInfo.LCID ?? 0);
-						queryParams["ID"] = $"{language?.ID}";
+						var languagePage = Dynamicweb.Content.Services.Pages.GetPage(language?.Page?.ID ?? 0) ?? null;
+						var currency = Dynamicweb.Ecommerce.Services.Currencies.GetCurrency(languagePage?.Area?.EcomCurrencyId ?? string.Empty) ?? null;
+						queryParams["ID"] = $"{language?.Page?.ID}";
 						var newQuery = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={kvp.Value}"));
 						var updateUrl = $"{uri?.Scheme}://{uri?.Host}{(uri?.IsDefaultPort == true ? "" : $":{uri?.Port}")}{uri?.AbsolutePath}?{newQuery}";
 						updateUrl = SearchEngineFriendlyURLs.GetFriendlyUrl(updateUrl);
-
-						<a class="list-group-item list-group-item-action text-center rounded-3 border @(language?.Area?.ID == Pageview?.Area?.ID ? "border-primary" : null) d-grid text-decoration-none" href="@(updateUrl)">
+						
+						<a class="list-group-item list-group-item-action text-center rounded-3 border @(languagePage?.AreaId == Pageview?.Area?.ID ? "border-primary" : null) d-grid text-decoration-none" href="@(updateUrl)">
 							<div class="icon-5">
-								@ReadFile($"/Files/Images/Icons/Flags/{region.Name}.svg")
+								@ReadFile($"/Files/Images/Icons/Flags/{languagePage?.Area?.CultureInfo.Name}.svg")
 							</div>
-							<span class="fs-7">@(region.DisplayName)</span> 
-							<span class="fs-8 text-uppercase text-muted">@(Translate("Currency")): @(region.CurrencySymbol) @(language?.Area?.EcomCurrencyId)</span>
+							<span class="fs-7">@(languagePage?.Area?.CultureInfo.DisplayName)</span> 
+							<span class="fs-8 text-uppercase text-muted">@(Translate("Currency")): @(currency?.Symbol) @(languagePage?.Area?.EcomCurrencyId)</span>
 						</a>
 					}
 				</div>
