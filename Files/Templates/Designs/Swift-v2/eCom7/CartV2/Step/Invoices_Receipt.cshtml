@@ -1,0 +1,143 @@
+@inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.Frontend
+@using Dynamicweb.Ecommerce.Orders
+@using Dynamicweb.Ecommerce.ProductCatalog
+
+@{
+	string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview?.Page?.ID ?? 0}");
+	int? frontPageId = Dynamicweb.Content.Services.Pages.GetFirstPageForArea(Pageview?.AreaID ?? 0)?.ID ?? 0;
+	var order = Dynamicweb.Ecommerce.Services.Orders.GetById(GetString("Ecom:Order.ID")) ?? null;
+	var invoice = order?.TryGetOrderViewModel(out var orderViewModel) is true ? orderViewModel : null;
+}
+
+<div class="w-100 mx-auto d-grid" style="max-inline-size: 48rem;">
+	
+	<nav aria-label="breadcrumb">
+		<ol class="breadcrumb mb-4" style="--bs-breadcrumb-divider: '>'; --bs-breadcrumb-item-padding-x: 1rem; --bs-breadcrumb-font-size: .875em;">
+			<li class="breadcrumb-item"><a href="@(baseUrl)">@(Pageview?.Page?.GetDisplayName())</a></li>
+			<li class="breadcrumb-item active" aria-current="page">@Translate("Payment")</li>
+		</ol>
+	</nav>
+
+	<div class="card mb-4 bg-success border-success bg-opacity-10 border-opacity-25"> 
+		<div class="card-body text-center text-success">
+			<div class="icon-6 mb-3">
+				@ReadFile("/Files/Images/Icons/circle-check.svg")
+			</div>
+			<h2 class="h4 mb-2 text-success">@Translate("Payment successful")</h2>
+			<p class="mb-0">@Translate("Your payment has been processed successfully.")</p>
+		</div>
+	</div>
+
+	<div class="card mb-4">
+		<div class="card-body">
+			<h1 class="h4">@(Translate("Payment receipt"))</h1>
+			<p class="mb-4 fs-7">@(Translate("We've sent an email to")) @(invoice?.CustomerEmail) @(Translate("with your confirmation and receipt. If the email has not arrived within two minutes, please check your spam folder to see if the email was routed there."))</p>
+			<hr class="my-4" style="opacity: .15;">
+			<div class="grid grid-1 grid-lg-2 gap-3 fs-7 mb-4">
+				<div class="vstack">
+					<div class="mb-1 text-muted">@Translate("Payment status")</div>
+					<div class="fw-bold">@(invoice?.StateName)</div>
+				</div>
+				<div class="vstack">
+					<div class="mb-1 text-muted">@Translate("Payment ID")</div>
+					<div class="fw-bold">@(invoice?.PaymentMethod?.Id)</div>
+				</div>
+				<div class="vstack">
+					<div class="mb-1 text-muted">@Translate("Payment date")</div>
+					<div class="fw-bold">@(invoice?.CompletedDate?.ToString(Pageview?.Area?.CultureInfo.DateTimeFormat.ShortDatePattern))</div>
+				</div>
+				<div class="vstack">
+					<div class="mb-1 text-muted">@Translate("Payment method")</div>
+					<div class="fw-bold">@(invoice?.PaymentMethod?.Name)</div>
+				</div>
+				<div class="vstack">
+					<div class="mb-1 text-muted">@Translate("Type")</div>
+					<div class="fw-bold">@(invoice?.PaymentMethod?.Name)</div>
+				</div>
+			</div>
+			<div class="grid grid-1 grid-lg-2 gap-3 fs-7 mb-4">
+				<div class="vstack">
+					<div class="mb-2 text-muted">@Translate("Billing address")</div>
+					<div class="fw-bold">@(invoice?.CustomerCompany)</div>
+					<div>@(invoice?.CustomerName)</div>
+					<div>@(invoice?.CustomerAddress)</div>
+					<div>@(invoice?.CustomerAddress2)</div>
+					<div>@(invoice?.CustomerZip) @(invoice?.CustomerRegion) @(invoice?.CustomerCity)</div>
+					<div>@(invoice?.CustomerCountry)</div>
+				</div>
+			</div>
+
+			@if (invoice?.OrderLines?.Count() > 0)
+			{
+				<h2 class="h5">@(Translate("Invoices paid"))</h2>
+
+				<div class="card overflow-hidden">
+					<div class="table-responsive">
+						<table class="table table-md fs-7 mb-0" style="--bs-table-color: var(--bs-body-color);">
+							<thead style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .0275); --bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
+								<tr>
+									<th>@Translate("Invoice number")</th>
+									<th class="text-end">@Translate("Amount paid")</th>
+								</tr>
+							</thead>
+							<tbody>
+								@foreach (var payment in invoice.OrderLines)
+								{
+									<tr class="">
+										<td>@payment.ProductName</td>
+										<td class="text-end text-price">@payment.Price.PriceFormatted</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+					</div>
+				</div>
+
+				<div class="hstack justify-content-between mt-4 p-3 rounded" style="background-color: rgba(var(--bs-body-color-rgb), .0275);">
+					<h6 class="m-0">@(Translate("Total amount paid"))</h6>
+					<h5 class="m-0 text-price">@(invoice?.Price.PriceFormatted)</h5>
+				</div>
+			}
+
+		</div>
+
+	</div>
+
+	<div class="d-flex justify-content-center">
+		<button type="button" class="btn btn-outline-secondary text-body hstack gap-2" data-dw-button onclick='window.print()'>
+			<span class="icon-2">
+				@ReadFile("/Files/Images/Icons/print.svg")
+			</span>
+			@Translate("Print invoice")
+		</button>
+	</div>
+
+</div>
+
+<script>
+	gtag("event", "purchase", {
+		transaction_id: "@GetString("Ecom:Order.ID")",
+		value: @GetDouble("Ecom:Order.Price.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+		tax: @GetDouble("Ecom:Order.Taxes.Total.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+		shipping: @GetDouble("Ecom:Order.ShippingFee.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+		currency: "@GetString("Ecom:Order.Price.Currency.Code")",
+		items: [
+			@foreach (LoopItem orderline in GetLoop("OrderLines"))
+			{
+				<text>
+				{
+					item_id: "@orderline.GetString("Ecom:Order:OrderLine.ProductID")",
+					item_name: "@Dynamicweb.Core.Encoders.HtmlEncoder.JavaScriptStringEncode(orderline.GetString("Ecom:Order:OrderLine.ProductName"))",
+					currency: "@orderline.GetString("Ecom:Order:OrderLine.UnitPrice.CurrencyCode")",
+					price: @orderline.GetDouble("Ecom:Order:OrderLine.UnitPriceWithProductDiscount.Price.Value").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+					discount: @Math.Abs(orderline.GetDouble("Ecom:Order:OrderLine.UnitDiscount.Price.Value")).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
+					quantity: @orderline.GetDouble("Ecom:Order:OrderLine.Quantity").ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)
+				},
+				</text>
+			}
+		]
+	});
+</script>
