@@ -74,14 +74,14 @@
 
 						<label class="list-group-item list-group-item-action d-flex justify-content-between" role="button">
 							<span class="d-flex justify-content-between">
-								<input class="form-check-input me-3" type="radio" name="DeliveryAddress" value="False" checked="@(!deliveryAddressSpecifiedAndDifferent)" onchange="toggleDeliveryAddressContainer(false)" id="SameAsDeliveryAddressRadio">
+								<input class="form-check-input me-3" type="radio" name="DeliveryAddress" value="False" checked="@(!deliveryAddressSpecifiedAndDifferent)" onchange="window.swiftCart.toggleDeliveryAddressContainer(false)" id="SameAsDeliveryAddressRadio">
 								<div>@Translate("Same address as billing address")</div>
 							</span>
 						</label>
 
 						<label class="list-group-item list-group-item-action d-flex justify-content-between" role="button">
 							<span class="d-flex justify-content-between">
-								<input class="form-check-input me-3" type="radio" name="DeliveryAddress" value="True" checked="@(deliveryAddressSpecifiedAndDifferent)" onchange="toggleDeliveryAddressContainer(true)" id="UseAnotherBillingAddressRadio">
+								<input class="form-check-input me-3" type="radio" name="DeliveryAddress" value="True" checked="@(deliveryAddressSpecifiedAndDifferent)" onchange="window.swiftCart.toggleDeliveryAddressContainer(true)" id="UseAnotherBillingAddressRadio">
 								<div>@Translate("Use another delivery address")</div>
 							</span>
 						</label>
@@ -257,44 +257,33 @@
 </script>
 
 <script>
-	function toggleDeliveryAddressContainer(showContainer) {
+	if (!window.swiftCart) window.swiftCart = {};
+	window.swiftCart.toggleDeliveryAddressContainer = function (showContainer) {
+		const address = document.getElementById("DeliveryAddressContainer");
+		const hidden = document.getElementById("DeliveryAddressContainerHiddenFields");
 
-		@* Enable the correct form fields *@
-		if (document.querySelector("#DeliveryAddressContainer")) {
-			document.querySelector("#DeliveryAddressContainer").querySelectorAll(".form-control").forEach(function (field) {
-				field.disabled = !showContainer;
-			});
+		address?.querySelectorAll(".form-control, .form-select").forEach(f => f.disabled = !showContainer);
+		hidden?.querySelectorAll("input").forEach(f => f.disabled = showContainer);
 
-			document.querySelector("#DeliveryAddressContainer").querySelectorAll(".form-select").forEach(function (field) {
-				field.disabled = !showContainer;
-			});
-		}
-
-		if (document.querySelector("#DeliveryAddressContainerHiddenFields")) {
-			document.querySelector("#DeliveryAddressContainerHiddenFields").querySelectorAll("input").forEach(function (field) {
-				field.disabled = showContainer;
-			});
-		}
-
-		if (document.querySelector("#DeliveryAddressContainer")) {
+		if (address && window.bootstrap?.Collapse) {
 			try {
-				const addressContainerCollapse = new bootstrap.Collapse("#DeliveryAddressContainer", { toggle: false });
-				if (showContainer) {
-					addressContainerCollapse.show();
-				} else {
-					addressContainerCollapse.hide();
-				}
-			}
-			catch {
-				//console.log("Error collapsing!")
-			}
+				let c = window.swiftCart._collapse;
+				if (!c || c._element !== address)
+					c = window.swiftCart._collapse = new bootstrap.Collapse(address, { toggle: false });
+				showContainer ? c.show() : c.hide();
+			} catch (e) {}
 		}
 	};
 </script>
 
 <script>
-	let showContainer = @(deliveryAddressSpecifiedAndDifferent.ToString().ToLower());
-	toggleDeliveryAddressContainer(showContainer);
+	// Prevent multiple declarations, e.g., when htmx swaps/reloads this content
+	if (!window.swiftCart) window.swiftCart = {};
+	if (!window.swiftCart.initDeliveryAddressToggle) {
+		window.swiftCart.initDeliveryAddressToggle = true;
+		let showContainer = @(deliveryAddressSpecifiedAndDifferent.ToString().ToLower());
+		window.swiftCart.toggleDeliveryAddressContainer(showContainer);
+	}
 </script>
 
 @{
