@@ -52,7 +52,7 @@
         <script type="module">
             document.addEventListener('updated.swift.cart', (event) => {
                 let orderContext = event?.detail?.formData?.get("OrderContext");
-                updateCartSummary(orderContext);
+                window.swiftMiniCart.updateCartSummary(orderContext, event);
 
                 let offcanvasMiniCartBehaviourJs = "@offcanvasMiniCartBehaviour";
                     
@@ -61,7 +61,7 @@
                 }
 
                 if (offcanvasMiniCartBehaviourJs == "2" || offcanvasMiniCartBehaviourJs == "3") {
-                    openMiniCartOffcanvas();
+                    window.swiftMiniCart.openMiniCartOffcanvas();
                 }
             });
         </script>
@@ -75,38 +75,45 @@
                     toggle.parentElement.addEventListener('click', (event) => {
                         event.preventDefault();
                         let orderContext = toggle.dataset?.orderContext;
-                        updateCartSummary(orderContext);
+                        window.swiftMiniCart.updateCartSummary(orderContext, event);
 
-                        openMiniCartOffcanvas();
+                        window.swiftMiniCart.openMiniCartOffcanvas();
                     });
                 });
             </script>
         }
 
         <script>
-            const updateCartSummary = (orderContext) => {
-                const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
-                swift.PageUpdater.UpdateFromUrlInline(event, '/Default.aspx?ID=@(cartSummaryPageId)&CartType=minicart&RequestPageID=@(Pageview.Page.ID)&OrderContext=' + orderContext +'', 'Swift-v2_CartSummary.cshtml', dynamicOffcanvas);
-            };
-            const openMiniCartOffcanvas = () => {
-                const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
-                const miniCartOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(dynamicOffcanvas);
-                dynamicOffcanvas.classList.add('overflow-y-auto');
+            // Prevent multiple declarations (e.g. when htmx/inlines reloads this content)
+            if (!window.swiftMiniCart) {
+                window.swiftMiniCart = {};
 
-                if (!miniCartOffcanvas._isShown) {
-                    miniCartOffcanvas.show();
-                    hideActiveOffcanvases(miniCartOffcanvas);
-                }
-            };
-            const hideActiveOffcanvases = (miniCartOffcanvas) => {
-                let activeOffcanvases = document.querySelectorAll('.offcanvas.show');
-                activeOffcanvases?.forEach((offCanvas) => {
-                    offCanvas = bootstrap.Offcanvas.getInstance(offCanvas);
-                    if (offCanvas !== miniCartOffcanvas) {
-                        offCanvas.hide();
+                window.swiftMiniCart.updateCartSummary = function(orderContext, event) {
+                    const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
+                    swift.PageUpdater.UpdateFromUrlInline(event, '/Default.aspx?ID=@(cartSummaryPageId)&CartType=minicart&RequestPageID=@(Pageview.Page.ID)&OrderContext=' + orderContext +'', 'Swift-v2_CartSummary.cshtml', dynamicOffcanvas);
+                };
+
+                window.swiftMiniCart.openMiniCartOffcanvas = function() {
+                    const dynamicOffcanvas = document.getElementById('DynamicOffcanvas');
+                    const miniCartOffcanvas = bootstrap.Offcanvas.getOrCreateInstance(dynamicOffcanvas);
+                    dynamicOffcanvas.classList.add('overflow-y-auto');
+
+                    if (!miniCartOffcanvas._isShown) {
+                        miniCartOffcanvas.show();
+                        window.swiftMiniCart.hideActiveOffcanvases(miniCartOffcanvas);
                     }
-                });
-            };
+                };
+
+                window.swiftMiniCart.hideActiveOffcanvases = function(miniCartOffcanvas) {
+                    let activeOffcanvases = document.querySelectorAll('.offcanvas.show');
+                    activeOffcanvases?.forEach((offCanvas) => {
+                        offCanvas = bootstrap.Offcanvas.getInstance(offCanvas);
+                        if (offCanvas && offCanvas !== miniCartOffcanvas) {
+                            offCanvas.hide();
+                        }
+                    });
+                };
+            }
         </script>
     }
 </div>    
