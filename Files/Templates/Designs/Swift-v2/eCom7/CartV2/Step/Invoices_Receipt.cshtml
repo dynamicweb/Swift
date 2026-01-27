@@ -6,24 +6,28 @@
 @using Dynamicweb.Ecommerce.ProductCatalog
 
 @{
-	string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview?.Page?.ID ?? 0}");
-	int? frontPageId = Dynamicweb.Content.Services.Pages.GetFirstPageForArea(Pageview?.AreaID ?? 0)?.ID ?? 0;
 	var order = Dynamicweb.Ecommerce.Services.Orders.GetById(GetString("Ecom:Order.ID")) ?? null;
 	var invoice = order?.TryGetOrderViewModel(out var orderViewModel) is true ? orderViewModel : null;
+	var outstandingInvoicesPageId = GetPageIdByNavigationTag("OutstandingInvoices");
+	var backLink = outstandingInvoicesPageId is not 0 ? SearchEngineFriendlyURLs.GetFriendlyUrl(outstandingInvoicesPageId) : null;
 }
 
 <div class="w-100 mx-auto d-grid" style="max-inline-size: 48rem;">
-	
-	<nav aria-label="breadcrumb">
-		<ol class="breadcrumb mb-4" style="--bs-breadcrumb-divider: '>'; --bs-breadcrumb-item-padding-x: 1rem; --bs-breadcrumb-font-size: .875em;">
-			<li class="breadcrumb-item"><a href="@(baseUrl)">@(Pageview?.Page?.GetDisplayName())</a></li>
-			<li class="breadcrumb-item active" aria-current="page">@Translate("Payment")</li>
-		</ol>
-	</nav>
+	@if (outstandingInvoicesPageId is not 0)
+	{
+		<nav class="mb-4">
+			<a href="@(backLink)" class="btn btn-outline-secondary border-0 hstack gap-2 px-3 d-inline-flex text-body" data-dw-button aria-label="@Translate("Back")">
+				<span class="icon-2">
+					@ReadFile("/Files/Images/Icons/arrow-left.svg")
+				</span>
+				<span>@Translate("Back")</span>
+			</a>
+		</nav>
+	}
 
-	<div class="card mb-4 bg-success border-success bg-opacity-10 border-opacity-25"> 
+	<div class="card mb-4 bg-success border-success bg-opacity-10 border-opacity-25">
 		<div class="card-body text-center text-success">
-			<div class="icon-6 mb-3">
+			<div class="icon-6 mb-3" aria-hidden="true" title="@Translate("Payment successful")">
 				@ReadFile("/Files/Images/Icons/circle-check.svg")
 			</div>
 			<h2 class="h4 mb-2 text-success">@Translate("Payment successful")</h2>
@@ -38,25 +42,39 @@
 			<hr class="my-4" style="opacity: .15;">
 			<div class="grid grid-1 grid-lg-2 gap-3 fs-7 mb-4">
 				<div class="vstack">
-					<div class="mb-1 text-muted">@Translate("Payment status")</div>
-					<div class="fw-bold">@(invoice?.StateName)</div>
-				</div>
-				<div class="vstack">
-					<div class="mb-1 text-muted">@Translate("Payment ID")</div>
-					<div class="fw-bold">@(invoice?.PaymentMethod?.Id)</div>
-				</div>
-				<div class="vstack">
 					<div class="mb-1 text-muted">@Translate("Payment date")</div>
 					<div class="fw-bold">@(invoice?.CompletedDate?.ToString(Pageview?.Area?.CultureInfo.DateTimeFormat.ShortDatePattern))</div>
 				</div>
-				<div class="vstack">
-					<div class="mb-1 text-muted">@Translate("Payment method")</div>
-					<div class="fw-bold">@(invoice?.PaymentMethod?.Name)</div>
-				</div>
-				<div class="vstack">
-					<div class="mb-1 text-muted">@Translate("Type")</div>
-					<div class="fw-bold">@(invoice?.PaymentMethod?.Name)</div>
-				</div>
+				@if (!string.IsNullOrEmpty(invoice?.PaymentMethod?.Name))
+				{
+					<div class="vstack">
+						<div class="mb-1 text-muted">@Translate("Payment method")</div>
+						<div class="fw-bold">@invoice?.PaymentMethod?.Name</div>
+					</div>
+				}
+				@if (!string.IsNullOrEmpty(invoice?.TransactionCardnumber))
+				{
+					var cardNumber = invoice?.TransactionCardnumber;
+					var lastFour = cardNumber?.Length >= 4 ? cardNumber?.Substring(cardNumber?.Length - 4 ?? 0) : cardNumber;
+					<div class="vstack">
+						<div class="mb-1 text-muted">@Translate("Card/Account number")</div>
+						<div class="fw-bold">•••• •••• •••• @lastFour</div>
+					</div>
+				}
+				@if (!string.IsNullOrEmpty(invoice?.Id))
+				{
+					<div class="vstack">
+						<div class="mb-1 text-muted">@Translate("Payment number")</div>
+						<div class="fw-bold">@invoice?.Id</div>
+					</div>
+				}
+				@if (!string.IsNullOrEmpty(invoice?.PurchaseOrderNumber))
+				{
+					<div class="vstack">
+						<div class="mb-1 text-muted">@Translate("PO number")</div>
+						<div class="fw-bold">@invoice?.PurchaseOrderNumber</div>
+					</div>
+				}
 			</div>
 			<div class="grid grid-1 grid-lg-2 gap-3 fs-7 mb-4">
 				<div class="vstack">
@@ -86,7 +104,7 @@
 							<tbody>
 								@foreach (var payment in invoice.OrderLines)
 								{
-									<tr class="">
+									<tr>
 										<td>@payment.ProductName</td>
 										<td class="text-end text-price">@payment.Price.PriceFormatted</td>
 									</tr>
@@ -102,6 +120,15 @@
 				</div>
 			}
 
+			@if (!string.IsNullOrEmpty(invoice?.CustomerComment))
+			{
+				<hr class="my-4" style="opacity: .15;">
+
+				<div class="vstack fs-7">
+					<div class="mb-1 text-muted">@Translate("Comment")</div>
+					<div>@(invoice?.CustomerComment)</div>
+				</div>
+			}
 		</div>
 
 	</div>
