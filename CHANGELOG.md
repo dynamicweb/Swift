@@ -1,5 +1,134 @@
 # Changelog
 
+# v2.2.0
+## [v2.2.0] - 29-01-2026
+
+Swift v.2.2.0 introduces the updated new Customer Center, Account mangement and External authentication
+> [!NOTE]
+> **Requirements**
+>
+> * **Swift v2.2.0 requires DynamicWeb v10.23 `*` or newer, if Shipmondo is used, it requires Shipmondo.dll version 10.0.5 (installed) or newer**
+>
+## Empowering self-service experience
+
+We are excited to introduce the new Customer Center in Swift. A major upgrade of the design has been implemented and with the main focus on B2B users. 
+Empowering the self-service experience when using the Customer center
+
+A role-base acces has been set up that ensures users to see only what they need depending if you are a **B2B Customer, Account administrator or Customer Sales representative / Customer Support representative (CSR)**
+
+- **B2B Customer** - the company that purchases products or services on behalf of its organization, often with company pricing, invoices, and approval flows.
+- **Account Admin** - Managing the company account—users, roles, permissions
+- **CSR** -The customer Sales/Support representative can support B2B customers by creating orders, managing accounts and users, negotiating pricing, and helping close and manage deals
+
+### Orders
+B2B orders are often high-value, multi-item, and handled by multiple stakeholders. This update is designed to give buyers, procurement teams, and account managers full transparency—before, during, and after purchase
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.2.0/CC-Orders.png)
+
+### Carts
+Carts in Customer center gives the flexibility to create, manage, and track several carts at the same time—each tailored to a specific need. B2B purchasing rarely fits into a single cart. Different departments, budgets, timelines, and approvers often require separation. With multiple carts, customers can now work the way their business actually operates
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.2.0/CC-Carts.png)
+
+### Quotes
+Business customers can  view, manage, and act on quotes directly in the Customer Center, making it easier to move from negotiation to purchase—without back-and-forth emails
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.2.0/CC-Quotes.png)
+
+### Saved cards / Wallet
+
+To support faster and more efficient purchasing, we’ve added Saved Cards / Wallet to the Customer Center. B2B customers can now securely store and manage payment cards—such as Visa and credit cards—and reuse them across future orders
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.2.0/CC-Wallet.png)
+
+## Simplified Account management for Business customers
+
+### Accounts
+Sales Representatives can create Accounts and manage users directly from the Customer Center, making account setup faster and more efficient.
+
+> [!NOTE]
+> Further development of Accounts and managing users will continue, giving the possibility to invite users, resend invitations and activate/deactivate users directly on the list. 
+
+> [!IMPORTANT]Accounts is still under feature flag, to enable the Account functionality go to Settings/ Administration / Feature management / Enable user account functionality
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.2.0/CC-Accounts.png)
+
+### User list
+CSR can  view a list of users and impersonate them directly from the Customer Center, making it easier to support customers and resolve issues quickly
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.2.0/CC-Users.png)
+
+## Login External authentication
+
+Users can now sign in using **external authentication providers** directly from the login screen (e.g. Microsoft Entra, Google etc.), making access faster, easier, and more secure
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.2.0/Login-External-Authentication.png)
+
+## Changes
+* The database does not longer exist of the old Customer center set up, but has been replaced with the new Customer center set up and templates
+* System emails - Verify email, Activated , Reset password has been replaced with UserCreateEmailconfirmation.cshtml,  ForgotPasswordEmail.cshtml
+
+## Bug fixes
+
+* 24936 - Missing encoding of product and variant names for gtm clicks
+* 24760 - Navigation: Not possible to see the difference between the horizontal layouts
+* 24990 - Related product list with variants source type does not render variants
+* 22055 - Product images are not urlencoded in off canvas mini cart and Order detail page
+* 24832 - Post list: Category button should be changed to filter
+* 25079 - Google Site Verification field is missing
+* 25097 - Missing check for redirect type
+* 25224 - Quickpay renders error template for invalid callbacks which can reveal order information if that is in the error template
+* 24701 - Post list: The search results show posts under other pages than current and show posts from other website
+* 25428 - Users: Address should not render comma when there are no address
+* 24903 - Post facets: Not possible to select multiple options without facet panel closes
+* 24636 - When you delete an image that is default for a product, swift makes exceptions (part 2)
+* 24818 - Add to quote: Not possible to select variants in Quote modal
+* 24022 - Express buy: Extra padding that causes the paragraph not to align
+* 25606 - Change highlight on search result
+* 25656 - Quote receipt: Order lines on top of receipt footer
+* 25653 - Cart: Order summary on top of header rows
+* 25571 - Search: Text in results dropdown not visible when row has colored background with white text
+* 25319 - Static variant view is not available on Product Component
+* 25570 - Not possible to login after creating a new user
+* 25213 - RMA in Swift 1 and Swift 2 does not support variants
+* 25768 - Mini cart offcanvas does not follow colorscheme
+* Users - Forgot password: Messages need translation
+* 25853 - Typography font-style:italic not respected in frontend
+* 25812 - 10+12 flexible rows contains bad column width data
+* 25385 - Order receipt: Billing Company rendered in Delivery field
+* 25265 - Group navigation content type does not show groups
+* 26181 - 'Open external links in new tab' does not open external links in new tabs
+* 25831 - Error when a product isn't in stock
+* 26236 - Translation: VAT is wrongly translated to Tax
+* 25469 - Post list: Too many categories
+* 26517 - Encoding " Facet Value
+* 26661 - Payment confirmation email - Remove "View in browser""
+* 24592 - Cart: Information about parcel shop is missing in Summary (Anonymous)
+* 26550 - Product asset images missing
+* 26827 - ProductFieldDisplayGroupsAccordion: Wrong font color when Table is used
+* 26826 - System.InvalidCastException in product list and product detail when you use Live integration
+* 19168 - Media gallery: Remove support for pdf and other doc files in Media and Media Gallery
+* 26852 - Media table has old icons and doesn't work for pdf.
+* 26801 - Cart Error when Empty cart is set to Take no action in cart settings
+* 26951 - Ecom content doesn't align
+* 26954 - Preferences dropdown: W3C errors
+* 27070 - Checkout: Error in console when changing delivery or billing method
+* 26955 - W3C errors
+* 27123 - W3C validation error: Element div not allowed as child of element span in this context.
+* 27135 - Meta tags not sorted correctly
+
+## Removed
+* ItemType_Swift-v2_VerticalNavigation.xml (replaced by )
+* Swift-v2_VerticalNavigation/Clean.cshtml
+* Swift-v2_VerticalNavigation/Lines.cshtml
+* Swift-v2_VerticalNavigation/Small.cshtml
+* CustomerExperienceCenter/CustomerQuotesList.cshtml
+* CustomerExperienceCenter/QuoteDetails.cshtml
+* UserView/List/ImpersonationUsersList.cshtml
+* System emails - Verify email
+* System emails - Activated 
+* System emails - Reset password
+
 # v2.1.0
 
 ## [v2.1.0] - 01-07-2025
