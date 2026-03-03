@@ -4,29 +4,38 @@
 
 @if (!Model.Nodes.Any()) return;
 
-<div class="offcanvas-header offcanvas-animate-in z-2 bg-body pe-4" style="grid-area: Header;">
-    <button type="button" class="btn icon-3 p-2" @@click="$dispatch('close-offcanvas');">
-        @ReadFile("/Files/Images/Icons/chevron-left.svg")
+@{
+    var firstNode = Model.Nodes.FirstOrDefault();
+    var groupId = Dynamicweb.Context.Current?.Request?.QueryString?.Get("GroupID") ?? string.Empty;
+    var parentNodeName = firstNode?.IsEcommerceGroup() ?? false ? Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(groupId, Dynamicweb.Ecommerce.Common.Context.LanguageID)?.Name : Dynamicweb.Content.Services.Pages.GetPage(firstNode?.PageId ?? 0)?.Parent?.GetDisplayName();
+}
+
+<div class="offcanvas-header offcanvas-animate-in z-2 bg-body" style="grid-area: Header;">
+    <button type="button" class="btn hstack flex-fill gap-3 p-2 ms-n3" @@click="$dispatch('close-offcanvas');">
+        <span class="icon-3 pe-none">@ReadFile("/Files/Images/Icons/chevron-left.svg")</span>
+        <span class="fw-bold">@Translate("All")</span>
     </button>
     <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
 </div>
-<div class="offcanvas-body offcanvas-animate-in z-2 bg-body px-4" style="grid-area: Body;">
+<div class="offcanvas-body offcanvas-animate-in z-2 bg-body" style="grid-area: Body;">
+    @if(parentNodeName is not null)
+    {
+        <h3 class="mb-4">@(parentNodeName)</h3>
+    }
 
     <ul class="navbar-nav" data-swift-menu-nav>
-        @foreach (var node in Model.Nodes.Where(n => n.ShowInMenu))
+        @foreach (var node in Model.Nodes)
         {
-            var isEcom = node.IsEcommerceGroup();
-
             <li class="hstack justify-content-between">
-                <a href="@(node.IsClickable ? node.Link : null)" class="flex-fill text-decoration-none @(node.Level.Equals(2) ? null : "text-body text-opacity-75")">
-                    <span class="dw-h4">@node.Name</span>
+                <a href="@(node.IsClickable ? node.Link : null)" class="flex-fill text-decoration-none">
+                    <h4 class="m-0">@node.Name</h4>
                 </a>
                 
-                @if(node.Nodes.Where(n => n.ShowInMenu).Any())
+                @if(node.Nodes.Any())
                 {
                     var areaId = Dynamicweb.Content.Services.Pages.GetPage(node.PageId)?.AreaId;
-                    var endpoint = $"/dwapi/frontend/navigations/{areaId}?ExpandMode=all&RootPageId={node.PageId}"; //&StartLevel={node.Level + 1}
-                    var template = $"Designs/Swift-v2/Paragraph/Swift-v2_OffCanvasMenu/Layouts/MenuEcom.cshtml"; //MenuImageGrid
+                    var endpoint = $"/dwapi/frontend/navigations/{areaId}?ExpandMode=subnodes&PageId={node.PageId}{(node.GroupId is not null ? $"&GroupId={node.GroupId}" : null)}";
+                    var template = "Designs/Swift-v2/Paragraph/Swift-v2_OffCanvasMenu/Layouts/MenuEcom.cshtml";
 
                     <button type="button" class="btn icon-3 py-2 ps-4 pe-0"
                         hx-trigger="click"
