@@ -1,0 +1,166 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.ParagraphViewModel>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Frontend.Navigation
+@using Dynamicweb.Content
+@using Dynamicweb.Ecommerce.Common
+@using Dynamicweb.Security.UserManagement
+@{
+	int myAccountPageId = GetPageIdByNavigationTag("CustomerCenter") != 0 ? GetPageIdByNavigationTag("CustomerCenter") : Pageview?.ID ?? 0;
+	if (Model.Item?.TryGetLink("MyAccountPage", out var linkPage) ?? false)
+	{
+		myAccountPageId = linkPage.PageId;
+	}
+}
+
+<div class="nav-wrapper" data-swift-menu="@Model.ID">
+	<div class="nav-item dropdown position-static">
+		
+		@if(Pageview?.User is not null)
+		{
+			<button type="button" class="nav-link text-decoration-underline-hover p-2 hstack" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="SignInDropdown_@Model.ID">
+				@RenderPartial("Users/UserView/Detail/UserAvatar.cshtml", ContentViewModelFactory.CreateUserViewModel(Pageview?.User))
+				<span class="icon-1 ms-2 pe-none">@ReadFile("/Files/Images/Icons/chevron-down.svg")</span>
+			</button>
+		}
+		else
+		{
+			<button type="button" class="hstack me-auto p-1 position-relative nav-link" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false" id="SignInDropdown_@Model.ID">
+        
+				<div class="btn btn-primary rounded-circle hstack justify-content-center p-0 me-2" style="height:2rem; aspect-ratio:1;" data-dw-button>
+					@if ((Model.Item?.TryGetString("Icon", out var icon) ?? false) && icon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+					{
+						<span class="icon-2 pe-none">@ReadFile(icon)</span>
+					}
+				</div>
+
+				@if (Model.Item?.TryGetString("Title", out string? title) ?? false)
+				{
+					<div class="text-nowrap">@(title)</div>
+				}
+
+				<span class="icon-1 pe-none ms-2">@ReadFile("/Files/Images/Icons/chevron-down.svg")</span>
+				
+			</button>
+		}
+
+		<ul class="dropdown-menu dropdown-menu-end dropdown-menu-shadow" aria-labelledby="SignInDropdown_@Model.ID" data-dw-colorscheme="light">
+			
+			<li>
+				@if (Pageview?.User is not null)
+				{
+					<h6 class="dropdown-header">
+						@if ( UserContext.Current.ImpersonatingUser is not null)
+						{
+							@Translate("Impersonated by") <span class="fw-bold">@(UserContext.Current.ImpersonatingUser?.Name)</span>
+						}
+						else 
+						{
+							@Translate("Signed in as")
+						}
+					</h6>
+					<span class="fw-bold d-block px-2">@(Pageview?.User?.Name)</span>
+				}
+				else 
+				{
+					if (Model.Item?.TryGetString("Title", out string? title) ?? false)
+					{
+						<div class="fw-bold px-2 text-nowrap">@(title)</div>
+					}
+				}
+			</li>
+			<li><hr class="dropdown-divider"></li>
+
+			@{
+				var nav = Navigation.GetNavigationViewModel(new(){
+					RootPageId = myAccountPageId,
+					ExpandMode = ExpandMode.All,
+				});
+				
+				if(nav?.Nodes.Any() ?? false) {
+					foreach (var node in nav.Nodes)
+					{
+						await RenderNavItem(node, (nav.Nodes.Count(n => (n.Nodes.Any())) > 0));
+					}
+					<li><hr class="dropdown-divider"></li>
+				}
+			}
+			
+			@if (UserContext.Current.ImpersonatingUser is not null)
+			{
+				<li>
+					<a href="Default.aspx?ID=@(Pageview?.ID ?? 0)&DwExtranetRemoveSecondaryUser=1" class="dropdown-item hstack">	
+						<span class="icon-2 me-2">@ReadFile("/Files/Images/Icons/arrows-repeat.svg")</span>
+						@Translate("Switch back to") @(UserContext.Current.ImpersonatingUser.Name)
+					</a>
+				</li>
+			}
+			@if (Pageview?.User is not null)
+			{
+				<li>
+					<a href="/Admin/Public/ExtranetLogoff.aspx?redirect=no" class="dropdown-item hstack" data-swift-link-type="sign-out">
+						<span class="icon-2 me-2">@ReadFile("/Files/Images/Icons/arrow-left-from-bracket.svg")</span>
+						@Translate("Sign out")
+					</a>
+				</li>
+			}
+			else 
+			{
+				var signInPageId = Services.Pages.GetFirstModulePageForArea(Pageview.AreaID, "UserAuthentication")?.ID ?? 0;
+				string signInUrl = signInPageId != 0 ? SearchEngineFriendlyURLs.GetFriendlyUrl(signInPageId) : string.Empty;
+
+				<li>
+					<a href="@signInUrl" class="dropdown-item hstack" data-swift-link-type="sign-in">
+						<span class="icon-2 me-2">@ReadFile("/Files/Images/Icons/arrow-right-to-bracket.svg")</span>
+						@Translate("Sign in")
+					</a>
+				</li>
+			}
+
+		</ul>
+
+	</div>
+</div>
+
+@{
+	async Task RenderNavItem(NavigationTreeNodeViewModel node, bool isGroupNode = false)
+	{
+		var pageIcon = string.Empty;
+		var nodePage = Dynamicweb.Content.Services.Pages.GetPage(node.PageId);
+		if (nodePage?.PropertyItem?.TryGetValue("Icon", out object? pageIconValue) ?? false)
+		{
+			pageIcon = Dynamicweb.Core.Converter.ToString(pageIconValue);
+		}
+
+		bool isGroupHeader = isGroupNode && node.Nodes.Any();
+
+		if (isGroupHeader)
+		{
+			<li>
+				<h6 class="dropdown-header">
+					<a class="text-muted @(node.IsClickable ? "text-decoration-underline" : "text-decoration-none") @(node.IsActive ? "active fw-bold" : null)" aria-current="@(node.IsActive)" @(node.IsClickable ? $"href=\"{node.Link}\"" : null)>
+						@(node.Name)
+					</a>
+				</h6>
+			</li>
+			
+			@foreach (var subnode in node.Nodes)
+			{
+				await RenderNavItem(subnode);
+			}
+
+			<li><hr class="dropdown-divider"></li>
+		}
+		else 
+		{
+			<li>
+				<a class="dropdown-item hstack flex-fill text-decoration-none @(node.IsActive ? "active" : null)" @(node.IsActive ? "aria-current='page'" : null) @(node.IsClickable ? $"href=\"{node.Link}\"" : null)>
+					@if (pageIcon.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+					{
+						<span class="icon-2 me-2">@ReadFile(pageIcon)</span>
+					}
+					<span class="@(!node.IsClickable ? "pe-none" : null)">@node.Name</span>
+				</a>
+			</li>
+		}
+	}
+}
