@@ -77,7 +77,7 @@ Both use Node 20.x, run `npm install` + `npm run build`, and archive the `Files/
 
 - Branch naming: `{initials}/{id}-kebab-title` (e.g. `np/27691-megamenu-fix`) — see Azure DevOps Integration section for full naming rules
 - CSHTML templates use `@inherits Dynamicweb.Rendering.ViewModelTemplate<T>` with DynamicWeb ViewModels
-- HTML encoding is critical in templates — always use `HttpUtility.HtmlEncode()` or `HtmlAttributeEncode()` when outputting user-provided data to prevent XSS
+- HTML encoding is critical in templates — use `HtmlEncoder.HtmlEncode()` for HTML/attribute context, `HtmlEncoder.JavaScriptStringEncode()` for JS string context, `WebUtility.UrlEncode()` for query parameters. See `.agents/context/viewmodel-cheatsheet.md` for the full encoding rules.
 - JavaScript modules follow a namespace pattern: each file exports an object with public methods, composed into the `swift` global
 - Version compatibility: Swift v2.2.0 requires DynamicWeb 10.23+
 ## Azure DevOps Integration
@@ -194,8 +194,10 @@ The `POST /_apis/wit/workitems/$User%20Story` endpoint rejects some field combin
 
 | File | Purpose |
 |------|---------|
-| `.agents/context/architecture.md` | Solution structure, layer responsibilities, project map |
-| `.agents/context/conventions.md` | Naming, DI, testing, null-safety, SQL patterns in depth |
+| `.agents/context/swift-architecture.md` | Template hierarchy, HTMX/Alpine patterns, JS module system, SCSS layers |
+| `.agents/context/viewmodel-cheatsheet.md` | ViewModel inheritance, Model properties, TryGet patterns, encoding rules — read before writing CSHTML |
+| `.agents/context/design-system.md` | CSS variable chain (--dw-*, --swift-*, --bs-*), color scheme scoping, spacer scale, container widths |
+| `.agents/context/paragraph-layouts.md` | Layout subfolder system, anatomy of a layout file, standard building blocks, checklist for new layouts |
 | `.agents/prompts/pr-description.md` | PR description template |
 | `.agents/prompts/commit-message.md` | Commit message guidelines |
 | `.agents/prompts/code-review.md` | Code review checklist |
