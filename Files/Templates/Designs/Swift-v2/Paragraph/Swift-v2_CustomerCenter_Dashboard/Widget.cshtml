@@ -1,0 +1,134 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<ParagraphViewModel>
+@using Dynamicweb.Frontend
+
+@{
+	string title = Model?.Item?.GetString("Title") ?? string.Empty;
+}
+
+<header class="hstack gap-3 mb-4">
+	<h1 class="h4 mb-0">@(string.IsNullOrEmpty(title) ? Translate("Dashboard") : title)</h1>
+</header>
+
+<div class="row g-3 g-lg-4" id="swift-dashboard-widgets">
+
+	<div class="col-md-4">
+		<div class="card h-100">
+			<div class="card-body">
+				<div class="hstack gap-3">
+					<div class="d-grid p-3 rounded-circle" style="background: rgba(var(--bs-primary-rgb), .1);">
+						<span class="icon-3 text-primary">@ReadFile("/Files/Images/Icons/bag-shopping.svg")</span>
+					</div>
+					<div class="vstack gap-1">
+						<span class="fs-2 fw-bold lh-1" data-dashboard-count="orders">
+							<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+						</span>
+						<span class="fs-7 text-body-secondary">@Translate("Open orders")</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="col-md-4">
+		<div class="card h-100">
+			<div class="card-body">
+				<div class="hstack gap-3">
+					<div class="d-grid p-3 rounded-circle" style="background: rgba(var(--bs-info-rgb), .1);">
+						<span class="icon-3 text-info">@ReadFile("/Files/Images/Icons/file-lines.svg")</span>
+					</div>
+					<div class="vstack gap-1">
+						<span class="fs-2 fw-bold lh-1" data-dashboard-count="quotes">
+							<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+						</span>
+						<span class="fs-7 text-body-secondary">@Translate("Pending quotes")</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div class="col-md-4">
+		<div class="card h-100">
+			<div class="card-body">
+				<div class="hstack gap-3">
+					<div class="d-grid p-3 rounded-circle" style="background: rgba(var(--bs-success-rgb), .1);">
+						<span class="icon-3 text-success">@ReadFile("/Files/Images/Icons/cart-shopping.svg")</span>
+					</div>
+					<div class="vstack gap-1">
+						<span class="fs-2 fw-bold lh-1" data-dashboard-count="carts">
+							<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+						</span>
+						<span class="fs-7 text-body-secondary">@Translate("Active carts")</span>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</div>
+
+<script>
+	(async function () {
+		var countEls = {
+			orders: document.querySelector('[data-dashboard-count="orders"]'),
+			quotes: document.querySelector('[data-dashboard-count="quotes"]'),
+			carts: document.querySelector('[data-dashboard-count="carts"]')
+		};
+
+		function setCount(key, value) {
+			if (countEls[key]) {
+				countEls[key].textContent = value;
+			}
+		}
+
+		function setError() {
+			Object.keys(countEls).forEach(function (key) {
+				setCount(key, '--');
+			});
+		}
+
+		try {
+			var tokenRes = await fetch('/dwapi/users/token', {
+				method: 'POST',
+				credentials: 'include'
+			});
+
+			if (!tokenRes.ok) {
+				setError();
+				return;
+			}
+
+			var tokenData = await tokenRes.json();
+			var headers = { 'Authorization': 'Bearer ' + tokenData.token };
+
+			var ordersRes = await fetch('/dwapi/ecommerce/orders?PageSize=999&FilledProperties=StateId,StateName,LedgerType', { headers: headers });
+			var cartsRes = await fetch('/dwapi/ecommerce/carts', { headers: headers });
+
+			if (ordersRes.ok) {
+				var ordersData = await ordersRes.json();
+				var orders = ordersData.Orders || [];
+				var openOrders = orders.filter(function (o) {
+					return (o.LedgerType || '').toLowerCase() !== 'quote';
+				});
+				var pendingQuotes = orders.filter(function (o) {
+					return (o.LedgerType || '').toLowerCase() === 'quote';
+				});
+				setCount('orders', openOrders.length);
+				setCount('quotes', pendingQuotes.length);
+			} else {
+				setCount('orders', '--');
+				setCount('quotes', '--');
+			}
+
+			if (cartsRes.ok) {
+				var cartsData = await cartsRes.json();
+				var cartCount = Array.isArray(cartsData) ? cartsData.length : 0;
+				setCount('carts', cartCount);
+			} else {
+				setCount('carts', '--');
+			}
+		} catch (e) {
+			setError();
+		}
+	})();
+</script>
