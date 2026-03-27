@@ -30,15 +30,13 @@ The Off-Canvas Menu supports product and content navigation into a single, unifi
 details translations
 * **Customer center** 27077 - Addresses missing empty state
 * **General** 27217 - Language selector translations
-* **General** - Revert ProductDetailRenderGrid changes
 * **General** 27539 - HTML encode favorite list names to prevent XSS
-* **General** - Fix dropdown menu mouseover behavior (using add/remove instead of toggle)
 * **General** 27093 - Modal translations
 * **General** 27643 - ItemTypes, CoreLib version update
 * **General** 27140 - MFA login error messages and multi-factor text fine-tuning
 * **General** 27736 - Fix Consent Mode v2 values and add OG image for product detail
 * **General** 27221 - Improve Accessibility on Facets web including expand on tab support
-* **General** 27141 -Improve Accessibility, Offcanvas: aria-label replacement
+* **General** 27141 - Improve Accessibility, Offcanvas: aria-label replacement
 
 # v2.2.0
 ## [v2.2.0] - 29-01-2026
