@@ -3,7 +3,7 @@
 # v2.3.0
 ## [v2.3.0] - 27-03-2026
 
-Swift v.2.3.0 introduces a new Language Selector, improvements to the Off-Canvas Menu, accessibility updates, translation fixes, and a range of bug fixes.
+Swift v.2.3.0 introduces a new Language Selector, a new and improved Off-Canvas Menu, accessibility updates, translation fixes, and a range of bug fixes.
 
 > [!NOTE]
 > **Requirements**
