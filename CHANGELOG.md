@@ -13,7 +13,7 @@ Swift v.2.3.0 introduces a new Language Selector, improvements to the Off-Canvas
 
 `* Swift v2.x does not run on DynamicWeb 9`
 
-### Language Selector (#26980)
+### Language Selector
 A new Language Selector paragraph is available for the header and footer, giving visitors an easy way to switch between languages directly from the site. When clicked, a modal opens showing all available languages with their flag, native language name, and currency — making it clear what they are selecting.
 
 ![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.3.0/Language-selector.png)
