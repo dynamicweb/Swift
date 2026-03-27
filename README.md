@@ -29,6 +29,7 @@ Swift uses npm to handle and compile styles and bundle scripts, assets and libra
 
 ## Requirements, Hosting environment and install
 
+* **Swift v2.3.0** requires **DynamicWeb version 10.23** and **Shipmondo dll v2.0.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
 * **Swift v2.2.0** requires **DynamicWeb version 10.23** and **Shipmondo dll v2.0.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
 * **Swift v2.1.0** requires **DynamicWeb version 10.17** and **Shipmondo dll v2.0.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
 * **Swift v2.0.0** requires **DynamicWeb version 10.15** and **Shipmondo dll v2.0.0** or newer, if Shipmondo is used, it requires **Shipmondo.dll version 10.0.5 (which needs to be installed) or newer**
