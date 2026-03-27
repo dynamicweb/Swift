@@ -16,7 +16,7 @@ Swift v.2.3.0 introduces a new Language Selector, improvements to the Off-Canvas
 ### Language Selector (#26980)
 A new Language Selector paragraph is available for the header and footer, giving visitors an easy way to switch between languages directly from the site. When clicked, a modal opens showing all available languages with their flag, native language name, and currency — making it clear what they are selecting.
 
-![alt text](https://doc.dynamicweb.com//Files/Images/Swift/Release-v2.3.0/Language-selector.png)
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.3.0/Language-selector.png)
 
 ### Off-Canvas Menu
 The Off-Canvas Menu supports product and content navigation into a single, unified menu. Editors can mix product category sections alongside content pages — giving visitors one place to navigate the entire site. 
@@ -26,19 +26,19 @@ The Off-Canvas Menu supports product and content navigation into a single, unifi
 
 ## Bug Fixes
 
-* **Customer center** #25876 - Translations cleanup, corrections, and quote 
+* **Customer center** 25876 - Translations cleanup, corrections, and quote
 details translations
-* **Customer center** #27077 - Addresses missing empty state 
-* **General** #27217 - Language selector translations
+* **Customer center** 27077 - Addresses missing empty state
+* **General** 27217 - Language selector translations
 * **General** - Revert ProductDetailRenderGrid changes
-* **General** #27539 - HTML encode favorite list names to prevent XSS
+* **General** 27539 - HTML encode favorite list names to prevent XSS
 * **General** - Fix dropdown menu mouseover behavior (using add/remove instead of toggle)
-* **General** #27093 - Modal translations
-* **General** #27643 - ItemTypes, CoreLib version update
-* **General** #27140 - MFA login error messages and multi-factor text fine-tuning
-* **General** #27736 - Fix Consent Mode v2 values and add OG image for product detail
-* **General** #27221 - Improve Accessibility on Facets web including expand on tab support
-* **General** #27141 -Improve Accessibility, Offcanvas: aria-label replacement
+* **General** 27093 - Modal translations
+* **General** 27643 - ItemTypes, CoreLib version update
+* **General** 27140 - MFA login error messages and multi-factor text fine-tuning
+* **General** 27736 - Fix Consent Mode v2 values and add OG image for product detail
+* **General** 27221 - Improve Accessibility on Facets web including expand on tab support
+* **General** 27141 -Improve Accessibility, Offcanvas: aria-label replacement
 
 # v2.2.0
 ## [v2.2.0] - 29-01-2026
