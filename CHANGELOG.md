@@ -8,7 +8,7 @@ Swift v.2.3.0 introduces a new Language Selector, improvements to the Off-Canvas
 > [!NOTE]
 > **Requirements**
 >
-> * **Swift v2.3.0 requires DynamicWeb v10.23 `*` or newer, if Shipmondo is used, it requires Shipmondo.dll version 10.0.5 (installed) or newer**
+> * **Swift v2.3.0 requires DynamicWeb v10.24.6 `*` or newer, if Shipmondo is used, it requires Shipmondo.dll version 10.0.5 (installed) or newer**
 >
 
 `* Swift v2.x does not run on DynamicWeb 9`
@@ -16,10 +16,13 @@ Swift v.2.3.0 introduces a new Language Selector, improvements to the Off-Canvas
 ### Language Selector (#26980)
 A new Language Selector paragraph is available for the header and footer, giving visitors an easy way to switch between languages directly from the site. When clicked, a modal opens showing all available languages with their flag, native language name, and currency — making it clear what they are selecting.
 
+![alt text](https://doc.dynamicweb.com//Files/Images/Swift/Release-v2.3.0/Language-selector.png)
+
 ### Off-Canvas Menu
 The Off-Canvas Menu supports product and content navigation into a single, unified menu. Editors can mix product category sections alongside content pages — giving visitors one place to navigate the entire site. 
 **Menu Sections** – Build the menu from multiple independent sections, each with its own source page and with different layouts. 
 
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.3.0/Off-canvas-with-sections.png)
 
 ## Bug Fixes
 
