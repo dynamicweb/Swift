@@ -1,0 +1,195 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<ParagraphViewModel>
+@using System.Text.Json
+@using Dynamicweb.Frontend
+@using Dynamicweb.Rendering
+
+@{
+	string widgetTitle = Model?.Item?.GetString("Title");
+	if (string.IsNullOrEmpty(widgetTitle))
+	{
+		widgetTitle = Translate("Recent orders");
+	}
+
+	string? ordersBaseUrl = null;
+	if (Model?.Item?.TryGetLink("OrdersPage", out LinkViewModel ordersPage) ?? false)
+	{
+		ordersBaseUrl = ordersPage.Url;
+	}
+
+	string locale = Pageview?.Area?.CultureInfo?.Name ?? System.Globalization.CultureInfo.CurrentUICulture.Name;
+	string jsItem = Translate("item");
+	string jsItems = Translate("items");
+
+	var jsonOptions = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+	string alpineConfigJson = JsonSerializer.Serialize(new { ordersBaseUrl, locale, lblItem = jsItem, lblItems = jsItems }, jsonOptions);
+}
+
+<script>
+	if (!window.swiftRecentOrdersFromConfig) {
+		window.swiftRecentOrdersFromConfig = function (cfg) {
+			return {
+				ordersBaseUrl: cfg.ordersBaseUrl || '',
+				locale: cfg.locale || undefined,
+				lblItem: cfg.lblItem,
+				lblItems: cfg.lblItems,
+				get hasOrdersPage() {
+					return !!this.ordersBaseUrl;
+				},
+				view: 'loading',
+				rows: [],
+				async init() {
+					await this.load();
+				},
+				async load() {
+					this.view = 'loading';
+					try {
+						var tokenRes = await fetch('/dwapi/users/token', {
+							method: 'POST',
+							credentials: 'include'
+						});
+						if (!tokenRes.ok) {
+							this.view = 'error';
+							return;
+						}
+						var tokenData = await tokenRes.json();
+						var headers = { Authorization: 'Bearer ' + tokenData.token };
+						var qs = new URLSearchParams({
+							Type: 'order',
+							PageSize: '5',
+							Page: '1',
+							SortBy: 'CreatedAt',
+							SortOrder: 'Desc'
+						});
+						var ordersRes = await fetch('/dwapi/ecommerce/orders/search?' + qs.toString(), { headers: headers });
+						if (!ordersRes.ok) {
+							this.view = 'error';
+							return;
+						}
+						var data = await ordersRes.json();
+						var orders = data.orders || data.Orders;
+						if (!Array.isArray(orders) || orders.length === 0) {
+							this.view = 'empty';
+							return;
+						}
+						orders.sort(function (a, b) {
+							var da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+							var db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+							return db - da;
+						});
+						this.rows = orders.map(function (o) {
+							return this.prepareRow(o);
+						}, this);
+						this.view = 'list';
+					} catch (e) {
+						this.view = 'error';
+					}
+				},
+				orderDetailHref(orderId) {
+					if (!this.ordersBaseUrl || !orderId) return '#';
+					try {
+						var u = new URL(this.ordersBaseUrl, window.location.href);
+						u.searchParams.set('OrderId', orderId);
+						return u.pathname + u.search + u.hash;
+					} catch (e) {
+						var join = this.ordersBaseUrl.indexOf('?') >= 0 ? '&' : '?';
+						return this.ordersBaseUrl + join + 'OrderId=' + encodeURIComponent(orderId);
+					}
+				},
+				countProductLines(order) {
+					var lines = order.orderLines;
+					if (!Array.isArray(lines)) return null;
+					var n = 0;
+					for (var i = 0; i < lines.length; i++) {
+						var l = lines[i];
+						var t = l.orderLineType;
+						if (t === 'ProductDiscount' || t === 'Discount' || t === 'Tax' || t === 3 || t === 1 || t === 4) {
+							continue;
+						}
+						if (l.productId || l.productNumber) n++;
+					}
+					return n;
+				},
+				formatDate(iso) {
+					if (!iso) return '';
+					var d = new Date(iso);
+					if (isNaN(d.getTime())) return '';
+					return d.toLocaleDateString(this.locale, { year: 'numeric', month: 'short', day: 'numeric' });
+				},
+				metaLine(o) {
+					var parts = [];
+					var dateStr = this.formatDate(o.createdAt);
+					if (dateStr) parts.push(dateStr);
+					var lineCount = this.countProductLines(o);
+					if (lineCount !== null && lineCount >= 0) {
+						var word = lineCount === 1 ? this.lblItem : this.lblItems;
+						parts.push(String(lineCount) + ' ' + word);
+					}
+					return parts.join(' · ');
+				},
+				prepareRow(o) {
+					var id = o.id || '';
+					return {
+						id: id,
+						href: this.orderDetailHref(id),
+						meta: this.metaLine(o),
+						total: o.price && o.price.priceFormatted ? o.price.priceFormatted : '',
+						state: o.stateName || ''
+					};
+				}
+			};
+		};
+	}
+</script>
+
+@* JSON must not sit inside x-data="…" (double quotes break the attribute). Use a JSON script block; @alpineConfigJson is fine without Html.Raw — entities decode when read via textContent. *@
+<script type="application/json" id="swift-recent-orders-config_@(Model.ID)">@alpineConfigJson</script>
+
+<div class="card overflow-hidden" id="swift-recent-orders_@(Model.ID)" data-swift-recent-orders
+	x-data="swiftRecentOrdersFromConfig(JSON.parse(document.getElementById('swift-recent-orders-config_@(Model.ID)').textContent))"
+	x-cloak>
+	<div class="card-body">
+		<div class="hstack gap-3 mb-3">
+			<div class="hstack gap-3 flex-grow-1">
+				<div class="d-grid p-2 rounded-2" style="background-color: color-mix(in srgb, var(--bs-blue) 10%, transparent);">
+					<span class="icon fs-5" style="color: var(--bs-blue);">@ReadFile("/Files/Images/Icons/cube.svg")</span>
+				</div>
+				<h2 class="h6 mb-0 fw-semibold">@widgetTitle</h2>
+			</div>
+			@if (!string.IsNullOrEmpty(ordersBaseUrl))
+			{
+				<a class="fs-8 fw-semibold text-decoration-none text-body-secondary text-decoration-underline-hover" href="@ordersBaseUrl">@Translate("View all") →</a>
+			}
+		</div>
+		<div>
+			<div class="d-flex align-items-center justify-content-center py-5 text-body-secondary" x-show.important="view === 'loading'">
+				<span class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">@Translate("Loading")</span></span>
+			</div>
+			<div x-show="view === 'error'" x-cloak>
+				<p class="fs-8 text-danger mb-0">@Translate("Something went wrong")</p>
+			</div>
+			<div x-show="view === 'empty'" x-cloak>
+				<p class="fs-8 text-body-secondary mb-0">@Translate("No orders found")</p>
+			</div>
+			<div x-show="view === 'list'" x-cloak>
+				<div class="list-group list-group-flush">
+					<template x-for="(o, index) in rows" :key="o.id">
+						<a class="list-group-item list-group-item-action px-0 py-3 border-start-0 border-end-0 rounded-0 d-flex flex-wrap align-items-center gap-2 gap-sm-3 text-decoration-none text-body"
+							:href="hasOrdersPage ? o.href : '#'"
+							:tabindex="hasOrdersPage ? 0 : -1"
+							:aria-disabled="!hasOrdersPage"
+							@@click="if (!hasOrdersPage) { $event.preventDefault(); }">
+							<div class="flex-grow-1 min-w-0">
+								<div class="fw-semibold text-body" x-text="'#' + o.id"></div>
+								<div class="fs-8 text-body-secondary text-truncate" x-show="o.meta" x-text="o.meta"></div>
+							</div>
+							<div class="ms-sm-auto">
+								<span class="badge lh-sm bg-secondary" x-text="o.state"></span>
+							</div>
+							<div class="text-price fs-7 fw-semibold text-nowrap ms-auto" x-text="o.total"></div>
+						</a>
+					</template>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
