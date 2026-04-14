@@ -1,0 +1,79 @@
+@inherits ViewModelTemplate<UserCreateViewModel>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Rendering
+@using Dynamicweb.Users.Frontend
+@using Dynamicweb.Users.Frontend.UserCreate
+@using Dynamicweb.Security.UserManagement
+
+@{
+    var baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview?.Page?.ID ?? 0}");
+    var baseUrlRaw = Dynamicweb.Context.Current?.Request.RawUrl ?? string.Empty;
+    var userGroupId = Dynamicweb.Context.Current?.Request.QueryString.Get("UserGroupId") ?? string.Empty;
+    var userGroupName = UserManagementServices.UserGroups.GetGroupById(Convert.ToInt32(userGroupId))?.Name ?? string.Empty;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-3" style="--bs-breadcrumb-divider: '>'; --bs-breadcrumb-item-padding-x: 1rem; --bs-breadcrumb-font-size: .875em;">
+        <li class="breadcrumb-item"><a href="@(baseUrl)">@(Pageview?.Page?.GetDisplayName())</a></li>
+        <li class="breadcrumb-item"><a href="@(baseUrl)?UserGroupId=@(userGroupId)">@(userGroupName)</a></li>
+        <li class="breadcrumb-item active" aria-current="page">@(Translate("Invite user"))</li>
+    </ol>
+</nav>
+
+<header class="mb-4">
+    <h1 class="h4 mb-0">@(Translate("Invite user"))</h1>
+</header>
+
+<form method="post" action="@(baseUrlRaw)">
+
+    <input type="hidden" name="UserName" id="UserName" value="@(Model?.Email)" />
+
+    <div class="vstack">
+        <p class="text-muted">@Translate("Invite a new user by filling in the details below")</p>
+
+        <div class="form-floating">
+            <input type="text" class="form-control" name="Name" id="Name" placeholder="@Translate("Name")" value="@(Model?.Name)" autocomplete="off" autofocus />
+            <label for="Name" class="form-label">@Translate("Name")</label>
+        </div>
+
+        <div class="form-floating mt-3">
+            <input type="email" class="form-control" name="Email" id="Email" placeholder="@Translate("Email")" value="@(Model?.Email)" autocomplete="off" />
+            <label for="Email" class="form-label">@Translate("Email")</label>
+        </div>
+
+        <div class="hstack gap-2 mt-3 justify-content-end">
+            <a href="@(baseUrl)?UserGroupId=@(userGroupId)" type="button" class="btn btn-outline-secondary btn-sm" data-dw-button>@Translate("Cancel")</a>
+            <button type="submit" class="btn btn-primary btn-sm" data-dw-button>@(Translate("Invite user"))</button>
+        </div>
+    </div>
+</form>
+
+@{
+    var result = Model?.Result;
+    var toast = result != UserCreateResultType.None ? new {
+        Text = result == UserCreateResultType.EmailAlreadyExists ? Translate("A user with this email address already exists") : 
+        result == UserCreateResultType.InvalidEmail ? Translate("The email address is invalid") : 
+        result == UserCreateResultType.UserNameAlreadyExists ? Translate("A user with these credentials already exists") :
+        null
+    } : null;
+    
+    @if (toast is not null) 
+    { 
+        <div aria-live="polite" aria-atomic="true" class="position-fixed bottom-0 end-0 p-4 z-3">
+            <div class="toast toast-animate-in bg-body" role="status" aria-live="polite" aria-atomic="true" x-data x-init="const toast = new bootstrap.Toast($el, {autohide: true, delay: 5000 }); toast.show();" data-dw-colorscheme="light">
+                <div class="toast-header border-0">
+                    <strong class="me-auto hstack gap-2">
+                        <div class="icon-2 rounded-circle bg-danger-subtle text-danger-emphasis">
+                            @ReadFile("/Files/Images/Icons/circle-exclamation.svg")
+                        </div>
+                        <span class="fw-bold">@Translate("Error")</span>
+                    </strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close" style="background-size: .5rem;"></button>
+                </div>
+                <div class="toast-body pt-2 text-muted lh-sm fs-7">
+                    @toast.Text
+                </div>
+            </div>
+        </div>
+    }
+}

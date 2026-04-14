@@ -1,0 +1,58 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.Navigation.NavigationTreeViewModel>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Frontend.Navigation
+
+@if (!Model.Nodes.Any()) return;
+
+@{
+    var firstNode = Model.Nodes.FirstOrDefault();
+    var groupId = Dynamicweb.Context.Current?.Request?.QueryString?.Get("GroupID") ?? string.Empty;
+    var parentNodeName = firstNode?.IsEcommerceGroup() ?? false ? Dynamicweb.Ecommerce.Services.ProductGroups.GetGroup(groupId, Dynamicweb.Ecommerce.Common.Context.LanguageID)?.Name : Dynamicweb.Content.Services.Pages.GetPage(firstNode?.PageId ?? 0)?.Parent?.GetDisplayName();
+}
+
+<div class="offcanvas-header offcanvas-animate-in z-2 bg-body" style="grid-area: Header;">
+    <button type="button" class="btn hstack flex-fill gap-3 p-2 ms-n3" @@click="$dispatch('close-offcanvas');">
+        <span class="icon fs-5 pe-none">@ReadFile("/Files/Images/Icons/chevron-left.svg")</span>
+        <span class="fw-bold">@Translate("All")</span>
+    </button>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+</div>
+<div class="offcanvas-body offcanvas-animate-in z-2 bg-body" style="grid-area: Body;">
+    @if(parentNodeName is not null)
+    {
+        <h3 class="mb-4">@(parentNodeName)</h3>
+    }
+
+    <ul class="navbar-nav" data-swift-menu-nav>
+        @foreach (var node in Model.Nodes)
+        {
+            <li class="hstack justify-content-between">
+                <a href="@(node.IsClickable ? node.Link : null)" class="flex-fill text-decoration-none">
+                    <h4 class="m-0">@node.Name</h4>
+                </a>
+                
+                @if(node.Nodes.Any())
+                {
+                    var areaId = Dynamicweb.Content.Services.Pages.GetPage(node.PageId)?.AreaId;
+                    var endpoint = $"/dwapi/frontend/navigations/{areaId}?ExpandMode=subnodes&PageId={node.PageId}{(node.GroupId is not null ? $"&GroupId={node.GroupId}" : null)}";
+                    var template = "Designs/Swift-v2/Paragraph/Swift-v2_OffCanvasMenu/Layouts/MenuEcom.cshtml";
+
+                    <button type="button" class="btn icon fs-5 py-2 ps-4 pe-0"
+                        hx-trigger="click"
+                        hx-get="@(endpoint)" 
+                        hx-headers='
+                        {
+                            "Accept": "text/html",
+                            "x-dw-template": "@(template)"
+                        }'
+                        hx-target="closest [data-swift-offcanvas-menu]"
+                        hx-swap="beforeend"
+                    >
+                        @ReadFile("/Files/Images/Icons/chevron-right.svg")
+                    </button>
+                }
+            </li>
+        }
+    </ul>
+
+</div>

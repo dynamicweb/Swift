@@ -109,7 +109,7 @@ window.addEventListener("DOMContentLoaded", () => {
       };
       
       dropdown.addEventListener("mouseenter", () => {
-        dropdownMenu.classList.toggle("mouseover");
+        dropdownMenu.classList.add("mouseover");
         try {
           bsMenu.show();
         } finally {
@@ -118,7 +118,7 @@ window.addEventListener("DOMContentLoaded", () => {
       });
 
       dropdown.addEventListener("mouseleave", () => {
-        dropdownMenu.classList.toggle("mouseover");
+        dropdownMenu.classList.remove("mouseover");
         bsMenu.hide();
       });
 
