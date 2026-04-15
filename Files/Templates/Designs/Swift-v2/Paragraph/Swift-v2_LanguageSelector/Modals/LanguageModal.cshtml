@@ -1,0 +1,50 @@
+@inherits ViewModelTemplate<PageViewModel>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce
+@using Microsoft.AspNetCore.WebUtilities
+
+@{
+	var uri = Dynamicweb.Context.Current?.Request?.Url;
+	var queryParams = QueryHelpers.ParseQuery(uri?.Query);
+	queryParams.Remove("LayoutTemplate"); // Remove LayoutTemplate from query params
+}
+
+<div class="modal fade" id="languageModal" tabindex="-1" aria-labelledby="LanguageModal" 
+	hx-on::load="bootstrap.Modal.getOrCreateInstance(this).show();"
+	x-on:hidden-bs-modal.dot="
+		bootstrap.Modal.getOrCreateInstance($event.target).dispose();
+		$event.target.remove();
+  	"
+>
+	<div class="modal-dialog pt-8">
+		<form method="get" class="modal-content" data-dw-colorscheme="light">
+			<div class="modal-header">
+				<h5 class="modal-title">@Translate("Language preferences")</h5>
+				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Cancel")"></button>
+			</div>
+	  		<div class="modal-body">
+				<p class="text-muted">@Translate("Select a language")</p>
+				<div class="list-group d-grid gap-2" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); grid-auto-rows: 1fr;">
+					@foreach (var language in Model.Languages)
+					{
+						var languagePage = Dynamicweb.Content.Services.Pages.GetPage(language?.Page?.ID ?? 0) ?? null;
+						var currency = Dynamicweb.Ecommerce.Services.Currencies.GetCurrency(languagePage?.Area?.EcomCurrencyId ?? string.Empty) ?? null;
+						queryParams["ID"] = $"{language?.Page?.ID}";
+						var newQuery = string.Join("&", queryParams.Select(kvp => $"{kvp.Key}={kvp.Value}"));
+						var updateUrl = $"{uri?.Scheme}://{uri?.Host}{(uri?.IsDefaultPort == true ? "" : $":{uri?.Port}")}{uri?.AbsolutePath}?{newQuery}";
+						updateUrl = SearchEngineFriendlyURLs.GetFriendlyUrl(updateUrl);
+						
+						<a class="list-group-item list-group-item-action text-center rounded-3 border @(languagePage?.AreaId == Pageview?.Area?.ID ? "border-primary" : null) d-grid text-decoration-none" href="@(updateUrl)">
+							<div class="icon-5">
+								@ReadFile($"/Files/Images/Icons/Flags/{languagePage?.Area?.CultureInfo.Name}.svg")
+							</div>
+							<span class="fs-7">@(languagePage?.Area?.CultureInfo.NativeName)</span> 
+							<span class="fs-8 text-muted">@(currency?.Symbol) @(languagePage?.Area?.EcomCurrencyId)</span>
+						</a>
+					}
+				</div>
+			</div>
+		</form>
+	</div>
+</div>

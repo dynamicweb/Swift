@@ -1,4 +1,4 @@
-@inherits ViewModelTemplate<UserListViewModel>
+@inherits ViewModelTemplate<UserGroupUserListViewModel>
 @using Dynamicweb.Frontend
 @using Dynamicweb.Rendering
 @using Dynamicweb.Users.Frontend
@@ -22,8 +22,17 @@
 	</ol>
 </nav>
 
-<header class="hstack mb-4">
+<header class="hstack gap-3 mb-4">
     <h1 class="h4 mb-0">@(Model?.GetCurrentGroupName() ?? Pageview?.Page?.GetDisplayName() ?? null)</h1>
+
+    <div class="ms-auto">
+        <a href="@(baseUrlRaw)&UserGroupCmd=inviteuser" class="btn btn-sm btn-primary hstack py-2 px-3" data-dw-button>
+            <span class="icon-2 me-2">
+                @ReadFile("/Files/Images/Icons/plus.svg")
+            </span>
+            @Translate("Invite user")
+        </a>
+    </div>
 </header>
 
 <form hx-get="@(baseUrlRaw)"
@@ -75,11 +84,11 @@
         </div>
     </nav>
 
-    <div data-swift-user-list>
+    <div data-swift-user-list>      
         <input type="hidden" name="SortOrder" value="@(currentSortOrder)">
         
         <div class="card overflow-hidden">            
-            <div class="table-responsive" style="margin-bottom:-1px;">
+            <div class="table-responsive">
                 <table class="table table-md table-hover mb-0 align-middle fs-7" style="--bs-table-color: var(--bs-body-color);">
                     <thead style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .0275); --bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
                         <tr>
@@ -147,9 +156,11 @@
                                                 </div>
                                             </div>
                                         }
-                                        <div class="vstack">
+                                        <div class="vstack justify-content-center">
                                             <div class="text-wrap-nowrap">@(user.Name)</div>
-                                            <span class="fs-8 text-muted">@(user.Company)</span>
+                                            @if (!string.IsNullOrEmpty(user.Company)) {
+                                                <div class="fs-8 text-muted">@(user.Company)</div>
+                                            }
                                         </div>
                                     </div>
                                 </td>
@@ -181,35 +192,89 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="hstack gap-3">
-                                        <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button="outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
-                                            <span class="icon-2">
-                                                @ReadFile("/Files/Images/Icons/ellipsis.svg")
-                                            </span>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-shadow">
-                                            <li>
-                                                @if (Pageview?.User?.ID != user.ID)
-                                                {
-                                                    <a href="@(baseUrl)?NowImpersonating=true&DWExtranetSecondaryUserSelector=@user.ID"
-                                                        class="dropdown-item hstack gap-2">
+                                    @if ((Pageview?.User?.ID != user.ID) && (UserContext.Current.ImpersonatingUser?.ID != user.ID)) // You cannot impersonate yourself
+                                    {
+                                        <div class="hstack gap-3">
+                                            <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button="outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
+                                                <span class="icon-2">
+                                                    @ReadFile("/Files/Images/Icons/ellipsis.svg")
+                                                </span>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-shadow">
+                                                <li>
+                                                    @if (Pageview?.User?.ID != user.ID)
+                                                    {
+                                                        <a href="@(baseUrl)?NowImpersonating=true&DWExtranetSecondaryUserSelector=@(user.ID)&Redirect=@(Model.RedirectAfterImpersonation)"
+                                                            class="dropdown-item hstack gap-2">
+                                                            <span class="icon-2">
+                                                                @ReadFile("/Files/Images/Icons/user-group.svg") 
+                                                            </span>
+                                                            @Translate("Impersonate")
+                                                        </a>
+                                                    }
+                                                    else
+                                                    {
+                                                        <a href="@(baseUrl)?DwExtranetRemoveSecondaryUser=1"
+                                                            class="dropdown-item hstack gap-2">
+                                                            <span class="icon-2">@ReadFile("/Files/Images/Icons/arrows-repeat.svg")</span>
+                                                            @Translate("Switch back to") @(UserContext.Current.ImpersonatingUser?.Name)
+                                                        </a>
+                                                    }
+                                                </li>
+                                                <li>
+                                                    <button class="dropdown-item hstack gap-2"
+                                                        hx-disinherit="*"
+                                                        hx-post="@(baseUrlRaw)&UserGroupCmd=ChangeActiveStatus&Secret=@(user.UniqueId)"    
+                                                        hx-target="[data-swift-user-list]"
+                                                        hx-select="[data-swift-user-list]"
+                                                        hx-swap="outerHTML"
+                                                        hx-push-url="false"
+                                                    >
                                                         <span class="icon-2">
-                                                            @ReadFile("/Files/Images/Icons/user-group.svg") 
+                                                            @ReadFile("/Files/Images/Icons/user-group.svg")
                                                         </span>
-                                                        @Translate("Impersonate")
-                                                    </a>
-                                                }
-                                                else
-                                                {
-                                                    <a href="@(baseUrl)?DwExtranetRemoveSecondaryUser=1"
-                                                        class="dropdown-item hstack gap-2">
-                                                        <span class="icon-2">@ReadFile("/Files/Images/Icons/arrows-repeat.svg")</span>
-                                                        @Translate("Switch back to") @(UserContext.Current.ImpersonatingUser?.Name)
-                                                    </a>
-                                                }
-                                            </li>
-                                        </ul>
-                                    </div>
+                                                        @Translate(userState == UserStatusType.Active ? "Deactivate user" : "Activate user")
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <button class="dropdown-item hstack gap-2"
+                                                        hx-disinherit="*"
+                                                        hx-post="@(baseUrlRaw)&UserGroupCmd=ResendInvitation&Secret=@(user.UniqueId)"
+                                                        hx-target="[data-swift-user-list]"
+                                                        hx-select="[data-swift-user-list]"
+                                                        hx-swap="outerHTML"
+                                                        hx-push-url="false"
+                                                        disabled="@(userState != UserStatusType.Pending)"
+                                                    >
+                                                        <span class="icon-2">
+                                                            @ReadFile("/Files/Images/Icons/envelope.svg")
+                                                        </span>
+                                                        @Translate("Resend invitation")
+                                                    </button>
+                                                </li>
+                                                <li>
+                                                    <button class="dropdown-item text-danger hstack gap-2"
+                                                        hx-disinherit="*"
+                                                        hx-post="@(baseUrlRaw)&UserGroupCmd=DeleteUser&Secret=@(user.UniqueId)"
+                                                        hx-target="[data-swift-user-list]"
+                                                        hx-select="[data-swift-user-list]"
+                                                        hx-swap="outerHTML"
+                                                        hx-push-url="false"
+                                                        hx-confirm="@Translate("Are you sure you want to delete this user?")"
+                                                    >
+                                                        <span class="icon-2">
+                                                            @ReadFile("/Files/Images/Icons/trash-can.svg")
+                                                        </span>
+                                                        @Translate("Delete")
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span> // You cannot impersonate yourself
+                                    }
                                 </td>
                             </tr>
                         }
@@ -258,6 +323,37 @@
             </div>
         }
         
+
+        @{
+            var result = Model?.ResultType;
+            var toast = result != UserGroupResultType.None ? new {
+                Text = result == UserGroupResultType.UserActiveStateChanged ? Translate("The user status has been changed") : 
+                result == UserGroupResultType.InvitationResent ? Translate("An invitation has been resent") : 
+                result == UserGroupResultType.UserDeleted ? Translate("The user has been deleted") : 
+                result == UserGroupResultType.UserInviteSuccess ? Translate("The user has been invited") :
+                null,
+            } : null;
+            
+            @if (toast is not null) 
+            { 
+                <div aria-live="polite" aria-atomic="true" class="position-fixed bottom-0 end-0 p-4 z-3">
+                    <div class="toast toast-animate-in bg-body" role="status" aria-live="polite" aria-atomic="true" x-data x-init="const toast = new bootstrap.Toast($el, {autohide: true, delay: 5000 }); toast.show();" data-dw-colorscheme="light">
+                        <div class="toast-header border-0">
+                            <strong class="me-auto hstack gap-2">
+                                <div class="icon-2 rounded-circle bg-success-subtle text-success-emphasis">
+                                    @ReadFile("/Files/Images/Icons/circle-check.svg")
+                                </div>
+                                <span class="fw-bold">@Translate("Success")</span>
+                            </strong>
+                            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close" style="background-size: .5rem;"></button>
+                        </div>
+                        <div class="toast-body pt-2 text-muted lh-sm fs-7">
+                            @toast.Text
+                        </div>
+                    </div>
+                </div>
+            }
+        }
     </div>
 
 </form>
