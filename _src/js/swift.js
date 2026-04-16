@@ -18,6 +18,7 @@ import { AssetLoader } from "./_assetLoader";
 import { BackInStockNotification } from "./_backInStockNotification";
 import { ExpressBuy } from "./_expressBuy";
 import { Menu } from "./_menu";
+import { Authentication } from "./_authentication";
 
 // Swift modules
 const swift = (function () {
@@ -37,6 +38,7 @@ const swift = (function () {
     BackInStockNotification: BackInStockNotification,
     ExpressBuy: ExpressBuy,
     Menu: Menu,
+    Authentication: Authentication,
   };
 })();
 
@@ -86,6 +88,16 @@ window.reinitializeTooltips = reinitializeTooltips;
 window.addEventListener("htmx:afterRequest", reinitializeTooltips);
 
 window.addEventListener("DOMContentLoaded", () => {
+  
+  // Ensure JWT token is requested on page load if any swift-auth element is present and HTMX is loaded
+  if (window.htmx) {
+    const swiftAuthElements = document.querySelectorAll('[hx-ext~="swift-auth"]');
+    if (swiftAuthElements.length > 0) {
+      // Intentionally request a token up front so that protected endpoints don't trigger on-demand delays later
+      swift.Authentication.EnsureToken();
+    }
+  }
+
   // Initialize tooltips on page load
   initializeTooltips();
 
@@ -130,3 +142,19 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+
+
+// swift-auth HTMX extension: JWT for dwapi.
+// This ensures that any HTMX request using the 'swift-auth' extension:
+// - Adds the Authorization header ("htmx:configRequest" event)
+if (window.htmx && typeof window.htmx.defineExtension === 'function') {
+  htmx.defineExtension('swift-auth', {
+    onEvent: function (name, event) {
+      
+      // Attach the Authorization header before sending the request if JWT present
+      if (name === 'htmx:configRequest' && swift.Authentication.token) {
+        event.detail.headers.Authorization = 'Bearer ' + swift.Authentication.token;
+      }
+    }
+  });
+}
