@@ -4,9 +4,11 @@
 @using Dynamicweb.Ecommerce.Frontend
 @using Dynamicweb.Ecommerce.Orders
 @using Dynamicweb.Ecommerce.ProductCatalog
+@using System.Globalization
 
 @{
 	string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview?.Page?.ID}");
+	string cartDetailsUrl = $"{baseUrl}?OrderId={Model.Id}";
 	var showPricesWithVat = Dynamicweb.Ecommerce.Common.Context.DisplayPricesWithVat;
 	var orderlines = Model.OrderLines?.Where(x => x.OrderLineType != OrderLineType.ProductDiscount && (!string.IsNullOrEmpty(x.ProductId) || !string.IsNullOrEmpty(x.ProductNumber)));
 	var orderDiscounts = Model.OrderLines?.Where(x => x.OrderLineType is OrderLineType.Discount);
@@ -48,7 +50,7 @@
 				<div class="hstack gap-2">
 					@if (Model.CompletedDate.HasValue)
 					{
-						<small class="d-block text-body text-opacity-75 lh-1">@Translate("Placed on") @(Model.CompletedDate.Value.ToString(Pageview.Area.CultureInfo))</small>			
+						<small class="d-block text-body text-opacity-75 lh-1">@Translate("Placed on") @(Model.CompletedDate.Value.ToString(Pageview?.Area?.CultureInfo ?? CultureInfo.InvariantCulture))</small>			
 					}
 					@if (Model.TryGetOrderState(out var state))
 					{
@@ -113,6 +115,7 @@
 					<th class="text-end">@Translate("Qty")</th>
 					<th class="text-end">@Translate("Price")</th>
 					<th class="text-end">@Translate("Total")</th>
+					<th>&nbsp;</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -137,7 +140,22 @@
 								</div>
 							</td>
 							<td class="text-center">@orderline.UnitName</td>
-							<td class="text-end">@orderline.Quantity</td>
+							<td class="d-flex justify-content-end">
+								<form method="post"
+									action="@(cartDetailsUrl)"
+									data-qty-submit="htmx"
+									hx-post="@(cartDetailsUrl)"
+									hx-target="[data-swift-cart-details]"
+									hx-select="[data-swift-cart-details]"
+									hx-swap="outerHTML"
+								>
+									<input type="hidden" name="CartID" value="@Model.Id">
+									<input type="hidden" name="CartCmd" value="updateorderlines">
+									<input type="hidden" name="key" value="@orderline.Id">
+
+									@RenderPartial("Components/QuantitySelectorOrderline.cshtml", orderline)
+								</form>
+							</td>
 							<td class="text-end">
 								<div class="vstack align-self-auto text-end">
 									@if(orderline.OrderLineType == OrderLineType.Discount)
@@ -168,6 +186,26 @@
 									}
 								</div>
 							</td>
+							<td class="text-end">
+								<form method="post"
+									action="@(cartDetailsUrl)"
+									class="d-inline-flex m-0"
+									hx-post="@(cartDetailsUrl)"
+									hx-target="[data-swift-cart-details]"
+									hx-select="[data-swift-cart-details]"
+									hx-swap="outerHTML"
+								>
+									<input type="hidden" name="CartID" value="@Model.Id">
+									<input type="hidden" name="CartCmd" value="DelOrderLine">
+									<input type="hidden" name="key" value="@orderline.Id">
+
+									<button type="submit" class="btn btn-link btn-sm text-danger p-1 lh-1" title="@Translate("Remove")" aria-label="@Translate("Remove")" tabindex="-1">
+										<span class="icon-2">
+											@ReadFile("/Files/Images/Icons/trash.svg")
+										</span>
+									</button>
+								</form>
+							</td>
 						</tr>
 					}
 				}
@@ -197,6 +235,7 @@
 							@(Model.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.PriceFormattedNoSymbol)
 						</span>
 					</td>
+					<td></td>
 				</tr>
 				@if (orderDiscounts != null)
 				{
@@ -207,6 +246,7 @@
 							<tr>
 								<td colspan="4" class="text-end">@discount?.ProductName</td>
 								<td class="text-end"><span class="text-price">@discount?.Price.PriceFormattedNoSymbol</span></td>
+								<td></td>
 							</tr>
 						}
 					}
@@ -216,6 +256,7 @@
 					<tr>
 						<td colspan="4" class="text-end">@Translate("Shipping")</td>
 						<td class="text-end"><span class="text-price">@Model.ShippingFee.PriceFormattedNoSymbol</span></td>
+						<td></td>
 					</tr>
 				}
 				@if (Model.PaymentFee.Price != 0.0)
@@ -223,12 +264,14 @@
 					<tr>
 						<td colspan="4" class="text-end">@Translate("Payment")</td>
 						<td class="text-end"><span class="text-price">@Model.PaymentFee.PriceFormattedNoSymbol</span></td>
+						<td></td>
 					</tr>
 				}
 				@if (Model.TotalTaxes.Price != 0.0) {
 					<tr>
 						<td colspan="4" class="text-end">@Translate("Taxes")</td>
 						<td class="text-end"><span class="text-price">@Model.TotalTaxes.PriceFormattedNoSymbol</span></td>
+						<td></td>
 					</tr>
 				}
 				<tr>
@@ -239,12 +282,14 @@
 							<small class="opacity-85">@Translate(vatLabel)</small>
 						}
 					</td>
+					<td></td>
 				</tr>
 				@if (showPricesWithVat && Model.Price.Vat != 0.0)
 				{
 					<tr>
 						<td colspan="4" class="text-end border-0">@Translate("VAT") @(Model.Price.VATPercent)%</td>
 						<td class="text-end border-0"><span class="text-price">@Model.Price.Vat</span></td>
+						<td></td>
 					</tr>
 				}
 				@if (Model.TotalDiscount.Price != 0.0)
@@ -252,6 +297,7 @@
 					<tr>
 						<td colspan="4" class="text-end border-0">@Translate("Discount")</td>
 						<td class="text-end border-0"><span class="text-price">(@Model.TotalDiscount.PriceFormattedNoSymbol)</span></td>
+						<td></td>
 					</tr>
 				}
 			</tfoot>
