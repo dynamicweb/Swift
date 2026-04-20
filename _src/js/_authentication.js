@@ -35,7 +35,11 @@ const Authentication = (function () {
           return null;
         });
     }
-    return tokenPromise;
+
+    return tokenPromise.then(() => {
+      document.body.dispatchEvent(new CustomEvent('swift-auth:token-fetched', { detail: { token } }, { bubbles: true, composed: true }));
+      return token;
+    });
   }
 
   return {
