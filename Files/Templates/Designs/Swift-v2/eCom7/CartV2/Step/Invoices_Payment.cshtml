@@ -2,12 +2,23 @@
 @using Dynamicweb
 @using Dynamicweb.Frontend
 @using Dynamicweb.Rendering
+@using Dynamicweb.Ecommerce.Frontend
+@using Dynamicweb.Ecommerce.Orders
+@using System.Globalization
+@using System.Linq
 
 @{
+	var order = Dynamicweb.Ecommerce.Services.Orders.GetById(GetString("Ecom:Order.ID")) ?? null;
+	var invoice = order?.TryGetOrderViewModel(out var orderViewModel) is true ? orderViewModel : null;
+	var invoiceLines = invoice?.OrderLines?
+		.Where(orderLine => orderLine.OrderLineType != OrderLineType.ProductDiscount && (!string.IsNullOrEmpty(orderLine.ProductId) || !string.IsNullOrEmpty(orderLine.ProductNumber)))
+		.ToList() ?? new List<Dynamicweb.Ecommerce.Frontend.OrderLineViewModel>();
+	var selectedInvoicesCount = invoiceLines.Count;
+	var totalPaymentAmount = invoiceLines.Sum(orderLine => orderLine.Price.Price);
 	var savedCards = GetLoop("SavedCards");
 	var outstandingInvoicesPageId = GetPageIdByNavigationTag("OutstandingInvoices");
 	var backLink = outstandingInvoicesPageId is not 0 ? SearchEngineFriendlyURLs.GetFriendlyUrl(outstandingInvoicesPageId) : null;
-	var currentPageUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"Default.aspx?ID={Pageview.Page.ID}");
+	var currentPageUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"Default.aspx?ID={Pageview?.Page?.ID ?? 0}");
 }
 
 @if (outstandingInvoicesPageId is not 0)
@@ -23,7 +34,7 @@
 }
 
 <header class="mb-4">
-	<h1 class="h4 mb-0">@(Pageview.Page.GetDisplayName())</h1>
+	<h1 class="h4 mb-0">@(Pageview?.Page?.GetDisplayName() ?? string.Empty)</h1>
 </header>
 
 
@@ -38,6 +49,7 @@
 		hx-disinherit="*"
 		hx-target="[data-swift-invoices-payment]"
 		hx-select="[data-swift-invoices-payment]">
+
 		<input type="hidden" name="CartCmd" value="UpdateCombinedPayments" />
 
 		<div class="card overflow-hidden mb-4">
@@ -48,39 +60,55 @@
 						style="--bs-table-bg: rgba(var(--bs-body-color-rgb), .0275); --bs-table-color: rgba(var(--bs-body-color-rgb), 0.5);">
 						<tr>
 							<th>@Translate("Number")</th>
-							<th>@Translate("Balance")</th>
+							<th>@Translate("Amount")</th>
+							<th>@Translate("Paid")</th>
 							<th>@Translate("Payment")</th>
+							<th>@Translate("Balance")</th>
 						</tr>
 					</thead>
 					<tbody>
-						@foreach (var invoice in GetLoop("OrderLines"))
+						@foreach (var orderLine in invoiceLines)
 						{
-							if (invoice.GetBoolean("Ecom:Order:OrderLine.IsProduct"))
-							{
-								string productNumber =
-								!string.IsNullOrEmpty(invoice.GetString("Ecom:Order:OrderLine.Reference")) ?
-								invoice.GetString("Ecom:Order:OrderLine.Reference") :
-								invoice.GetString("Ecom:Order:OrderLine.ProductName");
-								string amountFieldId = "AmountWithoutVAT_" + invoice.GetString("Ecom:Order:OrderLine.ID");
+							string orderLineId = !string.IsNullOrEmpty(orderLine.ProductNumber) ? orderLine.ProductNumber : orderLine.Id;
+							string displayNumber = !string.IsNullOrEmpty(orderLine.Reference) ? orderLine.Reference : orderLine.ProductName;
+							string amountFieldId = "AmountWithoutVAT_" + orderLineId;
+							var amountToPay = orderLine.Price.Price;
+							var remainingBalance = orderLine.RemainingBalanceWithoutVat.Price - amountToPay;
+							var maxAmount = orderLine.RemainingBalanceWithoutVat.Price;
+							bool isDisabled = amountToPay == 0;
+							string disabledAttribute = isDisabled ? "disabled" : string.Empty;
 
-								<tr class="position-relative">
-									<td>@(productNumber)</td>
-									<td class="fw-bold">
-										@(invoice.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.PriceFormatted"))
-									</td>
-									<td>
-										<div class="position-relative" style="max-width: 8rem;">
-											<input id="@(amountFieldId)" type="number" min="0" max="@invoice.GetString("Ecom:Order:OrderLine.TotalPriceWithProductDiscounts.Price")" class="form-control"
-												name="@(amountFieldId)"
-												value="@(invoice.GetString("Ecom:Order:OrderLine.AmountWithoutVAT"))"
-												aria-label="@Translate("Amount to pay")" />
-											<span class="position-absolute top-50 end-0 translate-middle-y pe-3 text-body-tertiary">
-												<span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
-											</span>
-										</div>
-									</td>
-								</tr>
-							}
+							<tr class="position-relative">
+								<td>@displayNumber</td>
+								<td class="fw-bold text-price">@orderLine?.RemainingBalanceWithoutVat?.PriceFormatted</td>
+								<td class="fw-bold text-price">@orderLine?.TotalPaidWithoutVat?.PriceFormatted</td>
+								<td>
+										<div class="position-relative" style="max-width: 11rem;">
+										<input type="hidden" name="Ids" value="@orderLineId" />
+											<div class="input-group">
+												<input id="@(amountFieldId)" type="number" min="0" max="@maxAmount" class="form-control"
+													name="@(amountFieldId)"
+													value="@amountToPay"
+													step="0.01"
+													oninput="this.classList.toggle('text-danger', Number(this.value) > Number(this.max))"
+													onchange="this.classList.toggle('text-danger', Number(this.value) > Number(this.max))"
+													@disabledAttribute
+													aria-label="@Translate("Amount to pay")" />
+												<button type="button" class="btn btn-outline-secondary px-3" data-dw-button
+													onclick="const amountInput = document.getElementById('@amountFieldId'); if (amountInput) { amountInput.disabled = false; amountInput.focus(); amountInput.select(); }"
+													aria-label="@Translate("Edit amount to pay")">
+													<span class="icon-2">
+														@ReadFile("/Files/Images/Icons/pen.svg")
+													</span>
+												</button>
+											</div>
+											<span class="position-absolute top-50 end-0 translate-middle-y pe-5 text-body-tertiary">
+											<span class="htmx-indicator spinner-border spinner-border-sm" aria-hidden="true"></span>
+										</span>
+									</div>
+								</td>
+								<td class="fw-bold text-price">@Dynamicweb.Ecommerce.Services.Currencies.Format(Dynamicweb.Ecommerce.Common.Context.Currency, remainingBalance)</td>
+							</tr>
 						}
 					</tbody>
 				</table>
@@ -91,11 +119,11 @@
 			<div class="card-body p-3">
 				<div class="hstack justify-content-between">
 					<h6 class="mb-0">@Translate("Selected invoices")</h6>
-					<span class="text-price fw-bold">@GetString("Ecom:Order.OrderLines.TotalProductQuantity")</span>
+					<span class="text-price fw-bold">@selectedInvoicesCount</span>
 				</div>
 				<div class="hstack justify-content-between">
 					<h6 class="mb-0">@Translate("Total payment amount")</h6>
-					<span class="text-price fw-bold">@GetString("Ecom:Order.OrderLines.Total.Price")</span>
+					<span class="text-price fw-bold">@Dynamicweb.Ecommerce.Services.Currencies.Format(Dynamicweb.Ecommerce.Common.Context.Currency, totalPaymentAmount)</span>
 				</div>
 			</div>
 		</div>
