@@ -198,10 +198,10 @@ const Cart = (function () {
     },
 
     PushDataToGoogleAnalytics: function () {
-      let gtag = window.gtag;
-
-      if (typeof gtag !== "undefined") {
-        gtag("event", "add_to_cart", {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        event: "add_to_cart",
+        ecommerce: {
           currency: productCurrency,
           value: (parseFloat(productPrice) * parseFloat(addQuantity)),
           items: [
@@ -216,8 +216,8 @@ const Cart = (function () {
               quantity: addQuantity,
             },
           ],
-        });
-      }
+        },
+      });
     },
 
     GetMiniCarts: function (miniCartId) {
