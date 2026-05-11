@@ -37,7 +37,7 @@ const Authentication = (function () {
     }
 
     return tokenPromise.then(() => {
-      document.body.dispatchEvent(new CustomEvent('swift-auth:token-fetched', { detail: { token } }, { bubbles: true, composed: true }));
+      document.body.dispatchEvent(new CustomEvent('tokenFetched.swift.authentication', { detail: { token } }, { bubbles: true, composed: true }));
       return token;
     });
   }
