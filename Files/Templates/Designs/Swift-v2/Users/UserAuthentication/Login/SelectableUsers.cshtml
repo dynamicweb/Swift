@@ -1,0 +1,158 @@
+@inherits ViewModelTemplate<UserProfilesListViewModel>
+@using Dynamicweb.Content
+@using Dynamicweb.Users.Frontend.UserAuthentication
+@using Dynamicweb.Frontend
+@using Dynamicweb.Rendering
+
+@{
+    var signedInUser = ContentViewModelFactory.CreateUserViewModel(Pageview?.User);
+    string redirect = Model.RedirectAfterSwitchUser;
+    
+    string primaryUserUniqueId = Model.PrimaryUser.UniqueId.ToString();
+    string requestedSelectedUser = Dynamicweb.Context.Current?.Request.Form["SelectedUser"] ?? Dynamicweb.Context.Current?.Request.QueryString.Get("SelectedUser") ?? string.Empty;
+    string signedInSelectableUserUniqueId = Model.Users
+        .Where(user => user.ID == Pageview?.User?.ID)
+        .Select(user => user.UniqueId.ToString())
+        .FirstOrDefault() ?? string.Empty;
+    string selectedUserUniqueId = !string.IsNullOrEmpty(requestedSelectedUser)
+        ? requestedSelectedUser
+        : !string.IsNullOrEmpty(signedInSelectableUserUniqueId)
+            ? signedInSelectableUserUniqueId
+            : primaryUserUniqueId;
+}
+
+<div class="mx-auto w-100" style="max-width: 30rem;">
+    <div class="text-muted">@Translate("Welcome")</div>
+    <h1 class="h2 mb-3">@Translate("You're signed in as")</h1>
+
+    <div class="card mb-5">
+        <div class="card-body p-3 hstack align-items-center gap-3">
+            <div class="position-relative rounded-circle align-self-auto hstack justify-content-center p-0" style="height:4rem; aspect-ratio:1;">
+                @if(signedInUser.TryGetImageFile(out ImageFileViewModel? userImage))
+                {
+                    <div class="align-self-auto hstack justify-content-center p-0" style="height:4rem; aspect-ratio:1;">
+                        <img src="@userImage.ToGetImage(new(){ Width = 60, Ratio = "1/1" })" alt="@signedInUser.Name" class="img-thumbnail rounded-circle" itemprop="image"/>
+                    </div>
+                }
+                else 
+                {
+                    <div class="btn btn-primary rounded-circle align-self-auto hstack justify-content-center p-0 pe-none" style="height:4rem; aspect-ratio:1;" data-dw-button>
+                        <div class="d-flex dw-h6 lh-1 m-0 float-start text-decoration-none">
+                            @(signedInUser.GetTwoLetterInitials())
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div>
+                <div class="d-flex gap-2">
+                    <h5 class="h6 mb-0">@signedInUser.Name</h5>
+                    @if (signedInUser.IsLogin)
+                    {   
+                        <div class="badge text-bg-secondary">
+                            @Translate("Primary")
+                        </div>
+                    }
+                </div>
+                <small class="text-muted">
+                    @if (!string.IsNullOrEmpty(signedInUser.Company))    
+                    {
+                        <span>@(signedInUser.Company)</span>
+                    }
+                    @if (!string.IsNullOrEmpty(signedInUser.Company) && !string.IsNullOrEmpty(signedInUser.CustomerNumber))    
+                    {
+                        <span class="mx-1">|</span>
+                    }
+                    @if (!string.IsNullOrEmpty(signedInUser.CustomerNumber))    
+                    {
+                        <span>#@(signedInUser.CustomerNumber)</span>
+                    }
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <div data-swift-selectable-user-switcher>
+        <form hx-post
+              hx-target="[data-swift-selectable-user-switcher]"
+              hx-select="[data-swift-selectable-user-switcher]"
+              hx-swap="outerHTML">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="fw-bold">@Translate("Switch to another profile")</div>
+                <div class="text-muted hstack gap-2">
+                    <span>@(Model.Users.Count() + 1) @Translate("available")</span>
+                </div>
+            </div>
+
+            <div class="list-group mb-3">
+                @{ await RenderSelectableUserItem(Model.PrimaryUser, primaryUserUniqueId, true, selectedUserUniqueId == primaryUserUniqueId); }
+                @foreach (var user in Model.Users)
+                {
+                    string userUniqueId = user.UniqueId.ToString();
+                    var isSelectedUser = string.Equals(selectedUserUniqueId, userUniqueId, StringComparison.OrdinalIgnoreCase);
+
+                    await RenderSelectableUserItem(user, userUniqueId, false, isSelectedUser);
+                }
+            </div>
+        </form>
+
+        <div class="d-flex justify-content-between">
+            <a href="/Admin/Public/ExtranetLogoff.aspx?redirect=no" class="btn btn-secondary hstack gap-2" data-dw-button>
+                <span class="icon">@ReadFile("/Files/Images/Icons/arrow-left-from-bracket.svg")</span>
+                @Translate("Sign out")
+            </a>
+            <form method="post">
+                <input type="hidden" name="redirect" value="@redirect" />
+                <input type="hidden" name="DwSwitchUserUniqueId" value="@selectedUserUniqueId" />
+                <button type="submit" class="btn btn-primary hstack gap-2" data-dw-button>
+                    @Translate("Continue with this profile")
+                    <span class="icon-2">@ReadFile("/Files/Images/Icons/arrow-right.svg")</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@{
+    async Task RenderSelectableUserItem(UserViewModel user, string userUniqueId, bool isPrimaryUser, bool isSelectedUser)
+    {
+        <div class="list-group-item list-group-item-action p-0">
+            <button type="submit" name="SelectedUser" value="@userUniqueId" class="btn w-100 text-start hstack gap-3 py-3 px-3 border-0 rounded-0" data-dw-button aria-pressed="@(isSelectedUser ? "true" : "false")">
+                @if (user.TryGetImageFile(out ImageFileViewModel? listUserImage))
+                {
+                    <img src="@listUserImage.ToGetImage(new(){ Width = 80, Ratio = "1/1" })" alt="@user.Name" class="rounded-circle flex-shrink-0" style="width: 2.5rem; height: 2.5rem; object-fit: cover;">
+                }
+                else
+                {
+                    <span class="rounded-circle flex-shrink-0 d-flex align-items-center justify-content-center fs-7 fw-bold text-primary bg-primary bg-opacity-10" style="width: 2.5rem; height: 2.5rem;">
+                        @(string.Concat((user.Name ?? "?").Split(' ', System.StringSplitOptions.RemoveEmptyEntries).Take(2).Select(part => part[0].ToString().ToUpperInvariant())))
+                    </span>
+                }
+                <span class="flex-fill overflow-hidden">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="d-block text-body fw-semibold text-truncate">@user.Name</span>
+                        @if (isPrimaryUser)
+                        {
+                            <div class="badge text-bg-secondary">
+                                @Translate("Primary")
+                            </div>
+                        }
+                    </div>
+                    @if (!string.IsNullOrEmpty(user.Company))
+                    {
+                        <span class="d-block text-muted fs-8 text-truncate">@(user.Company)</span>
+                    }
+                    @if (!string.IsNullOrEmpty(user.CustomerNumber) && !string.IsNullOrEmpty(user.Company))
+                    {
+                        <span class="mx-1">|</span>
+                    }
+                    @if (!string.IsNullOrEmpty(user.CustomerNumber))
+                    {
+                        <span class="d-block text-muted fs-8 text-truncate">#@(user.CustomerNumber)</span>
+                    }
+                </span>
+                <span class="icon text-success flex-shrink-0 @(isSelectedUser ? "text-primary" : "text-muted opacity-0")">@ReadFile("/Files/Images/Icons/circle-check.svg")</span>
+            </button>
+        </div>
+    }
+}
