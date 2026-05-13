@@ -29,6 +29,11 @@
     DateTime? dueDateToDate = DateTime.TryParse(dueDateTo, out var tempToDate) ? tempToDate : null;
     double? minAmount = double.TryParse(minAmountStr, out var min) ? min : null;
     double? maxAmount = double.TryParse(maxAmountStr, out var max) ? max : null;
+
+    var remainingTotal = Model.Orders
+        .Where(order => invoiceIds.Contains(order.Id))
+        .Select(order => order.TryGetLedger(out var entry) ? entry?.RemainingBalance.PriceWithoutVat ?? 0 : 0)
+        .Sum();
 }
 
 <header class="hstack justify-content-between gap-3 mb-4">
@@ -38,7 +43,7 @@
 
     <div class="text-end" data-swift-invoice-list-total hx-swap-oob="true outerHTML:[data-swift-invoice-list-total]">
         @if (!string.IsNullOrEmpty(invoiceIdsString)) {            
-            <h2 class="h6 mb-0 fw-bold">@Translate("Selected total"): <span>@Dynamicweb.Ecommerce.Services.Currencies.Format(Dynamicweb.Ecommerce.Common.Context.Currency, Model.Orders.Where(o => invoiceIds.Contains(o.Id)).Sum(o => o.Price.Price))</span></h2>
+            <h2 class="h6 mb-0 fw-bold">@Translate("Selected total"): <span>@Dynamicweb.Ecommerce.Services.Currencies.Format(Dynamicweb.Ecommerce.Common.Context.Currency, remainingTotal)</span></h2>
         }
     </div>
 </header>
@@ -175,15 +180,8 @@
                                     }
                                 </label>
                             </th>
-                            <th>
-                                <label class="hstack gap-1" role="button">
-                                    <input type="radio" name="SortBy" value="Price" class="visually-hidden" checked="@(currentSortBy=="Price")" />
-                                    @Translate("Balance") 
-                                    @if(currentSortBy=="Price") {
-                                        <span class="icon-1">@arrow</span>
-                                    }
-                                </label>
-                            </th>
+                            <th>@Translate("Paid")</th>
+                            <th>@Translate("Balance")</th>
                             <th>
                                 <label class="hstack gap-1" role="button">
                                     <input type="radio" name="SortBy" value="DueDate" class="visually-hidden" checked="@(currentSortBy=="DueDate")" />
@@ -200,11 +198,12 @@
                         @foreach ( var invoice in Model.Orders )
                         {
                             string invoiceReference = !string.IsNullOrEmpty(invoice.Reference) ? invoice.Reference : invoice.Id;
+                            var ledger = invoice.GetLedger();
 
                             <tr class="position-relative">
                                 <td>
                                     <label class="form-check-label position-relative z-2 p-2" role="button">
-                                        <input type="checkbox" class="form-check-input" name="Ids" value="@(invoice.Id)" role="button" checked="@(invoiceIds.Contains(invoice.Id))" disabled="@(invoice.StateId.Equals("InvoicePartialPaid", StringComparison.OrdinalIgnoreCase))">
+                                        <input type="checkbox" class="form-check-input" name="Ids" value="@(invoice.Id)" role="button" checked="@(invoiceIds.Contains(invoice.Id))">
                                     </label>
                                 </td>
                                 <td>
@@ -221,7 +220,8 @@
                                 </td>
                                 <td>@(invoice.TotalPriceWithoutOrderDiscountsAndFeesAndTaxes.PriceFormatted)</td>
                                 <td>@(invoice.TotalOrderDiscount.PriceFormatted)</td>
-                                <td>@(invoice.Price.PriceFormatted)</td>
+                                <td>@(ledger?.TotalPaid.PriceWithoutVatFormatted)</td>
+                                <td>@(ledger?.RemainingBalance.PriceWithoutVatFormatted)</td>
                                 <td>@(invoice.DueDate?.ToShortDateString() ?? "")</td>
                                 <td>
                                     <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
