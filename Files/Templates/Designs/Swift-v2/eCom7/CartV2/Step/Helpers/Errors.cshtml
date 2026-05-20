@@ -1,11 +1,31 @@
 @inherits Dynamicweb.Rendering.RazorTemplateBase<Dynamicweb.Rendering.RazorTemplateModel<Dynamicweb.Rendering.Template>>
 @using Dynamicweb.Ecommerce.Orders
 
-@if (GetLoop("ValidationErrors").Count() != 0)
+@{
+	var voucherCodeForErrorCheck = string.Empty;
+	Order? orderForErrorCheck = !string.IsNullOrEmpty(GetString("Ecom:Order.ID")) ? new OrderService().GetById(GetString("Ecom:Order.ID")) : Dynamicweb.Ecommerce.Common.Context.Cart;
+	bool hasAppliedVoucherForErrorCheck = orderForErrorCheck is object && orderForErrorCheck.VoucherUseType != VoucherUseCategoryType.None && !string.IsNullOrWhiteSpace(orderForErrorCheck.VoucherCode);
+	if (hasAppliedVoucherForErrorCheck)
+	{
+		voucherCodeForErrorCheck = orderForErrorCheck?.VoucherCode;
+	}
+
+	List<LoopItem> validationErrors = new List<LoopItem>();
+	foreach (LoopItem item in GetLoop("ValidationErrors"))
+	{
+		bool isAppliedVoucherValidationError = hasAppliedVoucherForErrorCheck && string.Equals(item.GetString("Ecom:Cart.ValidationError.FieldSystemName"), "EcomOrderVoucherCode", StringComparison.OrdinalIgnoreCase);
+		if (!isAppliedVoucherValidationError)
+		{
+			validationErrors.Add(item);
+		}
+	}
+}
+
+@if (validationErrors.Count != 0)
 {
 	<div class="alert alert-warning" role="alert">
 		<ul class="m-0 list-unstyled">
-			@foreach (LoopItem item in GetLoop("ValidationErrors"))
+			@foreach (LoopItem item in validationErrors)
 			{
 				<li>@item.GetValue("Ecom:Cart.ValidationError.ErrorMessage")</li>
 			}
@@ -15,10 +35,4 @@
 
 
 @* Logic to remove the voucher code error, when going to next step in checkout *@
-@{
-	string voucherCodeForErrorCheck = GetString("Ecom:Order.Customer.VoucherCode");
-	Order? orderForErrorCheck = !string.IsNullOrEmpty(GetString("Ecom:Order.ID")) ? new OrderService().GetById(GetString("Ecom:Order.ID")) : null;
-	voucherCodeForErrorCheck = orderForErrorCheck?.VoucherUseType == VoucherUseCategoryType.None ? string.Empty : voucherCodeForErrorCheck;
-}
-
 <input type="hidden" name="EcomOrderVoucherCode" value="@voucherCodeForErrorCheck">
