@@ -1,0 +1,223 @@
+@inherits ViewModelTemplate<OrderListViewModel>
+@using Dynamicweb.Core.Encoders
+@using Dynamicweb.Ecommerce.Frontend
+@using Dynamicweb.Ecommerce.Orders
+@using Dynamicweb.Ecommerce.ProductCatalog
+@using Dynamicweb.Frontend
+@using Dynamicweb.Rendering
+@using System.Globalization
+
+@functions {
+    string? DoubleToString(double? value)
+    {
+        if (value.HasValue)
+        {
+            return Math.Round(value.Value, 2).ToString(CultureInfo.InvariantCulture);
+        }
+
+        return null;
+    }
+}
+
+@{
+    string iconPath = "/Files/Images/Icons/";
+    string cartUrl = "/Default.aspx?ID=" + GetPageIdByNavigationTag("CartService");
+    if (!cartUrl.Contains("LayoutTemplate"))
+    {
+        cartUrl += cartUrl.Contains("?") ? "&LayoutTemplate=Swift-v2_MiniCart.cshtml" : "?LayoutTemplate=Swift-v2_MiniCart.cshtml";
+    }
+
+    string FormatTotal(double value, string? currencyCode)
+    {
+        if (string.IsNullOrEmpty(currencyCode))
+        {
+            return "-";
+        }
+
+        return Dynamicweb.Ecommerce.Services.Currencies.Format(Dynamicweb.Ecommerce.Services.Currencies?.GetCurrency(currencyCode) ?? Dynamicweb.Ecommerce.Common.Context.Currency, value);
+    }
+
+    var topProducts = Model?.Orders?
+        .Where(order => order.CompletedDate.HasValue)
+        .SelectMany(order => order.OrderLines.Select(orderLine => new { Order = order, OrderLine = orderLine }))
+        .Where(item =>
+            item.OrderLine.OrderLineType != OrderLineType.Discount &&
+            item.OrderLine.OrderLineType != OrderLineType.ProductDiscount &&
+            (!string.IsNullOrEmpty(item.OrderLine.ProductId) || !string.IsNullOrEmpty(item.OrderLine.ProductNumber)))
+        .GroupBy(item => new
+        {
+            ProductKey = !string.IsNullOrEmpty(item.OrderLine.ProductId) ? item.OrderLine.ProductId : item.OrderLine.ProductNumber,
+            VariantId = item.OrderLine.ProductVariantId ?? string.Empty,
+            UnitId = item.OrderLine.UnitId ?? string.Empty
+        })
+        .Select(group =>
+        {
+            var latest = group.OrderByDescending(item => item.Order.CompletedDate).First();
+            var currencyCodes = group.Select(item => item.OrderLine.Price.CurrencyCode).Where(currencyCode => !string.IsNullOrEmpty(currencyCode)).Distinct().ToList();
+
+            return new
+            {
+                OrderLine = latest.OrderLine,
+                Product = latest.OrderLine.GetProduct(),
+                Quantity = group.Sum(item => item.OrderLine.Quantity),
+                SuggestedQuantity = latest.OrderLine.Quantity,
+                OrderCount = group.Select(item => item.Order.Id).Distinct().Count(),
+                Total = group.Sum(item => item.OrderLine.Price.Price),
+                CurrencyCode = currencyCodes.Count == 1 ? currencyCodes[0] : null
+            };
+        })
+        .OrderByDescending(item => item.Quantity)
+        .ThenByDescending(item => item.OrderCount)
+        .ThenBy(item => item.OrderLine.ProductName)
+        .Take(5)
+        .ToList();
+}
+
+@if (!(topProducts?.Any() ?? false))
+{
+    <div class="d-grid align-items-center text-center fs-7 fw-semibold gap-2">
+        <div class="d-grid rounded-circle m-auto" style="aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
+            <span class="icon fs-5 text-muted p-3">
+                @ReadFile("/Files/Images/Icons/cube.svg")
+            </span>
+        </div>
+        <div>@Translate("No ordered products found")</div>
+    </div>
+    return;
+}
+
+<div class="list-group list-group-flush">
+    @{
+        var counter = 0;
+    }
+    @foreach (var topProduct in topProducts)
+    {
+        counter++;
+
+        var orderLine = topProduct.OrderLine;
+        var product = topProduct.Product;
+        var productId = orderLine.ProductId;
+        var variantId = orderLine.ProductVariantId;
+        var unitId = !string.IsNullOrEmpty(orderLine.UnitId) ? orderLine.UnitId : product?.DefaultUnitId;
+        var productName = !string.IsNullOrEmpty(product?.Name) ? product.Name : orderLine.ProductName;
+        var productNumber = !string.IsNullOrEmpty(product?.Number) ? product.Number : orderLine.ProductNumber;
+        var variantName = !string.IsNullOrEmpty(product?.VariantName) ? product.VariantName : orderLine.ProductVariantName;
+        var orderCountLabel = topProduct.OrderCount == 1 ? Translate("order") : Translate("orders");
+        var isStockType = product?.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock;
+        var isNeverOutOfStock = product?.NeverOutOfstock ?? false;
+        var disableAddToCart = string.IsNullOrEmpty(productId) || product?.Discontinued == true || (isStockType && !isNeverOutOfStock && product?.StockLevel <= 0) ? "disabled" : null;
+        double? stepQty = (product?.PurchaseQuantityStep ?? 0) > 0 ? product?.PurchaseQuantityStep : 1;
+        double? minQty = (product?.PurchaseMinimumQuantity ?? 0) > 0 ? product?.PurchaseMinimumQuantity : 1;
+        double? maxQty = isStockType && !isNeverOutOfStock ? product?.StockLevel : null;
+        double? quantity = topProduct.SuggestedQuantity > 0 ? topProduct.SuggestedQuantity : minQty > stepQty ? minQty : stepQty;
+
+        <form method="post" action="@cartUrl" class="list-group-item px-0 py-3 d-flex flex-wrap align-items-center gap-2 gap-sm-3">
+            <input type="hidden" name="redirect" value="false">
+            <input type="hidden" name="ProductId" value="@productId">
+            <input type="hidden" name="ProductName" value="@HtmlEncoder.HtmlEncode(productName)">
+            <input type="hidden" name="ProductVariantName" value="@HtmlEncoder.HtmlEncode(variantName)">
+            <input type="hidden" name="ProductCurrency" value="@topProduct.CurrencyCode">
+            <input type="hidden" name="ProductPrice" value="@DoubleToString(orderLine.UnitPrice.Price)">
+            <input type="hidden" name="ProductReferer" value="customer_center_top_bought">
+            <input type="hidden" name="cartcmd" value="add">
+            <input type="submit" class="d-none" onclick="event.preventDefault(); swift.Cart.Update(event)">
+
+            @if (!string.IsNullOrEmpty(variantId))
+            {
+                <input type="hidden" name="VariantId" value="@variantId">
+            }
+
+            <template class="js-step-quantity-warning">
+                <div class="modal-header">
+                    <h5 class="modal-title">@Translate("The quantity is not valid")</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">@Translate("Please select a quantity that is dividable by") @stepQty</p>
+                </div>
+            </template>
+
+            <template class="js-min-quantity-warning">
+                <div class="modal-header">
+                    <h5 class="modal-title">@Translate("The product could not be added to the cart")</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">@Translate("The quantity is not valid. You must buy at least") @minQty</p>
+                </div>
+            </template>
+
+            <template class="js-value-missing-warning">
+                <div class="modal-header">
+                    <h5 class="modal-title">@Translate("No amount specified")</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="@Translate("Close")"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">@Translate("Specify an amount to add to the cart")</p>
+                </div>
+            </template>
+
+            <div class="text-muted fs-7" style="inline-size: 1.5rem;">@(counter).</div>
+
+            @if (product?.DefaultImage.TryGetImageFileViewModel(out var image) is true)
+            {
+                <div class="d-flex img-thumbnail" style="inline-size: 40px; aspect-ratio: 1;">
+                    <img class="m-auto" src="@(image?.ToGetImage(new(){Height = 32, Width = 32, Ratio = "1/1", Crop = Dynamicweb.Imaging.ImageHandling.CropMode.KeepAspectRatio }))" alt="@productName">
+                </div>
+            }
+            else
+            {
+                <div class="d-flex img-thumbnail" style="inline-size: 40px; aspect-ratio: 1;">
+                    <span class="icon-2 m-auto text-muted">@ReadFile(iconPath + "cube.svg")</span>
+                </div>
+            }
+
+            <div class="flex-grow-1 min-w-0">
+                <div class="fs-7 fw-semibold text-body text-truncate">@productName</div>
+                <div class="fs-8 text-muted text-truncate">
+                    @productNumber
+                    <span>· @(topProduct.OrderCount) @(orderCountLabel)</span>
+                </div>
+            </div>
+
+            <div class="text-price fs-7 fw-semibold ms-sm-auto">
+                @(FormatTotal(topProduct.Total, topProduct.CurrencyCode))
+            </div>
+
+            <div class="d-flex align-items-center justify-content-between position-relative" style="width:fit-content;">
+                <input id="TopBoughtQuantity_@(counter)" name="Quantity" value="@DoubleToString(quantity)" step="@DoubleToString(stepQty)" min="@DoubleToString(minQty)" max="@DoubleToString(maxQty)" class="form-control border-0 rounded-0 px-1 flex-grow-0 text-center" type="number" inputmode="numeric" data-qty @disableAddToCart placeholder="0" tabindex="0">
+                <span class="visually-hidden">@Translate("Type a number, or use the decrease or increase button to change the quantity")</span>
+
+                <button type="button" data-qty-step="decrease" aria-label="@Translate("The button to decrease the quantity")" class="d-flex btn btn-outline-secondary p-2 m-1 border-0 order-first" data-dw-button="outline-secondary" onclick="this.parentNode.querySelector('[data-qty]').stepDown()" @disableAddToCart tabindex="-1">
+                    <span class="icon-2">@ReadFile(iconPath + "minus.svg")</span>
+                </button>
+
+                <button type="button" data-qty-step="increase" aria-label="@Translate("The button to increase the quantity")" class="d-flex btn btn-outline-secondary p-2 m-1 border-0 order-last" data-dw-button="outline-secondary" onclick="this.parentNode.querySelector('[data-qty]').stepUp()" @disableAddToCart tabindex="-1">
+                    <span class="icon-2">@ReadFile(iconPath + "plus.svg")</span>
+                </button>
+
+                <span class="position-absolute pe-none" data-dw-button style="border: 1px solid rgba(var(--bs-body-color-rgb),.1); inset: 0; border-radius: var(--dw-btn-border-radius);"></span>
+            </div>
+
+            @if (product?.UnitOptions?.Count > 0)
+            {
+                <select name="UnitID" class="form-select w-auto" @disableAddToCart>
+                    @foreach (var unitOption in product.UnitOptions)
+                    {
+                        <option value="@(unitOption.Id)" selected="@(unitOption.Id == unitId)">@(unitOption.Name)</option>
+                    }
+                </select>
+            }
+            else if (!string.IsNullOrEmpty(unitId))
+            {
+                <input type="hidden" name="UnitID" value="@unitId">
+                <span class="fs-8 text-muted">@orderLine.UnitName</span>
+            }
+
+            <button type="button" onclick="swift.Cart.Update(event)" class="btn btn-sm btn-outline-secondary text-reset border-0 align-self-auto hstack gap-2 p-2 @disableAddToCart" @disableAddToCart data-dw-button>
+                <span class="icon fs-8">@ReadFile(iconPath + "arrows-rotate.svg")</span>
+                <span>@Translate("Reorder")</span>
+            </button>
+        </form>
+    }
+</div>
