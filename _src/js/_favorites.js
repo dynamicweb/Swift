@@ -220,7 +220,6 @@ const Favorites = (function () {
     Error: function () { },
 
     PushToGAAddToWishlist: function (clickedButton) {
-      let gtag;
       let productId = clickedButton.getAttribute("data-product-id");
       let productName = clickedButton.getAttribute("data-product-name");
       let productPrice = clickedButton.getAttribute("data-product-price");
@@ -229,8 +228,10 @@ const Favorites = (function () {
       productPrice = productPrice !== null && productPrice !== "" ? parseFloat(productPrice) : productPrice;
       productDiscount = productDiscount !== null && productDiscount !== "" ? parseFloat(productDiscount) : productDiscount;
 
-      if (typeof gtag !== "undefined") {
-        gtag("event", "add_to_wishlist", {
+      window.dataLayer = window.dataLayer || [];
+      window.dataLayer.push({
+        event: "add_to_wishlist",
+        ecommerce: {
           currency: productCurrency,
           value: productPrice,
           items: [
@@ -243,8 +244,8 @@ const Favorites = (function () {
               quantity: 1,
             },
           ],
-        });
-      }
+        },
+      });
     },
   };
 })();
