@@ -59,34 +59,59 @@
             {
                 var template = section.TryGetString("Layout", out var layout) ? layout.Replace("/Files/Templates/", string.Empty) : "Designs/Swift-v2/Paragraph/Swift-v2_OffCanvasMenu/Layouts/Menu.cshtml";
                 var root = section.TryGetLink("Source", out var source) ? $"&PageId={source.PageId}" : null;
-
-                <div class="pb-4" data-swift-menu-section="@(section.GetString("Title"))">
-                    <div
-                        hx-get="/dwapi/frontend/navigations/@areaId?ExpandMode=subnodes@(root)" 
-                        hx-trigger="shown.bs.offcanvas from:#offcanvasMenu_@(Model.ID)"
-                        hx-swap="outerHTML"
-                        hx-headers='
-                        {
-                            "Accept": "text/html",
-                            "x-dw-template": "@(template)"
-                        }'
-                        hx-select="[data-swift-menu-nav]"
-                        hx-target="this"
-                    >
-                        <ul class="navbar-nav placeholder-glow">
-                            @for (var i = 0; i < 5; i++)
-                            {
-                                <li><div class="placeholder bg-primary-subtle rounded-pill col-@(Random.Shared.Next(5, 12))"></div></li>
-                            }
-                        </ul>
-                    </div>
-
-                    @if( section.TryGetString("Text", out var text))
+                var sectionType = "0"; // Default to Menu - Extend with more types if needed
+                
+                if (section?.TryGetList("SectionType", out var sectionTypes) ?? false ) 
+                {
+                    foreach (var type in sectionTypes.GetSelectedOptions())
                     {
-                        <div class="pt-4 mb-0-last-child">
-                            @(text)
-                        </div>
+                        if (type.IsSelected)
+                        {
+                            sectionType = type.Value;
+                            break;
+                        }
                     }
+                }
+
+                <div class="pb-4" data-swift-menu-section="@(section?.GetString("Title"))">
+
+                    @switch (sectionType)
+                    {
+                        case "0": // Menu
+                            <div
+                                hx-get="/dwapi/frontend/navigations/@areaId?ExpandMode=subnodes@(root)"
+                                hx-trigger="shown.bs.offcanvas from:#offcanvasMenu_@(Model.ID)"
+                                hx-swap="outerHTML"
+                                hx-headers='
+                                {
+                                    "Accept": "text/html",
+                                    "x-dw-template": "@(template)"
+                                }'
+                                hx-select="[data-swift-menu-nav]"
+                                hx-target="this">
+                                <ul class="navbar-nav placeholder-glow">
+                                    @for (var i = 0; i < 5; i++)
+                                    {
+                                        <li><div class="placeholder bg-primary-subtle rounded-pill col-@(Random.Shared.Next(5, 12))"></div></li>
+                                    }
+                                </ul>
+                            </div>
+                            break;
+
+                        case "1": // Language selector
+                            @RenderPartial("/Designs/Swift-v2/Paragraph/Swift-v2_LanguageSelector/Modal.cshtml", new ParagraphViewModel() { Item = section?.GetItem("Item") ?? null })
+                            break;
+
+                        case "2": // Rich Text        
+                            @if( section?.TryGetString("Text", out var text) ?? false)
+                            {
+                                <div class="mb-0-last-child">
+                                    @(text)
+                                </div>
+                            }
+                            break;
+                    }
+
                 </div>
             }
         }
