@@ -27,22 +27,21 @@
         cartUrl += cartUrl.Contains("?") ? "&LayoutTemplate=Swift-v2_MiniCart.cshtml" : "?LayoutTemplate=Swift-v2_MiniCart.cshtml";
     }
 
-    string FormatTotal(double value, string? currencyCode)
+    string FormatTotal(double? value, string? currencyCode)
     {
         if (string.IsNullOrEmpty(currencyCode))
         {
             return $"<span class='text-muted fw-normal small'>{Translate("Multiple Currencies")}</span>";
         }
 
-        return Dynamicweb.Ecommerce.Services.Currencies.Format(Dynamicweb.Ecommerce.Services.Currencies?.GetCurrency(currencyCode) ?? Dynamicweb.Ecommerce.Common.Context.Currency, value);
+        return Dynamicweb.Ecommerce.Services.Currencies.Format(Dynamicweb.Ecommerce.Services.Currencies?.GetCurrency(currencyCode) ?? Dynamicweb.Ecommerce.Common.Context.Currency, value ?? 0);
     }
 
     var topProducts = Model?.Orders?
         .Where(order => order.CompletedDate.HasValue)
         .SelectMany(order => order.OrderLines.Select(orderLine => new { Order = order, OrderLine = orderLine }))
         .Where(item =>
-            item.OrderLine.OrderLineType != OrderLineType.Discount &&
-            item.OrderLine.OrderLineType != OrderLineType.ProductDiscount &&
+            item.OrderLine.OrderLineType == OrderLineType.Product &&
             (!string.IsNullOrEmpty(item.OrderLine.ProductId) || !string.IsNullOrEmpty(item.OrderLine.ProductNumber)))
         .GroupBy(item => new
         {
@@ -53,22 +52,17 @@
         .Select(group =>
         {
             var latest = group.OrderByDescending(item => item.Order.CompletedDate).First();
-            var currencyCodes = group.Select(item => item.OrderLine.Price.CurrencyCode).Where(currencyCode => !string.IsNullOrEmpty(currencyCode)).Distinct().ToList();
 
             return new
             {
                 OrderLine = latest.OrderLine,
-                Product = latest.OrderLine.GetProduct(),
+                Product = group.First().OrderLine.GetProduct(),
                 Quantity = group.Sum(item => item.OrderLine.Quantity),
-                SuggestedQuantity = latest.OrderLine.Quantity,
-                OrderCount = group.Select(item => item.Order.Id).Distinct().Count(),
-                Total = group.Sum(item => item.OrderLine.Price.Price),
-                CurrencyCode = currencyCodes.Count == 1 ? currencyCodes[0] : null
+                OrderCount = group.Select(item => item.Order.Id).Distinct().Count()
             };
         })
-        .OrderByDescending(item => item.Quantity)
-        .ThenByDescending(item => item.OrderCount)
-        .ThenBy(item => item.OrderLine.ProductName)
+        .OrderByDescending(item => item.OrderCount)
+        .ThenByDescending(item => item.Quantity)
         .Take(5)
         .ToList();
 }
@@ -81,7 +75,7 @@
                 @ReadFile("/Files/Images/Icons/cube.svg")
             </span>
         </div>
-        <div>@Translate("No ordered products found")</div>
+        <div>@Translate("No products found")</div>
     </div>
     return;
 }
@@ -109,14 +103,14 @@
         double? stepQty = (product?.PurchaseQuantityStep ?? 0) > 0 ? product?.PurchaseQuantityStep : 1;
         double? minQty = (product?.PurchaseMinimumQuantity ?? 0) > 0 ? product?.PurchaseMinimumQuantity : 1;
         double? maxQty = isStockType && !isNeverOutOfStock ? product?.StockLevel : null;
-        double? quantity = topProduct.SuggestedQuantity > 0 ? topProduct.SuggestedQuantity : minQty > stepQty ? minQty : stepQty;
+        double? quantity = minQty > stepQty ? minQty : stepQty;
 
         <form method="post" action="@cartUrl" class="list-group-item px-0 py-3 d-flex flex-wrap align-items-center gap-2 gap-sm-3">
             <input type="hidden" name="redirect" value="false">
             <input type="hidden" name="ProductId" value="@productId">
             <input type="hidden" name="ProductName" value="@HtmlEncoder.HtmlEncode(productName)">
             <input type="hidden" name="ProductVariantName" value="@HtmlEncoder.HtmlEncode(variantName)">
-            <input type="hidden" name="ProductCurrency" value="@topProduct.CurrencyCode">
+            <input type="hidden" name="ProductCurrency" value="@(Dynamicweb.Ecommerce.Common.Context.Currency.Code)">
             <input type="hidden" name="ProductPrice" value="@DoubleToString(orderLine.UnitPrice.Price)">
             <input type="hidden" name="ProductReferer" value="customer_center_top_bought">
             <input type="hidden" name="cartcmd" value="add">
@@ -181,7 +175,8 @@
             </div>
 
             <div class="text-price fs-7 fw-semibold ms-sm-auto">
-                @(FormatTotal(topProduct.Total, topProduct.CurrencyCode))
+                @(topProduct?.Product?.Price?.PriceFormatted)
+                @(FormatTotal(product?.Price?.Price, Dynamicweb.Ecommerce.Common.Context.Currency.Code))
             </div>
 
             <div class="d-flex align-items-center justify-content-between position-relative" style="width:fit-content;">
