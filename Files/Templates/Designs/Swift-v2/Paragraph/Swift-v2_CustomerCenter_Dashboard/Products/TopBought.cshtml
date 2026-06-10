@@ -1,7 +1,5 @@
-@inherits ViewModelTemplate<OrderListViewModel>
+@inherits ViewModelTemplate<UserProductListViewModel>
 @using Dynamicweb.Core.Encoders
-@using Dynamicweb.Ecommerce.Frontend
-@using Dynamicweb.Ecommerce.Orders
 @using Dynamicweb.Ecommerce.ProductCatalog
 @using Dynamicweb.Frontend
 @using Dynamicweb.Rendering
@@ -37,37 +35,9 @@
         return Dynamicweb.Ecommerce.Services.Currencies.Format(Dynamicweb.Ecommerce.Services.Currencies?.GetCurrency(currencyCode) ?? Dynamicweb.Ecommerce.Common.Context.Currency, value ?? 0);
     }
 
-    var topProducts = Model?.Orders?
-        .Where(order => order.CompletedDate.HasValue)
-        .SelectMany(order => order.OrderLines.Select(orderLine => new { Order = order, OrderLine = orderLine }))
-        .Where(item =>
-            item.OrderLine.OrderLineType == OrderLineType.Product &&
-            (!string.IsNullOrEmpty(item.OrderLine.ProductId) || !string.IsNullOrEmpty(item.OrderLine.ProductNumber)))
-        .GroupBy(item => new
-        {
-            ProductKey = !string.IsNullOrEmpty(item.OrderLine.ProductId) ? item.OrderLine.ProductId : item.OrderLine.ProductNumber,
-            VariantId = item.OrderLine.ProductVariantId ?? string.Empty,
-            UnitId = item.OrderLine.UnitId ?? string.Empty
-        })
-        .Select(group =>
-        {
-            var latest = group.OrderByDescending(item => item.Order.CompletedDate).First();
-
-            return new
-            {
-                OrderLine = latest.OrderLine,
-                Product = group.First().OrderLine.GetProduct(),
-                Quantity = group.Sum(item => item.OrderLine.Quantity),
-                OrderCount = group.Select(item => item.Order.Id).Distinct().Count()
-            };
-        })
-        .OrderByDescending(item => item.OrderCount)
-        .ThenByDescending(item => item.Quantity)
-        .Take(5)
-        .ToList();
 }
 
-@if (!(topProducts?.Any() ?? false))
+@if (!(Model.Products?.Any() ?? false))
 {
     <div class="d-grid align-items-center text-center fs-7 fw-semibold gap-2">
         <div class="d-grid rounded-circle m-auto" style="aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
@@ -84,18 +54,17 @@
     @{
         var counter = 0;
     }
-    @foreach (var topProduct in topProducts)
+    @foreach (var topProduct in Model.Products)
     {
         counter++;
 
-        var orderLine = topProduct.OrderLine;
         var product = topProduct.Product;
-        var productId = orderLine.ProductId;
-        var variantId = orderLine.ProductVariantId;
-        var unitId = !string.IsNullOrEmpty(orderLine.UnitId) ? orderLine.UnitId : product?.DefaultUnitId;
-        var productName = !string.IsNullOrEmpty(product?.Name) ? product.Name : orderLine.ProductName;
-        var productNumber = !string.IsNullOrEmpty(product?.Number) ? product.Number : orderLine.ProductNumber;
-        var variantName = !string.IsNullOrEmpty(product?.VariantName) ? product.VariantName : orderLine.ProductVariantName;
+        var productId = product?.Id;
+        var variantId = product?.VariantId;
+        var unitId = product?.DefaultUnitId;
+        var productName = product?.Name ?? string.Empty;
+        var productNumber = product?.Number ?? string.Empty;
+        var variantName = product?.VariantName ?? string.Empty;
         var orderCountLabel = topProduct.OrderCount == 1 ? Translate("order") : Translate("orders");
         var isStockType = product?.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock;
         var isNeverOutOfStock = product?.NeverOutOfstock ?? false;
@@ -111,7 +80,7 @@
             <input type="hidden" name="ProductName" value="@HtmlEncoder.HtmlEncode(productName)">
             <input type="hidden" name="ProductVariantName" value="@HtmlEncoder.HtmlEncode(variantName)">
             <input type="hidden" name="ProductCurrency" value="@(Dynamicweb.Ecommerce.Common.Context.Currency.Code)">
-            <input type="hidden" name="ProductPrice" value="@DoubleToString(orderLine.UnitPrice.Price)">
+            <input type="hidden" name="ProductPrice" value="@DoubleToString(product?.Price?.Price)">
             <input type="hidden" name="ProductReferer" value="customer_center_top_bought">
             <input type="hidden" name="cartcmd" value="add">
             <input type="submit" class="d-none" onclick="event.preventDefault(); swift.Cart.Update(event)">
@@ -206,7 +175,7 @@
             else if (!string.IsNullOrEmpty(unitId))
             {
                 <input type="hidden" name="UnitID" value="@unitId">
-                <span class="fs-8 text-muted">@orderLine.UnitName</span>
+                <span class="fs-8 text-muted">@(product?.UnitOptions?.FirstOrDefault(u => u.Id == unitId)?.Name ?? unitId)</span>
             }
 
             <button type="button" onclick="swift.Cart.Update(event)" class="btn btn-sm btn-outline-secondary text-reset border-0 align-self-auto hstack gap-2 p-2 @disableAddToCart" @disableAddToCart data-dw-button>
