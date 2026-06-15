@@ -1,0 +1,156 @@
+@inherits ViewModelTemplate<UserProfilesListViewModel>
+@using Dynamicweb.Content
+@using Dynamicweb.Users.Frontend.UserAuthentication
+@using Dynamicweb.Frontend
+@using Dynamicweb.Rendering
+
+@*
+    Multiple profiles - direct login layout (work item #28528).
+    Unlike SelectableUsers.cshtml (pick a profile, then press "Continue"),
+    this layout logs the user in immediately when a profile is selected:
+    each profile is its own submit button posting DwSwitchUserUniqueId.
+*@
+
+@{
+    var signedInUser = ContentViewModelFactory.CreateUserViewModel(Pageview?.User);
+    var redirect = Model.RedirectAfterSwitchUser;
+
+    var primaryUserUniqueId = Model.PrimaryUser?.UniqueId.ToString();
+
+    var signedInUserAddress = string.Join(", ", new[] { signedInUser?.Address, signedInUser?.City, signedInUser?.Country }.Where(s => !string.IsNullOrEmpty(s)));
+}
+
+<div class="mx-auto w-100" style="max-inline-size: 42rem;">
+    <div class="text-muted">@Translate("Welcome")</div>
+
+    <h1 class="h4 mb-4">@Translate("You're signed in as")</h1>
+
+    <div class="card mb-4">
+        <div class="card-body shadow-sm p-3 hstack align-items-start gap-3">
+
+            @if(signedInUser?.TryGetImageFile(out var userImage) is true)
+            {
+                <div style="height:3.5rem; aspect-ratio:1;">
+                    <img src="@userImage.ToGetImage(new(){ Width = 60, Ratio = "1/1" })" alt="@signedInUser.Name" class="img-thumbnail rounded-circle" itemprop="image"/>
+                </div>
+            }
+            else
+            {
+                <div class="btn btn-primary rounded-circle hstack justify-content-center p-0 pe-none" style="height:3.5rem; aspect-ratio:1;" data-dw-button>
+                    <h6 class="text-reset m-0">
+                        @(signedInUser?.GetTwoLetterInitials())
+                    </h6>
+                </div>
+            }
+
+            <div class="vstack gap-1">
+                <div class="hstack gap-2">
+                    <h5 class="h6 mb-0 overflow-hidden">@(signedInUser?.Name)</h5>
+                    @if (signedInUser?.IsLogin is true)
+                    {
+                        <div class="badge text-reset border" style="background-color: color-mix(in srgb, var(--bs-body-color) 6%, transparent);">
+                            @Translate("Primary")
+                        </div>
+                    }
+                </div>
+                <small class="vstack fs-7 text-muted overflow-hidden">
+                    @if (!string.IsNullOrEmpty(signedInUser?.CustomerNumber))
+                    {
+                        <div>@signedInUser.Email · #@(signedInUser.CustomerNumber)</div>
+                    }
+                    @if (!string.IsNullOrEmpty(signedInUser?.Company))
+                    {
+                        <div>@(signedInUser.Company)</div>
+                    }
+                    @if (!string.IsNullOrEmpty(signedInUserAddress))
+                    {
+                        <div>@(signedInUserAddress)</div>
+                    }
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <form method="post">
+        <input type="hidden" name="redirect" value="@(redirect)" />
+
+        <div class="hstack justify-content-between mb-3">
+            <h2 class="h6 mb-0">@Translate("Switch to another profile")</h2>
+            <div class="text-muted fs-8">
+                <span>@(Model.Users.Count() + 1) @Translate("available")</span>
+            </div>
+        </div>
+
+        <div class="text-muted fs-8 mb-3">@Translate("Select a profile to continue - you'll be signed in straight away.")</div>
+
+        <div class="list-group">
+            @{ await RenderSelectableUserItem(Model?.PrimaryUser, primaryUserUniqueId, true); }
+            @foreach (var user in Model.Users)
+            {
+                string userUniqueId = user.UniqueId.ToString();
+                await RenderSelectableUserItem(user, userUniqueId, false);
+            }
+        </div>
+
+        <div class="hstack flex-wrap justify-content-between gap-2 mt-4">
+            <a href="/Admin/Public/ExtranetLogoff.aspx?redirect=no" class="btn btn-sm btn-outline-secondary text-reset hstack gap-2" data-dw-button>
+                <span class="icon">@ReadFile("/Files/Images/Icons/arrow-left-from-bracket.svg")</span>
+                @Translate("Sign out")
+            </a>
+        </div>
+    </form>
+
+</div>
+
+@{
+    async Task RenderSelectableUserItem(UserViewModel? user, string? userUniqueId, bool isPrimaryUser)
+    {
+        string address = string.Join(", ", new[] { user?.Address, user?.City, user?.Country }.Where(s => !string.IsNullOrEmpty(s)));
+
+        <button type="submit" name="DwSwitchUserUniqueId" value="@(userUniqueId)" class="list-group-item list-group-item-action btn w-100 text-start hstack gap-3 py-3 px-3" data-dw-button>
+            @if(user?.TryGetImageFile(out var userImage) is true)
+            {
+                <div style="height:2.5rem; aspect-ratio:1;">
+                    <img src="@userImage.ToGetImage(new(){ Width = 60, Ratio = "1/1" })" alt="@user.Name" class="img-thumbnail rounded-circle" itemprop="image"/>
+                </div>
+            }
+            else
+            {
+                <div class="btn btn-primary rounded-circle hstack justify-content-center p-0 pe-none" style="height:2.5rem; aspect-ratio:1;" data-dw-button>
+                    <h6 class="fs-7 text-reset m-0">
+                        @(user?.GetTwoLetterInitials())
+                    </h6>
+                </div>
+            }
+
+            <div class="vstack gap-1">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="text-body fs-7 fw-semibold text-truncate overflow-hidden">@(user?.Name)</div>
+                    @if (isPrimaryUser)
+                    {
+                        <div class="badge text-body border" style="background-color: color-mix(in srgb, var(--bs-body-color) 6%, transparent);">
+                            @Translate("Primary")
+                        </div>
+                    }
+                </div>
+                <small class="vstack fs-8 text-muted overflow-hidden">
+                    @if (!string.IsNullOrEmpty(address))
+                    {
+                        <div class="text-truncate">@(address)</div>
+                    }
+                    @if (!string.IsNullOrEmpty(user?.Company))
+                    {
+                        <div class="text-truncate">@(user?.Company)</div>
+                    }
+                    @if (!string.IsNullOrEmpty(user?.CustomerNumber))
+                    {
+                        <div class="text-truncate">#@(user?.CustomerNumber)</div>
+                    }
+                </small>
+            </div>
+            <div class="btn btn-primary pe-none p-1 rounded-circle fs-8 icon ms-auto">
+                @ReadFile("/Files/Images/Icons/arrow-right.svg")
+            </div>
+        </button>
+    }
+}
