@@ -1,0 +1,98 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.QueryPublisher.QueryResultViewModel>
+@using Dynamicweb
+@using Dynamicweb.Core
+@using System.Net
+
+@{
+	int pageCount = Model.PageCount;
+	int currentPage = Model.CurrentPage < 1 ? 1 : Model.CurrentPage;
+
+	// Snapshot the current request's query parameters (except PageNum) so every page
+	// link preserves the search term, facets and QueryName/RepositoryName/AreaId while
+	// only swapping the target page number.
+	var carriedParams = new List<KeyValuePair<string, string>>();
+	var queryString = Dynamicweb.Context.Current?.Request.QueryString;
+	if (queryString != null)
+	{
+		foreach (string? key in queryString.AllKeys)
+		{
+			if (string.IsNullOrEmpty(key) || string.Equals(key, "PageNum", StringComparison.OrdinalIgnoreCase)) { continue; }
+			foreach (string value in queryString.GetValues(key) ?? Array.Empty<string>())
+			{
+				carriedParams.Add(new KeyValuePair<string, string>(key, value));
+			}
+		}
+	}
+
+	string path = Dynamicweb.Context.Current?.Request.Url.AbsolutePath ?? "/Default.aspx";
+
+	Func<int, string> pageUrl = (page) =>
+	{
+		var pairs = carriedParams
+			.Select(p => $"{WebUtility.UrlEncode(p.Key)}={WebUtility.UrlEncode(p.Value)}")
+			.ToList();
+		pairs.Add($"PageNum={page}");
+		return $"{path}?{string.Join("&", pairs)}";
+	};
+
+	// Sliding window of page numbers around the current page.
+	int windowSize = 5;
+	int windowStart = Math.Max(1, currentPage - windowSize / 2);
+	int windowEnd = Math.Min(pageCount, windowStart + windowSize - 1);
+	windowStart = Math.Max(1, windowEnd - windowSize + 1);
+}
+
+@if (pageCount > 1)
+{
+	<nav class="mt-4" aria-label="@Translate("Go to page")">
+		<ul class="pagination justify-content-center mb-2">
+			@{ bool onFirst = currentPage <= 1; }
+			<li class="page-item @(onFirst ? "disabled" : null)">
+				<a class="page-link" href="@(onFirst ? "#" : pageUrl(currentPage - 1))" aria-label="@Translate("Previous")" tabindex="@(onFirst ? "-1" : null)" aria-disabled="@(onFirst ? "true" : null)">
+					<span aria-hidden="true">&laquo;</span>
+				</a>
+			</li>
+
+			@if (windowStart > 1)
+			{
+				<li class="page-item">
+					<a class="page-link" href="@pageUrl(1)" aria-label="@Translate("Page") 1">1</a>
+				</li>
+				@if (windowStart > 2)
+				{
+					<li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+				}
+			}
+
+			@for (int page = windowStart; page <= windowEnd; page++)
+			{
+				bool isCurrent = page == currentPage;
+				<li class="page-item @(isCurrent ? "active" : null)" aria-current="@(isCurrent ? "page" : null)">
+					<a class="page-link" href="@pageUrl(page)" aria-label="@Translate("Page") @(page)">@page</a>
+				</li>
+			}
+
+			@if (windowEnd < pageCount)
+			{
+				@if (windowEnd < pageCount - 1)
+				{
+					<li class="page-item disabled"><span class="page-link">&hellip;</span></li>
+				}
+				<li class="page-item">
+					<a class="page-link" href="@pageUrl(pageCount)" aria-label="@Translate("Page") @pageCount">@pageCount</a>
+				</li>
+			}
+
+			@{ bool onLast = currentPage >= pageCount; }
+			<li class="page-item @(onLast ? "disabled" : null)">
+				<a class="page-link" href="@(onLast ? "#" : pageUrl(currentPage + 1))" aria-label="@Translate("Next")" tabindex="@(onLast ? "-1" : null)" aria-disabled="@(onLast ? "true" : null)">
+					<span aria-hidden="true">&raquo;</span>
+				</a>
+			</li>
+		</ul>
+
+		<div class="text-center opacity-75 fs-7">
+			@Translate("Showing page") @currentPage @Translate("of") @pageCount
+		</div>
+	</nav>
+}
