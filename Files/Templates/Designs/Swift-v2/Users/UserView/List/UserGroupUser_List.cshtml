@@ -135,14 +135,14 @@
                     </thead>
 
                     <tbody>
-                        @foreach (var user in Model.Users)
+                        @foreach (var user in Model?.Users ?? [])
                         {
                             var userState = user.GetStatus();
                             var userManagementUser = Dynamicweb.Security.UserManagement.UserManagementServices.Users.GetUserById(user.ID);
                             <tr>
                                 <td>
                                     <div class="hstack gap-2">
-                                        @if(user.TryGetImageFile(out ImageFileViewModel? image))
+                                        @if(user.TryGetImageFile(out var image))
                                         {
                                             <div class="align-self-auto hstack justify-content-center p-0" style="height:2rem; aspect-ratio:1;">
                                                 <img src="@image.ToGetImage(new(){ Width = 40, Ratio = "1/1" })" alt="@user.Name" class="img-thumbnail rounded-circle" itemprop="image"/>
@@ -192,22 +192,26 @@
                                     </div>
                                 </td>
                                 <td>
-                                    @if ((Pageview?.User?.ID != user.ID) && (UserContext.Current.ImpersonatingUser?.ID != user.ID)) // You cannot impersonate yourself
+                                    @if ((Pageview?.User?.ID != user.ID) && (UserContext.Current.ImpersonatingUser?.ID != user.ID)) // You cannot impersonate or delete yourself
                                     {
+                                        bool canImpersonateThisUser = UserContext.Current.GetImpersonatableUsers()?.Any(u => u.ID == user.ID) == true;
+
                                         <div class="hstack gap-3">
-                                            <button class="btn btn-outline-secondary text-body hstack border-0 p-2 position-relative z-2" data-dw-button="outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
-                                                <span class="icon-2">
+                                            <button class="btn btn-icon position-relative z-2" data-dw-button type="button" data-bs-toggle="dropdown" aria-expanded="false" data-bs-popper-config='{"strategy":"fixed", "placement":"bottom-end"}'>
+                                                <span class="icon">
                                                     @ReadFile("/Files/Images/Icons/ellipsis.svg")
                                                 </span>
                                             </button>
                                             <ul class="dropdown-menu dropdown-menu-shadow">
                                                 <li>
+
                                                     @if (Pageview?.User?.ID != user.ID)
                                                     {
-                                                        <a href="@(baseUrl)?NowImpersonating=true&DWExtranetSecondaryUserSelector=@(user.ID)&Redirect=@(Model.RedirectAfterImpersonation)"
-                                                            class="dropdown-item hstack gap-2">
-                                                            <span class="icon-2">
-                                                                @ReadFile("/Files/Images/Icons/user-group.svg") 
+                                                        <a href="@($"{baseUrl}?NowImpersonating=true&DWExtranetSecondaryUserSelector={user.ID}&Redirect={Model?.RedirectAfterImpersonation}")"
+                                                            class="dropdown-item hstack gap-2 @(!canImpersonateThisUser ? "disabled" : null)"
+                                                            tabindex="@(canImpersonateThisUser ? "0" : "-1")">
+                                                            <span class="icon">
+                                                                @ReadFile("/Files/Images/Icons/user-group.svg")
                                                             </span>
                                                             @Translate("Impersonate")
                                                         </a>
@@ -216,7 +220,7 @@
                                                     {
                                                         <a href="@(baseUrl)?DwExtranetRemoveSecondaryUser=1"
                                                             class="dropdown-item hstack gap-2">
-                                                            <span class="icon-2">@ReadFile("/Files/Images/Icons/arrows-repeat.svg")</span>
+                                                            <span class="icon">@ReadFile("/Files/Images/Icons/arrows-repeat.svg")</span>
                                                             @Translate("Switch back to") @(UserContext.Current.ImpersonatingUser?.Name)
                                                         </a>
                                                     }
@@ -230,7 +234,7 @@
                                                         hx-swap="outerHTML"
                                                         hx-push-url="false"
                                                     >
-                                                        <span class="icon-2">
+                                                        <span class="icon">
                                                             @ReadFile("/Files/Images/Icons/user-group.svg")
                                                         </span>
                                                         @Translate(userState == UserStatusType.Active ? "Deactivate user" : "Activate user")
@@ -246,7 +250,7 @@
                                                         hx-push-url="false"
                                                         disabled="@(userState != UserStatusType.Pending)"
                                                     >
-                                                        <span class="icon-2">
+                                                        <span class="icon">
                                                             @ReadFile("/Files/Images/Icons/envelope.svg")
                                                         </span>
                                                         @Translate("Resend invitation")
@@ -262,7 +266,7 @@
                                                         hx-push-url="false"
                                                         hx-confirm="@Translate("Are you sure you want to delete this user?")"
                                                     >
-                                                        <span class="icon-2">
+                                                        <span class="icon">
                                                             @ReadFile("/Files/Images/Icons/trash-can.svg")
                                                         </span>
                                                         @Translate("Delete")
@@ -273,13 +277,13 @@
                                     }
                                     else
                                     {
-                                        <span>-</span> // You cannot impersonate yourself
+                                        <span>-</span> // You cannot impersonate or delete yourself
                                     }
                                 </td>
                             </tr>
                         }
 
-                        @if (Model.Users.Count() < 1)
+                        @if (Model?.Users.Count() < 1)
                         {
                             <tr>
                                 <td colspan="7">
@@ -301,7 +305,7 @@
             </div>
         </div>
 
-        @if (Model.PageCount > 1)
+        @if (Model?.PageCount > 1)
         {
             <div class="hstack justify-content-between mt-3">
                 <div class="text-muted fs-7">

@@ -1,0 +1,96 @@
+@inherits ViewModelTemplate<UserProfilesListViewModel>
+@using Dynamicweb.Users.Frontend.UserAuthentication
+@using Dynamicweb.Frontend
+@using Dynamicweb.Rendering
+
+@{
+    var redirect = Model.RedirectAfterSwitchUser;
+    var primaryUserUniqueId = Model.PrimaryUser?.UniqueId.ToString();
+}
+
+<div class="mx-auto w-100" style="max-inline-size: 56rem;">
+    <div class="text-muted text-uppercase fs-8 mb-1">@Translate("Sign in")</div>
+    <h1 class="h4 mb-4">@Translate("Choose a profile")</h1>
+
+    <form method="post">
+        <input type="hidden" name="redirect" value="@(redirect)" />
+
+        <div class="row g-3">
+            @{ await RenderSelectableUserItem(Model?.PrimaryUser, primaryUserUniqueId, true); }
+            @foreach (var user in Model?.Users ?? [])
+            {
+                string userUniqueId = user.UniqueId.ToString();
+                await RenderSelectableUserItem(user, userUniqueId, false);
+            }
+        </div>
+
+        <div class="hstack flex-wrap gap-2 mt-4">
+            <a href="/Admin/Public/ExtranetLogoff.aspx?redirect=no" class="btn btn-sm btn-outline-secondary text-reset hstack gap-2" data-dw-button>
+                <span class="icon">@ReadFile("/Files/Images/Icons/arrow-left-from-bracket.svg")</span>
+                @Translate("Sign out")
+            </a>
+        </div>
+    </form>
+
+</div>
+
+@{
+    async Task RenderSelectableUserItem(UserViewModel? user, string? userUniqueId, bool isPrimaryUser)
+    {
+        string address = string.Join(", ", new[] { user?.Address, user?.City, user?.Country }.Where(s => !string.IsNullOrEmpty(s)));
+
+        <div class="col-12 col-md-6">
+            <button type="submit" name="DwSwitchUserUniqueId" value="@(userUniqueId)" class="btn w-100 h-100 text-start border-0 p-0" aria-label="@Translate("Sign in as") @(user?.Name) @(user?.Company)">
+                <div class="card h-100 p-3 position-relative border shadow-sm-hover">
+                    <div class="opacity-0 opacity-100-hover stretched-link">
+                        <div class="position-absolute top-0 end-0 m-3 btn btn-primary pe-none p-1 rounded-circle fs-8 icon">
+                            @ReadFile("/Files/Images/Icons/arrow-right.svg")
+                        </div>
+                    </div>
+
+                    <div class="hstack align-items-start gap-3">
+                        @if(user?.TryGetImageFile(out var userImage) is true)
+                        {
+                            <div class="flex-shrink-0" style="height:3rem; aspect-ratio:1;">
+                                <img src="@userImage.ToGetImage(new(){ Width = 60, Ratio = "1/1" })" alt="@user.Name" class="img-thumbnail rounded-circle" itemprop="image"/>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="btn btn-primary rounded-circle hstack justify-content-center p-0 pe-none flex-shrink-0" style="height:3rem; aspect-ratio:1;" data-dw-button>
+                                <h6 class="fs-7 text-reset m-0">@(user?.GetTwoLetterInitials())</h6>
+                            </div>
+                        }
+
+                        <div class="vstack gap-1 overflow-hidden pe-4">
+                            <div class="hstack gap-2">
+                                <h5 class="h6 mb-0 overflow-hidden">@(user?.Name)</h5>
+                                @if (isPrimaryUser)
+                                {   
+                                    <div class="badge text-reset border text-uppercase fs-9" style="background-color: color-mix(in srgb, var(--bs-body-color) 6%, transparent);">
+                                        @Translate("Primary")
+                                    </div>
+                                }
+                            </div>
+
+                            <small class="vstack fs-8 text-muted overflow-hidden">
+                                @if (!string.IsNullOrEmpty(user?.Company))
+                                {
+                                    <div class="text-truncate">@(user?.Company)</div>
+                                }
+                                @if (!string.IsNullOrEmpty(address))
+                                {
+                                    <div class="text-truncate">@(address)</div>
+                                }
+                                @if (!string.IsNullOrEmpty(user?.CustomerNumber))
+                                {
+                                    <div class="text-truncate">@Translate("Customer") #@(user?.CustomerNumber)</div>
+                                }
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </button>
+        </div>
+    }
+}
