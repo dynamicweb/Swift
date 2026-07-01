@@ -122,6 +122,9 @@ PostGrid and PostList templates rendered via QueryPublisher now support HTMX-bas
 
 ## Bug Fixes
 
+* **General** 28728 - ProductListRenderGrid itemtype check case insensitive
+* **General** 28724 - Simplify the minicart remove all. Header and footer are duplicated when emptying the cart from the mini cart while on the Cart page
+* **General** 28725 - Icon svg overflow fix, some SVG icons were clipped
 * **General** 28136 - Fix null reference in ProductListGroupImage when product group has no image
 * **General** 28624 - Fix NullReferenceException in content search dropdown on Enter (GET)
 * **General** 28614 - Favorites list edit button fix
