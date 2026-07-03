@@ -6,7 +6,8 @@ Built upon the DynamicWeb 10 platform, Swift offers a robust foundation for busi
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=black&label=Swift%20Release) [![GitHub DW10](https://img.shields.io/badge/DynamicWeb10%20Release-v10.29.0-blue)](https://doc.dynamicweb.dev/) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.3.3-purple)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-darkblue)](https://doc.dynamicweb.dev/swift/getting-started/index.html) 
 
 > [!NOTE]
-> Swift 2.4.0 is running on a DW10.29.0 (R0) if you are not running a R0 version, you can use (https://github.com/dynamicweb/Swift/releases#release-v2.3.0 "Swift 2.3.0")
+> Swift 2.4.0 is running on a DW10.29.0 (R0) if you are not running a R0 version,
+> you can use [![GitHub Swift](https://img.shields.io/badge/Swift2.3.0-black)](https://github.com/dynamicweb/Swift/releases#release-v2.3.0) 
 
 [Key features](#key-features) • [Build styles and scripts](#build-styles-and-scripts-npm) • [Requirements, Hosting environment and install](#requirements-hosting-environment-and-install) • [Database and demo data](#database-and-demo-data)
 
