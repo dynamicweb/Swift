@@ -1,0 +1,45 @@
+pr:
+  autoCancel: true
+  branches:
+    include:
+    - main
+    - features/*
+  paths:
+    exclude:
+    - Pipelines/*
+
+pool: Swift
+
+steps:  
+  - task: NodeTool@0
+    inputs:
+      versionSpec: "20.x"
+    displayName: "Install Node.js"
+
+  - script: |
+      npm install
+      npm run build --verbose
+    displayName: 'Run npm build'
+
+  - powershell: |
+      mkdir artifiacts
+      mv Files artifacts
+      cp "\\dwis-dev09\Dynamicweb.net\swift\database.bak" artifacts
+    workingDirectory: $(Build.SourcesDirectory)
+    displayName: 'Clean build and add database '
+  
+  - task: ArchiveFiles@2
+    inputs:
+      rootFolderOrFile: "$(Build.SourcesDirectory)/Files"
+      includeRootFolder: false
+      archiveType: "zip"
+      archiveFile: "$(Build.ArtifactStagingDirectory)/$(System.PullRequest.PullRequestId).zip"
+      replaceExistingArchive: true
+    displayName: "Zip Files"
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: "$(Build.ArtifactStagingDirectory)"
+      ArtifactName: "swift"
+      publishLocation: "Container"
+    displayName: "Publish artifact"
