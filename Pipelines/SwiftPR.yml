@@ -11,9 +11,9 @@ pr:
 pool: Swift
 
 steps:  
-  - task: NodeTool@0
+  - task: UseNode@1
     inputs:
-      versionSpec: "20.x"
+      version: "20.x"
     displayName: "Install Node.js"
 
   - script: |
@@ -22,18 +22,22 @@ steps:
     displayName: 'Run npm build'
 
   - powershell: |
-      mkdir artifiacts
-      mv Files artifacts
-      cp "\\dwis-dev09\Dynamicweb.net\swift\database.bak" artifacts
+      New-Item -ItemType Directory -Force $(System.PullRequest.PullRequestId)
+      Move-Item Files $(System.PullRequest.PullRequestId)\Files
+      Copy-Item "\\dwis-dev09\Dynamicweb.net\swift\database.bak" $(System.PullRequest.PullRequestId)
     workingDirectory: $(Build.SourcesDirectory)
-    displayName: 'Clean build and add database '
+    displayName: 'Clean build and add database'
   
+  - powershell: |
+      "$(System.PullRequest.PullRequestId)" | Out-File "$(Build.ArtifactStagingDirectory)\prid.txt"
+    displayName: 'Save PR ID'
+    
   - task: ArchiveFiles@2
     inputs:
-      rootFolderOrFile: "$(Build.SourcesDirectory)/Files"
-      includeRootFolder: false
+      rootFolderOrFile: "$(Build.SourcesDirectory)/$(System.PullRequest.PullRequestId)"
+      includeRootFolder: true
       archiveType: "zip"
-      archiveFile: "$(Build.ArtifactStagingDirectory)/$(System.PullRequest.PullRequestId).zip"
+      archiveFile: "$(Build.ArtifactStagingDirectory)/swift-pr$(System.PullRequest.PullRequestId).zip"
       replaceExistingArchive: true
     displayName: "Zip Files"
 
