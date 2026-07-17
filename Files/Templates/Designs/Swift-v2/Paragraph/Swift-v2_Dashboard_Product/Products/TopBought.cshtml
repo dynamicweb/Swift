@@ -63,7 +63,7 @@
         double? maxQty = isStockType && !isNeverOutOfStock ? product?.StockLevel : null;
         double? quantity = minQty > stepQty ? minQty : stepQty;
 
-        <form method="post" action="@cartUrl" class="list-group-item px-0 py-3 d-flex flex-wrap align-items-center gap-2 gap-sm-3">
+        <form method="post" action="@cartUrl" class="list-group-item px-0 py-3 hstack flex-wrap gap-2 gap-sm-3">
             <input type="hidden" name="redirect" value="false">
             <input type="hidden" name="ProductId" value="@productId">
             <input type="hidden" name="ProductName" value="@HtmlEncoder.HtmlEncode(productName)">
@@ -124,52 +124,68 @@
                 </div>
             }
 
-            <div class="min-w-0">
+            <div class="vstack min-w-0">
                 <div class="fs-7 fw-semibold text-body text-truncate">@productName</div>
+                @if (product?.VariantId != null)
+                {
+                    <div class="fs-8 text-truncate">@variantName</div>
+                }
                 <div class="fs-8 text-muted text-truncate">
                     @productNumber
                     <span>· @(topProduct.OrderCount) @(orderCountLabel)</span>
                 </div>
             </div>
+            
+            <div class="d-grid align-items-center gap-2" style="grid-template-columns: 1fr 1fr 90px auto;">
+                <div class="text-price fs-7 fw-semibold ms-sm-auto">
+                    @(product?.Price?.PriceFormatted)
+                </div>
 
-            <div class="text-price fs-7 fw-semibold ms-sm-auto">
-                @(product?.Price?.PriceFormatted)
-            </div>
+                <div class="d-grid position-relative" style="grid-template-columns: 1fr auto 1fr;">
+                    <input id="TopBoughtQuantity_@(counter)" name="Quantity" value="@DoubleToString(quantity)" step="@DoubleToString(stepQty)" min="@DoubleToString(minQty)" max="@DoubleToString(maxQty)" class="form-control fs-8 border-0 rounded-0 px-1 text-center" type="number" inputmode="numeric" data-qty @disableAddToCart placeholder="0" tabindex="0">
+                    <span class="visually-hidden">@Translate("Type a number, or use the decrease or increase button to change the quantity")</span>
 
-            <div class="d-flex align-items-center justify-content-between position-relative" style="width:fit-content;">
-                <input id="TopBoughtQuantity_@(counter)" name="Quantity" value="@DoubleToString(quantity)" step="@DoubleToString(stepQty)" min="@DoubleToString(minQty)" max="@DoubleToString(maxQty)" class="form-control border-0 rounded-0 px-1 flex-grow-0 text-center" type="number" inputmode="numeric" data-qty @disableAddToCart placeholder="0" tabindex="0">
-                <span class="visually-hidden">@Translate("Type a number, or use the decrease or increase button to change the quantity")</span>
+                    <button type="button" data-qty-step="decrease" aria-label="@Translate("The button to decrease the quantity")" class="btn btn-icon fs-8 order-first" data-dw-button onclick="this.parentNode.querySelector('[data-qty]').stepDown()" @disableAddToCart tabindex="-1">
+                        <span class="icon">@ReadFile(iconPath + "minus.svg")</span>
+                    </button>
 
-                <button type="button" data-qty-step="decrease" aria-label="@Translate("The button to decrease the quantity")" class="d-flex btn btn-outline-secondary p-2 m-1 border-0 order-first" data-dw-button="outline-secondary" onclick="this.parentNode.querySelector('[data-qty]').stepDown()" @disableAddToCart tabindex="-1">
-                    <span class="icon-2">@ReadFile(iconPath + "minus.svg")</span>
+                    <button type="button" data-qty-step="increase" aria-label="@Translate("The button to increase the quantity")" class="btn btn-icon fs-8 order-last" data-dw-button onclick="this.parentNode.querySelector('[data-qty]').stepUp()" @disableAddToCart tabindex="-1">
+                        <span class="icon">@ReadFile(iconPath + "plus.svg")</span>
+                    </button>
+
+                    <span class="position-absolute border pe-none" data-dw-button style="inset: 0; border-radius: var(--dw-btn-border-radius);"></span>
+                </div>
+
+                @if (product?.UnitOptions?.Count > 0)
+                {
+                    <select name="UnitID" class="form-select fs-8 w-auto" @disableAddToCart>
+                        @foreach (var unitOption in product.UnitOptions)
+                        {
+                            <option value="@(unitOption.Id)" selected="@(unitOption.Id == unitId)">
+                                @if (unitOption.Id == unitId)
+                                {
+                                    <span class="icon fs-8">@ReadFile(iconPath + "check.svg")</span>
+                                }
+                                @(unitOption.Name)
+                            </option>
+                        }
+                    </select>
+                }
+                else if (!string.IsNullOrEmpty(product?.DefaultUnitId))
+                {
+                    <input type="hidden" name="UnitID" value="@product.DefaultUnitId">
+                    <span class="fs-8 text-muted">@(product?.UnitOptions?.FirstOrDefault(u => u.Id == product.DefaultUnitId)?.Name ?? Translate("Piece"))</span>
+                }
+                else 
+                {
+                    <span class="fs-8 text-muted">@(Translate("Piece"))</span>
+                }
+
+                <button type="button" onclick="swift.Cart.Update(event)" class="btn badge btn-outline-secondary text-reset border-0 align-self-auto hstack gap-2 @disableAddToCart" @disableAddToCart data-dw-button>
+                    <span class="icon fs-8">@ReadFile(iconPath + "arrows-rotate.svg")</span>
+                    <span>@Translate("Reorder")</span>
                 </button>
-
-                <button type="button" data-qty-step="increase" aria-label="@Translate("The button to increase the quantity")" class="d-flex btn btn-outline-secondary p-2 m-1 border-0 order-last" data-dw-button="outline-secondary" onclick="this.parentNode.querySelector('[data-qty]').stepUp()" @disableAddToCart tabindex="-1">
-                    <span class="icon-2">@ReadFile(iconPath + "plus.svg")</span>
-                </button>
-
-                <span class="position-absolute pe-none" data-dw-button style="border: 1px solid rgba(var(--bs-body-color-rgb),.1); inset: 0; border-radius: var(--dw-btn-border-radius);"></span>
             </div>
-
-            @if (product?.UnitOptions?.Count > 0)
-            {
-                <select name="UnitID" class="form-select w-auto" @disableAddToCart>
-                    @foreach (var unitOption in product.UnitOptions)
-                    {
-                        <option value="@(unitOption.Id)" selected="@(unitOption.Id == unitId)">@(unitOption.Name)</option>
-                    }
-                </select>
-            }
-            else if (!string.IsNullOrEmpty(unitId))
-            {
-                <input type="hidden" name="UnitID" value="@unitId">
-                <span class="fs-8 text-muted">@(product?.UnitOptions?.FirstOrDefault(u => u.Id == unitId)?.Name ?? unitId)</span>
-            }
-
-            <button type="button" onclick="swift.Cart.Update(event)" class="btn badge btn-outline-secondary text-reset border-0 align-self-auto hstack gap-2 @disableAddToCart" @disableAddToCart data-dw-button>
-                <span class="icon fs-8">@ReadFile(iconPath + "arrows-rotate.svg")</span>
-                <span>@Translate("Reorder")</span>
-            </button>
         </form>
     }
 </div>
