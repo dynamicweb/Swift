@@ -59,3 +59,4 @@ After following these guides you will have a freshly installed DynamicWeb soluti
 | Demo Content Images | [Download Demo Content Images](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-2 "Download Demo Content Images") |
 | Styles | [Download Styles](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-2  "Download Styles") |
 | Styles | [Download Digital Assets](https://doc.dynamicweb.com/downloads/swift#sideNavTitle1-2  "Download Digital Assets") |
+

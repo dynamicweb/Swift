@@ -10,10 +10,6 @@ pr:
 
 pool: Swift
 
-variables:
-- name: templateName
-  value: "swift-prswift-pr$(System.PullRequest.PullRequestId)"
-
 steps:  
   - task: UseNode@1
     inputs:
@@ -26,11 +22,29 @@ steps:
     displayName: 'Run npm build'
 
   - powershell: |
-      New-Item -ItemType Directory $(templateName) -Force 
-      Move-Item Files $(System.PullRequest.PullRequestId)\Files
-      Copy-Item "\\dwis-dev09\Dynamicweb.net\swift\database.bak" $(templateName)
+      $templateName = "swift-pr$env:SYSTEM_PULLREQUEST_PULLREQUESTID"
+
+      New-Item -ItemType Directory $templateName -Force
+      Move-Item Files "$templateName\Files"
     workingDirectory: $(Build.SourcesDirectory)
-    displayName: 'Clean build and add database'
+    displayName: 'Clean build'
+
+  - task: ArchiveFiles@2
+    inputs:
+      rootFolderOrFile: "$(Build.SourcesDirectory)/swift-pr$(System.PullRequest.PullRequestId)/Files"
+      includeRootFolder: true
+      archiveType: "zip"
+      archiveFile: "$(Build.SourcesDirectory)/swift-pr$(System.PullRequest.PullRequestId)/Files.zip"
+      replaceExistingArchive: true
+    displayName: "Zip Files"
+
+  - powershell: |
+      $templateName = "swift-pr$env:SYSTEM_PULLREQUEST_PULLREQUESTID"
+
+      Copy-Item "\\dwis-dev09\Dynamicweb.net\swift\database.bak" $templateName
+      Remove-Item "$templateName\Files" -Force -Recurse
+    workingDirectory: $(Build.SourcesDirectory)
+    displayName: 'Add database'
   
   - powershell: |
       "$(System.PullRequest.PullRequestId)" | Out-File "$(Build.ArtifactStagingDirectory)\prid.txt"
@@ -38,10 +52,10 @@ steps:
     
   - task: ArchiveFiles@2
     inputs:
-      rootFolderOrFile: "$(Build.SourcesDirectory)/$(System.PullRequest.PullRequestId)"
+      rootFolderOrFile: "$(Build.SourcesDirectory)/swift-pr$(System.PullRequest.PullRequestId)"
       includeRootFolder: true
       archiveType: "zip"
-      archiveFile: "$(Build.ArtifactStagingDirectory)/$(templateName).zip"
+      archiveFile: "$(Build.ArtifactStagingDirectory)/swift-pr$(System.PullRequest.PullRequestId).zip"
       replaceExistingArchive: true
     displayName: "Zip Files"
 
