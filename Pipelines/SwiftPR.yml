@@ -25,7 +25,6 @@ steps:
 
   - powershell: |
       if (Test-Path "DemoData\.git") {
-        # Already cloned on this reused agent — just update it in place
         git -C DemoData fetch --depth 1 origin
         if ($LASTEXITCODE -ne 0) { throw "git fetch failed" }
         git -C DemoData reset --hard origin/HEAD
@@ -35,7 +34,10 @@ steps:
         if ($LASTEXITCODE -ne 0) { throw "git clone failed" }
       }
 
-      Copy-Item "$(Build.SourcesDirectory)\DemoData\*" "$(Build.SourcesDirectory)\Files" -Recurse -Force
+      robocopy "$(Build.SourcesDirectory)\DemoData" "$(Build.SourcesDirectory)\Files" /E /XD .git
+      # robocopy: exit code < 8 = success (1 = files copied, 3 = copied+extra, etc.)
+      if ($LASTEXITCODE -ge 8) { throw "robocopy failed with exit code $LASTEXITCODE" }
+      $global:LASTEXITCODE = 0
     workingDirectory: $(Build.SourcesDirectory)
     displayName: 'Pull demo data from GitHub'
 
