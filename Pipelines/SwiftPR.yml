@@ -24,7 +24,16 @@ steps:
     displayName: 'Run npm build'
 
   - powershell: |
-      git clone --depth 1 https://github.com/dynamicweb/swift-demo-data.git DemoData
+      if (Test-Path "DemoData\.git") {
+        # Already cloned on this reused agent — just update it in place
+        git -C DemoData fetch --depth 1 origin
+        if ($LASTEXITCODE -ne 0) { throw "git fetch failed" }
+        git -C DemoData reset --hard origin/HEAD
+        if ($LASTEXITCODE -ne 0) { throw "git reset failed" }
+      } else {
+        git clone --depth 1 https://github.com/dynamicweb/swift-demo-data.git DemoData
+        if ($LASTEXITCODE -ne 0) { throw "git clone failed" }
+      }
 
       Copy-Item "$(Build.SourcesDirectory)\DemoData\*" "$(Build.SourcesDirectory)\Files" -Recurse -Force
     workingDirectory: $(Build.SourcesDirectory)
