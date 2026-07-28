@@ -195,6 +195,7 @@ The `POST /_apis/wit/workitems/$User%20Story` endpoint rejects some field combin
 | File | Purpose |
 |------|---------|
 | `.agents/context/swift-architecture.md` | Template hierarchy, HTMX/Alpine patterns, JS module system, SCSS layers |
+| `.agents/context/commerce-architecture.md` | Cart & order domain — the two cart pipelines, `X-DW-Template` fragments, cart state broadcast, endpoint strategy, caveats. Read before touching `eCom/Cart/`, `eCom/CustomerExperienceCenter/Orders/`, `Swift-v2_MiniCart/`, or `_src/js/_cart*.js` |
 | `.agents/context/viewmodel-cheatsheet.md` | ViewModel inheritance, Model properties, TryGet patterns, encoding rules — read before writing CSHTML |
 | `.agents/context/design-system.md` | CSS variable chain (--dw-*, --swift-*, --bs-*), color scheme scoping, spacer scale, container widths |
 | `.agents/context/paragraph-layouts.md` | Layout subfolder system, anatomy of a layout file, standard building blocks, checklist for new layouts |
