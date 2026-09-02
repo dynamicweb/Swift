@@ -1,0 +1,33 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.QueryPublisher.QueryResultViewModel>
+@using Dynamicweb.Core.Encoders
+@using System.Linq
+@using Microsoft.AspNetCore.WebUtilities
+
+@{
+	string paragraphId = HtmlEncoder.HtmlEncode(Dynamicweb.Context.Current?.Request.QueryString.Get("ParagraphId") ?? string.Empty);
+	// Strip the parameters the form supplies itself, so they are not sent twice and a new search starts at page 1
+	string rawUrl = Dynamicweb.Context.Current?.Request.RawUrl ?? "/";
+	int queryStart = rawUrl.IndexOf('?');
+	var query = QueryHelpers.ParseQuery(queryStart < 0 ? string.Empty : rawUrl[queryStart..]);
+	foreach (var key in new[] { "postq", "PageNum", "CurrentPage" }.Concat(Model.FacetGroups.SelectMany(g => g.Facets).Select(f => f.QueryParameter)))
+	{
+		query.Remove(key);
+	}
+	string formUrl = QueryHelpers.AddQueryString(queryStart < 0 ? rawUrl : rawUrl[..queryStart], query);
+}
+
+<form class="d-flex gap-3 mb-4 flex-wrap"
+	hx-get="@HtmlEncoder.HtmlEncode(formUrl)"
+	hx-trigger="keyup[key!='Enter'] delay:1s, change, submit"
+	hx-swap="outerHTML"
+	hx-replace-url="@(string.IsNullOrEmpty(paragraphId) ? "true" : "false")"
+	hx-select="[data-swift-posts-list='@paragraphId']"
+	hx-target="[data-swift-posts-list='@paragraphId']">
+
+	<div class="flex-fill" style="max-width: 26rem">
+		@RenderPartial("Designs/Swift-v2/QueryPublisher/Post/PostSearch.cshtml")
+	</div>
+	<div class="overflow-y-auto">
+		@RenderPartial("Designs/Swift-v2/QueryPublisher/Post/PostHorizontalFacets.cshtml")
+	</div>
+</form>
