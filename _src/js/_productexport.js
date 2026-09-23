@@ -90,7 +90,7 @@ const ProductExport = (function () {
         clickedButton.disabled = false;
         clickedButton.innerHTML = settings.downloadLinkLabel;
 
-        await this.ShowError(form, response);
+        this.ShowError(form, response);
       }
     },
 
@@ -125,40 +125,26 @@ const ProductExport = (function () {
           // network failure — handled below like any other failure
         }
 
-        if (response && response.ok) {
+        if (response && response.ok && response.status !== 204) {
           form.querySelector(".js-download-success").classList.remove("d-none");
         } else {
-          await this.ShowError(form, response);
+          this.ShowError(form, response);
         }
 
         return false;
       }
     },
 
-    ShowError: async function (form, response) {
-      let detail = "";
+    // The reason comes from the markup, keyed by HTTP status, so it is translated.
+    // The platform bodies are English-only and never reach the user.
+    ShowError: function (form, response) {
+      const warning = form.querySelector(".js-download-images-warning");
+      const key = response ? response.status : "offline";
 
-      if (response) {
-        detail = (await response.text().catch(() => "")).trim();
+      form.querySelector(".js-download-error-detail").textContent =
+        warning.getAttribute("data-error-" + key) || "";
 
-        try {
-          const json = JSON.parse(detail);
-          detail = json.message || json.detail || json.title || "";
-        } catch {
-          // plain-text body — use as-is
-        }
-
-        detail = detail.split("\n")[0].trim().slice(0, 300);
-
-        if (detail.startsWith("<")) {
-          detail = "";
-        }
-      }
-
-      form.querySelector(".js-download-error-detail").textContent = detail;
-      form
-        .querySelector(".js-download-images-warning")
-        .classList.remove("d-none");
+      warning.classList.remove("d-none");
     },
 
     UpdateSelector: function (clickedButton) {
