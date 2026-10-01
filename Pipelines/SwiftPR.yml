@@ -1,0 +1,91 @@
+trigger: none
+
+pr:
+  autoCancel: true
+  branches:
+    include:
+    - main
+    - features/*
+  paths:
+    exclude:
+    - Pipelines/*
+
+pool: Swift
+
+steps:  
+  - checkout: self
+    clean: true
+    displayName: "Checkout (clean)"
+
+  - task: UseNode@1
+    inputs:
+      version: "20.x"
+    displayName: "Install Node.js"
+
+  - script: |
+      call npm install
+      call npm run build --verbose
+    displayName: 'Run npm build'
+
+  - powershell: |
+      if (Test-Path "DemoData\.git") {
+        git -C DemoData fetch --depth 1 origin
+        if ($LASTEXITCODE -ne 0) { throw "git fetch failed" }
+        git -C DemoData reset --hard origin/HEAD
+        if ($LASTEXITCODE -ne 0) { throw "git reset failed" }
+      } else {
+        git clone --depth 1 https://github.com/dynamicweb/swift-demo-data.git DemoData
+        if ($LASTEXITCODE -ne 0) { throw "git clone failed" }
+      }
+
+      robocopy "$(Build.SourcesDirectory)\DemoData\Files" "$(Build.SourcesDirectory)\Files" /E /XD .git
+      # robocopy: exit code < 8 = success (1 = files copied, 3 = copied+extra, etc.)
+      if ($LASTEXITCODE -ge 8) { throw "robocopy failed with exit code $LASTEXITCODE" }
+      $global:LASTEXITCODE = 0
+    workingDirectory: $(Build.SourcesDirectory)
+    displayName: 'Pull demo data from GitHub'
+
+  - powershell: |
+      $templateName = "swift-pr$env:SYSTEM_PULLREQUEST_PULLREQUESTID"
+
+      New-Item -ItemType Directory $templateName -Force
+      Move-Item Files "$templateName\Files"
+    workingDirectory: $(Build.SourcesDirectory)
+    displayName: 'Clean build'
+
+  - task: ArchiveFiles@2
+    inputs:
+      rootFolderOrFile: "$(Build.SourcesDirectory)/swift-pr$(System.PullRequest.PullRequestId)/Files"
+      includeRootFolder: true
+      archiveType: "zip"
+      archiveFile: "$(Build.SourcesDirectory)/swift-pr$(System.PullRequest.PullRequestId)/Files.zip"
+      replaceExistingArchive: true
+    displayName: "Zip Files"
+
+  - powershell: |
+      $templateName = "swift-pr$env:SYSTEM_PULLREQUEST_PULLREQUESTID"
+
+      Copy-Item "\\dwis-dev09\Dynamicweb.net\swift\database.bak" $templateName
+      Remove-Item "$templateName\Files" -Force -Recurse
+    workingDirectory: $(Build.SourcesDirectory)
+    displayName: 'Add database'
+  
+  - powershell: |
+      "$(System.PullRequest.PullRequestId)" | Out-File "$(Build.ArtifactStagingDirectory)\prid.txt"
+    displayName: 'Save PR ID'
+    
+  - task: ArchiveFiles@2
+    inputs:
+      rootFolderOrFile: "$(Build.SourcesDirectory)/swift-pr$(System.PullRequest.PullRequestId)"
+      includeRootFolder: true
+      archiveType: "zip"
+      archiveFile: "$(Build.ArtifactStagingDirectory)/swift-pr$(System.PullRequest.PullRequestId).zip"
+      replaceExistingArchive: true
+    displayName: "Zip Files"
+
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: "$(Build.ArtifactStagingDirectory)"
+      ArtifactName: "swift"
+      publishLocation: "Container"
+    displayName: "Publish artifact"

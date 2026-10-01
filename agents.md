@@ -55,7 +55,9 @@ SCSS source: `_src/scss/` organized as `0-base/`, `1-dw/` (DynamicWeb integratio
 
 - `Files/GlobalSettings.config` — main application configuration
 - `Files/GlobalSettings.Ecom.config` — eCommerce-specific settings
-- `Swift-v2.csproj` — .NET project referencing Dynamicweb NuGet packages (all `10.*`)
+- `Swift-v2.csproj` — .NET project (`net10.0`) referencing Dynamicweb NuGet packages (all `10.*`)
+- `Swift-v2.slnx` — solution file (IDE only; not used by the pipelines)
+- `Swift-v2.csproj.user` (optional, gitignored) — local override to build against DW10 source instead of NuGet packages; expects the `Dynamicweb10` repo checked out next to Swift
 
 ## Code Style
 
@@ -195,6 +197,7 @@ The `POST /_apis/wit/workitems/$User%20Story` endpoint rejects some field combin
 | File | Purpose |
 |------|---------|
 | `.agents/context/swift-architecture.md` | Template hierarchy, HTMX/Alpine patterns, JS module system, SCSS layers |
+| `.agents/context/commerce-architecture.md` | Cart & order domain — the two cart pipelines, `X-DW-Template` fragments, cart state broadcast, endpoint strategy, caveats. Read before touching `eCom/Cart/`, `eCom/CustomerExperienceCenter/Orders/`, `Swift-v2_MiniCart/`, or `_src/js/_cart*.js` |
 | `.agents/context/viewmodel-cheatsheet.md` | ViewModel inheritance, Model properties, TryGet patterns, encoding rules — read before writing CSHTML |
 | `.agents/context/design-system.md` | CSS variable chain (--dw-*, --swift-*, --bs-*), color scheme scoping, spacer scale, container widths |
 | `.agents/context/paragraph-layouts.md` | Layout subfolder system, anatomy of a layout file, standard building blocks, checklist for new layouts |

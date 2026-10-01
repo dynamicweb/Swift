@@ -9,45 +9,115 @@
 	{
 		foreach (var field in listValues)
 		{
-			if (field.IsColor() && field.GetColor() is ColorViewModel colorModel)
-			{
-				string hexColor = colorModel.Hex;
-
-				<span class="colorbox-sm" style="background-color: @hexColor" title="@hexColor"></span>
-			}
-			else
-			{
-				<span>@field.Name</span>
-			}
+			await RenderFieldOption(field);
 		}
 	}
 	else
 	{
 		if (Model.IsLink() && Model.GetLink() is LinkViewModel linkModel)
 		{
-			<span>
-				<a href="@linkModel.Url">@linkModel.Url</a>
-			</span>
+			await RenderLink(linkModel);
 		}
 		else if (Model.IsColor() && Model.GetColor() is ColorViewModel colorModel)
 		{
-			string hexColor = colorModel.Hex;
-
-			<span class="colorbox-sm" style="background-color: @hexColor" title="@hexColor"></span>
+			await RenderColorSwatch(colorModel);
 		}
 		else if (Model.IsFile() && Model.GetFile() is FileViewModel fileModel)
 		{
-			var file = fileModel;
+			await RenderFile(fileModel);
+		}
+		else if (Model.IsMatrix() && Model.GetMatrix() is MatrixViewModel matrix)
+		{
+			if (matrix?.Rows.Count > 0)
+			{
+				<div class="border rounded overflow-hidden">
+					<div class="d-grid" style="grid-template-columns: repeat(@matrix.Headers.Count, 1fr);">
 
-			<a href="@file.Path" download>@file.Name</a>
+						@foreach (var header in matrix.Headers)
+						{
+							<div class="fw-semibold small px-2 py-2 bg-light border-bottom">@(header.Label)</div>
+						}
+
+						@for (var i = 0; i < matrix.Rows.Count; i++)
+						{
+							var row = matrix.Rows[i];
+							var rowBorder = i < matrix.Rows.Count - 1 ? "border-bottom" : "";
+							@foreach (var cell in row.Cells)
+							{
+								<div class="small px-2 py-2 @rowBorder">
+									@if (cell.IsLink() && cell.GetLink() is LinkViewModel cellLink)
+									{
+										await RenderLink(cellLink);
+									}
+									else if (cell.IsFile() && cell.GetFile() is FileViewModel cellFile)
+									{
+										await RenderFile(cellFile);
+									}
+									else if (cell.IsColor() && cell.GetColor() is ColorViewModel cellColor)
+									{
+										await RenderColorSwatch(cellColor, "d-inline-block rounded me-1");
+										@cellColor.Hex
+									}
+									else if (cell.Value is List<FieldOptionValueViewModel> cellListValues)
+									{
+										foreach (var option in cellListValues)
+										{
+											await RenderFieldOption(option);
+										}
+									}
+									else
+									{
+										await RenderText(cell.Value);
+									}
+								</div>
+							}
+						}
+
+					</div>
+				</div>
+			}
 		}
 		else
 		{
 			var value = hideUnitsOfMeasure ? Model.Value : Model.GetValueWithUnits();
-			value = value.ToString().ToLower() == "true" ? Translate("Yes") : value;
-			value = value.ToString().ToLower() == "false" ? Translate("No") : value;
-
-			<span>@value</span>
+			await RenderText(value);
 		}
+	}
+}
+
+@functions {
+	async Task RenderLink(LinkViewModel link)
+	{
+		<span><a href="@(link.Url)">@(link.Url)</a></span>
+	}
+
+	async Task RenderFile(FileViewModel file)
+	{
+		<a href="@(file.Path)" download>@(file.Name)</a>
+	}
+
+	async Task RenderColorSwatch(ColorViewModel color, string cssClass = "colorbox-sm")
+	{
+		<span class="@(cssClass)" style="background-color:@(color.Hex)" title="@(color.Hex)"></span>
+	}
+
+	async Task RenderFieldOption(FieldOptionValueViewModel option)
+	{
+		if (option.IsColor() && option.GetColor() is ColorViewModel colorModel)
+		{
+			await RenderColorSwatch(colorModel);
+		}
+		else
+		{
+			<span>@option.Name</span>
+		}
+	}
+
+	async Task RenderText(object value)
+	{
+		var text = value?.ToString() ?? string.Empty;
+		if (text.Equals("true", StringComparison.OrdinalIgnoreCase)) text = Translate("Yes");
+		else if (text.Equals("false", StringComparison.OrdinalIgnoreCase)) text = Translate("No");
+		<span>@(text)</span>
 	}
 }
