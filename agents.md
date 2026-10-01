@@ -55,7 +55,9 @@ SCSS source: `_src/scss/` organized as `0-base/`, `1-dw/` (DynamicWeb integratio
 
 - `Files/GlobalSettings.config` — main application configuration
 - `Files/GlobalSettings.Ecom.config` — eCommerce-specific settings
-- `Swift-v2.csproj` — .NET project referencing Dynamicweb NuGet packages (all `10.*`)
+- `Swift-v2.csproj` — .NET project (`net10.0`) referencing Dynamicweb NuGet packages (all `10.*`)
+- `Swift-v2.slnx` — solution file (IDE only; not used by the pipelines)
+- `Swift-v2.csproj.user` (optional, gitignored) — local override to build against DW10 source instead of NuGet packages; expects the `Dynamicweb10` repo checked out next to Swift
 
 ## Code Style
 
