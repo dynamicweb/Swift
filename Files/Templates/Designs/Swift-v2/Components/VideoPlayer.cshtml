@@ -1,6 +1,8 @@
 @inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Frontend.VideoViewModel>
 @using System.IO;
 @using Dynamicweb.Frontend
+@using Dynamicweb.Core.Encoders
+@using System.Text.RegularExpressions
 
 @if(!string.IsNullOrEmpty(Model.Path)) 
 {		
@@ -17,7 +19,19 @@
 
 			@if (Model.IsExternalLink())
 			{
-				<iframe src="@Model.ToEmbedUrl()" title="@GetViewParameterString("VideoName")" frameborder="0" allow="fullscreen; picture-in-picture; autoplay; clipboard-write; encrypted-media; web-share"></iframe>
+				// Embed without tracking cookies: YouTube from youtube-nocookie.com, Vimeo with dnt=1
+				string embedUrl = Model.ToEmbedUrl()?.ToString();
+				Match youtubeId = Regex.Match(Model.Path, @"(?:youtube(?:-nocookie)?\.com/(?:.*[?&]v=|embed/|shorts/|live/)|youtu\.be/)([\w-]{11})", RegexOptions.IgnoreCase);
+				if (youtubeId.Success)
+				{
+					embedUrl = $"https://www.youtube-nocookie.com/embed/{youtubeId.Groups[1].Value}";
+				}
+				else if (embedUrl?.Contains("player.vimeo.com", StringComparison.OrdinalIgnoreCase) == true)
+				{
+					embedUrl += (embedUrl.Contains('?') ? "&" : "?") + "dnt=1";
+				}
+
+				<iframe src="@HtmlEncoder.HtmlEncode(embedUrl)"title="@GetViewParameterString("VideoName")" frameborder="0" allow="fullscreen; picture-in-picture; autoplay; clipboard-write; encrypted-media; web-share"></iframe>
 			}
 			else
 			{
