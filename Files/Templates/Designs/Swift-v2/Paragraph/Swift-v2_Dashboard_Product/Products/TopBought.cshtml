@@ -49,7 +49,24 @@
         double? maxQty = isStockType && !isNeverOutOfStock ? product?.StockLevel : null;
         double? quantity = minQty > stepQty ? minQty : stepQty;
 
-        <form method="post" action="@cartUrl" class="list-group-item px-0 py-3 hstack flex-wrap gap-2 gap-sm-3">
+        // Each unit can have its own (user specific) price, so the price shown follows the selected unit
+        var unitPriceLookup = new Dictionary<string, string>();
+        foreach (var unitOption in product?.UnitOptions ?? [])
+        {
+            var unitPriceFormatted = unitOption.Price?.PriceFormatted;
+            if (!string.IsNullOrEmpty(unitOption.Id) && !string.IsNullOrEmpty(unitPriceFormatted))
+            {
+                unitPriceLookup[unitOption.Id] = unitPriceFormatted;
+            }
+        }
+
+        var hasUnitPrices = unitPriceLookup.Count > 1;
+        var selectedUnitId = unitId is not null && unitPriceLookup.ContainsKey(unitId) ? unitId : unitPriceLookup.Keys.FirstOrDefault();
+        var rowData = hasUnitPrices ? HtmlEncoder.HtmlEncode("{ selectedUnitId: " + System.Text.Json.JsonSerializer.Serialize(selectedUnitId) + ", unitPrices: " + System.Text.Json.JsonSerializer.Serialize(unitPriceLookup) + " }") : null;
+        var priceText = hasUnitPrices ? "unitPrices[selectedUnitId]" : null;
+        var unitModel = hasUnitPrices ? "selectedUnitId" : null;
+
+        <form method="post" action="@cartUrl" class="list-group-item px-0 py-3 hstack flex-wrap gap-2 gap-sm-3" x-data="@(rowData)">
             <input type="hidden" name="redirect" value="false">
             <input type="hidden" name="ProductId" value="@productId">
             <input type="hidden" name="ProductName" value="@HtmlEncoder.HtmlEncode(productName)">
@@ -122,11 +139,7 @@
                 </div>
             </div>
             
-            <div class="d-grid align-items-center gap-2" style="grid-template-columns: 1fr 1fr 90px auto;">
-                <div class="text-price fs-7 fw-semibold ms-sm-auto">
-                    @(product?.Price?.PriceFormatted)
-                </div>
-
+            <div class="d-grid align-items-center gap-2" style="grid-template-columns: 1fr 90px 1fr auto;">
                 <div class="d-grid position-relative" style="grid-template-columns: 1fr auto 1fr;">
                     <input id="TopBoughtQuantity_@(counter)" name="Quantity" value="@(quantity)" step="@(stepQty)" min="@(minQty)" max="@(maxQty)" class="form-control fs-8 border-0 rounded-0 px-1 text-center" type="number" inputmode="numeric" data-qty @disableAddToCart placeholder="0" tabindex="0">
                     <span class="visually-hidden">@Translate("Type a number, or use the decrease or increase button to change the quantity")</span>
@@ -144,7 +157,7 @@
 
                 @if (product?.UnitOptions?.Count > 0)
                 {
-                    <select name="UnitID" class="form-select fs-8 w-auto" @disableAddToCart>
+                    <select name="UnitID" class="form-select fs-8 w-auto" x-model="@(unitModel)" @disableAddToCart>
                         @foreach (var unitOption in product.UnitOptions)
                         {
                             <option value="@(unitOption.Id)" selected="@(unitOption.Id == unitId)">
@@ -166,6 +179,10 @@
                 {
                     <span class="fs-8 text-center text-muted">@(Translate("Piece"))</span>
                 }
+
+                <div class="text-price fs-7 fw-semibold text-end" x-text="@(priceText)">
+                    @(product?.Price?.PriceFormatted)
+                </div>
 
                 <button type="button" onclick="swift.Cart.Update(event)" class="btn btn-outline-secondary fs-8 p-2 text-reset align-self-auto hstack gap-2 @disableAddToCart" @disableAddToCart data-dw-button>
                     <span class="icon fs-8">@ReadFile("/Files/Images/Icons/cart-shopping.svg")</span>
