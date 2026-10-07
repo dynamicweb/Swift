@@ -5,7 +5,11 @@
 @using Dynamicweb.Security.UserManagement
 
 @{
-    string currentCountry = !string.IsNullOrEmpty(Model.Address.CountryCode) ? Model.Address.CountryCode : (!string.IsNullOrEmpty(Pageview.User.CountryCode) ? Pageview.User.CountryCode : (Pageview.Area.EcomCountryCode ?? string.Empty));
+    string savedCountry = !string.IsNullOrEmpty(Model.Address.CountryCode) ? Model.Address.CountryCode : (!string.IsNullOrEmpty(Pageview.User.CountryCode) ? Pageview.User.CountryCode : (Pageview.Area.EcomCountryCode ?? string.Empty));
+    // When the Country select changes, htmx re-requests the edit view with the chosen country so the State field can be re-rendered for it
+    string requestedCountry = Dynamicweb.Context.Current?.Request.QueryString.Get("CountryCode") ?? string.Empty;
+    string currentCountry = !string.IsNullOrEmpty(requestedCountry) ? requestedCountry : savedCountry;
+    string selectedRegionCode = string.Equals(currentCountry, savedCountry, StringComparison.OrdinalIgnoreCase) ? Model.Address.State : string.Empty;
     var regions = Dynamicweb.Ecommerce.Services.Countries.GetRegions(currentCountry);
 }
 
@@ -13,10 +17,17 @@
     <input type="hidden" name="AddressId" value="@Model.Address.Id">
 
     <div class="form-floating">
-        <select class="form-select" id="CountryCode" name="CountryCode">
+        <select class="form-select" id="CountryCode" name="CountryCode"
+                hx-get
+                hx-trigger="change"
+                hx-vals='{"Cmd": "EditAddress"}'
+                hx-include="[name='AddressId']"
+                hx-target="#AddressStateColumn"
+                hx-select="#AddressStateColumn"
+                hx-swap="outerHTML">
             @foreach (var country in Dynamicweb.Ecommerce.Services.Countries.GetCountries())
             {
-                <option value="@country.Code2" selected="@(country.Code2 == Model.Address.CountryCode)">@country.GetName(Pageview.Area.EcomLanguageId)</option>
+                <option value="@country.Code2" selected="@(country.Code2 == currentCountry)">@country.GetName(Pageview.Area.EcomLanguageId)</option>
             }
         </select>
         <label for="CountryCode" class="form-label">@Translate("Country")</label>
@@ -49,18 +60,25 @@
         </div>
     </div>
 
-    @if (regions.Count > 1)
-    {
-        <div class="form-floating">
-            <select class="form-select" name="State" id="State" placeholder="@Translate("State/Region")">
-                @foreach (var region in regions)
-                {
-                    <option value="@region.RegionCode" selected="@(region.RegionCode == Pageview.User.State)">@region.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID)</option>
-                }
-            </select>
-            <label for="State">@Translate("State/Region")</label>
-        </div>
-    }
+    <div id="AddressStateColumn" style="display: contents">
+        @if (regions.Count > 1)
+        {
+            <div class="form-floating">
+                <select class="form-select" name="State" id="State" required>
+                    <option value="" selected="@string.IsNullOrEmpty(selectedRegionCode)">@Translate("Select")</option>
+                    @foreach (var region in regions)
+                    {
+                        <option value="@region.RegionCode" selected="@(region.RegionCode == selectedRegionCode)">@region.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID)</option>
+                    }
+                </select>
+                <label for="State">@Translate("State/Region")</label>
+            </div>
+        }
+        else
+        {
+            <input type="hidden" name="State" id="State" value="" />
+        }
+    </div>
 
     <div class="form-floating">
         <input type="tel" inputmode="numeric" class="form-control" placeholder="@Translate("Phone")" name="Phone" id="Phone" value="@Model.Address.Phone">
