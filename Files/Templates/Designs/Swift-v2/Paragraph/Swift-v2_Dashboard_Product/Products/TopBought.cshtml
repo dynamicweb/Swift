@@ -37,9 +37,8 @@
         var productId = product?.Id;
         var variantId = product?.VariantId;
         var unitId = product?.DefaultUnitId;
-        var productName = product?.Name ?? string.Empty;
-        var productNumber = product?.Number ?? string.Empty;
-        var variantName = product?.VariantName ?? string.Empty;
+        var productName = product?.Name;
+        var variantName = product?.VariantName;
         var orderCountLabel = topProduct.OrderCount == 1 ? Translate("order") : Translate("orders");
         var isStockType = product?.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock;
         var isNeverOutOfStock = product?.NeverOutOfstock ?? false;
@@ -49,24 +48,7 @@
         double? maxQty = isStockType && !isNeverOutOfStock ? product?.StockLevel : null;
         double? quantity = minQty > stepQty ? minQty : stepQty;
 
-        // Each unit can have its own (user specific) price, so the price shown follows the selected unit
-        var unitPriceLookup = new Dictionary<string, string>();
-        foreach (var unitOption in product?.UnitOptions ?? [])
-        {
-            var unitPriceFormatted = unitOption.Price?.PriceFormatted;
-            if (!string.IsNullOrEmpty(unitOption.Id) && !string.IsNullOrEmpty(unitPriceFormatted))
-            {
-                unitPriceLookup[unitOption.Id] = unitPriceFormatted;
-            }
-        }
-
-        var hasUnitPrices = unitPriceLookup.Count > 1;
-        var selectedUnitId = unitId is not null && unitPriceLookup.ContainsKey(unitId) ? unitId : unitPriceLookup.Keys.FirstOrDefault();
-        var rowData = hasUnitPrices ? HtmlEncoder.HtmlEncode("{ selectedUnitId: " + System.Text.Json.JsonSerializer.Serialize(selectedUnitId) + ", unitPrices: " + System.Text.Json.JsonSerializer.Serialize(unitPriceLookup) + " }") : null;
-        var priceText = hasUnitPrices ? "unitPrices[selectedUnitId]" : null;
-        var unitModel = hasUnitPrices ? "selectedUnitId" : null;
-
-        <form method="post" action="@cartUrl" class="list-group-item px-0 py-3 hstack flex-wrap gap-2 gap-sm-3" x-data="@(rowData)">
+        <form method="post" action="@cartUrl" class="list-group-item px-0 py-3 hstack flex-wrap gap-2 gap-sm-3" x-data>
             <input type="hidden" name="redirect" value="false">
             <input type="hidden" name="ProductId" value="@productId">
             <input type="hidden" name="ProductName" value="@HtmlEncoder.HtmlEncode(productName)">
@@ -117,7 +99,7 @@
             @if (product?.DefaultImage?.TryGetImageFileViewModel(out var image) is true)
             {
                 <div class="d-flex img-thumbnail" style="inline-size: 40px; aspect-ratio: 1;">
-                    <img class="m-auto" src="@(image?.ToGetImage(new(){Height = 32, Width = 32, Ratio = "1/1", Crop = Dynamicweb.Imaging.ImageHandling.CropMode.KeepAspectRatio }))" alt="@productName">
+                    <img class="m-auto" src="@(image?.ToGetImage(new(){Height = 32, Width = 32, Ratio = "1/1", Crop = Dynamicweb.Imaging.ImageHandling.CropMode.KeepAspectRatio }))" alt="@HtmlEncoder.HtmlEncode(productName)">
                 </div>
             }
             else
@@ -128,13 +110,13 @@
             }
 
             <div class="vstack min-w-0">
-                <div class="fs-7 fw-semibold text-body text-truncate">@productName</div>
+                <div class="fs-7 fw-semibold text-body text-truncate">@HtmlEncoder.HtmlEncode(productName)</div>
                 @if (product?.VariantId != null)
                 {
-                    <div class="fs-8 text-truncate">@variantName</div>
+                    <div class="fs-8 text-truncate">@HtmlEncoder.HtmlEncode(variantName)</div>
                 }
                 <div class="fs-8 text-muted text-truncate">
-                    @productNumber
+                    @HtmlEncoder.HtmlEncode(product?.Number)
                     <span>· @(topProduct.OrderCount) @(orderCountLabel)</span>
                 </div>
             </div>
@@ -157,15 +139,12 @@
 
                 @if (product?.UnitOptions?.Count > 0)
                 {
-                    <select name="UnitID" class="form-select fs-8 w-auto" x-model="@(unitModel)" @disableAddToCart>
+                    <select name="UnitID" class="form-select fs-8 w-auto" x-on:change="$refs.price.textContent = $el.selectedOptions[0].dataset.price" @disableAddToCart>
                         @foreach (var unitOption in product.UnitOptions)
                         {
-                            <option value="@(unitOption.Id)" selected="@(unitOption.Id == unitId)">
-                                @if (unitOption.Id == unitId)
-                                {
-                                    <span class="icon fs-8">@ReadFile("/Files/Images/Icons/check.svg")</span>
-                                }
-                                @(unitOption.Name)
+                            var unitPriceFormatted = unitOption.Price?.PriceFormatted;
+                            <option value="@(unitOption.Id)" selected="@(unitOption.Id == unitId)" data-price="@HtmlEncoder.HtmlEncode(unitPriceFormatted ?? product.Price?.PriceFormatted)">
+                                @HtmlEncoder.HtmlEncode(string.IsNullOrEmpty(unitPriceFormatted) ? unitOption.Name : unitOption.Name + " – " + unitPriceFormatted)
                             </option>
                         }
                     </select>
@@ -180,7 +159,7 @@
                     <span class="fs-8 text-center text-muted">@(Translate("Piece"))</span>
                 }
 
-                <div class="text-price fs-7 fw-semibold text-end" x-text="@(priceText)">
+                <div class="text-price fs-7 fw-semibold text-end" x-ref="price">
                     @(product?.Price?.PriceFormatted)
                 </div>
 
