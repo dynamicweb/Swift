@@ -34,34 +34,27 @@
         counter++;
 
         var product = topProduct.Product;
-        var productId = product?.Id;
-        var variantId = product?.VariantId;
-        var unitId = product?.DefaultUnitId;
-        var productName = product?.Name;
-        var variantName = product?.VariantName;
-        var orderCountLabel = topProduct.OrderCount == 1 ? Translate("order") : Translate("orders");
-        var isStockType = product?.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock;
-        var isNeverOutOfStock = product?.NeverOutOfstock ?? false;
-        var disableAddToCart = string.IsNullOrEmpty(productId) || product?.Discontinued == true || (isStockType && !isNeverOutOfStock && product?.StockLevel <= 0) ? "disabled" : null;
+        var trackStock = product?.ProductType == Dynamicweb.Ecommerce.Products.ProductType.Stock && !(product?.NeverOutOfstock ?? false);
+        var disableAddToCart = string.IsNullOrEmpty(product?.Id) || product?.Discontinued == true || (trackStock && product?.StockLevel <= 0) ? "disabled" : null;
         double? stepQty = (product?.PurchaseQuantityStep ?? 0) > 0 ? product?.PurchaseQuantityStep : 1;
         double? minQty = (product?.PurchaseMinimumQuantity ?? 0) > 0 ? product?.PurchaseMinimumQuantity : 1;
-        double? maxQty = isStockType && !isNeverOutOfStock ? product?.StockLevel : null;
+        double? maxQty = trackStock ? product?.StockLevel : null;
         double? quantity = minQty > stepQty ? minQty : stepQty;
 
         <form method="post" action="@cartUrl" class="list-group-item px-0 py-3 hstack flex-wrap gap-2 gap-sm-3" x-data>
             <input type="hidden" name="redirect" value="false">
-            <input type="hidden" name="ProductId" value="@productId">
-            <input type="hidden" name="ProductName" value="@HtmlEncoder.HtmlEncode(productName)">
-            <input type="hidden" name="ProductVariantName" value="@HtmlEncoder.HtmlEncode(variantName)">
+            <input type="hidden" name="ProductId" value="@product?.Id">
+            <input type="hidden" name="ProductName" value="@HtmlEncoder.HtmlEncode(product?.Name)">
+            <input type="hidden" name="ProductVariantName" value="@HtmlEncoder.HtmlEncode(product?.VariantName)">
             <input type="hidden" name="ProductCurrency" value="@(Dynamicweb.Ecommerce.Common.Context.Currency.Code)">
             <input type="hidden" name="ProductPrice" value="@(product?.Price?.PriceFormatted)">
             <input type="hidden" name="ProductReferer" value="customer_center_top_bought">
             <input type="hidden" name="cartcmd" value="add">
             <input type="submit" class="d-none" onclick="event.preventDefault(); swift.Cart.Update(event)">
 
-            @if (!string.IsNullOrEmpty(variantId))
+            @if (!string.IsNullOrEmpty(product?.VariantId))
             {
-                <input type="hidden" name="VariantId" value="@variantId">
+                <input type="hidden" name="VariantId" value="@product?.VariantId">
             }
 
             <template class="js-step-quantity-warning">
@@ -99,7 +92,7 @@
             @if (product?.DefaultImage?.TryGetImageFileViewModel(out var image) is true)
             {
                 <div class="d-flex img-thumbnail" style="inline-size: 40px; aspect-ratio: 1;">
-                    <img class="m-auto" src="@(image?.ToGetImage(new(){Height = 32, Width = 32, Ratio = "1/1", Crop = Dynamicweb.Imaging.ImageHandling.CropMode.KeepAspectRatio }))" alt="@HtmlEncoder.HtmlEncode(productName)">
+                    <img class="m-auto" src="@(image?.ToGetImage(new(){Height = 32, Width = 32, Ratio = "1/1", Crop = Dynamicweb.Imaging.ImageHandling.CropMode.KeepAspectRatio }))" alt="@HtmlEncoder.HtmlEncode(product?.Name)">
                 </div>
             }
             else
@@ -110,14 +103,14 @@
             }
 
             <div class="vstack min-w-0">
-                <div class="fs-7 fw-semibold text-body text-truncate">@HtmlEncoder.HtmlEncode(productName)</div>
+                <div class="fs-7 fw-semibold text-body text-truncate">@HtmlEncoder.HtmlEncode(product?.Name)</div>
                 @if (product?.VariantId != null)
                 {
-                    <div class="fs-8 text-truncate">@HtmlEncoder.HtmlEncode(variantName)</div>
+                    <div class="fs-8 text-truncate">@HtmlEncoder.HtmlEncode(product?.VariantName)</div>
                 }
                 <div class="fs-8 text-muted text-truncate">
                     @HtmlEncoder.HtmlEncode(product?.Number)
-                    <span>· @(topProduct.OrderCount) @(orderCountLabel)</span>
+                    <span>· @(topProduct.OrderCount) @(topProduct.OrderCount == 1 ? Translate("order") : Translate("orders"))</span>
                 </div>
             </div>
             
@@ -143,7 +136,7 @@
                         @foreach (var unitOption in product.UnitOptions)
                         {
                             var unitPriceFormatted = unitOption.Price?.PriceFormatted;
-                            <option value="@(unitOption.Id)" selected="@(unitOption.Id == unitId)" data-price="@HtmlEncoder.HtmlEncode(unitPriceFormatted ?? product.Price?.PriceFormatted)">
+                            <option value="@(unitOption.Id)" selected="@(unitOption.Id == product.DefaultUnitId)" data-price="@HtmlEncoder.HtmlEncode(unitPriceFormatted ?? product.Price?.PriceFormatted)">
                                 @HtmlEncoder.HtmlEncode(string.IsNullOrEmpty(unitPriceFormatted) ? unitOption.Name : unitOption.Name + " – " + unitPriceFormatted)
                             </option>
                         }
