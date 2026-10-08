@@ -4,7 +4,12 @@
 @using Dynamicweb.Users.Frontend.UserEdit
 
 @{    
-    string currentCountry = !string.IsNullOrEmpty(Model.User.CountryCode) ? Model.User.CountryCode : (Pageview.Area.EcomCountryCode ?? string.Empty);
+    string savedCountry = !string.IsNullOrEmpty(Model.User.CountryCode) ? Model.User.CountryCode : (Pageview.Area.EcomCountryCode ?? string.Empty);
+    // When the Country select changes, htmx re-requests this page with the chosen country so the State field can be re-rendered for it
+    string requestedCountry = Dynamicweb.Context.Current?.Request.QueryString.Get("UserManagement_Form_CountryCode") ?? string.Empty;
+    string currentCountry = !string.IsNullOrEmpty(requestedCountry) ? requestedCountry : savedCountry;
+    string cityValue = Dynamicweb.Context.Current?.Request.QueryString.Get("UserManagement_Form_City") ?? Model.User.City;
+    string selectedRegionCode = string.Equals(currentCountry, savedCountry, StringComparison.OrdinalIgnoreCase) ? Model.User.State : string.Empty;
     var regions = Dynamicweb.Ecommerce.Services.Countries.GetRegions(currentCountry);
     var countries = Dynamicweb.Ecommerce.Services.Countries.GetCountries();
 
@@ -27,7 +32,7 @@
             <input type="hidden" name="ID" value="@Pageview.ID">
             <input type="hidden" name="CMD" value="UpdateUser">
 
-            <label for="ProfileImage" role="button" class="d-flex position-relative" title="@Translate("Upload your profile picture") (@Translate("Format"): Png, Jpg or Gif. @Translate("Filesize max.") 2mb)")" data-bs-toggle="tooltip" data-bs-placement="top">
+            <label for="ProfileImage" role="button" class="d-flex position-relative" title="@Translate("Upload your profile picture") (@Translate("Format"): .png, .jpg or .gif. @Translate("Filesize max.") 2mb)")" data-bs-toggle="tooltip" data-bs-placement="top">
                 <input type="file" name="ProfileImage" id="ProfileImage" class="visually-hidden" 
                     accept="image/x-png,image/gif,image/jpeg,image"
                     data-swift-max-bytes="2097152"
@@ -127,41 +132,52 @@ else if (Model.Result != UserEditResultType.None)
             </div>
         </div>
 
-        <div class="@countrySelectorColumnSize">
-            <div class="form-floating">
-                <input type="text" class="form-control" placeholder="@Translate("Town / City")" name="UserManagement_Form_City" id="UserManagement_Form_City" value="@Model.User.City" />
-                <label for="City" class="form-label">@Translate("Town / City")</label>
+        <div id="UserManagementCityAndStateColumns" style="display: contents">
+            <div class="@countrySelectorColumnSize">
+                <div class="form-floating">
+                    <input type="text" class="form-control" placeholder="@Translate("Town / City")" name="UserManagement_Form_City" id="UserManagement_Form_City" value="@cityValue" />
+                    <label for="City" class="form-label">@Translate("Town / City")</label>
+                </div>
+            </div>
+
+            <div class="g-col-lg-3 @(regions.Count > 1 ? "g-col-12" : "d-none")">
+                @if (regions.Count > 1)
+                {
+                    var regionLabel = currentCountry switch
+                    {
+                        "US" or "IN" or "AU" or "BR" or "DE" => Translate("State"),
+                        "CA" or "CN" or "PH" or "ZA" => Translate("Province"),
+                        _ => Translate("Region") // Default case
+                    };
+
+                    <div class="form-floating">
+                        <select class="form-select" name="UserManagement_Form_State" id="UserManagement_Form_State" required>
+                            <option value="" @(string.IsNullOrEmpty(selectedRegionCode) ? "selected" : "")>@Translate("Select")</option>
+                            @foreach (var region in regions)
+                            {
+                                string selected = region.RegionCode == selectedRegionCode ? "selected" : "";
+                                <option value="@region.RegionCode" @selected>@region.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID)</option>
+                            }
+                        </select>
+                        <label for="UserManagement_Form_State">@regionLabel</label>
+                    </div>
+                }
+                else
+                {
+                    <input type="hidden" name="UserManagement_Form_State" id="UserManagement_Form_State" value="" />
+                }
             </div>
         </div>
 
-        @if (regions.Count > 1)
-        {
-            var regionLabel = currentCountry switch
-    	    {
-                "US" or "IN" or "AU" or "BR" or "DE" => Translate("State"),
-                "CA" or "CN" or "PH" or "ZA" => Translate("Province"),
-                _ => Translate("Region") // Default case
-            };
-
-            <div class="g-col-3">
-                <div class="form-floating">
-                    <select class="form-select" name="UserManagement_Form_State" id="UserManagement_Form_State">
-                        @foreach (var region in regions)
-                        {
-                            string selected = region.RegionCode == Model.User.State ? "selected" : "";
-                            <option value="@region.RegionCode" @selected>@region.GetName(Dynamicweb.Ecommerce.Common.Context.LanguageID)</option>
-                        }
-                    </select>
-                    <label for="UserManagement_Form_State">@regionLabel</label>
-                </div>
-            </div>
-        } else { 
-            <input type="hidden" name="UserManagement_Form_State" id="UserManagement_Form_State" value=""></input>
-        }
-
         <div class="g-col-12 g-col-lg-3">
             <div class="form-floating">
-                <select class="form-select" id="UserManagement_Form_CountryCode" name="UserManagement_Form_CountryCode">
+                <select class="form-select" id="UserManagement_Form_CountryCode" name="UserManagement_Form_CountryCode"
+                        hx-get
+                        hx-trigger="change"
+                        hx-include="#UserManagement_Form_City"
+                        hx-target="#UserManagementCityAndStateColumns"
+                        hx-select="#UserManagementCityAndStateColumns"
+                        hx-swap="outerHTML">
                     @foreach (var country in countries)
                     {
                         string selected = country.Code2 == currentCountry ? "selected" : "";
