@@ -447,7 +447,7 @@ A Kind 2 fragment has no `Model.Item`. Settings must cross the boundary explicit
      data-swift-minicart-behaviour="@(behaviour)">
 ```
 
-`layout`, culture, order-context id and the behaviour item setting are developer- or admin-controlled, so they are printed raw. Only the cart `secret` is encoded, because it goes into a URL path. Reserve encoding for untrusted free text (see §5.5). Note that inside `hx-headers`/`hx-vals` the value sits in a JSON string inside an HTML attribute, so when free text does go there a `"` breaks the JSON before it breaks the HTML.
+`layout` is a developer literal, culture is a culture code, the order-context id is an ID and the behaviour item setting is a select, so all of them are printed raw. Only the cart `secret` is encoded, because it goes into a URL path. "Admin-controlled" alone is not enough here: inside `hx-headers`/`hx-vals` the value sits in a JSON string inside an HTML attribute, so any free-text string (an admin-typed setting included) must be `JavaScriptStringEncode`d — a `"` breaks the JSON before it breaks the HTML. See §5.5.
 
 Behaviour that only affects presentation (when to open, where to render) stays on the DOM as a `data-swift-*` attribute and is read by CSS or a small Alpine factory. Behaviour that affects the payload (VAT, context, culture) goes in `hx-vals`/`hx-headers`.
 
@@ -465,7 +465,7 @@ Behaviour that only affects presentation (when to open, where to render) stays o
 
 **Razor output in DW10 is not auto-encoded.** The Razor provider is configured with `RawStringFactory` (`RazorTemplateRenderingProvider.cs`), so every `@expression` is written verbatim.
 
-That is not a mandate to encode everything. Encode untrusted free text (user input, integration-supplied names/comments); print IDs, numbers, formatted ViewModel values and admin-controlled settings raw, matching how the surrounding template already prints them.
+That is not a mandate to encode everything. Encode untrusted free text (user input, integration-supplied names/comments). Print IDs, numbers, booleans, enumerated settings and formatted ViewModel values raw. Admin free text (translations, free-text item settings) is raw in HTML text only; in attributes, JS and JSON contexts encode it. If unsure, encode and note it in review.
 
 | Context | Use |
 |---|---|
