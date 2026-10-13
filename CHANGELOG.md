@@ -1,5 +1,104 @@
 # Changelog
 
+# v2.5.0
+## [v2.5.0] - 13-10-2026
+
+Swift v.2.5.0 introduces Switch Account for users with multiple profiles, BOM product overviews, supportance for assortment-based product lists, a range of bug fixes, security and accessibility improvements.
+
+> [!NOTE]
+> **Requirements**
+>
+>  **Swift v2.5.0 requires DynamicWeb v10.29 `*` or newer and .NET 10**
+
+**`* Swift v2.5.0 does not run on DynamicWeb 9`**
+
+### Switch Account
+B2B buyers who work for several companies no longer need to sign out and in again to change account. A new **Switch account** button in the Customer Center takes them straight to any of their profiles in a single click. The button only appears for users who have more than one profile, so everyone else sees no extra clutter. The company name is now shown on the profile avatar, so it is always clear which company you are buying for.
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.5.0/Switch-account-button.png)
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.5.0/Switch-account-page.png)
+
+> [!IMPORTANT] Requires 'SignIn' Navigationtag on the page Content / Sign in/ Sign in  
+>
+> ![alt text](https://doc.dynamicweb.com/Files/Images/Swift//Release-v2.5.0/SignIntag.png)
+
+
+### BOM Product Overviews
+Customers can now see exactly what they are buying when they order a Bill of Materials (BOM) product. Order and quote lists and details show every part of the BOM below the main product, with product number, quantity and price. This makes it easier to check an order.
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.5.0/BOM-Cart.png)
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.5.0/BOM-Orders.png)
+
+### Column Background Height
+Editors get more control over the layout of their pages. A new **Column background height** setting on rows decides whether columns stretch to match the tallest column, which gives even background colors side by side, or fit their own content for a lighter look. When set to fit, columns follow the row's vertical alignment.
+
+![alt text](https://doc.dynamicweb.com/Files/Images/Swift/Release-v2.5.0/Row-setting.png)
+
+### Assortments in Product Lists
+Show each customer only the products that are meant for them. Product lists and search now respect assortments: products in an assortment are only shown to users with access to it, while products without an assortment remain visible to everyone. This makes it easy to offer customer-specific product ranges without building separate shops.
+
+> [!IMPORTANT] Rebuild the product index after updating.
+
+### Multi-language SEO with hreflang
+Multi-language websites now tell search engines about every language version of a page. hreflang links are added automatically in the page head, so Google and other search engines show visitors the page in their own language. This improves search visibility in each market and avoids language versions competing with each other.
+
+## Changes
+* **Customer Center** 29638 - Account: When inviting a user, the company name from the user group is saved on the new user
+* **Customer Center** 29657 - Profile avatar: The company name is shown below the user's name, so it is clear which company you are signed in for
+* **Customer Center** 29489 - Carts list: New sortable "Customer" column shows who each cart belongs to
+* **Customer Center** 29702 - Selectable users: The separator bullet between email and customer number is only shown when the user has an email
+* **Customer Center** 29245 - Delete and Remove actions now use a trash-can icon for a consistent look
+* **Customer Center** 29142 - Favorites: A "View" option has been added to the context menu, so the list can be opened without clicking the card, which improves accessibility
+* **Product** 28066 - BOM products: The parts of a Bill of Materials product are listed below the product in order and quote lists and details, with unit, quantity and price
+* **Product** 27716 - Matrix field (Still under development)
+* **Product** 28751 - Product index: Products limited to an assortment are only shown to users with access to that assortment. Products without an assortment are shown to everyone
+* **Product** 29497 - Product lists only show products in the page's language. This fixes duplicate products in lists after the change in 27937. Rebuild the product index after updating
+* **Product** 29059 - Price: When a product has a discount, the discounted price is shown instead of the min/max price
+* **Product** 29250 - Product list and filters: A shared empty state is shown when no products match
+* **Digital Assets** 27937 - Digital assets download: Product data is exported in the language the user chooses
+* **Digital Assets** 28616 - Digital assets download: Clearer error messages when a download fails, also on network errors
+* **Digital Assets** 29562 - Assets: File sizes are shown in a readable format (KB, MB) and the wording around assets is more consistent
+* **Email** 29233 - Email templates: Images can be aligned left, center or right
+* **Email** 29635 - Email templates: The logo scales on small screens and no longer uses a hardcoded height
+* **Email** 28948 - Order emails: Free products are listed as order lines and marked "Free product"
+* **Email** 29131 - Password emails: Wording changed from "Reset email" to "Reset password" and "Set your password"
+* **Content** 29605 - YouTube and Vimeo videos are embedded without tracking cookies, for better privacy and GDPR compliance
+* **Content** 29406 - Posts and content search: Pages outside their publication period (active from / active to) are hidden
+* **Content** 29094 - Posts: Pagination in post lists and grids reloads only the post paragraph and keeps the page URL updated
+* **Content** 29664 - Posts query: Has its own Query ID, so it no longer collides with the content search query when both are installed
+* **Content** 24381 - Rows: New "Column background height" setting chooses whether columns stretch to match the tallest column or fit their content
+* **Navigation** 23794 - Vertical navigation and facets: Headline spacing improved
+* **SEO** 29134 - hreflang links to the other language versions of a page are added in the page head, so search engines show the right language
+* **SEO** 29270 - OpenGraph: The page's top image is used when sharing on social media, with the website's meta image as fallback
+* **Checkout** 28676 - Addresses: When the country changes, the state is cleared so a state from another country is not saved. The billing summary and receipt show the region name correctly
+* **General** 29539 - Add to cart: Disabled for discontinued products. Products set to "never out of stock" can always be added to cart
+* **General** 29264 - Static variants and variant groups: Variant groups are read from the ENU language instead of LANG1
+* **General** 29649 - The solution uses the new .slnx format and targets .NET 10
+* **General** 28988 - Dependencies updated: alpinejs, bootstrap, htmx.org and swiffy-slider
+
+## Bug Fixes
+* **Security** 29386 - Search terms shown back to the user are now HTML-encoded in the search, content and user templates, to prevent script injection
+* **Security** 29401 - Missing HTML attribute encoding added in the checkout steps
+* **Security** 29573 - Carts: The Customer Center cart list and detail now send authentication on their requests, so they keep working when the session must be verified
+* **Checkout** 28294 - Anonymous checkout: When delivering to the billing address, the delivery country, zip and region are taken from billing, so shipping fees are calculated correctly. The delivery address section also stays correct when moving back and forth between checkout steps
+* **Customer Center** 29516 - Quotes: Accepting a quote now also works while impersonating a user
+* **Customer Center** 29639 - Edit Profile: State field shown on country change
+* **Customer Center** 29640 - Edit Address: State field hidden and stale state cleared for countries without regions
+* **Cart** 29012 - Mini cart: Sticky footer kept at the bottom, no stray order lines with large carts
+* **Cart** 29533 - Mini cart: Form now posts to the correct URL on pages with a nested URL path
+* **Cart** 29081 - Mini cart no longer opens when adding products while on the cart page
+* **General** 29549 - Logo: Title falls back to the website name instead of "Swift", and the image no longer uses the file path as alt text
+* **General** 29627 - Translation: "Email adresse" corrected to "Email address"
+* **General** 29528 - Forms that only contain hidden fields no longer add extra padding in rows
+* **General** 29316 - Sliders: swiffy-slider 2.1.1 now loads correctly as an ES module
+* **General** 29157 - Locations map: Coordinates now render correctly on cultures that use a comma as decimal separator (e.g. da-DK), so the map is centered correctly
+* **General** 28675 - Posts pagination: Compile error on .NET 10 fixed
+* **General** 28915 - Forms: Removed a click handler on the Submit and Reset buttons that called a function that does not exist
+* **General** 28898 - Product slider: No longer throws an error when the relation type is "selected" and no product or variant ID is posted
+
+
 # v2.4.0
 ## [v2.4.0] - 02-07-2026
 
