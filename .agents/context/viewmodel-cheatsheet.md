@@ -313,13 +313,15 @@ Dynamicweb.Content.Services.Pages.GetPageOrLanguage(pageId, Pageview.AreaID)
 
 ## XSS Encoding Rules
 
+Encode only where it is actually needed — untrusted free text that can realistically contain markup-breaking characters. Do not wrap every `@value` by default; over-encoding adds noise and inconsistency. Match how the surrounding template already prints the same value. If unsure, leave it out and flag it in review rather than adding it.
+
 | Context | Method | Example |
 |---------|--------|---------|
 | HTML content | `HtmlEncoder.HtmlEncode(value)` | `<span>@HtmlEncoder.HtmlEncode(facet.Name)</span>` |
 | HTML attribute | `HtmlEncoder.HtmlEncode(value)` or Razor `@value` | `title="@HtmlEncoder.HtmlEncode(name)"` |
 | JavaScript string | `HtmlEncoder.JavaScriptStringEncode(value)` | `item_name: "@HtmlEncoder.JavaScriptStringEncode(product.Name)"` |
 | URL query parameter | `System.Net.WebUtility.UrlEncode(value)` | `?q=@WebUtility.UrlEncode(query)` |
-| Safe — no encoding needed | ViewModel-formatted values, system-generated IDs | `@product.Price.PriceFormatted`, `@product.Number` |
+| Safe — no encoding needed | ViewModel-formatted values, system-generated IDs | `@(product.Price.PriceFormatted)`, `@(product.Number)` |
 
 **Full namespace:** `Dynamicweb.Core.Encoders.HtmlEncoder`
 
@@ -327,11 +329,12 @@ Dynamicweb.Content.Services.Pages.GetPageOrLanguage(pageId, Pageview.AreaID)
 
 - Pre-formatted ViewModel properties (prices, dates) — already sanitised
 - System-generated IDs and numbers (`product.Id`, `product.Number`)
+- Admin/backend-controlled values: user group names, item settings, area/culture names, translations, URLs built from IDs
 - SVG content read with `ReadFile(path)` — server filesystem, not user input
 - HTML content fields (`LongDescription`) — DynamicWeb sanitises on save; render with `@Html.Raw()`
 
-### When to always encode
+### When to encode
 
-- Anything from user input: search queries, customer names, order references from external systems
+- Anything from user input: posted form values, search queries, customer-entered text, order-line comments
+- Integration/ERP-supplied free text (product names, variant text, order references) — especially when embedded in a JavaScript string, `x-data`, or `hx-vals` JSON
 - Facet option labels (from product data, potentially user-managed)
-- Any value embedded in a JavaScript string literal
