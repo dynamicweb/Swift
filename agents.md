@@ -79,7 +79,9 @@ Both use Node 20.x, run `npm install` + `npm run build`, and archive the `Files/
 
 - Branch naming: `{initials}/{id}-kebab-title` (e.g. `np/27691-megamenu-fix`) — see Azure DevOps Integration section for full naming rules
 - CSHTML templates use `@inherits Dynamicweb.Rendering.ViewModelTemplate<T>` with DynamicWeb ViewModels
-- HTML encoding is critical in templates — use `HtmlEncoder.HtmlEncode()` for HTML/attribute context, `HtmlEncoder.JavaScriptStringEncode()` for JS string context, `WebUtility.UrlEncode()` for query parameters. See `.agents/context/viewmodel-cheatsheet.md` for the full encoding rules.
+- Razor output is not auto-encoded (a bare `@(value)` is raw, attributes included). Encode only where needed: untrusted free text (posted form values, search queries, customer-entered text, order-line comments, ERP/integration-supplied names). IDs, numbers, booleans, enumerated settings and formatted ViewModel values stay raw. Admin free text (group names, translations, free-text item settings) is raw in HTML text only — encode it in attributes, JS strings and JSON (`x-data`, `hx-vals`, `hx-headers`). Match the surrounding template unless it is itself a bug; if unsure, encode and note it in review.
+- Encoders: `HtmlEncoder.HtmlEncode()` for HTML/attribute context, `HtmlEncoder.JavaScriptStringEncode()` for JS/JSON string context, `WebUtility.UrlEncode()` for query parameters. See `.agents/context/viewmodel-cheatsheet.md` for the full encoding rules.
+- Always use explicit Razor expressions in markup: wrap property/variable output in parentheses — `@(Model.Id)`, `@(Model.Price.CurrencyCode)`, `@(item.Name)` — never bare `@Model.Id`. Parentheses end the expression explicitly, avoiding `@Model.Id.` and `user@domain` parsing ambiguity. Only a direct helper call like `@Translate("ID")` stays bare; dotted calls are wrapped too — `@(HtmlEncoder.HtmlEncode(name))`.
 - JavaScript modules follow a namespace pattern: each file exports an object with public methods, composed into the `swift` global
 - Version compatibility: Swift v2.2.0 requires DynamicWeb 10.23+
 ## Azure DevOps Integration

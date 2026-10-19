@@ -313,25 +313,32 @@ Dynamicweb.Content.Services.Pages.GetPageOrLanguage(pageId, Pageview.AreaID)
 
 ## XSS Encoding Rules
 
+Encode only where it is actually needed — untrusted free text that can realistically contain markup-breaking characters. Do not wrap every `@value` by default; over-encoding adds noise and inconsistency. Match how the surrounding template already prints the same value, unless the existing code is itself a bug. If unsure, encode and note it in review.
+
+Razor does **not** encode anything in DW10: a bare `@(value)` is written raw in every context, attributes included.
+
 | Context | Method | Example |
 |---------|--------|---------|
-| HTML content | `HtmlEncoder.HtmlEncode(value)` | `<span>@HtmlEncoder.HtmlEncode(facet.Name)</span>` |
-| HTML attribute | `HtmlEncoder.HtmlEncode(value)` or Razor `@value` | `title="@HtmlEncoder.HtmlEncode(name)"` |
-| JavaScript string | `HtmlEncoder.JavaScriptStringEncode(value)` | `item_name: "@HtmlEncoder.JavaScriptStringEncode(product.Name)"` |
-| URL query parameter | `System.Net.WebUtility.UrlEncode(value)` | `?q=@WebUtility.UrlEncode(query)` |
-| Safe — no encoding needed | ViewModel-formatted values, system-generated IDs | `@product.Price.PriceFormatted`, `@product.Number` |
+| HTML content | `HtmlEncoder.HtmlEncode(value)` | `<span>@(HtmlEncoder.HtmlEncode(facet.Name))</span>` |
+| HTML attribute | `HtmlEncoder.HtmlEncode(value)` — a bare `@(value)` is raw | `title="@(HtmlEncoder.HtmlEncode(name))"` |
+| JavaScript string, `x-data`, `hx-vals`/`hx-headers` JSON | `HtmlEncoder.JavaScriptStringEncode(value)` | `item_name: "@(HtmlEncoder.JavaScriptStringEncode(product.Name))"` |
+| URL query parameter | `System.Net.WebUtility.UrlEncode(value)` | `?q=@(WebUtility.UrlEncode(query))` |
+| Safe — no encoding needed | ViewModel-formatted values, system-generated IDs | `@(product.Price.PriceFormatted)`, `@(product.Number)` |
 
 **Full namespace:** `Dynamicweb.Core.Encoders.HtmlEncoder`
 
 ### When raw `@value` is safe
 
 - Pre-formatted ViewModel properties (prices, dates) — already sanitised
-- System-generated IDs and numbers (`product.Id`, `product.Number`)
+- System-generated IDs, numbers and booleans (`product.Id`, `product.Number`) — in any context
+- Enumerated admin settings (selects, toggles, numeric fields), culture codes — in any context
+- Admin free text (user group names, area names, translations, free-text item settings) — **in HTML text only**. In attributes, JS strings and JSON a single `'` or `"` breaks the markup or script, so encode them there
 - SVG content read with `ReadFile(path)` — server filesystem, not user input
-- HTML content fields (`LongDescription`) — DynamicWeb sanitises on save; render with `@Html.Raw()`
+- HTML content fields (`LongDescription`) — DynamicWeb sanitises on save; render with `@(Html.Raw(...))`
 
-### When to always encode
+### When to encode
 
-- Anything from user input: search queries, customer names, order references from external systems
+- Anything from user input: posted form values, search queries, customer-entered text, order-line comments
+- Integration/ERP-supplied free text (product names, variant text, order references)
 - Facet option labels (from product data, potentially user-managed)
-- Any value embedded in a JavaScript string literal
+- Every string in a JavaScript string, `x-data`, or `hx-vals`/`hx-headers` JSON, whatever its source — unless it is an ID, number, boolean or enumerated value

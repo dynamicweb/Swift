@@ -4,7 +4,7 @@ How cart and order surfaces in Swift are structured, which platform mechanisms a
 
 Read this before touching anything under `eCom/Cart/`, `eCom/CustomerExperienceCenter/Orders/`, `Paragraph/Swift-v2_MiniCart/`, or `_src/js/_cart*.js`.
 
-Companion docs: [`swift-architecture.md`](swift-architecture.md) (template hierarchy, HTMX/Alpine patterns), [`viewmodel-cheatsheet.md`](viewmodel-cheatsheet.md) (encoding rules — mandatory), [`paragraph-layouts.md`](paragraph-layouts.md) (layout subfolder system).
+Companion docs: [`swift-architecture.md`](swift-architecture.md) (template hierarchy, HTMX/Alpine patterns), [`viewmodel-cheatsheet.md`](viewmodel-cheatsheet.md) (encoding rules), [`paragraph-layouts.md`](paragraph-layouts.md) (layout subfolder system).
 
 Platform facts below were verified against the DynamicWeb 10 source tree, not documentation. Paths that are not repo-relative are platform source, rooted at the DW10 checkout — mostly under `src/Features/Ecommerce/Dynamicweb.Ecommerce/`, `src/Features/Content/Dynamicweb/`, `src/Application/Providers/Dynamicweb.Rendering.Providers.NetCore/`, and the un-nested `Dynamicweb.Frontend.Classic.Api*/` projects. Class names are given in full so they can be found by grep regardless of layout changes.
 
@@ -441,13 +441,13 @@ A Kind 2 fragment has no `Model.Item`. Settings must cross the boundary explicit
     var layout = "/Designs/Swift-v2/eCom/Cart/MiniCart/MiniCartDropdown.cshtml";
 }
 <div hx-get="/dwapi/ecommerce/carts/@(HtmlEncoder.UrlPathEncode(secret))"
-     hx-headers='{"x-dw-template": "@layout", "x-dw-culture": "@(HtmlEncoder.HtmlAttributeEncode(culture))", "Accept": "text/html"}'
+     hx-headers='{"x-dw-template": "@(layout)", "x-dw-culture": "@(culture)", "Accept": "text/html"}'
      hx-vals='{"ShowPricesWithVat": "@(Dynamicweb.Ecommerce.Common.Context.DisplayPricesWithVat)"}'
-     data-swift-minicart-context="@(HtmlEncoder.HtmlAttributeEncode(contextId))"
-     data-swift-minicart-behaviour="@(HtmlEncoder.HtmlAttributeEncode(behaviour))">
+     data-swift-minicart-context="@(contextId)"
+     data-swift-minicart-behaviour="@(behaviour)">
 ```
 
-`layout` is a developer-authored literal, so it needs no encoding. Everything sourced from item settings, order-context ids, or area configuration does — including values that "can't" contain a quote, because item settings are editable and order context names come from the database. Note this cuts both ways inside `hx-headers`/`hx-vals`: the value is inside a JSON string inside an HTML attribute, so a `"` breaks the JSON before it breaks the HTML.
+`layout` is a developer literal, culture is a culture code, the order-context id is an ID and the behaviour item setting is a select, so all of them are printed raw. Only the cart `secret` is encoded, because it goes into a URL path. "Admin-controlled" alone is not enough here: inside `hx-headers`/`hx-vals` the value sits in a JSON string inside an HTML attribute, so any free-text string (an admin-typed setting included) must be `JavaScriptStringEncode`d — a `"` breaks the JSON before it breaks the HTML. See §5.5.
 
 Behaviour that only affects presentation (when to open, where to render) stays on the DOM as a `data-swift-*` attribute and is read by CSS or a small Alpine factory. Behaviour that affects the payload (VAT, context, culture) goes in `hx-vals`/`hx-headers`.
 
@@ -461,9 +461,11 @@ Behaviour that only affects presentation (when to open, where to render) stays o
 
 `GetPageIdByNavigationTag` returns `0` when not found. Always guard: `@if (cartPageId == 0) return;`
 
-### 5.5 Encoding is mandatory
+### 5.5 Encoding untrusted text
 
 **Razor output in DW10 is not auto-encoded.** The Razor provider is configured with `RawStringFactory` (`RazorTemplateRenderingProvider.cs`), so every `@expression` is written verbatim.
+
+That is not a mandate to encode everything. Encode untrusted free text (user input, integration-supplied names/comments). Print IDs, numbers, booleans, enumerated settings and formatted ViewModel values raw. Admin free text (translations, free-text item settings) is raw in HTML text only; in attributes, JS and JSON contexts encode it. If unsure, encode and note it in review.
 
 | Context | Use |
 |---|---|
