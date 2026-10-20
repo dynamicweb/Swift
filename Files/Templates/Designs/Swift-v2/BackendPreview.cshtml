@@ -15,8 +15,12 @@
 	
 	@* Swift stylesheet *@
 	AddStylesheet("/Files/Templates/Designs/Swift-v2/Assets/css/swift.css");
-	@* Slider templates add this themselves, but that is lost when an unsaved paragraph is rendered via RenderPartial (cacheId) *@
-	AddStylesheet("/Files/Templates/Designs/Swift-v2/Assets/lib/swiffy-slider/dist/css/swiffy-slider.css");
+
+	@* Render the unsaved paragraph (cacheId) before GetStylesheetsMarkup, so stylesheets its template adds are included *@
+	var cachedParagraphViewModel = !string.IsNullOrEmpty(cacheId) ? Dynamicweb.Caching.Cache.Current.Get(cacheId) as ParagraphViewModel : null;
+	var cachedParagraphContent = !string.IsNullOrEmpty(cachedParagraphViewModel?.ItemType)
+		? RenderPartial($"/Paragraph/{cachedParagraphViewModel.ItemType}/{Dynamicweb.Context.Current?.Request.QueryString.Get("ItemTemplate")}", cachedParagraphViewModel)
+		: null;
 
 	@* Color schemes stylesheet *@
 	if (Model.TryGetColorSchemeStyle(out string? colorSchemeStyle))
@@ -42,7 +46,7 @@
 		--dw-type-scale: 1.2;
 
 		/* Sliders size items as % of the slider, so fit-content collapses them when there is no image */
-		&:has(.card):not(:has(.swiffy-slider)) {
+		[data-swift-gridcolumn]:has(.card):not(:has(.swiffy-slider)) {
 			width: fit-content;
 			margin: auto;	
 		}
@@ -69,7 +73,7 @@
 		}
 
 		.swiffy-slider .card {
-			min-height: unset;
+			min-height: unset !important; /* Slider cards set min-height inline */
 			max-height: 40rem;
 
 			img {
@@ -97,13 +101,11 @@
 		@RenderGridRow(Convert.ToInt32(rowId))
 	}
 	else if (!string.IsNullOrEmpty(cacheId))
-	{ 	
-		string? itemTemplate = Dynamicweb.Context.Current?.Request.QueryString.Get("ItemTemplate");
-		
-		if (Dynamicweb.Caching.Cache.Current.Get(cacheId) is ParagraphViewModel paragraphViewModel && !string.IsNullOrEmpty(paragraphViewModel.ItemType)){
-			
-			<div data-swift-gridcolumn data-dw-colorscheme="@paragraphViewModel.ColorScheme?.Id">				
-				@RenderPartial($"/Paragraph/{paragraphViewModel.ItemType}/{itemTemplate}", paragraphViewModel)
+	{
+		if (cachedParagraphContent is not null)
+		{
+			<div data-swift-gridcolumn data-dw-colorscheme="@cachedParagraphViewModel?.ColorScheme?.Id">
+				@cachedParagraphContent
 			</div>
 		}
 	}
