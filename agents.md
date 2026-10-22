@@ -97,7 +97,7 @@ Scripts live in `.agents/skills/azure-devops/scripts/`. Auth is via PAT stored i
 - Organization: `dynamicwebsoftware`
 - Project: `Dynamicweb`
 - Project ID: `5a2edd81-7d89-4716-a4f3-1187ba91af92`
-- Repo (Swift) ID: `3ce1b7ad-e11a-4aeb-b8d1-d44cad1fc60e`
+- Repo (Swift) ID: `3112f888-8c97-4d1e-ab01-a7dc4d40b954`
 
 **Standard workflow** for a code change tied to a work item:
 1. Get/create work item (set `System.AreaPath` from parent; set `System.IterationPath` to current sprint; set `System.AssignedTo` to `{initials}@dynamicweb.dk`) — `work_items.py`
