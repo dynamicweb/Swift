@@ -139,7 +139,7 @@ Create a work item for this as a child of #<parent-id>, create a branch, impleme
 ```
 I want to build: <describe the feature in a sentence or two>
 
-Create a User Story work item for this as a child of #<parent-epic-id>, create a feature branch, scaffold the implementation and create a PR when ready.
+Create a User Story work item for this as a child of #<parent-epic-id>, create a branch, scaffold the implementation and create a PR when ready.
 ```
 
 ---
