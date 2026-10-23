@@ -71,13 +71,13 @@ Defined in `.editorconfig`:
 
 Azure DevOps pipelines in `Pipelines/`:
 - `swift-build.yml` — triggered on `main`, builds and publishes artifacts
-- `swift-qa.yml` — triggered on PRs to `main`, builds and posts test site links as PR comments
+- `swift-qa.yml` — triggered on PRs to `main`, builds and posts test site links as PR comments. PRs into a `features/*` branch only get this build if a build-validation branch policy covers that branch
 
 Both use Node 20.x, run `npm install` + `npm run build`, and archive the `Files/` directory.
 
 ## Conventions
 
-- Branch naming: `{initials}/{id}-kebab-title` (e.g. `np/27691-megamenu-fix`) — see Azure DevOps Integration section for full naming rules
+- Branch naming: `{initials}/{id}-kebab-title` (e.g. `np/27691-megamenu-fix`) for work branches, `features/{initials}/{id}-kebab-title` for Feature branches — see Branching Strategy for the full rules
 - CSHTML templates use `@inherits Dynamicweb.Rendering.ViewModelTemplate<T>` with DynamicWeb ViewModels
 - Razor output is not auto-encoded (a bare `@(value)` is raw, attributes included). Encode only where needed: untrusted free text (posted form values, search queries, customer-entered text, order-line comments, ERP/integration-supplied names). IDs, numbers, booleans, enumerated settings and formatted ViewModel values stay raw. Admin free text (group names, translations, free-text item settings) is raw in HTML text only — encode it in attributes, JS strings and JSON (`x-data`, `hx-vals`, `hx-headers`). Match the surrounding template unless it is itself a bug; if unsure, encode and note it in review.
 - Encoders: `HtmlEncoder.HtmlEncode()` for HTML/attribute context, `HtmlEncoder.JavaScriptStringEncode()` for JS/JSON string context, `WebUtility.UrlEncode()` for query parameters. See `.agents/context/viewmodel-cheatsheet.md` for the full encoding rules.
@@ -89,7 +89,7 @@ Both use Node 20.x, run `npm install` + `npm run build`, and archive the `Files/
 Scripts live in `.agents/skills/azure-devops/scripts/`. Auth is via PAT stored in system keyring.
 
 > **For AI agents**: Before any Azure DevOps operation, check the developer's local memory for their initials and PAT. If either is missing, ask before proceeding.
-> - **Initials**: 2–3 letter identifier (e.g. `np`, `sha`) — used for branch naming: `{initials}/{id}-kebab-title`
+> - **Initials**: 2–3 letter identifier (e.g. `np`, `sha`) — used for branch naming: `{initials}/{id}-kebab-title` and `features/{initials}/{id}-kebab-title`
 > - **Full username**: `{initials}@dynamicweb.dk` — used for `System.AssignedTo` when creating work items
 > - Always assign new work items to the current developer via `System.AssignedTo "{initials}@dynamicweb.dk"`
 
@@ -99,17 +99,30 @@ Scripts live in `.agents/skills/azure-devops/scripts/`. Auth is via PAT stored i
 - Project ID: `5a2edd81-7d89-4716-a4f3-1187ba91af92`
 - Repo (Swift) ID: `3112f888-8c97-4d1e-ab01-a7dc4d40b954`
 
+### Branching Strategy
+
+Swift follows the DynamicWeb core team model: a **Feature** work item gets a long-lived feature branch, and the work under it is merged into that branch, not into `main`.
+
+| Work item | Branch | Created from | PR target |
+|---|---|---|---|
+| Feature | `features/{initials}/{id}-kebab-title` | `main` | `main` (once the whole feature is done) |
+| User Story / Bug / Task under a Feature that has a feature branch | `{initials}/{id}-kebab-title` | the feature branch | the feature branch |
+| Any other User Story / Bug / Task | `{initials}/{id}-kebab-title` | `main` | `main` |
+
+- The prefix is `features/` (plural) — never `feature/`.
+- `{initials}` is the owner of that branch: the feature branch carries the Feature owner's initials, child branches carry their own developer's initials.
+- To find the base branch for a work item, walk its parent chain for a Feature and look for a matching branch: `git ls-remote --heads origin "features/*/{featureId}-*"`. Found → use it as source and PR target. Not found → use `main`.
+- Keep a feature branch up to date with `main` while it lives, so the final PR to `main` stays small to review.
+- When a User Story is promoted to a Feature mid-flight, create the feature branch from `main` and retarget the existing PR to it (Azure DevOps lets you change the target of an active PR).
+
 **Standard workflow** for a code change tied to a work item:
 1. Get/create work item (set `System.AreaPath` from parent; set `System.IterationPath` to current sprint; set `System.AssignedTo` to `{initials}@dynamicweb.dk`) — `work_items.py`
 2. Set work item state to **Active** — `work_items.py update --field System.State "Active"`
-3. Create branch via API — `repos.py create-branch --source main` — naming:
-   - Most work items: `{initials}/{id}-kebab-title`
-   - If asked specifically to create a feature branch: `features/{initials}/{id}-kebab-title`
-   - **Always pass `--source main`**
+3. Determine `{base-branch}` (`main` or the feature branch) per Branching Strategy, then create the branch via API — `repos.py create-branch --source {base-branch}`
 4. `git checkout -b {branch-name} && git pull --rebase origin {branch-name}`
 5. Make changes, commit with `#<id>` in message — Azure DevOps auto-links the commit; do NOT add it manually via API
-6. `git push -u origin {initials}/{id}-kebab-title`
-7. Create PR — `repos.py create-pr --source {branch-name} --target main` — use the PR description template (Summary + QA test plan checklist); reviewers are handled by branch policies, do not assign manually. The script does not support explicit work item linking, but Azure DevOps auto-links the PR via the `#{id}` in commit messages and the branch name.
+6. `git push -u origin {branch-name}`
+7. Create PR — `repos.py create-pr --source {branch-name} --target {base-branch}` — use the PR description template (Summary + QA test plan checklist); reviewers are handled by branch policies, do not assign manually. The script does not support explicit work item linking, but Azure DevOps auto-links the PR via the `#{id}` in commit messages and the branch name.
 8. Set work item state to **Resolved** after PR is created
 9. Update work item description with summary of what changed
 10. Add branch link on work item via API
