@@ -1,19 +1,20 @@
 import { PageUpdater } from "./_pageupdater.js";
-const google = window.google;
+import { loadGoogleMaps } from "./_googlemaps.js";
 
 const Places = (function () {
-  var autocomplete;
-
-  var settings = {
-    currentCountry: "DK",
-    fieldPrefix: null,
-    inputfield: null,
-  };
+  // One entry per autocompleted input, so each form keeps its own Autocomplete and listeners
+  var instances = [];
 
   return {
-    init: function (placesSettings) {
-      settings = placesSettings;
+    // Loads the Maps API once, then inits. For templates that don't load the API themselves.
+    load: function (apiKey, placesSettings) {
+      return loadGoogleMaps(apiKey)
+        .then(() => this.init(placesSettings))
+        .catch((error) => console.error("Failed to load Google Places:", error));
+    },
 
+    // Read window.google at call time: the Maps API loads after swift.js, so a module-level reference is undefined
+    init: async function (settings) {
       var input =
         settings.inputfield != null
           ? document.querySelector(settings.inputfield)
@@ -31,33 +32,66 @@ const Places = (function () {
           ? document.querySelector("#UserManagement_Form_Address")
           : input;
 
-      if (input != null) {
-        const options = {
-          componentRestrictions: { country: settings.currentCountry },
-          fields: ["address_components"],
-          strictBounds: false,
-          types: ["address"],
-        };
+      if (input == null) return;
 
-        input.addEventListener("keypress", function (e) {
-          if (e.key === "Enter") {
-            e.preventDefault();
-          }
-        });
+      // Fields are named {prefix}Address, {prefix}Zip, {prefix}Country, ...
+      const fieldPrefix = settings.fieldPrefix ?? input.id.replace(/Address$/, "");
+      const controller = new AbortController();
+      const options = {
+        componentRestrictions: { country: settings.currentCountry },
+        fields: ["address_components"],
+        strictBounds: false,
+        types: ["address"],
+      };
 
-        input.addEventListener("keyup", function () {
-          document.querySelector(".pac-container").style.visibility = "visible";
-        });
+      input.addEventListener("keypress", function (e) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+        }
+      }, { signal: controller.signal });
 
-        autocomplete = new google.maps.places.Autocomplete(input, options);
-        autocomplete.addListener("place_changed", this.fillInAddress);
-        input.setAttribute("autocomplete", "none");
-      }
-    },
+      const { Autocomplete } = await window.google.maps.importLibrary("places");
 
-    changeCountry: function (countryCode) {
-      autocomplete.setComponentRestrictions({
-        country: [countryCode],
+      // htmx re-runs the init script on every swap: drop instances whose input is gone or is being re-inited
+      instances = instances.filter((instance) => {
+        if (instance.input.isConnected && instance.input !== input) return true;
+        instance.destroy();
+        return false;
+      });
+
+      // Google appends this Autocomplete's .pac-container to <body> asynchronously; catch it so destroy can remove it
+      let container;
+      const observer = new MutationObserver((mutations) => {
+        container = mutations.flatMap((m) => [...m.addedNodes]).find((node) => node.classList?.contains("pac-container"));
+        if (container) observer.disconnect();
+      });
+      observer.observe(document.body, { childList: true });
+      const autocomplete = new Autocomplete(input, options);
+      // fillInAddress refocuses Address, which can reopen the dropdown over the just-filled fields; keep it hidden until the user types
+      autocomplete.addListener("place_changed", () => {
+        if (container) container.style.visibility = "hidden";
+        this.fillInAddress(autocomplete.getPlace(), fieldPrefix);
+      });
+      input.addEventListener("input", () => {
+        if (container) container.style.visibility = "";
+      }, { signal: controller.signal });
+      input.setAttribute("autocomplete", "none");
+
+      // htmx only swaps the State column on country change, so follow this address's own Country select
+      (input.form ?? document).addEventListener("change", (e) => {
+        if (e.target.id === fieldPrefix + "Country" || e.target.id === fieldPrefix + "CountryCode") {
+          autocomplete.setComponentRestrictions({ country: [e.target.value] });
+        }
+      }, { signal: controller.signal });
+
+      instances.push({
+        input,
+        destroy: () => {
+          controller.abort();
+          observer.disconnect();
+          window.google.maps.event.clearInstanceListeners(autocomplete);
+          container?.remove();
+        },
       });
     },
 
@@ -68,27 +102,7 @@ const Places = (function () {
       PageUpdater.Update(form);
     },
 
-    fillInAddress: function () {
-      var fieldPrefix = settings.fieldPrefix;
-      fieldPrefix =
-        document.querySelector("#EcomOrderDeliveryAddress") &&
-          fieldPrefix == null
-          ? "EcomOrderDelivery"
-          : fieldPrefix;
-      fieldPrefix =
-        document.querySelector("#EcomOrderCustomerAddress") &&
-          fieldPrefix == null
-          ? "EcomOrderCustomer"
-          : fieldPrefix;
-      fieldPrefix =
-        document.querySelector("#UserManagement_Form_Address") &&
-          fieldPrefix == null
-          ? "UserManagement_Form_"
-          : fieldPrefix;
-
-      // Get the place details from the autocomplete object.
-      const place = autocomplete.getPlace();
-
+    fillInAddress: function (place, fieldPrefix) {
       // Get each component of the address from the place details,
       // and then fill-in the corresponding field on the form.
       // place.address_components are google.maps.GeocoderAddressComponent objects
@@ -200,7 +214,6 @@ const Places = (function () {
         }
 
         document.querySelector("#" + fieldPrefix + "Address").focus();
-        document.querySelector(".pac-container").style.visibility = "hidden";
       }
     },
   };

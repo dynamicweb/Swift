@@ -1,7 +1,7 @@
 /* global google */
-class LocationsMap extends HTMLElement {
-  static loaderPromise = null;
+import { loadGoogleMaps } from "../_googlemaps.js";
 
+class LocationsMap extends HTMLElement {
   constructor() {
     super();
     this.map = null;
@@ -36,7 +36,7 @@ class LocationsMap extends HTMLElement {
         return;
       }
 
-      this.loadGoogleMaps(apiKey)
+      loadGoogleMaps(apiKey)
         .then(() => this.initMap())
         .catch((error) => console.error("Failed to load Google Maps API:", error));
 
@@ -98,27 +98,6 @@ class LocationsMap extends HTMLElement {
         location: typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null
       };
     });
-  }
-
-  loadGoogleMaps(apiKey) {
-    if (window.google && window.google.maps) return Promise.resolve();
-    if (LocationsMap.loaderPromise) return LocationsMap.loaderPromise;
-
-    LocationsMap.loaderPromise = new Promise((resolve, reject) => {
-      const callbackName = "__swift_gmaps_init__" + Math.random().toString(36).slice(2);
-      window[callbackName] = () => {
-        try { delete window[callbackName]; } catch { console.error("Maps not loaded"); }
-        resolve();
-      };
-      const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&callback=${callbackName}`;
-      script.async = true;
-      script.defer = true;
-      script.onerror = (e) => reject(e);
-      document.head.appendChild(script);
-    });
-
-    return LocationsMap.loaderPromise;
   }
 
   initMap() {
