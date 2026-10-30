@@ -1,0 +1,340 @@
+@inherits Dynamicweb.Rendering.ViewModelTemplate<Dynamicweb.Ecommerce.Frontend.Invoices.BcInvoiceDetailViewModel>
+@using System
+@using System.Linq
+@using Dynamicweb.Core.Encoders
+@using Dynamicweb.Ecommerce.CustomerExperienceCenter.Invoices
+@using Dynamicweb.Ecommerce.Frontend.Invoices
+@using Dynamicweb.Frontend
+@using Dynamicweb.Rendering
+
+@{
+    // The module renders this template for failures too (not found, a document belonging to another
+    // customer, or a document type the module is not configured for), so nothing below may assume a document.
+    bool hasDocument = !Model.HasError && !string.IsNullOrEmpty(Model.Number);
+    string documentLabel = Model.DocumentType == BcDocumentType.CreditMemo ? Translate("Credit memo") : Translate("Invoice");
+
+    string backLink = !string.IsNullOrEmpty(Model.BackToListLink)
+        ? Model.BackToListLink
+        : SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview.Page.ID}");
+
+    // "Overdue" is derived for display only - BC has no such status.
+    string status = hasDocument
+        && string.Equals(Model.Status, "Open", StringComparison.OrdinalIgnoreCase)
+        && Model.DueDate != default
+        && Model.DueDate.Date < DateTime.Today
+            ? Translate("Overdue")
+            : Translate(Model.Status);
+
+    string statusColor = status?.ToLowerInvariant() switch
+    {
+        "paid" => "var(--bs-success)",
+        "open" => "var(--bs-warning)",
+        "overdue" => "var(--bs-danger)",
+        "canceled" => "var(--bs-secondary)",
+        _ => null
+    };
+
+    bool hasBillTo = !string.IsNullOrEmpty(Model.BillingAddress.Address) || !string.IsNullOrEmpty(Model.BillingAddress.City) || !string.IsNullOrEmpty(Model.BillingAddress.Zip);
+    bool hasShipTo = !string.IsNullOrEmpty(Model.ShippingAddress.Address) || !string.IsNullOrEmpty(Model.ShippingAddress.City) || !string.IsNullOrEmpty(Model.ShippingAddress.Zip);
+}
+
+<style>
+    @@media print {
+        [data-swift-container] {
+            display: block;
+        }
+
+        .card {
+            display: block;
+        }
+
+        /* Print width falls below lg, so keep the desktop columns to stop the header filling a page. */
+        .grid-lg-2 {
+            --bs-columns: 2 !important;
+        }
+
+        .grid-lg-4 {
+            --bs-columns: 4 !important;
+        }
+
+        /* Totals once at the end, not repeated on every page. */
+        tfoot {
+            display: table-row-group;
+        }
+    }
+</style>
+
+<div class="hstack justify-content-between gap-3 mb-4 d-print-none">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+            <li class="breadcrumb-item"><a href="@(backLink)">@(Pageview.Page.GetDisplayName())</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@Translate(documentLabel) @(Model.Number)</li>
+        </ol>
+    </nav>
+    @if (hasDocument)
+    {
+        <div class="hstack gap-2">
+            <button type="button" class="btn btn-outline-secondary btn-sm hstack gap-2 text-reset" data-dw-button onclick="window.print()">
+                <span class="icon">@ReadFile("/Files/Images/Icons/print.svg")</span>
+                @Translate("Print")
+            </button>
+            @if (!string.IsNullOrEmpty(Model.DownloadLink))
+            {
+                @* New tab on purpose: a document with no PDF in BC answers 404, which would otherwise
+                   replace the Customer Center page. *@
+                <a class="btn btn-primary btn-sm hstack gap-2" data-dw-button href="@(Model.DownloadLink)" target="_blank" rel="noopener">
+                    <span class="icon">@ReadFile("/Files/Images/Icons/download.svg")</span>
+                    @Translate("Download PDF")
+                </a>
+            }
+        </div>
+    }
+</div>
+
+@if (!hasDocument)
+{
+    <div class="card">
+        <div class="card-body text-center py-5">
+            <div data-swift-empty-state>
+                <div data-swift-empty-state-icon>
+                    <span class="icon">
+                        @ReadFile("/Files/Images/Icons/triangle-exclamation.svg")
+                    </span>
+                </div>
+                <div>@Translate(Model.Errors.Any(error => error.StatusCode == 404) ? "Invoice not found" : "We could not load this document")</div>
+                <a class="btn btn-primary mt-3" data-dw-button href="@(backLink)">@Translate("Back to invoices")</a>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card mb-4">
+        <div class="card-body pb-0 text-center">
+            <h1 class="h2 fw-bold mb-2 text-nowrap">@(Model.Number)</h1>
+            <div class="fs-7">
+                <div class="fw-bold lh-1 mb-2">
+                    <span>@(Model.InvoiceDate.ToString("d", Pageview.Area.CultureInfo))</span>
+                    <span>@(Model.CustomerName)</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body pb-0">
+            <div class="card border-0" style="--bs-card-bg: rgba(var(--bs-body-color-rgb), .0275);">
+                <div class="card-body p-3">
+                    <div class="grid grid-2 grid-lg-4 gap-4 fs-7">
+                        @if (!string.IsNullOrEmpty(status))
+                        {
+                            <div>
+                                <small class="text-muted">@Translate("Status")</small>
+                                <div><span class="badge lh-sm badge-neutral-light" style="@(statusColor is not null ? $"background-color: color-mix(in srgb, {statusColor} 20%, transparent) !important; color: {statusColor} !important" : null)">@Translate(status)</span></div>
+                            </div>
+                        }
+                        @if (Model.DueDate != default)
+                        {
+                            <div>
+                                <small class="text-muted">@Translate("Due date")</small>
+                                <div>@(Model.DueDate.ToString("d", Pageview.Area.CultureInfo))</div>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.CustomerNumber))
+                        {
+                            <div>
+                                <small class="text-muted">@Translate("Customer number")</small>
+                                <div>@(Model.CustomerNumber)</div>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.PurchaseOrderNumber))
+                        {
+                            <div>
+                                <small class="text-muted">@Translate("PO number")</small>
+                                <div>@(Model.PurchaseOrderNumber)</div>
+                            </div>
+                        }
+                        @* Name is empty when BC has no name for the code, so fall back to the code. *@
+                        @if (!string.IsNullOrEmpty(Model.PaymentTerms.Code))
+                        {
+                            <div>
+                                <small class="text-muted">@Translate("Payment terms")</small>
+                                <div>@(string.IsNullOrEmpty(Model.PaymentTerms.Name) ? Model.PaymentTerms.Code : Model.PaymentTerms.Name)</div>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.ShipmentMethod.Code))
+                        {
+                            <div>
+                                <small class="text-muted">@Translate("Shipment method")</small>
+                                <div>@(string.IsNullOrEmpty(Model.ShipmentMethod.Name) ? Model.ShipmentMethod.Code : Model.ShipmentMethod.Name)</div>
+                            </div>
+                        }
+                        @if (!string.IsNullOrEmpty(Model.Salesperson.Code))
+                        {
+                            <div>
+                                <small class="text-muted">@Translate("Salesperson")</small>
+                                <div>@(string.IsNullOrEmpty(Model.Salesperson.Name) ? Model.Salesperson.Code : Model.Salesperson.Name)</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @if (hasBillTo || hasShipTo)
+        {
+            <div class="card-body">
+                <div class="grid grid-1 grid-lg-2 gap-4">
+                    @if (hasBillTo)
+                    {
+                        <address class="mb-0 fs-7">
+                            <div class="small mb-2 text-muted">@Translate("Billing address")</div>
+                            @* Name is BC's bill-to name, falling back to the customer name. *@
+                            <div class="fw-bold">@(Model.BillingAddress.Name)</div>
+                            <div>@(Model.BillingAddress.Address)</div>
+                            <div>@(Model.BillingAddress.Address2)</div>
+                            <div>@(Model.BillingAddress.Zip) @(Model.BillingAddress.City)</div>
+                            @if (!string.IsNullOrEmpty(Model.BillingAddress.State))
+                            {
+                                <div>@(Model.BillingAddress.State)</div>
+                            }
+                            @* BC returns the country code only; the backend resolves the display name when it can. *@
+                            <div>@(Model.BillingAddress.Country ?? Model.BillingAddress.CountryCode)</div>
+                            @* BC has no bill-to contact; the document's phone and email are the billing contact details. *@
+                            @if (!string.IsNullOrEmpty(Model.BillingAddress.Phone))
+                            {
+                                <div class="mt-2">@Translate("Phone"): @(Model.BillingAddress.Phone)</div>
+                            }
+                            @if (!string.IsNullOrEmpty(Model.BillingAddress.Email))
+                            {
+                                <div>@Translate("Email"): @(Model.BillingAddress.Email)</div>
+                            }
+                        </address>
+                    }
+                    @if (hasShipTo)
+                    {
+                        <address class="mb-0 fs-7">
+                            <div class="small mb-2 text-muted">@Translate("Shipping address")</div>
+                            <div class="fw-bold">@(Model.ShippingAddress.Name)</div>
+                            <div>@(Model.ShippingAddress.Address)</div>
+                            <div>@(Model.ShippingAddress.Address2)</div>
+                            <div>@(Model.ShippingAddress.Zip) @(Model.ShippingAddress.City)</div>
+                            @if (!string.IsNullOrEmpty(Model.ShippingAddress.State))
+                            {
+                                <div>@(Model.ShippingAddress.State)</div>
+                            }
+                            <div>@(Model.ShippingAddress.Country ?? Model.ShippingAddress.CountryCode)</div>
+                            @if (!string.IsNullOrEmpty(Model.ShippingContact))
+                            {
+                                <div class="mt-2">@Translate("Contact"): @(Model.ShippingContact)</div>
+                            }
+                        </address>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>@Translate("Item")</th>
+                        <th>@Translate("Description")</th>
+                        <th class="text-end">@Translate("Quantity")</th>
+                        <th class="text-end">@Translate("Unit price")</th>
+                        <th class="text-end">@Translate("Discount")</th>
+                        <th class="text-end">@Translate("Total")</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var line in Model.Lines)
+                    {
+                        <tr>
+                            <td>@(line.ItemNumber)</td>
+                            <td><span class="text-wrap-nowrap">@(line.Description)</span></td>
+                            <td class="text-end">@(line.Quantity) @(line.UnitOfMeasureCode)</td>
+                            <td class="text-end"><span class="text-price">@(line.UnitPrice.Price?.Formatted)</span></td>
+                            <td class="text-end">
+                                @* BC posts the discount as an amount, a percentage, or neither. *@
+                                @if ((line.Discount.Price?.Value ?? 0) != 0)
+                                {
+                                    <span class="text-price">@(line.Discount.Price?.Formatted)</span>
+                                }
+                                else if (line.DiscountPercent != 0)
+                                {
+                                    <span>@(line.DiscountPercent)%</span>
+                                }
+                            </td>
+                            <td class="text-end"><span class="text-price">@(line.Total.Price?.Formatted)</span></td>
+                        </tr>
+                    }
+
+                    @if (Model.Lines.Count < 1)
+                    {
+                        <tr>
+                            <td colspan="6" class="py-3 text-center text-muted">
+                                <div class="d-grid rounded-circle m-auto" style="width:4rem;aspect-ratio:1;background-color:rgba(var(--bs-body-color-rgb), .0275);">
+                                    <span class="icon-4">
+                                        @ReadFile("/Files/Images/Icons/file-contract.svg")
+                                    </span>
+                                </div>
+                                <div class="mt-1">@Translate("No items")</div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    @* The breakdown names each amount, so it reads the explicit net, VAT and gross
+                       fields rather than Price, which follows the shop's VAT display setting. *@
+                    <tr>
+                        <td colspan="5" class="text-end">@Translate("Subtotal")</td>
+                        <td class="text-end"><span class="text-price">@(Model.Total.PriceWithoutVat?.Formatted)</span></td>
+                    </tr>
+                    @if ((Model.Discount.Price?.Value ?? 0) != 0)
+                    {
+                        <tr>
+                            <td colspan="5" class="text-end">@Translate("Discount")</td>
+                            <td class="text-end"><span class="text-price">@(Model.Discount.Price?.Formatted)</span></td>
+                        </tr>
+                    }
+                    @if ((Model.Total.Vat?.Value ?? 0) != 0)
+                    {
+                        <tr>
+                            <td colspan="5" class="text-end">@Translate("VAT")</td>
+                            <td class="text-end"><span class="text-price">@(Model.Total.Vat?.Formatted)</span></td>
+                        </tr>
+                    }
+                    <tr>
+                        <td colspan="5" class="text-end fw-semibold">@Translate("Total incl. VAT")</td>
+                        <td class="text-end"><span class="text-price fw-semibold">@(Model.Total.PriceWithVat?.Formatted)</span></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+}
+
+@* Editor only: RequestUri is the raw BC endpoint and ResponseBody the raw payload - neither belongs
+   in page source on a live site. *@
+@if (Pageview.IsVisualEditorMode && Model.HasError)
+{
+    <details class="card mt-3 fs-8 d-print-none">
+        <summary class="card-body py-2 px-3 text-muted" role="button">@Translate("Business Central request diagnostics")</summary>
+        <div class="card-body pt-0">
+            @foreach (var error in Model.Errors)
+            {
+                <div class="alert alert-warning py-2 px-3">
+                    <div class="fw-bold">HTTP @(error.StatusCode)</div>
+                    @if (error.RequestUri is not null)
+                    {
+                        <div><code class="text-break">@(error.RequestUri)</code></div>
+                    }
+                    <div>@(error.Message)</div>
+                    @if (!string.IsNullOrEmpty(error.ResponseBody))
+                    {
+                        <pre class="mb-0 mt-2" style="white-space: pre-wrap; max-height: 20rem; overflow-y: auto;">@HtmlEncoder.HtmlEncode(error.ResponseBody)</pre>
+                    }
+                </div>
+            }
+        </div>
+    </details>
+}
