@@ -606,9 +606,8 @@ Every step down costs bundle size, lint coverage, and testability.
 
 Do not mix `CartCmd` and `/dwapi` in a single user-facing flow. Their validators disagree (§1.1), so a form that validates classically and submits to the API will accept quantities the API rejects, and vice versa.
 
-Two live examples:
+Live example:
 - `swi/25137`'s `_cartResponse.js` calls `?CartCmd=setcart` inside an otherwise `/dwapi` flow. Use `PATCH /dwapi/ecommerce/carts/{secret}/active`.
-- The legacy `CustomerCenterCmd=reorder` + `onclick="swift.Cart.Update(event)"` path in `OrderViewSearchList.cshtml:271` and `CustomerOrderViewSearchList.cshtml:286` coexists with the new `POST /dwapi/ecommerce/carts/reorder`. Note this legacy path is on `main` and `swi/25137` does not modify it — it is shared debt, not something that branch introduced, and retiring it is its own task.
 
 ### 8.4 Make failure the designed path
 
