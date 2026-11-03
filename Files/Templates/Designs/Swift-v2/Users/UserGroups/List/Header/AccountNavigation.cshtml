@@ -1,0 +1,52 @@
+@inherits ViewModelTemplate<ViewModelBase>
+@using Dynamicweb.Frontend
+@using Dynamicweb.Rendering
+@using Dynamicweb.Users.Frontend.UserGroups
+
+@* Breadcrumb, header and Users / Sub-accounts tabs for a single account.
+   Model: UserGroupUserListViewModel (users view) or UserGroupListViewModel with ParentGroupId (sub-accounts view) *@
+
+@{
+    string baseUrl = SearchEngineFriendlyURLs.GetFriendlyUrl($"default.aspx?ID={Pageview?.Page?.ID ?? 0}");
+
+    (int Id, string Name, IEnumerable<UserGroupViewModel> Ancestors, bool IsSubGroupsView) group = Model switch
+    {
+        UserGroupListViewModel subGroups => (subGroups.ParentGroupId, subGroups.Ancestors.LastOrDefault()?.Name ?? string.Empty, subGroups.Ancestors.SkipLast(1), true),
+        UserGroupUserListViewModel users => (users.GroupId, users.GetCurrentGroupName(), users.Ancestors, false),
+        _ => (0, string.Empty, [], false)
+    };
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb mb-3">
+        <li class="breadcrumb-item"><a href="@(baseUrl)">@(Pageview?.Page?.GetDisplayName())</a></li>
+        @foreach (var ancestor in group.Ancestors)
+        {
+            <li class="breadcrumb-item"><a href="@(baseUrl)?ParentGroupId=@(ancestor.Id)">@(ancestor.Name)</a></li>
+        }
+        <li class="breadcrumb-item active" aria-current="page">@(group.Name)</li>
+    </ol>
+</nav>
+
+<header class="hstack gap-3 mb-4 flex-wrap justify-content-between">
+    <h1 class="h4 mb-0">@(group.Name)</h1>
+
+    @if (!group.IsSubGroupsView)
+    {
+        <a href="@(baseUrl)?UserGroupId=@(group.Id)&UserGroupCmd=inviteuser" class="btn btn-sm btn-primary hstack py-2 px-3" data-dw-button>
+            <span class="icon me-2">
+                @ReadFile("/Files/Images/Icons/plus.svg")
+            </span>
+            @Translate("Invite user")
+        </a>
+    }
+</header>
+
+<nav class="nav nav-pills fs-7 gap-1 align-self-baseline p-1 rounded-2 mb-3">
+    <a href="@(baseUrl)?UserGroupId=@(group.Id)" class="nav-link @(group.IsSubGroupsView ? null : "active shadow-sm")" aria-current="@(group.IsSubGroupsView ? null : "page")">
+        <span>@Translate("Users")</span>
+    </a>
+    <a href="@(baseUrl)?ParentGroupId=@(group.Id)" class="nav-link @(group.IsSubGroupsView ? "active shadow-sm" : null)" aria-current="@(group.IsSubGroupsView ? "page" : null)">
+        <span>@Translate("Sub-accounts")</span>
+    </a>
+</nav>
