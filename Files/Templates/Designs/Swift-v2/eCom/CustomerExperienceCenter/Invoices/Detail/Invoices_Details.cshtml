@@ -252,19 +252,22 @@ else
                             <td>@(line.ItemNumber)</td>
                             <td><span class="text-wrap-nowrap">@(line.Description)</span></td>
                             <td class="text-end">@(line.Quantity) @(line.UnitOfMeasureCode)</td>
-                            <td class="text-end"><span class="text-price">@(line.UnitPrice.Price?.Formatted)</span></td>
+                            @* Only amounts BC posts are shown; the module derives the rest and BC's own rounding can't be
+                               reproduced. UnitPrice and Discount carry BC's posted amount in PriceWithoutVat whatever the
+                               document's Prices Including VAT. *@
+                            <td class="text-end"><span class="text-price">@(line.UnitPrice.PriceWithoutVat?.Formatted)</span></td>
                             <td class="text-end">
-                                @* BC posts the discount as an amount, a percentage, or neither. *@
-                                @if ((line.Discount.Price?.Value ?? 0) != 0)
-                                {
-                                    <span class="text-price">@(line.Discount.Price?.Formatted)</span>
-                                }
-                                else if (line.DiscountPercent != 0)
+                                @* BC posts the discount as a percentage, an amount, or neither. *@
+                                @if (line.DiscountPercent != 0)
                                 {
                                     <span>@(line.DiscountPercent)%</span>
                                 }
+                                else if ((line.Discount.PriceWithoutVat?.Value ?? 0) != 0)
+                                {
+                                    <span class="text-price">@(line.Discount.PriceWithoutVat?.Formatted)</span>
+                                }
                             </td>
-                            <td class="text-end"><span class="text-price">@(line.Total.Price?.Formatted)</span></td>
+                            <td class="text-end"><span class="text-price">@(line.Total.PriceWithVat?.Formatted)</span></td>
                         </tr>
                     }
 
@@ -283,19 +286,20 @@ else
                     }
                 </tbody>
                 <tfoot>
-                    @* The breakdown names each amount, so it reads the explicit net, VAT and gross
-                       fields rather than Price, which follows the shop's VAT display setting. *@
-                    <tr>
-                        <td colspan="5" class="text-end">@Translate("Subtotal")</td>
-                        <td class="text-end"><span class="text-price">@(Model.Total.PriceWithoutVat?.Formatted)</span></td>
-                    </tr>
-                    @if ((Model.Discount.Price?.Value ?? 0) != 0)
+                    @* The breakdown follows BC's own document and only shows amounts BC posts. BC has no subtotal
+                       before the invoice discount, so there is no Subtotal row. Discount carries BC's posted
+                       amount in PriceWithoutVat. *@
+                    @if ((Model.Discount.PriceWithoutVat?.Value ?? 0) != 0)
                     {
                         <tr>
                             <td colspan="5" class="text-end">@Translate("Discount")</td>
-                            <td class="text-end"><span class="text-price">@(Model.Discount.Price?.Formatted)</span></td>
+                            <td class="text-end"><span class="text-price">@(Model.Discount.PriceWithoutVat?.Formatted)</span></td>
                         </tr>
                     }
+                    <tr>
+                        <td colspan="5" class="text-end">@Translate("Total excl. VAT")</td>
+                        <td class="text-end"><span class="text-price">@(Model.Total.PriceWithoutVat?.Formatted)</span></td>
+                    </tr>
                     @if ((Model.Total.Vat?.Value ?? 0) != 0)
                     {
                         <tr>
