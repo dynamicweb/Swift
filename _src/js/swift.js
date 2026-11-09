@@ -14,7 +14,7 @@ import { VariantSelector } from "./_variantselector";
 import { Video } from "./_video";
 import { Image } from "./_image";
 import { Typeahead } from "./_typeahead";
-import { AssetLoader } from "./_assetLoader";
+import { AssetLoader } from "./_assetloader";
 import { BackInStockNotification } from "./_backInStockNotification";
 import { ExpressBuy } from "./_expressBuy";
 import { Menu } from "./_menu";

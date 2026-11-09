@@ -1,4 +1,6 @@
-pr: 
+trigger: none
+
+pr:
   branches:
     include:
       - main
@@ -9,14 +11,18 @@ pr:
 pool: Swift
 
 steps:
-  - task: NodeTool@0
+  - task: UseNode@1
     inputs:
-      versionSpec: "20.x"
+      version: "24.x"
     displayName: "Install Node.js"
 
   - script: |
-      npm install
-    displayName: "npm install"
+      npm ci
+    displayName: "npm ci"
+
+  - script: |
+      npm run lint
+    displayName: "npm run lint"
 
   - script: |
       npm run build --verbose
@@ -38,10 +44,28 @@ steps:
       publishLocation: "Container"
     displayName: "Publish artifact"
 
-  - task: CreatePRCommentTask@1
+  # Posts once per PR, as the build service; it needs "Contribute to pull requests" on the repo
+  - powershell: |
+      # Windows PowerShell 5.1 does not use TLS 1.2 by default, which dev.azure.com requires
+      [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+      $marker = "will be available for test soon"
+      $comment = "PR: $(System.PullRequest.PullRequestId) $marker - QA: $(qa-url) / QA-MAIN: $(qa-main-url)"
+      $url = "$(System.CollectionUri)$(System.TeamProjectId)/_apis/git/repositories/$(Build.Repository.ID)/pullRequests/$(System.PullRequest.PullRequestId)/threads?api-version=7.1"
+      $headers = @{ Authorization = "Bearer $env:SYSTEM_ACCESSTOKEN" }
+
+      # Later pushes to the PR rebuild the same test sites, so the link is only posted on the first build
+      $threads = Invoke-RestMethod -Method Get -Uri $url -Headers $headers
+      if ($threads.value | Where-Object { $_.comments | Where-Object { $_.content -like "*$marker*" } }) {
+        Write-Host "Test site link already posted on this PR"
+        exit 0
+      }
+
+      $body = @{
+        comments = @(@{ parentCommentId = 0; content = $comment; commentType = "system" })
+        status = "byDesign"
+      } | ConvertTo-Json -Depth 3
+      Invoke-RestMethod -Method Post -Uri $url -ContentType "application/json" -Body $body -Headers $headers | Out-Null
     condition: eq(variables['Build.Reason'], 'PullRequest')
-    inputs:
-      AuthType: 'pat'
-      AzureDevOpsPat: '$(pat)'
-      Comment: 'PR: $(System.PullRequest.PullRequestId) will be available for test soon - QA: $(qa-url) / QA-MAIN: $(qa-main-url)'
+    env:
+      SYSTEM_ACCESSTOKEN: $(System.AccessToken)
     displayName: Add comment to PR with link to test site

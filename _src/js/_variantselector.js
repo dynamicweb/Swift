@@ -189,7 +189,7 @@ const VariantSelector = (function () {
 
         if (globalDispatcher != false && localDispatcher != false) {
           //Update the url
-          let url = "";
+          let url;
 
           if (variantSelectorElement.getAttribute("data-base-url")) {
             url = variantSelectorElement.getAttribute("data-base-url");

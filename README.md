@@ -3,7 +3,7 @@
 Swift is a **customizable storefront** which provides a solid foundation for building tailored ecommerce websites with unique designs.
 Built upon the DynamicWeb 10 platform, Swift offers a robust foundation for businesses aiming to establish a strong and visually appealing online presence and allows you to get started quickly through simple configuration. For more complex requirements, where coding is necessary, Swift makes the process seamless, enabling you to bring your vision to life with ease.
 
-![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=black&label=Swift%20Release) [![GitHub DW10](https://img.shields.io/badge/DynamicWeb10%20Release-v10.29.0-blue)](https://doc.dynamicweb.dev/) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.3.3-purple)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-darkblue)](https://doc.dynamicweb.dev/swift/getting-started/index.html) 
+![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/dynamicweb/Swift?color=black&label=Swift%20Release) [![GitHub DW10](https://img.shields.io/badge/DynamicWeb10%20Release-v10.29.0-blue)](https://doc.dynamicweb.dev/) [![GitHub Bootstrap](https://img.shields.io/badge/Bootstrap-v5.3.8-purple)](https://getbootstrap.com/) [![GitHub DW](https://img.shields.io/badge/Swift-documentation-darkblue)](https://doc.dynamicweb.dev/swift/getting-started/index.html) 
 
 > [!NOTE]
 > Swift 2.4.0 is running on a DW10.28.0 (R0) if you are not running a R0 version,
@@ -28,7 +28,7 @@ Swift uses npm to handle and compile styles and bundle scripts, assets and libra
 
 1. Download and install [Node.js](https://nodejs.org/en/)
 2. Open a command prompt and navigate to the root of the cloned `Swift`folder
-3. Run `npm install` - to get all dependencies
+3. Run `npm ci` - to get all dependencies
 4. Run `npm run build`- to compile and build all design styles, scripts and assets
 
 ## Requirements, Hosting environment and install

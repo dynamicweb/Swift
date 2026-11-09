@@ -406,7 +406,7 @@ Enforced, with three named exceptions.
 2. Alpine attributes referencing a factory defined in `_src/js/` — `x-data="swift.MiniCart.dropdown()"`, plus short inline expressions like `x-show="open"`
 3. `<template>` elements holding static markup for JS to clone
 
-Why this matters beyond tidiness: `_src/js/` is linted and bundled; template JS is neither. `npm run build` fails on ESLint **errors and warnings** (`throwOnError` + `throwOnWarning` in `rollup.config.js`), and on Stylelint **errors only** (`failOnError`; there is no `failOnWarning`). Template JS is also unminified, uncached, and re-executed on every swap.
+Why this matters beyond tidiness: `_src/js/` is linted and bundled; template JS is neither. `npm run lint` (run as its own pipeline step) fails on ESLint and Stylelint errors. Template JS is also unminified, uncached, and re-executed on every swap.
 
 ### 5.2 Behaviour belongs in item type settings
 
@@ -643,7 +643,7 @@ Style classes and behaviour hooks are separate concerns. `.mini-cart-quantity` s
 
 ### 8.8 Verification, given there are no automated tests
 
-Quality gates are `npm run build` (ESLint + Stylelint, fails on warnings) and manual QA. So for any cart change, walk this explicitly:
+Quality gates are `npm run lint` (ESLint + Stylelint), `npm run build` and manual QA. So for any cart change, walk this explicitly:
 
 - anonymous add → login → cart survives (`MergeAnonymousCartOnLoggingIn`)
 - add from product list, product detail, express buy, and CEC modal → **every** minicart badge updates, on a page with two minicarts

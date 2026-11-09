@@ -7,21 +7,26 @@ This document is the single source of truth for all AI agents (Claude Code, Copi
 Swift is a customizable eCommerce storefront built on the **DynamicWeb 10** platform. It provides drag-and-drop content building with a paragraph-based template system for B2B/B2C online stores.
 
 - **Backend**: C# .NET 8.0 library using DynamicWeb 10 APIs
-- **Frontend**: ES6 modules bundled with Rollup, SCSS compiled to CSS, Bootstrap 5.3.3
+- **Frontend**: ES6 modules bundled with esbuild, SCSS compiled with Sass and post-processed with Lightning CSS, Bootstrap 5.3.8
 - **Templating**: Razor CSHTML files inheriting from DynamicWeb ViewModels
 - **Interactivity**: HTMX for AJAX updates, Alpine.js for reactive UI
 
 ## Build Commands
 
 ```bash
-npm install          # Install dependencies
+npm ci               # Install dependencies from package-lock.json
 npm run build        # Production build (minified, with source maps)
-npm run dev          # Development build with watch mode
+npm run dev          # Development build with watch mode and live reload
+npm run lint         # ESLint (_src/js) + Stylelint (_src/scss)
 ```
 
-Build output goes to `Files/Templates/Designs/Swift-v2/Assets/` (JS + CSS).
+The build is a single script, `build.mjs`. Output goes to `Files/Templates/Designs/Swift-v2/Assets/`: `js/swift.js`, `css/swift.css` (each with a source map) and `lib/` (the vendor packages' `dist/` folders, copied as-is). `Assets/` is gitignored.
 
-The build runs ESLint and Stylelint — build fails on lint errors/warnings.
+CSS browser targets come from `browserslist` in `package.json`.
+
+Live reload: `npm run dev` starts an event stream on `http://localhost:35729` (override with `SWIFT_LIVERELOAD_PORT`), and the dev build of `swift.js` connects to it. SCSS changes swap `swift.css` in place without a page reload; changes to `_src/js` or any `.cshtml` under `Files/Templates/` reload the page. Production builds contain none of this.
+
+Linting is separate from the build: run `npm run lint` before committing. The pipelines run it as its own step and fail on any lint error.
 
 There are no automated tests. Quality is enforced through linting and manual QA.
 
@@ -73,7 +78,9 @@ Azure DevOps pipelines in `Pipelines/`:
 - `swift-build.yml` — triggered on `main`, builds and publishes artifacts
 - `swift-qa.yml` — triggered on PRs to `main`, builds and posts test site links as PR comments. PRs into a `features/*` branch only get this build if a build-validation branch policy covers that branch
 
-Both use Node 20.x, run `npm install` + `npm run build`, and archive the `Files/` directory.
+- `SwiftPR.yml` — triggered on PRs to `main` and `features/*`, builds a test site package with demo data
+
+All use Node 24.x, run `npm ci`, `npm run lint` and `npm run build`, and archive the `Files/` directory.
 
 ## Conventions
 
