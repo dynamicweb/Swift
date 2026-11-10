@@ -2,8 +2,10 @@ const Menu = (function () {
   return {
     getMenuContentOffsetByParentRowPadding: function (menuElement) {
       const parentGridrow = menuElement.closest("[data-swift-gridrow]");
-      const style = window.getComputedStyle(parentGridrow);
-      return style.paddingBottom;
+      if (!parentGridrow) {
+        return "0px";
+      }
+      return window.getComputedStyle(parentGridrow).paddingBottom;
     },
     setMenuContentOffset: function () {
       const menuElements = document.querySelectorAll("[data-swift-menu]");
@@ -14,7 +16,7 @@ const Menu = (function () {
         try {
           const paddingBottom = offset.match(/\d+/)[0];
           offset = parseInt(paddingBottom);
-          const dropdownToggles = menuElement.querySelectorAll("[data-bs-toggle]");
+          const dropdownToggles = menuElement.querySelectorAll("[data-bs-toggle='dropdown']");
           dropdownToggles.forEach((dropdownToggle) => {
             const offsetAttribute = `0, ${offset}`;
             dropdownToggle.dataset.bsOffset = offsetAttribute;

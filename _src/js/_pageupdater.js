@@ -263,6 +263,11 @@ const PageUpdater = (function () {
             }
           });
 
+          // Content swapped in via innerHTML is unknown to htmx until processed
+          if (window.htmx) {
+            window.htmx.process(responseTargetElement);
+          }
+
           let event = new CustomEvent("swapped.swift.pageupdater", {
             cancelable: true,
             detail: {
