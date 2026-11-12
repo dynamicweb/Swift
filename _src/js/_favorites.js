@@ -135,7 +135,8 @@ const Favorites = (function () {
             command == "addproducttofavoritelist" ||
 						command == "removeproductfromfavoritelist"
           ) {
-            var favoriteToast = new bootstrap.Toast(favoriteNotification);
+            // Reuse the instance, so a quick second click restarts the hide timer instead of an old one hiding the toast
+            var favoriteToast = bootstrap.Toast.getOrCreateInstance(favoriteNotification);
             favoriteToast.show();
 
             if (data.Thumbnail != "") {

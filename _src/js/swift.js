@@ -19,6 +19,7 @@ import { BackInStockNotification } from "./_backInStockNotification";
 import { ExpressBuy } from "./_expressBuy";
 import { Menu } from "./_menu";
 import { Authentication } from "./_authentication";
+import { Toast } from "./_toast";
 
 // Swift modules
 const swift = (function () {
@@ -39,6 +40,7 @@ const swift = (function () {
     ExpressBuy: ExpressBuy,
     Menu: Menu,
     Authentication: Authentication,
+    Toast: Toast,
   };
 })();
 
@@ -87,7 +89,26 @@ window.reinitializeTooltips = reinitializeTooltips;
 
 window.addEventListener("htmx:afterRequest", reinitializeTooltips);
 
+// Keeps --swift-header-height in sync with the page header, which changes with fonts, logo, breakpoints and banners.
+// Without a header it is 0; before this runs, the 100px fallback in _root.scss applies
+function observeHeaderHeight() {
+  const header = document.querySelector("[data-swift-page-header]");
+  let height;
+
+  // A root custom property restyles the whole page, so only write when the height changes (not on width-only resizes)
+  const setHeight = () => {
+    const next = header?.offsetHeight ?? 0;
+    if (next === height) return;
+    height = next;
+    document.documentElement.style.setProperty("--swift-header-height", `${next}px`);
+  };
+
+  setHeight();
+  if (header) new ResizeObserver(setHeight).observe(header);
+}
+
 window.addEventListener("DOMContentLoaded", () => {
+  observeHeaderHeight();
   
   // Ensure JWT token is requested on page load if any swift-auth element is present and HTMX is loaded
   if (window.htmx) {
