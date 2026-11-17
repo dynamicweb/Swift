@@ -211,6 +211,8 @@ The `POST /_apis/wit/workitems/$User%20Story` endpoint rejects some field combin
 | Skill | Location | Purpose |
 |-------|----------|---------|
 | `azure-devops` | `.agents/skills/azure-devops/` | Full Azure DevOps REST API — work items, repos, PRs, pipelines, wiki, test plans |
+| `pm-review` | `.agents/skills/pm-review/` | Product-owner review of a PR: proves each acceptance criterion on the PR test site with a screenshot and reports gaps a user would hit. Invoke with `/pm-review <PR id>` |
+| `dw-review` | `.agents/skills/dw-review/` | Shared PR-review mechanics used by `pm-review` (not invoked on its own): PR, diff, test sites, screenshots, finding buckets |
 
 ---
 
@@ -226,3 +228,4 @@ The `POST /_apis/wit/workitems/$User%20Story` endpoint rejects some field combin
 | `.agents/prompts/pr-description.md` | PR description template |
 | `.agents/prompts/commit-message.md` | Commit message guidelines |
 | `.agents/prompts/code-review.md` | Code review checklist |
+| `.agents/prompts/bug-report.md` | Bug work item template (Repro Steps as HTML) |
