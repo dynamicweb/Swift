@@ -121,6 +121,7 @@ def add_comment(project, work_item_id, text):
         "POST",
         f"{project}/_apis/wit/workitems/{work_item_id}/comments",
         data={"text": text},
+        api_version="7.1-preview.4",
     )
 
 
@@ -129,7 +130,12 @@ def list_comments(project, work_item_id, top=None):
     params = {}
     if top:
         params["$top"] = str(top)
-    return api_request("GET", f"{project}/_apis/wit/workitems/{work_item_id}/comments", params=params)
+    return api_request(
+        "GET",
+        f"{project}/_apis/wit/workitems/{work_item_id}/comments",
+        params=params,
+        api_version="7.1-preview.4",
+    )
 
 
 def get_revisions(project, work_item_id, top=None):
